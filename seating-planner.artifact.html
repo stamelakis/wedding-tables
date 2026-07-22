@@ -38,6 +38,8 @@
   .guest-chip:active{ cursor:grabbing; }
   .guest-chip .x{ color:#bbb; font-size:15px; padding-left:8px; cursor:pointer; }
   .guest-chip .x:hover{ color:var(--danger); }
+  .guest-chip .stag{ font-size:9px; color:#a0692b; background:#fff4e6; border:1px solid #f0d9bf; border-radius:6px; padding:0 4px; margin-left:6px; vertical-align:middle; }
+  .guest-chip .stag.cut{ color:#b03535; background:#fdeaea; border-color:#f2c7c7; }
   .empty-note{ font-size:12px; color:#bbb; padding:14px 4px; text-align:center; }
 
   /* ---------- Stage ---------- */
@@ -126,6 +128,7 @@
     <button class="btn primary" id="addTableBtn">＋ Round table</button>
     <button class="btn" id="addHeadBtn">＋ Head table</button>
     <button class="btn" id="autoSeatBtn">Auto-fill</button>
+    <button class="btn primary" id="importListBtn">＋ Import guests</button>
     <button class="btn" id="printBtn">🖨 Print</button>
     <button class="btn" id="exportBtn">Export</button>
     <button class="btn" id="importBtn">Import</button>
@@ -272,6 +275,12 @@ function hexTint(hex){ return hex+"22"; }
 function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._to); t._to=setTimeout(()=>t.classList.remove("show"),1600); }
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+// guest status (πιθανή/πούλο) + free-text note (city · age)
+const STATUS_TXT={ probable:"πιθανή", cut:"πούλο" };
+function gStatus(id){ return state.guests[id]?.status || "confirmed"; }
+function gNote(id){ return state.guests[id]?.note || ""; }
+function statusTitle(id){ const s=gStatus(id); const n=gNote(id); return (STATUS_TXT[s]?` · ⚠ ${STATUS_TXT[s]}`:"") + (n?` · ${n}`:""); }
+function statusTag(id){ const s=gStatus(id); return STATUS_TXT[s]?`<span class="stag${s==="cut"?" cut":""}">${STATUS_TXT[s]}</span>`:""; }
 
 // ---------- text measuring (so seats grow to fit the name) ----------
 const _measureCtx = document.createElement("canvas").getContext("2d");
@@ -318,8 +327,9 @@ function buildSeat(t,i,relx,rely,fs,seatH){
   if(gid){
     const col=guestColor(gid);
     seat.style.background=col; seat.style.borderColor=col; seat.style.width=seatWidthFor(guestName(gid),fs)+"px";
+    if(gStatus(gid)!=="confirmed") seat.style.borderStyle="dashed";  // flag not-yet-confirmed guests
     seat.innerHTML=`<span class="nm">${escapeHtml(guestName(gid))}</span>`;
-    seat.title=guestName(gid)+(guestGroup(gid)?` · ${guestGroup(gid).name}`:"");
+    seat.title=guestName(gid)+(guestGroup(gid)?` · ${guestGroup(gid).name}`:"")+statusTitle(gid);
     seat.draggable=true; seat.dataset.guestId=gid;
   }else{
     seat.style.width="42px";
@@ -432,7 +442,8 @@ function renderPool(){
     const chip=document.createElement("div");
     chip.className="guest-chip"; chip.draggable=true; chip.dataset.guestId=id;
     chip.style.borderLeftColor=col; chip.style.background=hexTint(col);
-    chip.innerHTML=`<span>${escapeHtml(guestName(id))}</span><span class="x" title="Remove guest">✕</span>`;
+    chip.title=(guestGroup(id)?guestGroup(id).name:"")+statusTitle(id);
+    chip.innerHTML=`<span>${escapeHtml(guestName(id))}${statusTag(id)}</span><span class="x" title="Remove guest">✕</span>`;
     chip.addEventListener("dragstart",e=>{ dragData={type:"guest",guestId:id,from:"pool"}; e.dataTransfer.effectAllowed="move"; });
     chip.addEventListener("contextmenu",e=>{ e.preventDefault(); openGroupMenu(id,e); });
     chip.querySelector(".x").addEventListener("click",()=>{ delete state.guests[id]; save(); renderPool(); renderGroups(); toast("Guest removed"); });
@@ -650,10 +661,36 @@ document.getElementById("exportBtn").addEventListener("click",()=>{
 document.getElementById("importBtn").addEventListener("click",()=>{
   const inp=document.createElement("input"); inp.type="file"; inp.accept="application/json";
   inp.onchange=()=>{ const f=inp.files[0]; if(!f)return; const r=new FileReader();
-    r.onload=()=>{ try{ const s=JSON.parse(r.result); if(s.tables){ if(!s.groups)s.groups=[]; if(!s.features)s.features=defaultFeatures(); state=s; uid=state._uid||uid; fontScale=state.seatFontScale||1; save(); renderAll(); toast("Imported"); } }catch(e){ toast("Invalid file"); } };
+    r.onload=()=>{ try{ const s=JSON.parse(r.result); if(s.tables){ if(!s.groups)s.groups=[]; if(!s.features)s.features=defaultFeatures(); state=s; uid=state._uid||uid; fontScale=state.seatFontScale||1; save(); renderAll(); toast("Imported"); } else if(s.importGuests){ mergeGuestList(s); } else { toast("Not a plan or guest-list file"); } }catch(e){ toast("Invalid file"); } };
     r.readAsText(f); };
   inp.click();
 });
+// Merge a guest LIST into the current plan (adds to the pool; never touches tables or existing guests)
+document.getElementById("importListBtn").addEventListener("click",()=>{
+  const inp=document.createElement("input"); inp.type="file"; inp.accept="application/json,.json";
+  inp.onchange=()=>{ const f=inp.files[0]; if(!f)return; const r=new FileReader();
+    r.onload=()=>{ try{ const d=JSON.parse(r.result); if(d.importGuests) mergeGuestList(d); else if(d.tables) toast("That's a full plan — use the Import button"); else toast("Not a guest-list file"); }catch(e){ toast("Invalid file"); } };
+    r.readAsText(f); };
+  inp.click();
+});
+function mergeGuestList(data){
+  const nameToId={}; state.groups.forEach(g=>nameToId[g.name]=g.id);
+  (data.importGroups||[]).forEach(g=>{
+    if(!nameToId[g.name]){ const id="grp"+nextId(); state.groups.push({id,name:g.name,color:g.color||GROUP_PALETTE[state.groups.length%GROUP_PALETTE.length]}); nameToId[g.name]=id; }
+  });
+  const seenSrc=new Set(Object.values(state.guests).map(g=>g.srcId).filter(Boolean));
+  let added=0, skipped=0;
+  (data.importGuests||[]).forEach(gi=>{
+    const nm=(gi.name||"").trim(); if(!nm) return;
+    if(gi.srcId && seenSrc.has(gi.srcId)){ skipped++; return; }
+    const id="g"+nextId();
+    state.guests[id]={ name:nm, groupId: gi.group? (nameToId[gi.group]||null):null, status: gi.status||"confirmed", note: gi.note||"", srcId: gi.srcId||null };
+    if(gi.srcId) seenSrc.add(gi.srcId);
+    added++;
+  });
+  save(); renderAll();
+  toast(`Added ${added} guest(s)`+(skipped?` · skipped ${skipped} already-imported`:""));
+}
 
 // ============================================================
 //  PRINT
@@ -663,7 +700,7 @@ function buildAndPrint(){
   const area=document.getElementById("printarea");
   const legend=state.groups.map(g=>`<span><span class="dot" style="background:${g.color}"></span>${escapeHtml(g.name)}</span>`).join("");
   const cards=state.tables.map(t=>{
-    const rows=t.seats.map(gid=> gid?`<li><span class="gdot" style="background:${guestColor(gid)}"></span>${escapeHtml(guestName(gid))}</li>`:`<li class="empty">— empty —</li>`).join("");
+    const rows=t.seats.map(gid=> gid?`<li><span class="gdot" style="background:${guestColor(gid)}"></span>${escapeHtml(guestName(gid))}${STATUS_TXT[gStatus(gid)]?` <span style="color:#a00">(${STATUS_TXT[gStatus(gid)]})</span>`:""}</li>`:`<li class="empty">— empty —</li>`).join("");
     const occ=t.seats.filter(Boolean).length;
     return `<div class="pcard"><h3>${escapeHtml(t.label)} <span style="font-weight:400;color:#888;font-size:12px">(${occ}/${t.capacity})</span></h3><ol>${rows}</ol></div>`;
   }).join("");
