@@ -51,14 +51,17 @@
   #topbar .ctl .lbl{ color:#999; }
   #stage{ position:relative; width:1700px; height:1360px; margin:24px; background:radial-gradient(circle at 30% 20%, var(--grass2), var(--grass)); border:3px solid #4f8f14; border-radius:6px; transform-origin:top left; }
 
-  .feature{ position:absolute; font-size:12px; color:#fff; font-weight:600; display:flex; align-items:center; justify-content:center; text-align:center; transform:translate(-50%,-50%); border-radius:4px; padding:2px 4px; line-height:1.15; cursor:grab; user-select:none; z-index:1; }
+  .feature{ position:absolute; font-size:12px; color:#fff; font-weight:600; display:flex; align-items:center; justify-content:center; text-align:center; transform:translate(-50%,-50%); border-radius:6px; padding:2px 4px; line-height:1.15; cursor:grab; user-select:none; z-index:1; background-repeat:repeat; }
   .feature:active{ cursor:grabbing; }
-  .lake{ background:var(--lake); box-shadow:inset 0 0 20px rgba(0,0,0,.15); }
-  .deck{ background:var(--accent-dark); border:2px dashed #f0d9bf; }
-  .dancefloor{ background:#2f8f2f; border:3px solid #256f25; color:#fff; font-size:18px; letter-spacing:.5px; }
-  .box{ background:#111; color:#fff; }
-  .kiosk{ background:#fff; color:#333; border:1px solid #bbb; }
-  .label-plain{ background:rgba(255,255,255,.85); color:#333; }
+  .feature .rz{ position:absolute; right:-5px; bottom:-5px; width:14px; height:14px; background:#fff; border:1px solid #888; border-radius:3px; cursor:nwse-resize; display:none; z-index:3; }
+  .feature:hover .rz{ display:block; }
+  .feature.k-zone{ color:#fff; box-shadow:inset 0 0 24px rgba(0,0,0,.12); border:1px solid rgba(0,0,0,.14); }
+  .feature.k-zone .zlabel{ text-shadow:0 1px 3px rgba(0,0,0,.5); font-size:15px; padding:2px 6px; pointer-events:none; }
+  .feature.k-marker{ background:#111; color:#fff; }
+  .feature.k-label{ background:rgba(255,255,255,.85); color:#333; }
+  .feature.k-prop{ background:#fff; color:#333; border:1px solid #d8c4a8; box-shadow:0 2px 6px rgba(0,0,0,.16); flex-direction:column; gap:1px; padding:3px; }
+  .feature.k-prop .picon{ font-size:22px; line-height:1; pointer-events:none; }
+  .feature.k-prop .plabel{ font-size:11px; color:#444; font-weight:600; pointer-events:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
 
   /* ---------- Tables ---------- */
   .table{ position:absolute; z-index:5; }
@@ -98,6 +101,31 @@
   .toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:9px 16px; border-radius:8px; font-size:13px; opacity:0; transition:.3s; z-index:200; }
   .toast.show{ opacity:.95; }
 
+  /* ---------- Space resize · floor · decor ---------- */
+  #stageResize{ position:absolute; right:-3px; bottom:-3px; width:26px; height:26px; background:var(--accent); border:2px solid #fff; border-radius:5px; cursor:nwse-resize; z-index:8; box-shadow:0 2px 6px rgba(0,0,0,.3); }
+  #stageResize::after{ content:"⤡"; color:#fff; font-size:15px; display:flex; align-items:center; justify-content:center; height:100%; }
+  #featuremenu{ width:214px; padding:8px; }
+  #featuremenu .fm-cap{ font-size:11px; color:#999; margin-bottom:6px; }
+  #featuremenu .fm-mats{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+  #featuremenu .fm-mat{ cursor:pointer; border-radius:5px; padding:2px; border:2px solid transparent; }
+  #featuremenu .fm-mat:hover{ border-color:var(--accent); }
+  #featuremenu .fm-mat .sw{ display:block; width:30px; height:22px; border-radius:3px; border:1px solid rgba(0,0,0,.2); }
+  #featuremenu .gm-item{ display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; }
+  #featuremenu .gm-item:hover{ background:#f4f0ea; }
+  .floorrow{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .floorrow select{ flex:1; padding:6px; border:1px solid var(--line); border-radius:8px; font-size:13px; font-family:inherit; background:#fff; }
+  .modal-back{ position:fixed; inset:0; background:rgba(0,0,0,.4); display:none; align-items:center; justify-content:center; z-index:300; }
+  .modal-back.open{ display:flex; }
+  .modal{ background:#fff; border-radius:14px; width:min(600px,94vw); max-height:84vh; overflow:auto; box-shadow:0 20px 60px rgba(0,0,0,.3); }
+  .modal-head{ display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid var(--line); position:sticky; top:0; background:#fff; z-index:1; }
+  .modal-head strong{ font-size:15px; }
+  .modal-head .mx{ border:none; background:none; font-size:20px; cursor:pointer; color:#999; line-height:1; }
+  .modal .mhint{ padding:10px 16px 0; font-size:12px; color:#999; }
+  .decor-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px; padding:16px; }
+  .decor-item{ display:flex; flex-direction:column; align-items:center; gap:6px; padding:12px 8px; border:1px solid var(--line); border-radius:10px; cursor:pointer; text-align:center; font-size:12px; background:#fff; transition:.1s; }
+  .decor-item:hover{ background:#faf6f0; border-color:var(--accent); transform:translateY(-1px); }
+  .decor-item .di{ font-size:26px; line-height:1; }
+
   /* ---------- Print ---------- */
   #printarea{ display:none; }
   @media print{
@@ -133,6 +161,12 @@
     <button class="btn" id="exportBtn">Export</button>
     <button class="btn" id="importBtn">Import</button>
     <button class="btn danger" id="resetBtn">Reset</button>
+  </div>
+  <div class="section">
+    <div class="section-title">Space &amp; decor</div>
+    <div class="floorrow"><span style="font-size:12px;color:#666">Floor</span><select id="stageFloor"></select></div>
+    <button class="btn primary" id="decorBtn" style="width:100%">🛋 Add decor &amp; items…</button>
+    <div class="hint" style="font-size:11px;color:#999;margin-top:6px">Drag the ⤡ corner to resize the space. Drag any item to move it, its corner to resize, right-click it (or the floor / dance floor) to change surface or delete.</div>
   </div>
   <div class="section">
     <div class="section-title">Groups <span style="font-weight:400;text-transform:none;color:#bbb">— click to set active</span></div>
@@ -185,6 +219,14 @@
 </div>
 
 <div id="groupmenu" class="popover"></div>
+<div id="featuremenu" class="popover"></div>
+<div id="decorModal" class="modal-back">
+  <div class="modal">
+    <div class="modal-head"><strong>Add decor &amp; ceremony items</strong><button class="mx" id="decorClose">✕</button></div>
+    <div class="mhint">Click an item to drop it on the space, then drag it into place and resize from its corner.</div>
+    <div class="decor-grid" id="decorGrid"></div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 <div id="printarea"></div>
 
@@ -194,7 +236,7 @@
 //  Wedding Seating Planner — single self-contained file
 // ============================================================
 const STORE_KEY = "weddingSeatingPlanner.v2";
-const LAYOUT_VERSION = 4;
+const LAYOUT_VERSION = 5;
 const FONT_FAMILY = '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif';
 
 // 27 round-table centres on the 1700 x 1360 garden (block of tables above, columns flanking the floor)
@@ -206,19 +248,76 @@ const DEFAULT_POSITIONS = [
   [1530,720],[1530,900],[1530,1080],
 ];
 
-// Garden features — movable; the lake is split into two by the deck (the couple's entrance)
+// Garden features — movable & resizable. kind: "zone" (a floor/surface area), "prop" (an item card),
+// "marker" (dark box), "label" (text badge). Zones carry a material; props carry an icon.
 function defaultFeatures(){ return [
-  {id:"f-pil1",  cls:"box",        x:400, y:95,  w:34, h:34, text:""},
-  {id:"f-pil2",  cls:"box",        x:520, y:95,  w:34, h:34, text:""},
-  {id:"f-ent",   cls:"label-plain",x:460, y:55,  w:172,h:26, text:"ΕΙΣΟΔΟΣ · Guest entrance"},
-  {id:"f-kiosk", cls:"kiosk",      x:720, y:70,  w:180,h:42, text:"ΚΙΟΣΚΙ · Welcome drink"},
-  {id:"f-lake1", cls:"lake",       x:150, y:320, w:100,h:190,text:"ΛΙΜΝΗ · Lake"},
-  {id:"f-deck",  cls:"deck",       x:150, y:460, w:122,h:92, text:"DECK · Couple entrance"},
-  {id:"f-lake2", cls:"lake",       x:150, y:600, w:100,h:190,text:""},
-  {id:"f-floor", cls:"dancefloor", x:945, y:925, w:450,h:450,text:"ΠΙΣΤΑ · Dance floor"},
-  {id:"f-dj",    cls:"box",        x:120, y:1300,w:78, h:34, text:"DJ"},
-  {id:"f-stools",cls:"box",        x:1560,y:95,  w:130,h:30, text:"Stools"},
+  {id:"f-pil1",  kind:"marker", x:400, y:95,  w:34, h:34, label:""},
+  {id:"f-pil2",  kind:"marker", x:520, y:95,  w:34, h:34, label:""},
+  {id:"f-ent",   kind:"label",  x:460, y:55,  w:172,h:26, label:"ΕΙΣΟΔΟΣ · Guest entrance"},
+  {id:"f-kiosk", kind:"prop",   x:720, y:70,  w:150,h:70, label:"Welcome drink", icon:"🍹"},
+  {id:"f-lake1", kind:"zone",   x:150, y:320, w:100,h:190,label:"ΛΙΜΝΗ · Lake", material:"water"},
+  {id:"f-deck",  kind:"zone",   x:150, y:460, w:122,h:92, label:"Couple entrance", material:"wood"},
+  {id:"f-lake2", kind:"zone",   x:150, y:600, w:100,h:190,label:"", material:"water"},
+  {id:"f-floor", kind:"zone",   x:945, y:925, w:450,h:450,label:"ΠΙΣΤΑ · Dance floor", material:"parquet"},
+  {id:"f-dj",    kind:"marker", x:120, y:1300,w:78, h:34, label:"DJ"},
+  {id:"f-stools",kind:"marker", x:1560,y:95,  w:130,h:30, label:"Stools"},
 ]; }
+// Convert an old (cls/text) feature to the new model, preserving position & size.
+function upgradeFeature(f){
+  if(f.kind) return f;
+  const kindMap={ box:"marker", "label-plain":"label", kiosk:"prop", lake:"zone", deck:"zone", dancefloor:"zone" };
+  const matMap={ lake:"water", deck:"wood", dancefloor:"parquet" };
+  return { id:f.id, kind:kindMap[f.cls]||"marker", x:f.x, y:f.y, w:f.w, h:f.h,
+           label:(f.text!==undefined?f.text:f.label)||"", icon:(f.id==="f-kiosk"?"🍹":null), material:matMap[f.cls]||null };
+}
+
+// Floor / surface materials — applied to the whole space and to any zone (dance floor, deck, patches…)
+const MATERIALS = {
+  grass:   { name:"Grass",      img:"radial-gradient(circle at 30% 20%, #79c62b, #6ab61e)" },
+  parquet: { name:"Parquet",    img:"repeating-linear-gradient(45deg,#c88f52 0 18px,#b87e45 18px 20px)", base:"#c08348" },
+  wood:    { name:"Wood deck",  img:"repeating-linear-gradient(90deg,#b07a43 0 24px,#9c6a39 24px 26px)", base:"#a97440" },
+  stone:   { name:"Stone",      img:"repeating-linear-gradient(0deg,#b7b7b1 0 20px,#a9a9a3 20px 22px)", base:"#b0b0aa" },
+  tile:    { name:"Tile",       img:"linear-gradient(45deg,#d5d5d5 25%,transparent 25%),linear-gradient(-45deg,#d5d5d5 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#d5d5d5 75%),linear-gradient(-45deg,transparent 75%,#d5d5d5 75%)", base:"#efefef", size:"34px 34px", pos:"0 0,0 17px,17px -17px,-17px 0" },
+  marble:  { name:"Marble",     img:"linear-gradient(135deg,#f4f4f1,#e2e3e5 45%,#f0f0ee)", base:"#eeeef0" },
+  sand:    { name:"Sand",       base:"#e3d2a2" },
+  water:   { name:"Water",      img:"linear-gradient(#3f7fd0,#2f6fd0)", base:"#2f6fd0" },
+  carpet:  { name:"Red carpet", base:"#8f2f3a" },
+  concrete:{ name:"Concrete",   base:"#c9c9c4" },
+};
+function applyMaterial(el, name){
+  const m=MATERIALS[name]||MATERIALS.grass;
+  el.style.backgroundColor=m.base||"transparent";
+  el.style.backgroundImage=m.img||"none";
+  el.style.backgroundSize=m.size||"auto";
+  el.style.backgroundPosition=m.pos||"0 0";
+}
+
+// Items available from the "Add decor" popup (wedding/ceremony furniture + floor patches)
+const DECOR_ITEMS = [
+  {icon:"💌", label:"Wish table",       w:120,h:70, kind:"prop"},
+  {icon:"🎁", label:"Gift table",       w:120,h:70, kind:"prop"},
+  {icon:"🎂", label:"Cake table",       w:110,h:70, kind:"prop"},
+  {icon:"🍬", label:"Sweets table",     w:120,h:70, kind:"prop"},
+  {icon:"🥂", label:"Welcome drinks",   w:130,h:64, kind:"prop"},
+  {icon:"🍸", label:"Bar",              w:150,h:64, kind:"prop"},
+  {icon:"🍽️", label:"Buffet",           w:170,h:64, kind:"prop"},
+  {icon:"🛋️", label:"Lounge / couch",   w:130,h:80, kind:"prop"},
+  {icon:"📸", label:"Photo booth",      w:110,h:100,kind:"prop"},
+  {icon:"💐", label:"Ceremony arch",    w:140,h:60, kind:"prop"},
+  {icon:"📖", label:"Guestbook",        w:100,h:60, kind:"prop"},
+  {icon:"🎧", label:"DJ booth",         w:120,h:80, kind:"prop"},
+  {icon:"🔊", label:"Speaker",          w:54, h:74, kind:"prop"},
+  {icon:"🚻", label:"Restrooms",        w:100,h:60, kind:"prop"},
+  {icon:"🪑", label:"Extra chairs",     w:100,h:60, kind:"prop"},
+  {icon:"🌿", label:"Plants / flowers", w:80, h:70, kind:"prop"},
+  {icon:"⛲", label:"Fountain",          w:90, h:90, kind:"prop"},
+  {icon:"🕯️", label:"Candles",          w:64, h:60, kind:"prop"},
+  {icon:"🎤", label:"Stage / speeches", w:170,h:90, kind:"prop"},
+  {icon:"🅿️", label:"Parking",          w:120,h:80, kind:"prop"},
+  {icon:"🟫", label:"Wood floor area",  w:220,h:150,kind:"zone", material:"wood"},
+  {icon:"⬜", label:"Stone floor area", w:220,h:150,kind:"zone", material:"stone"},
+  {icon:"🟩", label:"Grass patch",      w:220,h:150,kind:"zone", material:"grass"},
+];
 
 const GROUP_PALETTE = ["#e26d8a","#4a90d9","#3aa657","#e0a030","#8e7cc3","#e0663a","#3ab0a6","#b07cc3","#7c9cc3","#c3a03a"];
 
@@ -240,7 +339,8 @@ function defaultState(){
     {id:"grp3", name:"Friends",      color:GROUP_PALETTE[2]},
     {id:"grp4", name:"Family",       color:GROUP_PALETTE[3]},
   ];
-  return { _uid:2001, tables, guests:{}, groups, activeGroupId:null, features:defaultFeatures(), seatFontScale:1, layoutVersion:LAYOUT_VERSION };
+  return { _uid:2001, tables, guests:{}, groups, activeGroupId:null, features:defaultFeatures(),
+           seatFontScale:1, stage:{w:2100,h:1400}, stageMaterial:"grass", layoutVersion:LAYOUT_VERSION };
 }
 
 // ---------- persistence ----------
@@ -256,13 +356,21 @@ function load(){
   }catch(e){}
   return null;
 }
-// Keep guests / groups / seat assignments; refresh the garden layout to this version.
+// Version-aware migration — keeps guests / groups / seat assignments (and, from v4 on, table positions).
 function migrateLayout(s){
-  let ri=0;
-  s.tables.forEach(t=>{ if(t.shape!=="head"){ t.shape="round"; if(DEFAULT_POSITIONS[ri]){ t.x=DEFAULT_POSITIONS[ri][0]; t.y=DEFAULT_POSITIONS[ri][1]; } ri++; } });
-  if(!s.tables.some(t=>t.shape==="head")){ s._uid=(s._uid||2001)+1; s.tables.push(makeHeadTable(s._uid)); }
-  s.features = defaultFeatures();
-  if(typeof s.seatFontScale!=="number") s.seatFontScale=1;
+  const from=s.layoutVersion||0;
+  if(from<4){ // first roll-out of the spaced grid + head table
+    let ri=0;
+    s.tables.forEach(t=>{ if(t.shape!=="head"){ t.shape="round"; if(DEFAULT_POSITIONS[ri]){ t.x=DEFAULT_POSITIONS[ri][0]; t.y=DEFAULT_POSITIONS[ri][1]; } ri++; } });
+    if(!s.tables.some(t=>t.shape==="head")){ s._uid=(s._uid||2001)+1; s.tables.push(makeHeadTable(s._uid)); }
+    s.features = defaultFeatures();
+    if(typeof s.seatFontScale!=="number") s.seatFontScale=1;
+  }
+  if(from<5){ // resizable space + materials + richer feature model (positions preserved)
+    if(!s.stage) s.stage={ w:2100, h:1400 };
+    if(!s.stageMaterial) s.stageMaterial="grass";
+    s.features=(s.features||defaultFeatures()).map(upgradeFeature);
+  }
   s.layoutVersion=LAYOUT_VERSION;
 }
 
@@ -296,10 +404,20 @@ function renderFeatures(){
   stage.querySelectorAll(".feature").forEach(e=>e.remove());
   (state.features||[]).forEach(f=>{
     const el=document.createElement("div");
-    el.className="feature "+f.cls;
+    el.className="feature k-"+(f.kind||"marker");
     el.style.left=f.x+"px"; el.style.top=f.y+"px"; el.style.width=f.w+"px"; el.style.height=f.h+"px";
-    el.textContent=f.text;
-    el.title="Drag to move";
+    if(f.kind==="zone"){
+      applyMaterial(el, f.material||"grass");
+      if(f.label){ const l=document.createElement("div"); l.className="zlabel"; l.textContent=f.label; el.appendChild(l); }
+    } else if(f.kind==="prop"){
+      el.innerHTML=`<div class="picon">${f.icon||"📦"}</div>${f.label?`<div class="plabel">${escapeHtml(f.label)}</div>`:""}`;
+    } else {
+      el.textContent=f.label||"";
+    }
+    const rz=document.createElement("div"); rz.className="rz"; el.appendChild(rz);
+    makeResizable(rz, el, f);
+    el.addEventListener("contextmenu",e=>{ e.preventDefault(); e.stopPropagation(); openFeatureMenu(f,e); });
+    el.title="Drag to move · corner to resize · right-click for surface / delete";
     makeDraggable(el, el, f, ()=>{});
     stage.appendChild(el);
   });
@@ -508,6 +626,60 @@ function showPopover(menu,evt){
 function closeGroupMenu(){ document.getElementById("groupmenu").style.display="none"; }
 
 // ============================================================
+//  SPACE · FLOOR MATERIALS · FEATURE MENU · DECOR
+// ============================================================
+function matSwatchesHtml(){ return `<div class="fm-mats">`+Object.keys(MATERIALS).map(k=>`<div class="fm-mat" data-mat="${k}" title="${MATERIALS[k].name}"><span class="sw" data-mat="${k}"></span></div>`).join("")+`</div>`; }
+function paintSwatches(menu){ menu.querySelectorAll(".sw").forEach(sw=>applyMaterial(sw, sw.dataset.mat)); }
+function closeFeatureMenu(){ document.getElementById("featuremenu").style.display="none"; }
+
+function openFeatureMenu(f, evt){
+  const menu=document.getElementById("featuremenu");
+  let html="";
+  if(f.kind==="zone") html+=`<div class="fm-cap">Surface</div>`+matSwatchesHtml();
+  html+=`<div class="gm-item" data-act="rename">✎ Rename label</div>`;
+  html+=`<div class="gm-item" data-act="delete" style="color:#d9534f">🗑 Delete</div>`;
+  menu.innerHTML=html; paintSwatches(menu);
+  menu.querySelectorAll(".fm-mat").forEach(m=>m.onclick=()=>{ f.material=m.dataset.mat; save(); renderFeatures(); closeFeatureMenu(); });
+  menu.querySelector('[data-act="rename"]').onclick=()=>{ const nm=prompt("Label (leave blank for none):", f.label||""); if(nm!==null){ f.label=nm; save(); renderFeatures(); } closeFeatureMenu(); };
+  menu.querySelector('[data-act="delete"]').onclick=()=>{ state.features=state.features.filter(x=>x.id!==f.id); save(); renderFeatures(); closeFeatureMenu(); };
+  showPopover(menu,evt);
+}
+// Right-click the empty space → change the whole floor
+function openStageMenu(evt){
+  const menu=document.getElementById("featuremenu");
+  menu.innerHTML=`<div class="fm-cap">Floor surface for the whole space</div>`+matSwatchesHtml(); paintSwatches(menu);
+  menu.querySelectorAll(".fm-mat").forEach(m=>m.onclick=()=>{ state.stageMaterial=m.dataset.mat; document.getElementById("stageFloor").value=m.dataset.mat; applyStage(); save(); closeFeatureMenu(); });
+  showPopover(menu,evt);
+}
+stage.addEventListener("contextmenu",e=>{ if(e.target===stage){ e.preventDefault(); openStageMenu(e); } });
+
+function initFloorSelect(){
+  const sel=document.getElementById("stageFloor");
+  sel.innerHTML=Object.keys(MATERIALS).map(k=>`<option value="${k}">${MATERIALS[k].name}</option>`).join("");
+  sel.value=state.stageMaterial||"grass";
+  sel.addEventListener("change",()=>{ state.stageMaterial=sel.value; applyStage(); save(); });
+}
+function addDecor(item){
+  const wrap=document.getElementById("stagewrap");
+  const cx=Math.round((wrap.scrollLeft + wrap.clientWidth/2)/zoom);
+  const cy=Math.round((wrap.scrollTop + wrap.clientHeight/2)/zoom);
+  state.features.push({ id:"f"+nextId(), kind:item.kind||"prop",
+    x:clamp(cx,60,state.stage.w-60), y:clamp(cy,60,state.stage.h-60),
+    w:item.w, h:item.h, label:item.label, icon:item.icon||null, material:item.material||null });
+  save(); renderFeatures(); toast(item.label+" added — drag it into place");
+}
+function initDecor(){
+  const grid=document.getElementById("decorGrid");
+  grid.innerHTML=DECOR_ITEMS.map((it,i)=>`<div class="decor-item" data-i="${i}"><div class="di">${it.icon}</div><div>${escapeHtml(it.label)}</div></div>`).join("");
+  grid.querySelectorAll(".decor-item").forEach(el=>el.addEventListener("click",()=>{ addDecor(DECOR_ITEMS[+el.dataset.i]); closeDecor(); }));
+}
+function openDecor(){ document.getElementById("decorModal").classList.add("open"); }
+function closeDecor(){ document.getElementById("decorModal").classList.remove("open"); }
+document.getElementById("decorBtn").addEventListener("click",openDecor);
+document.getElementById("decorClose").addEventListener("click",closeDecor);
+document.getElementById("decorModal").addEventListener("click",e=>{ if(e.target.id==="decorModal") closeDecor(); });
+
+// ============================================================
 //  DRAG & DROP (guests between seats / pool)
 // ============================================================
 let dragData=null;
@@ -563,19 +735,51 @@ poolEl.addEventListener("drop",e=>{ e.preventDefault(); poolEl.classList.remove(
 // ============================================================
 function makeDraggable(handleEl, moveEl, obj, onEnd){
   handleEl.addEventListener("pointerdown",e=>{
-    if(e.target.closest(".tgear")) return;
+    if(e.target.closest(".tgear")||e.target.closest(".rz")) return;
     if(e.button!==0) return;
     e.preventDefault(); e.stopPropagation();
     handleEl.setPointerCapture(e.pointerId);
     const sx=e.clientX, sy=e.clientY, ox=obj.x, oy=obj.y; let moved=false;
+    const maxX=(state.stage?state.stage.w:1700)-20, maxY=(state.stage?state.stage.h:1360)-20;
     function mv(ev){
       const dx=(ev.clientX-sx)/zoom, dy=(ev.clientY-sy)/zoom;
       if(Math.abs(dx)>3||Math.abs(dy)>3) moved=true;
-      obj.x=clamp(ox+dx, 30, 1670); obj.y=clamp(oy+dy, 30, 1330);
+      obj.x=clamp(ox+dx, 20, maxX); obj.y=clamp(oy+dy, 20, maxY);
       moveEl.style.left=obj.x+"px"; moveEl.style.top=obj.y+"px";
     }
     function up(){ handleEl.releasePointerCapture(e.pointerId); handleEl.removeEventListener("pointermove",mv); handleEl.removeEventListener("pointerup",up); if(moved){ save(); if(onEnd)onEnd(); } }
     handleEl.addEventListener("pointermove",mv); handleEl.addEventListener("pointerup",up);
+  });
+}
+// Resize a feature from its bottom-right corner, keeping the top-left corner fixed (x/y are the centre).
+function makeResizable(handle, el, f){
+  handle.addEventListener("pointerdown",e=>{
+    if(e.button!==0) return;
+    e.preventDefault(); e.stopPropagation();
+    handle.setPointerCapture(e.pointerId);
+    const sx=e.clientX, sy=e.clientY, ow=f.w, oh=f.h, ox=f.x, oy=f.y;
+    function mv(ev){
+      const nw=Math.max(24, ow+(ev.clientX-sx)/zoom), nh=Math.max(18, oh+(ev.clientY-sy)/zoom);
+      f.w=nw; f.h=nh; f.x=ox+(nw-ow)/2; f.y=oy+(nh-oh)/2;
+      el.style.width=nw+"px"; el.style.height=nh+"px"; el.style.left=f.x+"px"; el.style.top=f.y+"px";
+    }
+    function up(){ handle.releasePointerCapture(e.pointerId); handle.removeEventListener("pointermove",mv); handle.removeEventListener("pointerup",up); save(); }
+    handle.addEventListener("pointermove",mv); handle.addEventListener("pointerup",up);
+  });
+}
+// The whole green space: size + floor material, plus a drag-to-resize corner handle.
+function applyStage(){
+  stage.style.width=state.stage.w+"px"; stage.style.height=state.stage.h+"px";
+  applyMaterial(stage, state.stageMaterial||"grass");
+}
+function makeStageResizable(h){
+  h.addEventListener("pointerdown",e=>{
+    if(e.button!==0) return;
+    e.preventDefault(); e.stopPropagation(); h.setPointerCapture(e.pointerId);
+    const sx=e.clientX, sy=e.clientY, ow=state.stage.w, oh=state.stage.h;
+    function mv(ev){ state.stage.w=Math.max(700,Math.round(ow+(ev.clientX-sx)/zoom)); state.stage.h=Math.max(600,Math.round(oh+(ev.clientY-sy)/zoom)); stage.style.width=state.stage.w+"px"; stage.style.height=state.stage.h+"px"; }
+    function up(){ h.releasePointerCapture(e.pointerId); h.removeEventListener("pointermove",mv); h.removeEventListener("pointerup",up); save(); }
+    h.addEventListener("pointermove",mv); h.addEventListener("pointerup",up);
   });
 }
 
@@ -618,6 +822,8 @@ document.addEventListener("click",e=>{
   if(menu.style.display==="block" && !menu.contains(e.target) && !e.target.classList.contains("tgear")) closeMenu();
   const gm=document.getElementById("groupmenu");
   if(gm.style.display==="block" && !gm.contains(e.target)) closeGroupMenu();
+  const fm=document.getElementById("featuremenu");
+  if(fm.style.display==="block" && !fm.contains(e.target)) closeFeatureMenu();
 });
 
 // ============================================================
@@ -650,7 +856,7 @@ document.getElementById("autoSeatBtn").addEventListener("click",()=>{
 document.getElementById("resetBtn").addEventListener("click",()=>{
   if(!confirm("Reset everything back to the default layout? This clears all guests."))return;
   try{ localStorage.removeItem(STORE_KEY); }catch(e){}
-  state=defaultState(); uid=state._uid; fontScale=1; save(); renderAll(); toast("Reset to default layout");
+  state=defaultState(); uid=state._uid; fontScale=1; applyStage(); document.getElementById("stageFloor").value=state.stageMaterial; save(); renderAll(); toast("Reset to default layout");
 });
 document.getElementById("exportBtn").addEventListener("click",()=>{
   const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
@@ -659,7 +865,7 @@ document.getElementById("exportBtn").addEventListener("click",()=>{
 document.getElementById("importBtn").addEventListener("click",()=>{
   const inp=document.createElement("input"); inp.type="file"; inp.accept="application/json";
   inp.onchange=()=>{ const f=inp.files[0]; if(!f)return; const r=new FileReader();
-    r.onload=()=>{ try{ const s=JSON.parse(r.result); if(s.tables){ if(!s.groups)s.groups=[]; if(!s.features)s.features=defaultFeatures(); state=s; uid=state._uid||uid; fontScale=state.seatFontScale||1; save(); renderAll(); toast("Imported"); } else if(s.importGuests){ mergeGuestList(s); } else { toast("Not a plan or guest-list file"); } }catch(e){ toast("Invalid file"); } };
+    r.onload=()=>{ try{ const s=JSON.parse(r.result); if(s.tables){ if(!s.groups)s.groups=[]; if(!s.features)s.features=defaultFeatures(); if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s); state=s; uid=state._uid||uid; fontScale=state.seatFontScale||1; applyStage(); document.getElementById("stageFloor").value=state.stageMaterial||"grass"; save(); renderAll(); toast("Imported"); } else if(s.importGuests){ mergeGuestList(s); } else { toast("Not a plan or guest-list file"); } }catch(e){ toast("Invalid file"); } };
     r.readAsText(f); };
   inp.click();
 });
@@ -720,7 +926,7 @@ function setFontScale(v){ fontScale=clamp(v,0.6,2.0); state.seatFontScale=fontSc
 document.getElementById("fontUp").addEventListener("click",()=>setFontScale(fontScale+0.15));
 document.getElementById("fontDown").addEventListener("click",()=>setFontScale(fontScale-0.15));
 
-function fitZoom(){ const wrap=document.getElementById("stagewrap"); return Math.min(1,(wrap.clientWidth-60)/1700,(wrap.clientHeight-100)/1360); }
+function fitZoom(){ const wrap=document.getElementById("stagewrap"); return Math.min(1,(wrap.clientWidth-60)/state.stage.w,(wrap.clientHeight-100)/state.stage.h); }
 function applyZoom(){ stage.style.transform=`scale(${zoom})`; document.getElementById("zoomLabel").textContent=Math.round(zoom*100)+"%"; }
 document.getElementById("zoomIn").addEventListener("click",()=>{ zoom=Math.min(2.5,zoom+0.1); applyZoom(); });
 document.getElementById("zoomOut").addEventListener("click",()=>{ zoom=Math.max(0.2,zoom-0.05); applyZoom(); });
@@ -730,6 +936,12 @@ document.getElementById("zoomFit").addEventListener("click",()=>{ zoom=fitZoom()
 //  INIT
 // ============================================================
 function renderAll(){ renderFeatures(); renderTables(); renderGroups(); renderPool(); }
+if(!state.stage) state.stage={w:2100,h:1400};
+if(!state.stageMaterial) state.stageMaterial="grass";
+applyStage();
+const _stageResize=document.createElement("div"); _stageResize.id="stageResize"; _stageResize.title="Drag to resize the whole space";
+stage.appendChild(_stageResize); makeStageResizable(_stageResize);
+initFloorSelect(); initDecor();
 renderAll();
-setTimeout(()=>{ zoom=Math.min(1, Math.max(fitZoom(), 0.55)); applyZoom(); },50);
+setTimeout(()=>{ zoom=Math.min(1, Math.max(fitZoom(), 0.5)); applyZoom(); },50);
 </script>
