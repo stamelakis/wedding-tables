@@ -358,10 +358,8 @@ function renderRoundTable(t, wrap){
   wrap.appendChild(disc);
   for(let i=0;i<t.capacity;i++){
     const a=(i/t.capacity)*2*Math.PI - Math.PI/2;
-    // wide (long-name) seats float outward so they never cover the table number; the disc stays fixed
-    const w=seatDisplayWidth(t,i,g.fs);
-    const r=g.ringR + Math.max(0,(w-BASE_SLOT)/2);
-    wrap.appendChild(buildSeat(t,i, r*Math.cos(a), r*Math.sin(a), g.fs, g.seatH));
+    // seat stays anchored at the table edge and grows in width in place (centred on its spot) to fit the name
+    wrap.appendChild(buildSeat(t,i, g.ringR*Math.cos(a), g.ringR*Math.sin(a), g.fs, g.seatH));
   }
 }
 
@@ -370,8 +368,7 @@ function headGeom(t){
   const top=Math.max(1,n-2);
   const fs=Math.round(11*fontScale);
   const seatH=fs+10;
-  let slot=64;
-  for(let i=0;i<top;i++){ const gid=t.seats[i]; if(gid){ const w=seatWidthFor(guestName(gid),fs)+8; if(w>slot)slot=w; } }
+  const slot=Math.round(64*fontScale); // FIXED spacing — table width no longer grows with name length
   const innerW=top*slot;
   const tableW=innerW+34;
   const tableH=seatH+50;
@@ -397,11 +394,9 @@ function renderHeadTable(t, wrap){
     wrap.appendChild(buildSeat(t,i, relx, rely, g.fs, g.seatH));
   }
   // the two end seats
-  const li=g.top, ri=g.top+1;
-  const lw=t.seats[li]?seatWidthFor(guestName(t.seats[li]),g.fs):46;
-  const rw=t.seats[ri]?seatWidthFor(guestName(t.seats[ri]),g.fs):46;
-  if(li<t.capacity) wrap.appendChild(buildSeat(t,li, -(g.tableW/2)-lw/2-6, 0, g.fs, g.seatH));
-  if(ri<t.capacity) wrap.appendChild(buildSeat(t,ri,  (g.tableW/2)+rw/2+6, 0, g.fs, g.seatH));
+  const li=g.top, ri=g.top+1, endGap=30; // fixed distance from the table edge; seat grows in place
+  if(li<t.capacity) wrap.appendChild(buildSeat(t,li, -(g.tableW/2)-endGap, 0, g.fs, g.seatH));
+  if(ri<t.capacity) wrap.appendChild(buildSeat(t,ri,  (g.tableW/2)+endGap, 0, g.fs, g.seatH));
 }
 
 function renderTables(){
