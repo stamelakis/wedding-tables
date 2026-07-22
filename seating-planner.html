@@ -638,14 +638,28 @@ function matSwatchesHtml(){ return `<div class="fm-mats">`+Object.keys(MATERIALS
 function paintSwatches(menu){ menu.querySelectorAll(".sw").forEach(sw=>applyMaterial(sw, sw.dataset.mat)); }
 function closeFeatureMenu(){ document.getElementById("featuremenu").style.display="none"; }
 
+// Re-order a feature within the stack (array order = paint order; first = back, last = front).
+// Everything here stays above the base ground and below the tables, which always sit on top.
+function moveFeature(f, dir){
+  const arr=state.features, i=arr.indexOf(f); if(i<0) return;
+  arr.splice(i,1);
+  const j = dir==="back"?0 : dir==="front"?arr.length : dir==="backward"?Math.max(0,i-1) : Math.min(arr.length,i+1);
+  arr.splice(j,0,f); save(); renderFeatures();
+}
 function openFeatureMenu(f, evt){
   const menu=document.getElementById("featuremenu");
   let html="";
   if(f.kind==="zone") html+=`<div class="fm-cap">Surface</div>`+matSwatchesHtml();
+  html+=`<div class="fm-cap" style="margin-top:2px">Layer <span style="color:#bbb">(items on top of it stay on top)</span></div>`;
+  html+=`<div class="gm-item" data-act="back">⤓ Send to back</div>`;
+  html+=`<div class="gm-item" data-act="backward">↓ Send backward</div>`;
+  html+=`<div class="gm-item" data-act="forward">↑ Bring forward</div>`;
+  html+=`<div class="gm-item" data-act="front">⤒ Bring to front</div>`;
   html+=`<div class="gm-item" data-act="rename">✎ Rename label</div>`;
   html+=`<div class="gm-item" data-act="delete" style="color:#d9534f">🗑 Delete</div>`;
   menu.innerHTML=html; paintSwatches(menu);
   menu.querySelectorAll(".fm-mat").forEach(m=>m.onclick=()=>{ f.material=m.dataset.mat; save(); renderFeatures(); closeFeatureMenu(); });
+  ["back","backward","forward","front"].forEach(dir=>{ const el=menu.querySelector(`[data-act="${dir}"]`); if(el) el.onclick=()=>{ moveFeature(f,dir); closeFeatureMenu(); }; });
   menu.querySelector('[data-act="rename"]').onclick=()=>{ const nm=prompt("Label (leave blank for none):", f.label||""); if(nm!==null){ f.label=nm; save(); renderFeatures(); } closeFeatureMenu(); };
   menu.querySelector('[data-act="delete"]').onclick=()=>{ state.features=state.features.filter(x=>x.id!==f.id); save(); renderFeatures(); closeFeatureMenu(); };
   showPopover(menu,evt);
