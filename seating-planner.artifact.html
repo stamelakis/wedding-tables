@@ -42,35 +42,39 @@
 
   /* ---------- Stage ---------- */
   #stagewrap{ flex:1; position:relative; overflow:auto; }
-  #topbar{ position:sticky; top:0; z-index:20; background:rgba(255,255,255,.92); backdrop-filter:blur(4px); border-bottom:1px solid var(--line); padding:8px 14px; display:flex; align-items:center; gap:10px; font-size:13px; color:#666; }
+  #topbar{ position:sticky; top:0; z-index:20; background:rgba(255,255,255,.92); backdrop-filter:blur(4px); border-bottom:1px solid var(--line); padding:8px 14px; display:flex; align-items:center; gap:12px; font-size:13px; color:#666; }
   #topbar .spacer{ flex:1; }
-  #topbar .zoom{ display:flex; align-items:center; gap:6px; }
-  #topbar .zoom button{ width:28px; height:28px; border-radius:6px; border:1px solid var(--line); background:#fff; cursor:pointer; font-size:15px; }
-  #stage{ position:relative; width:1500px; height:1100px; margin:24px; background:radial-gradient(circle at 30% 20%, var(--grass2), var(--grass)); border:3px solid #4f8f14; border-radius:6px; transform-origin:top left; }
+  #topbar .ctl{ display:flex; align-items:center; gap:6px; }
+  #topbar .ctl button{ min-width:28px; height:28px; padding:0 6px; border-radius:6px; border:1px solid var(--line); background:#fff; cursor:pointer; font-size:14px; }
+  #topbar .ctl .lbl{ color:#999; }
+  #stage{ position:relative; width:1700px; height:1360px; margin:24px; background:radial-gradient(circle at 30% 20%, var(--grass2), var(--grass)); border:3px solid #4f8f14; border-radius:6px; transform-origin:top left; }
 
-  .feature{ position:absolute; font-size:12px; color:#fff; font-weight:600; display:flex; align-items:center; justify-content:center; text-align:center; pointer-events:none; transform:translate(-50%,-50%); border-radius:4px; padding:2px 4px; line-height:1.1; }
+  .feature{ position:absolute; font-size:12px; color:#fff; font-weight:600; display:flex; align-items:center; justify-content:center; text-align:center; transform:translate(-50%,-50%); border-radius:4px; padding:2px 4px; line-height:1.15; cursor:grab; user-select:none; z-index:1; }
+  .feature:active{ cursor:grabbing; }
   .lake{ background:var(--lake); box-shadow:inset 0 0 20px rgba(0,0,0,.15); }
-  .deck{ background:var(--accent-dark); }
-  .dancefloor{ background:#2f8f2f; border:3px solid #256f25; color:#fff; }
+  .deck{ background:var(--accent-dark); border:2px dashed #f0d9bf; }
+  .dancefloor{ background:#2f8f2f; border:3px solid #256f25; color:#fff; font-size:18px; letter-spacing:.5px; }
   .box{ background:#111; color:#fff; }
   .kiosk{ background:#fff; color:#333; border:1px solid #bbb; }
   .label-plain{ background:rgba(255,255,255,.85); color:#333; }
 
-  /* ---------- Table ---------- */
-  .table{ position:absolute; width:0; height:0; }
-  .table-disc{ position:absolute; border-radius:50%; background:#ffffff; border:2px solid #d8c4a8; box-shadow:0 3px 8px rgba(0,0,0,.18); display:flex; align-items:center; justify-content:center; flex-direction:column; transform:translate(-50%,-50%); cursor:grab; }
+  /* ---------- Tables ---------- */
+  .table{ position:absolute; z-index:5; }
+  .table-disc{ position:absolute; left:0; top:0; border-radius:50%; background:#ffffff; border:2px solid #d8c4a8; box-shadow:0 3px 8px rgba(0,0,0,.18); display:flex; align-items:center; justify-content:center; flex-direction:column; transform:translate(-50%,-50%); cursor:grab; }
+  .table-disc.head{ border-radius:12px; background:#fff7ef; border:2px solid var(--accent); }
   .table-disc:active{ cursor:grabbing; }
-  .table-disc .tnum{ font-size:16px; font-weight:800; color:var(--accent-dark); }
+  .table-disc .tnum{ font-size:15px; font-weight:800; color:var(--accent-dark); text-align:center; padding:0 6px; }
+  .table-disc.head .tnum{ font-size:14px; }
   .table-disc .tcount{ font-size:10px; color:#999; margin-top:1px; }
   .table-disc .tgear{ position:absolute; top:3px; right:6px; font-size:12px; color:#bbb; cursor:pointer; display:none; }
   .table:hover .tgear{ display:block; }
-  .seat{ position:absolute; width:50px; height:22px; transform:translate(-50%,-50%); border-radius:11px; border:1.5px dashed #cbb48f; background:rgba(255,255,255,.6); display:flex; align-items:center; justify-content:center; font-size:11px; color:#a08a68; text-align:center; overflow:hidden; cursor:pointer; user-select:none; transition:background .1s, border-color .1s; }
+  .seat{ position:absolute; transform:translate(-50%,-50%); border:1.5px dashed #cbb48f; background:rgba(255,255,255,.6); display:flex; align-items:center; justify-content:center; color:#a08a68; text-align:center; overflow:hidden; cursor:pointer; user-select:none; transition:background .1s, border-color .1s; }
   .seat.occupied{ border-style:solid; color:#fff; font-weight:700; cursor:grab; }
   .seat.occupied:active{ cursor:grabbing; }
   .seat.dragover{ background:#ffe9cf !important; border-color:#e08a1e !important; color:#8a5f3c !important; }
-  .seat .nm{ padding:0 3px; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
-  .seat input{ width:46px; border:none; background:transparent; color:#fff; font-size:11px; text-align:center; outline:none; font-family:inherit; }
-  .seat.editing{ background:#fff !important; border-color:#e08a1e; }
+  .seat .nm{ padding:0 4px; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+  .seat input{ width:100%; border:none; background:transparent; color:#fff; text-align:center; outline:none; font-family:inherit; font-size:inherit; }
+  .seat.editing{ background:#fff !important; border-color:#e08a1e; z-index:9; }
   .seat.editing input{ color:#333; }
 
   /* popovers */
@@ -98,7 +102,6 @@
     body *{ visibility:hidden; }
     #printarea, #printarea *{ visibility:visible; }
     #printarea{ display:block; position:absolute; left:0; top:0; width:100%; padding:0 10px; }
-    .no-print{ display:none !important; }
   }
   #printarea h2{ font-size:22px; margin:0 0 2px; }
   #printarea .psub{ color:#666; margin-bottom:14px; font-size:13px; }
@@ -118,9 +121,10 @@
 
 <div id="sidebar">
   <h1>💍 Seating Planner</h1>
-  <div class="sub">Drag names onto chairs · double-click a chair to type · right-click a guest to set a group</div>
+  <div class="sub">Drag names onto chairs · double-click a chair to type · right-click a guest for its group · drag tables & garden items to move them</div>
   <div class="toolbar">
-    <button class="btn primary" id="addTableBtn">＋ Table</button>
+    <button class="btn primary" id="addTableBtn">＋ Round table</button>
+    <button class="btn" id="addHeadBtn">＋ Head table</button>
     <button class="btn" id="autoSeatBtn">Auto-fill</button>
     <button class="btn" id="printBtn">🖨 Print</button>
     <button class="btn" id="exportBtn">Export</button>
@@ -145,26 +149,30 @@
     <strong>Garden layout</strong>
     <span id="statLine" style="color:#999"></span>
     <span class="spacer"></span>
-    <span class="zoom">
+    <span class="ctl"><span class="lbl">Text</span>
+      <button id="fontDown" title="Smaller name text">A−</button>
+      <button id="fontUp" title="Larger name text">A＋</button>
+    </span>
+    <span class="ctl"><span class="lbl">Zoom</span>
       <button id="zoomOut">−</button>
       <span id="zoomLabel">100%</span>
       <button id="zoomIn">＋</button>
-      <button id="zoomFit" style="width:auto;padding:0 8px">Fit</button>
+      <button id="zoomFit" style="padding:0 8px">Fit</button>
     </span>
   </div>
   <div id="stage"></div>
 </div>
 
 <div id="tablemenu" class="popover">
-  <h3>Table settings</h3>
+  <h3 id="menuTitle">Table settings</h3>
   <div class="row"><input type="text" id="menuLabel" placeholder="Table name / number"></div>
   <div class="row" style="flex-direction:column;align-items:flex-start;">
-    <label>Seats</label>
+    <label id="menuCapLabel">Seats</label>
     <div class="caps" id="menuCaps">
       <button data-cap="8">8</button>
       <button data-cap="10">10</button>
       <button data-cap="12">12</button>
-      <input type="number" id="menuCapCustom" min="1" max="24" placeholder="#">
+      <input type="number" id="menuCapCustom" min="1" max="30" placeholder="#">
     </div>
   </div>
   <div class="menu-actions">
@@ -183,53 +191,57 @@
 //  Wedding Seating Planner — single self-contained file
 // ============================================================
 const STORE_KEY = "weddingSeatingPlanner.v2";
-const LAYOUT_VERSION = 3;
+const LAYOUT_VERSION = 4;
+const FONT_FAMILY = '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif';
 
-// Table centre positions on the 1500 x 1100 garden (keeps the original layout's shape,
-// evenly spaced so nothing overlaps and names stay readable).
+// 27 round-table centres on the 1700 x 1360 garden (block of tables above, columns flanking the floor)
 const DEFAULT_POSITIONS = [
-  [440,200],[625,200],[810,200],[995,200],[1180,200],[1365,200],
-  [440,385],[625,385],[810,385],[995,385],[1180,385],[1365,385],
-  [395,570],[580,570],[765,570],[950,570],[1135,570],[1320,570],
-  [395,755],[580,755],[1135,755],[1320,755],
-  [440,940],[625,940],[810,940],[995,940],[1180,940],
+  [360,190],[555,190],[750,190],[945,190],[1140,190],[1335,190],[1530,190],
+  [360,360],[555,360],[750,360],[945,360],[1140,360],[1335,360],[1530,360],
+  [360,530],[555,530],[750,530],[945,530],[1140,530],[1335,530],[1530,530],
+  [360,720],[360,900],[360,1080],
+  [1530,720],[1530,900],[1530,1080],
 ];
 
-// Garden features (centre x/y + size) — lake, deck, entrance, kiosk kept from the original plan.
-const FEATURES = [
-  {cls:"box",        cx:410, cy:95,  w:34, h:34, text:""},
-  {cls:"box",        cx:530, cy:95,  w:34, h:34, text:""},
-  {cls:"label-plain",cx:470, cy:55,  w:172,h:26, text:"ΕΙΣΟΔΟΣ · Entrance"},
-  {cls:"kiosk",      cx:700, cy:68,  w:180,h:42, text:"ΚΙΟΣΚΙ · Welcome drink"},
-  {cls:"box",        cx:300, cy:165, w:60, h:26, text:"DJ"},
-  {cls:"deck",       cx:150, cy:255, w:96, h:120,text:"DECK ΛΙΜΝΗΣ"},
-  {cls:"lake",       cx:150, cy:445, w:96, h:250,text:"ΛΙΜΝΗ · Lake"},
-  {cls:"dancefloor", cx:865, cy:738, w:185,h:175,text:"ΠΙΣΤΑ · Dance floor"},
-  {cls:"label-plain",cx:865, cy:862, w:92, h:24, text:"H\\T · WC"},
-  {cls:"box",        cx:1330,cy:90,  w:130,h:30, text:"Stools"},
-];
+// Garden features — movable; the lake is split into two by the deck (the couple's entrance)
+function defaultFeatures(){ return [
+  {id:"f-pil1",  cls:"box",        x:400, y:95,  w:34, h:34, text:""},
+  {id:"f-pil2",  cls:"box",        x:520, y:95,  w:34, h:34, text:""},
+  {id:"f-ent",   cls:"label-plain",x:460, y:55,  w:172,h:26, text:"ΕΙΣΟΔΟΣ · Guest entrance"},
+  {id:"f-kiosk", cls:"kiosk",      x:720, y:70,  w:180,h:42, text:"ΚΙΟΣΚΙ · Welcome drink"},
+  {id:"f-lake1", cls:"lake",       x:150, y:320, w:100,h:190,text:"ΛΙΜΝΗ · Lake"},
+  {id:"f-deck",  cls:"deck",       x:150, y:460, w:122,h:92, text:"DECK · Couple entrance"},
+  {id:"f-lake2", cls:"lake",       x:150, y:600, w:100,h:190,text:""},
+  {id:"f-floor", cls:"dancefloor", x:945, y:925, w:450,h:450,text:"ΠΙΣΤΑ · Dance floor"},
+  {id:"f-dj",    cls:"box",        x:120, y:1300,w:78, h:34, text:"DJ"},
+  {id:"f-stools",cls:"box",        x:1560,y:95,  w:130,h:30, text:"Stools"},
+]; }
 
 const GROUP_PALETTE = ["#e26d8a","#4a90d9","#3aa657","#e0a030","#8e7cc3","#e0663a","#3ab0a6","#b07cc3","#7c9cc3","#c3a03a"];
 
 let state = load() || defaultState();
 let zoom = 1;
+let fontScale = state.seatFontScale || 1;
 let activeMenuTableId = null;
-let uid = state._uid || 1000;
+let uid = state._uid || 2001;
 function nextId(){ uid++; state._uid = uid; return uid; }
 
+function makeHeadTable(id){ return { id, label:"💑 Head Table", shape:"head", x:945, y:1245, capacity:10, seats:Array(10).fill(null) }; }
+
 function defaultState(){
-  const tables = DEFAULT_POSITIONS.map((p,i)=>({ id:1000+i+1, label:String(i+1), x:p[0], y:p[1], capacity:10, seats:Array(10).fill(null) }));
+  const tables = DEFAULT_POSITIONS.map((p,i)=>({ id:1001+i, label:String(i+1), shape:"round", x:p[0], y:p[1], capacity:10, seats:Array(10).fill(null) }));
+  tables.push(makeHeadTable(2000));
   const groups = [
     {id:"grp1", name:"Bride's side", color:GROUP_PALETTE[0]},
     {id:"grp2", name:"Groom's side", color:GROUP_PALETTE[1]},
     {id:"grp3", name:"Friends",      color:GROUP_PALETTE[2]},
     {id:"grp4", name:"Family",       color:GROUP_PALETTE[3]},
   ];
-  return { _uid:1000+DEFAULT_POSITIONS.length+1, tables, guests:{}, groups, activeGroupId:null, layoutVersion:LAYOUT_VERSION };
+  return { _uid:2001, tables, guests:{}, groups, activeGroupId:null, features:defaultFeatures(), seatFontScale:1, layoutVersion:LAYOUT_VERSION };
 }
 
 // ---------- persistence ----------
-function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){ /* storage may be unavailable; app still works this session */ } }
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
 function load(){
   try{
     const s=JSON.parse(localStorage.getItem(STORE_KEY));
@@ -241,9 +253,13 @@ function load(){
   }catch(e){}
   return null;
 }
-// Re-space existing tables to the new layout while KEEPING guests, groups and seat assignments.
+// Keep guests / groups / seat assignments; refresh the garden layout to this version.
 function migrateLayout(s){
-  s.tables.forEach((t,i)=>{ if(DEFAULT_POSITIONS[i]){ t.x=DEFAULT_POSITIONS[i][0]; t.y=DEFAULT_POSITIONS[i][1]; } });
+  let ri=0;
+  s.tables.forEach(t=>{ if(t.shape!=="head"){ t.shape="round"; if(DEFAULT_POSITIONS[ri]){ t.x=DEFAULT_POSITIONS[ri][0]; t.y=DEFAULT_POSITIONS[ri][1]; } ri++; } });
+  if(!s.tables.some(t=>t.shape==="head")){ s._uid=(s._uid||2001)+1; s.tables.push(makeHeadTable(s._uid)); }
+  s.features = defaultFeatures();
+  if(typeof s.seatFontScale!=="number") s.seatFontScale=1;
   s.layoutVersion=LAYOUT_VERSION;
 }
 
@@ -255,22 +271,12 @@ function guestColor(id){ const g=guestGroup(id); return g? g.color : "#b5835a"; 
 function hexTint(hex){ return hex+"22"; }
 function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._to); t._to=setTimeout(()=>t.classList.remove("show"),1600); }
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
 
-// ============================================================
-//  GEOMETRY — compact seats tucked against each table, no overlap
-// ============================================================
-function tableGeom(n){
-  const seatW=50;
-  const minR = seatW/(2*Math.sin(Math.PI/n))*0.84;
-  const ringR = Math.max(minR, 44);
-  const discR = Math.max(24, ringR-14);
-  return { ringR, discR };
-}
-function seatPositions(cx, cy, n, ringR){
-  const pts=[];
-  for(let i=0;i<n;i++){ const a=(i/n)*2*Math.PI - Math.PI/2; pts.push([cx+ringR*Math.cos(a), cy+ringR*Math.sin(a)]); }
-  return pts;
-}
+// ---------- text measuring (so seats grow to fit the name) ----------
+const _measureCtx = document.createElement("canvas").getContext("2d");
+function textWidth(txt, fs){ _measureCtx.font = `700 ${fs}px ${FONT_FAMILY}`; return _measureCtx.measureText(txt).width; }
+function seatWidthFor(name, fs){ return Math.round(clamp(textWidth(name,fs)+18, 46, 190)); }
 
 // ============================================================
 //  RENDER
@@ -278,54 +284,113 @@ function seatPositions(cx, cy, n, ringR){
 const stage = document.getElementById("stage");
 
 function renderFeatures(){
-  FEATURES.forEach(f=>{
+  stage.querySelectorAll(".feature").forEach(e=>e.remove());
+  (state.features||[]).forEach(f=>{
     const el=document.createElement("div");
     el.className="feature "+f.cls;
-    el.style.left=f.cx+"px"; el.style.top=f.cy+"px";
-    el.style.width=f.w+"px"; el.style.height=f.h+"px";
+    el.style.left=f.x+"px"; el.style.top=f.y+"px"; el.style.width=f.w+"px"; el.style.height=f.h+"px";
     el.textContent=f.text;
+    el.title="Drag to move";
+    makeDraggable(el, el, f, ()=>{});
     stage.appendChild(el);
   });
+}
+
+function roundGeom(t){
+  const n=t.capacity;
+  const fs=Math.round(11*fontScale);
+  const seatH=fs+10;
+  let maxW=48;
+  t.seats.forEach(gid=>{ if(gid){ const w=seatWidthFor(guestName(gid),fs); if(w>maxW)maxW=w; } });
+  const need=maxW/(2*Math.sin(Math.PI/n))*0.98;
+  const ringR=Math.max(need, 46, seatH*1.25);
+  const discR=Math.max(24, ringR - seatH/2 - 6);
+  return {n,fs,seatH,ringR,discR};
+}
+
+function buildSeat(t,i,relx,rely,fs,seatH){
+  const seat=document.createElement("div");
+  const gid=t.seats[i];
+  seat.className="seat"+(gid?" occupied":"");
+  seat.style.left=relx+"px"; seat.style.top=rely+"px";
+  seat.style.height=seatH+"px"; seat.style.borderRadius=(seatH/2)+"px"; seat.style.fontSize=fs+"px";
+  seat.dataset.tableId=t.id; seat.dataset.seatIndex=i;
+  if(gid){
+    const col=guestColor(gid);
+    seat.style.background=col; seat.style.borderColor=col; seat.style.width=seatWidthFor(guestName(gid),fs)+"px";
+    seat.innerHTML=`<span class="nm">${escapeHtml(guestName(gid))}</span>`;
+    seat.title=guestName(gid)+(guestGroup(gid)?` · ${guestGroup(gid).name}`:"");
+    seat.draggable=true; seat.dataset.guestId=gid;
+  }else{
+    seat.style.width="42px";
+    seat.innerHTML=`<span class="nm" style="opacity:.55">+</span>`;
+  }
+  wireSeat(seat);
+  return seat;
+}
+
+function renderRoundTable(t, wrap){
+  const g=roundGeom(t);
+  const disc=document.createElement("div");
+  disc.className="table-disc";
+  disc.style.width=(g.discR*2)+"px"; disc.style.height=(g.discR*2)+"px";
+  const occ=t.seats.filter(Boolean).length;
+  disc.innerHTML=`<span class="tgear" title="Table settings">⚙</span><span class="tnum">${escapeHtml(t.label)}</span><span class="tcount">${occ}/${t.capacity}</span>`;
+  disc.querySelector(".tgear").addEventListener("click",e=>{ e.stopPropagation(); openMenu(t.id,e); });
+  disc.addEventListener("contextmenu",e=>{ e.preventDefault(); openMenu(t.id,e); });
+  makeDraggable(disc, wrap, t, ()=>renderTables());
+  wrap.appendChild(disc);
+  for(let i=0;i<t.capacity;i++){
+    const a=(i/t.capacity)*2*Math.PI - Math.PI/2;
+    wrap.appendChild(buildSeat(t,i, g.ringR*Math.cos(a), g.ringR*Math.sin(a), g.fs, g.seatH));
+  }
+}
+
+function headGeom(t){
+  const n=t.capacity;
+  const top=Math.max(1,n-2);
+  const fs=Math.round(11*fontScale);
+  const seatH=fs+10;
+  let slot=64;
+  for(let i=0;i<top;i++){ const gid=t.seats[i]; if(gid){ const w=seatWidthFor(guestName(gid),fs)+8; if(w>slot)slot=w; } }
+  const innerW=top*slot;
+  const tableW=innerW+34;
+  const tableH=seatH+50;
+  return {n,top,fs,seatH,slot,innerW,tableW,tableH};
+}
+
+function renderHeadTable(t, wrap){
+  const g=headGeom(t);
+  const disc=document.createElement("div");
+  disc.className="table-disc head";
+  disc.style.width=g.tableW+"px"; disc.style.height=g.tableH+"px";
+  const occ=t.seats.filter(Boolean).length;
+  disc.innerHTML=`<span class="tgear" title="Table settings">⚙</span><span class="tnum">${escapeHtml(t.label)}</span><span class="tcount">${occ}/${t.capacity} · faces the dance floor</span>`;
+  disc.querySelector(".tgear").addEventListener("click",e=>{ e.stopPropagation(); openMenu(t.id,e); });
+  disc.addEventListener("contextmenu",e=>{ e.preventDefault(); openMenu(t.id,e); });
+  makeDraggable(disc, wrap, t, ()=>renderTables());
+  wrap.appendChild(disc);
+
+  // top row (facing the dance floor, which sits above the head table)
+  for(let i=0;i<g.top;i++){
+    const relx = -g.innerW/2 + g.slot/2 + i*g.slot;
+    const rely = -(g.tableH/2) - g.seatH/2 - 6;
+    wrap.appendChild(buildSeat(t,i, relx, rely, g.fs, g.seatH));
+  }
+  // the two end seats
+  const li=g.top, ri=g.top+1;
+  const lw=t.seats[li]?seatWidthFor(guestName(t.seats[li]),g.fs):46;
+  const rw=t.seats[ri]?seatWidthFor(guestName(t.seats[ri]),g.fs):46;
+  if(li<t.capacity) wrap.appendChild(buildSeat(t,li, -(g.tableW/2)-lw/2-6, 0, g.fs, g.seatH));
+  if(ri<t.capacity) wrap.appendChild(buildSeat(t,ri,  (g.tableW/2)+rw/2+6, 0, g.fs, g.seatH));
 }
 
 function renderTables(){
   stage.querySelectorAll(".table").forEach(e=>e.remove());
   state.tables.forEach(t=>{
-    const n=t.capacity;
-    const {ringR, discR}=tableGeom(n);
     const wrap=document.createElement("div");
-    wrap.className="table"; wrap.style.left="0"; wrap.style.top="0"; wrap.dataset.tableId=t.id;
-
-    const disc=document.createElement("div");
-    disc.className="table-disc";
-    disc.style.left=t.x+"px"; disc.style.top=t.y+"px";
-    disc.style.width=(discR*2)+"px"; disc.style.height=(discR*2)+"px";
-    const occ=t.seats.filter(Boolean).length;
-    disc.innerHTML=`<span class="tgear" title="Table settings">⚙</span>
-                    <span class="tnum">${escapeHtml(t.label)}</span>
-                    <span class="tcount">${occ}/${n}</span>`;
-    disc.querySelector(".tgear").addEventListener("click",e=>{ e.stopPropagation(); openMenu(t.id,e); });
-    makeTableDraggable(disc,t);
-    wrap.appendChild(disc);
-
-    seatPositions(t.x,t.y,n,ringR).forEach((p,i)=>{
-      const seat=document.createElement("div");
-      const gid=t.seats[i];
-      seat.className="seat"+(gid?" occupied":"");
-      seat.style.left=p[0]+"px"; seat.style.top=p[1]+"px";
-      seat.dataset.tableId=t.id; seat.dataset.seatIndex=i;
-      if(gid){
-        const col=guestColor(gid);
-        seat.style.background=col; seat.style.borderColor=col;
-        seat.innerHTML=`<span class="nm">${escapeHtml(guestName(gid))}</span>`;
-        seat.title=guestName(gid)+(guestGroup(gid)?` · ${guestGroup(gid).name}`:"");
-        seat.draggable=true; seat.dataset.guestId=gid;
-      }else{
-        seat.innerHTML=`<span class="nm" style="opacity:.55">+</span>`;
-      }
-      wireSeat(seat);
-      wrap.appendChild(seat);
-    });
+    wrap.className="table"; wrap.style.left=t.x+"px"; wrap.style.top=t.y+"px"; wrap.dataset.tableId=t.id;
+    if(t.shape==="head") renderHeadTable(t,wrap); else renderRoundTable(t,wrap);
     stage.appendChild(wrap);
   });
   updateStats();
@@ -434,7 +499,7 @@ function showPopover(menu,evt){
 function closeGroupMenu(){ document.getElementById("groupmenu").style.display="none"; }
 
 // ============================================================
-//  DRAG & DROP (guests)
+//  DRAG & DROP (guests between seats / pool)
 // ============================================================
 let dragData=null;
 function wireSeat(seat){
@@ -445,7 +510,7 @@ function wireSeat(seat){
   seat.addEventListener("drop",e=>{ e.preventDefault(); e.stopPropagation(); seat.classList.remove("dragover"); if(dragData&&dragData.type==="guest"){ placeGuestInSeat(dragData,tableId,idx); dragData=null; } });
   seat.addEventListener("dblclick",e=>{ e.stopPropagation(); editSeatInline(seat,tableId,idx); });
   seat.addEventListener("click",e=>{ if(seat.classList.contains("editing"))return; if(!seat.classList.contains("occupied")) editSeatInline(seat,tableId,idx); });
-  seat.addEventListener("contextmenu",e=>{ if(seat.classList.contains("occupied")){ e.preventDefault(); openGroupMenu(seat.dataset.guestId,e); } });
+  seat.addEventListener("contextmenu",e=>{ if(seat.classList.contains("occupied")){ e.preventDefault(); e.stopPropagation(); openGroupMenu(seat.dataset.guestId,e); } });
 }
 function placeGuestInSeat(drag, tableId, seatIndex){
   const table=state.tables.find(t=>t.id===tableId);
@@ -464,6 +529,7 @@ function editSeatInline(seat, tableId, seatIndex){
   const gid=table.seats[seatIndex];
   const current=gid?guestName(gid):"";
   seat.classList.add("editing"); seat.style.background=""; seat.style.borderColor="";
+  seat.style.width=Math.max(parseFloat(seat.style.width)||0, 110)+"px";
   seat.innerHTML=`<input type="text" value="${escapeHtml(current)}" maxlength="40">`;
   const input=seat.querySelector("input"); input.focus(); input.select();
   function commit(){
@@ -484,17 +550,23 @@ poolEl.addEventListener("dragleave",()=>poolEl.classList.remove("dragover"));
 poolEl.addEventListener("drop",e=>{ e.preventDefault(); poolEl.classList.remove("dragover"); if(dragData&&dragData.type==="guest"&&dragData.from==="seat"){ const src=state.tables.find(t=>t.id===dragData.tableId); src.seats[dragData.seatIndex]=null; save(); renderTables(); renderPool(); } dragData=null; });
 
 // ============================================================
-//  DRAG TABLES
+//  MOVE (smooth pointer dragging — moves the element, no rebuild until done)
 // ============================================================
-function makeTableDraggable(disc, t){
-  let startX,startY,origX,origY,moved;
-  disc.addEventListener("pointerdown",e=>{
-    if(e.target.classList.contains("tgear"))return;
-    e.preventDefault(); disc.setPointerCapture(e.pointerId);
-    startX=e.clientX; startY=e.clientY; origX=t.x; origY=t.y; moved=false;
-    function move(ev){ const dx=(ev.clientX-startX)/zoom, dy=(ev.clientY-startY)/zoom; if(Math.abs(dx)>3||Math.abs(dy)>3)moved=true; t.x=Math.max(60,Math.min(1440,origX+dx)); t.y=Math.max(60,Math.min(1040,origY+dy)); renderTables(); }
-    function up(){ disc.releasePointerCapture(e.pointerId); disc.removeEventListener("pointermove",move); disc.removeEventListener("pointerup",up); if(moved)save(); }
-    disc.addEventListener("pointermove",move); disc.addEventListener("pointerup",up);
+function makeDraggable(handleEl, moveEl, obj, onEnd){
+  handleEl.addEventListener("pointerdown",e=>{
+    if(e.target.closest(".tgear")) return;
+    if(e.button!==0) return;
+    e.preventDefault(); e.stopPropagation();
+    handleEl.setPointerCapture(e.pointerId);
+    const sx=e.clientX, sy=e.clientY, ox=obj.x, oy=obj.y; let moved=false;
+    function mv(ev){
+      const dx=(ev.clientX-sx)/zoom, dy=(ev.clientY-sy)/zoom;
+      if(Math.abs(dx)>3||Math.abs(dy)>3) moved=true;
+      obj.x=clamp(ox+dx, 30, 1670); obj.y=clamp(oy+dy, 30, 1330);
+      moveEl.style.left=obj.x+"px"; moveEl.style.top=obj.y+"px";
+    }
+    function up(){ handleEl.releasePointerCapture(e.pointerId); handleEl.removeEventListener("pointermove",mv); handleEl.removeEventListener("pointerup",up); if(moved){ save(); if(onEnd)onEnd(); } }
+    handleEl.addEventListener("pointermove",mv); handleEl.addEventListener("pointerup",up);
   });
 }
 
@@ -505,6 +577,8 @@ const menu=document.getElementById("tablemenu");
 function openMenu(tableId, evt){
   activeMenuTableId=tableId;
   const t=state.tables.find(x=>x.id===tableId);
+  document.getElementById("menuTitle").textContent = t.shape==="head" ? "Head table settings" : "Table settings";
+  document.getElementById("menuCapLabel").textContent = t.shape==="head" ? "Total seats (2 are the end seats)" : "Seats";
   document.getElementById("menuLabel").value=t.label;
   document.getElementById("menuCapCustom").value=[8,10,12].includes(t.capacity)?"":t.capacity;
   menu.querySelectorAll(".caps button").forEach(b=>b.classList.toggle("active",+b.dataset.cap===t.capacity));
@@ -513,9 +587,10 @@ function openMenu(tableId, evt){
 function closeMenu(){ menu.style.display="none"; activeMenuTableId=null; }
 document.getElementById("menuLabel").addEventListener("input",e=>{ const t=state.tables.find(x=>x.id===activeMenuTableId); if(!t)return; t.label=e.target.value; save(); renderTables(); });
 menu.querySelectorAll(".caps button").forEach(b=>b.addEventListener("click",()=>setCapacity(+b.dataset.cap)));
-document.getElementById("menuCapCustom").addEventListener("change",e=>{ const v=parseInt(e.target.value,10); if(v>=1&&v<=24) setCapacity(v); });
+document.getElementById("menuCapCustom").addEventListener("change",e=>{ const v=parseInt(e.target.value,10); if(v>=1&&v<=30) setCapacity(v); });
 function setCapacity(n){
   const t=state.tables.find(x=>x.id===activeMenuTableId); if(!t)return;
+  if(t.shape==="head") n=Math.max(3,n);
   const old=t.seats, newSeats=Array(n).fill(null); let bumped=0;
   for(let i=0;i<old.length;i++){ if(old[i]!=null){ if(i<n)newSeats[i]=old[i]; else{ const free=newSeats.indexOf(null); if(free>=0)newSeats[free]=old[i]; else bumped++; } } }
   t.capacity=n; t.seats=newSeats; save(); renderTables();
@@ -525,7 +600,7 @@ function setCapacity(n){
 }
 document.getElementById("menuDelete").addEventListener("click",()=>{
   const t=state.tables.find(x=>x.id===activeMenuTableId); if(!t)return;
-  if(!confirm(`Delete table "${t.label}"? Its guests go back to unassigned.`))return;
+  if(!confirm(`Delete "${t.label}"? Its guests go back to unassigned.`))return;
   state.tables=state.tables.filter(x=>x.id!==activeMenuTableId);
   save(); renderTables(); renderPool(); closeMenu();
 });
@@ -541,8 +616,13 @@ document.addEventListener("click",e=>{
 // ============================================================
 document.getElementById("addTableBtn").addEventListener("click",()=>{
   const id=nextId();
-  state.tables.push({id, label:String(state.tables.length+1), x:260, y:950, capacity:10, seats:Array(10).fill(null)});
-  save(); renderTables(); toast("Table added — drag it into place");
+  const roundCount=state.tables.filter(t=>t.shape!=="head").length;
+  state.tables.push({id, label:String(roundCount+1), shape:"round", x:850, y:250, capacity:10, seats:Array(10).fill(null)});
+  save(); renderTables(); toast("Round table added — drag it into place");
+});
+document.getElementById("addHeadBtn").addEventListener("click",()=>{
+  const t=makeHeadTable(nextId()); t.y=1245; state.tables.push(t);
+  save(); renderTables(); toast("Head table added — drag it into place");
 });
 document.getElementById("addGuestBtn").addEventListener("click",()=>{
   const ta=document.getElementById("guestInput");
@@ -555,13 +635,13 @@ document.getElementById("autoSeatBtn").addEventListener("click",()=>{
   const assigned=assignedGuestIds();
   const un=Object.keys(state.guests).filter(id=>!assigned.has(id)).sort((a,b)=>String(state.guests[a].groupId).localeCompare(String(state.guests[b].groupId)));
   let idx=0;
-  for(const t of state.tables){ for(let i=0;i<t.capacity&&idx<un.length;i++){ if(t.seats[i]==null){ t.seats[i]=un[idx++]; } } if(idx>=un.length)break; }
+  for(const t of state.tables){ if(t.shape==="head") continue; for(let i=0;i<t.capacity&&idx<un.length;i++){ if(t.seats[i]==null){ t.seats[i]=un[idx++]; } } if(idx>=un.length)break; }
   save(); renderTables(); renderPool(); toast(idx?`Seated ${idx} guest(s)`:"No open seats / no unassigned guests");
 });
 document.getElementById("resetBtn").addEventListener("click",()=>{
   if(!confirm("Reset everything back to the default layout? This clears all guests."))return;
   try{ localStorage.removeItem(STORE_KEY); }catch(e){}
-  state=defaultState(); uid=state._uid; save(); renderAll(); toast("Reset to default layout");
+  state=defaultState(); uid=state._uid; fontScale=1; save(); renderAll(); toast("Reset to default layout");
 });
 document.getElementById("exportBtn").addEventListener("click",()=>{
   const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
@@ -570,7 +650,7 @@ document.getElementById("exportBtn").addEventListener("click",()=>{
 document.getElementById("importBtn").addEventListener("click",()=>{
   const inp=document.createElement("input"); inp.type="file"; inp.accept="application/json";
   inp.onchange=()=>{ const f=inp.files[0]; if(!f)return; const r=new FileReader();
-    r.onload=()=>{ try{ const s=JSON.parse(r.result); if(s.tables){ if(!s.groups)s.groups=[]; state=s; uid=state._uid||uid; save(); renderAll(); toast("Imported"); } }catch(e){ toast("Invalid file"); } };
+    r.onload=()=>{ try{ const s=JSON.parse(r.result); if(s.tables){ if(!s.groups)s.groups=[]; if(!s.features)s.features=defaultFeatures(); state=s; uid=state._uid||uid; fontScale=state.seatFontScale||1; save(); renderAll(); toast("Imported"); } }catch(e){ toast("Invalid file"); } };
     r.readAsText(f); };
   inp.click();
 });
@@ -585,7 +665,7 @@ function buildAndPrint(){
   const cards=state.tables.map(t=>{
     const rows=t.seats.map(gid=> gid?`<li><span class="gdot" style="background:${guestColor(gid)}"></span>${escapeHtml(guestName(gid))}</li>`:`<li class="empty">— empty —</li>`).join("");
     const occ=t.seats.filter(Boolean).length;
-    return `<div class="pcard"><h3>Table ${escapeHtml(t.label)} <span style="font-weight:400;color:#888;font-size:12px">(${occ}/${t.capacity})</span></h3><ol>${rows}</ol></div>`;
+    return `<div class="pcard"><h3>${escapeHtml(t.label)} <span style="font-weight:400;color:#888;font-size:12px">(${occ}/${t.capacity})</span></h3><ol>${rows}</ol></div>`;
   }).join("");
   const assigned=assignedGuestIds();
   const un=Object.keys(state.guests).filter(id=>!assigned.has(id));
@@ -599,20 +679,22 @@ function buildAndPrint(){
 }
 
 // ============================================================
-//  ZOOM
+//  TEXT SIZE + ZOOM
 // ============================================================
-function fitZoom(){ const wrap=document.getElementById("stagewrap"); return Math.min(1,(wrap.clientWidth-60)/1500,(wrap.clientHeight-100)/1100); }
+function setFontScale(v){ fontScale=clamp(v,0.6,2.0); state.seatFontScale=fontScale; save(); renderTables(); toast("Name text "+Math.round(fontScale*100)+"%"); }
+document.getElementById("fontUp").addEventListener("click",()=>setFontScale(fontScale+0.15));
+document.getElementById("fontDown").addEventListener("click",()=>setFontScale(fontScale-0.15));
+
+function fitZoom(){ const wrap=document.getElementById("stagewrap"); return Math.min(1,(wrap.clientWidth-60)/1700,(wrap.clientHeight-100)/1360); }
 function applyZoom(){ stage.style.transform=`scale(${zoom})`; document.getElementById("zoomLabel").textContent=Math.round(zoom*100)+"%"; }
 document.getElementById("zoomIn").addEventListener("click",()=>{ zoom=Math.min(2.5,zoom+0.1); applyZoom(); });
-document.getElementById("zoomOut").addEventListener("click",()=>{ zoom=Math.max(0.25,zoom-0.05); applyZoom(); });
+document.getElementById("zoomOut").addEventListener("click",()=>{ zoom=Math.max(0.2,zoom-0.05); applyZoom(); });
 document.getElementById("zoomFit").addEventListener("click",()=>{ zoom=fitZoom(); applyZoom(); });
 
 // ============================================================
 //  INIT
 // ============================================================
-function renderAll(){ renderTables(); renderGroups(); renderPool(); }
-renderFeatures();
+function renderAll(){ renderFeatures(); renderTables(); renderGroups(); renderPool(); }
 renderAll();
-// On load, keep names readable: never auto-shrink below 60%. Use the Fit button for a full overview.
-setTimeout(()=>{ zoom=Math.min(1, Math.max(fitZoom(), 0.6)); applyZoom(); },50);
+setTimeout(()=>{ zoom=Math.min(1, Math.max(fitZoom(), 0.55)); applyZoom(); },50);
 </script>
