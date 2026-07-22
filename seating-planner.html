@@ -16,7 +16,14 @@
   /* ---------- Sidebar ---------- */
   #sidebar{ width:290px; min-width:290px; background:var(--panel); border-right:1px solid var(--line); height:100%; overflow-y:auto; }
   #sidebar h1{ font-size:17px; padding:16px 16px 4px; font-weight:700; letter-spacing:.2px; }
-  #sidebar .sub{ padding:0 16px 12px; font-size:12px; color:#888; }
+  #sidebar .sub{ padding:0 16px 10px; font-size:12px; color:#888; }
+  .profilebar{ display:flex; gap:6px; padding:0 16px 12px; align-items:center; }
+  .profilebar select{ flex:1; padding:7px; border:1px solid var(--line); border-radius:8px; font-size:13px; font-family:inherit; background:#fff; font-weight:600; }
+  .profilebar .pbtn{ width:34px; height:34px; border:1px solid var(--line); background:#fff; border-radius:8px; cursor:pointer; font-size:15px; flex:none; }
+  .profilebar .pbtn:hover{ background:#f5f5f5; }
+  #profilemenu{ width:170px; padding:6px; }
+  #profilemenu .gm-item{ display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; }
+  #profilemenu .gm-item:hover{ background:#f4f0ea; }
   .toolbar{ padding:10px 16px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); display:flex; flex-wrap:wrap; gap:8px; }
   button.btn{ font-size:13px; padding:7px 11px; border:1px solid var(--line); background:#fff; border-radius:8px; cursor:pointer; color:var(--ink); transition:.12s; }
   button.btn:hover{ background:#f5f5f5; border-color:#ccc; }
@@ -61,6 +68,10 @@
   .feature:active{ cursor:grabbing; }
   .feature .rz{ position:absolute; right:-5px; bottom:-5px; width:14px; height:14px; background:#fff; border:1px solid #888; border-radius:3px; cursor:nwse-resize; display:none; z-index:3; }
   .feature:hover .rz{ display:block; }
+  .rot-h{ position:absolute; width:16px; height:16px; border-radius:50%; background:#fff; border:1px solid #888; cursor:grab; display:none; z-index:4; box-shadow:0 1px 3px rgba(0,0,0,.3); }
+  .rot-h:active{ cursor:grabbing; }
+  .rot-h::after{ content:"⟳"; font-size:11px; color:#666; display:flex; align-items:center; justify-content:center; height:100%; }
+  .feature:hover .rot-h, .table:hover .rot-h{ display:block; }
   .feature.k-zone{ color:#fff; box-shadow:inset 0 0 24px rgba(0,0,0,.12); border:1px solid rgba(0,0,0,.14); }
   .feature.k-zone .zlabel{ text-shadow:0 1px 3px rgba(0,0,0,.5); font-size:15px; padding:2px 6px; pointer-events:none; }
   .feature.k-marker{ background:#111; color:#fff; }
@@ -157,7 +168,12 @@
 
 <div id="sidebar">
   <h1>💍 Seating Planner</h1>
-  <div class="sub">Drag names onto chairs · double-click a chair to type · right-click a guest for its group · drag tables & garden items to move them</div>
+  <div class="sub">Drag names onto chairs · double-click a chair to type · right-click for options · drag ⟳ to rotate</div>
+  <div class="profilebar">
+    <select id="profileSelect" title="Switch couple / event"></select>
+    <button class="pbtn" id="profNew" title="New profile (couple / event)">＋</button>
+    <button class="pbtn" id="profMore" title="Rename · duplicate · delete">⋯</button>
+  </div>
   <div class="toolbar">
     <button class="btn primary" id="addTableBtn">＋ Round table</button>
     <button class="btn" id="addHeadBtn">＋ Head table</button>
@@ -226,6 +242,7 @@
 
 <div id="groupmenu" class="popover"></div>
 <div id="featuremenu" class="popover"></div>
+<div id="profilemenu" class="popover"></div>
 <div id="decorModal" class="modal-back">
   <div class="modal">
     <div class="modal-head"><strong>Add decor &amp; ceremony items</strong><button class="mx" id="decorClose">✕</button></div>
@@ -327,7 +344,8 @@ const DECOR_ITEMS = [
 
 const GROUP_PALETTE = ["#e26d8a","#4a90d9","#3aa657","#e0a030","#8e7cc3","#e0663a","#3ab0a6","#b07cc3","#7c9cc3","#c3a03a"];
 
-let state = load() || defaultState();
+let profiles = ensureProfiles();
+let state = loadPlan(profiles.activeId) || defaultState();
 let zoom = 1;
 let fontScale = state.seatFontScale || 1;
 let activeMenuTableId = null;
@@ -349,19 +367,30 @@ function defaultState(){
            seatFontScale:1, stage:{w:2100,h:1400}, stageMaterial:"grass", layoutVersion:LAYOUT_VERSION };
 }
 
-// ---------- persistence ----------
-function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
-function load(){
-  try{
-    const s=JSON.parse(localStorage.getItem(STORE_KEY));
-    if(s&&s.tables){
-      if(!s.groups) s.groups=[];
-      if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s);
-      return s;
-    }
+// ---------- persistence (multiple named profiles / couples) ----------
+const PBASE="weddingSeatingPlanner";
+const PROFILES_KEY=PBASE+".profiles";
+function planKey(id){ return PBASE+".plan."+id; }
+function newProfileId(){ return "prof"+Date.now()+Math.floor(Math.random()*1000); }
+function loadProfilesIdx(){ try{ const p=JSON.parse(localStorage.getItem(PROFILES_KEY)); if(p&&Array.isArray(p.profiles)&&p.profiles.length) return p; }catch(e){} return null; }
+function saveProfilesIdx(){ try{ localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles)); }catch(e){} }
+function loadPlan(id){
+  try{ const s=JSON.parse(localStorage.getItem(planKey(id)));
+    if(s&&s.tables){ if(!s.groups)s.groups=[]; if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s); return s; }
   }catch(e){}
   return null;
 }
+// First run: adopt any pre-profiles single-plan save into an initial "Our wedding" profile.
+function ensureProfiles(){
+  const existing=loadProfilesIdx();
+  if(existing) return existing;
+  const id=newProfileId();
+  let migrated=null;
+  try{ const old=JSON.parse(localStorage.getItem(STORE_KEY)); if(old&&old.tables) migrated=old; }catch(e){}
+  try{ localStorage.setItem(planKey(id), JSON.stringify(migrated||defaultState())); }catch(e){}
+  return { activeId:id, profiles:[{id, name:"Our wedding"}] };
+}
+function save(){ try{ localStorage.setItem(planKey(profiles.activeId), JSON.stringify(state)); }catch(e){} }
 // Version-aware migration — keeps guests / groups / seat assignments (and, from v4 on, table positions).
 function migrateLayout(s){
   const from=s.layoutVersion||0;
@@ -420,10 +449,13 @@ function renderFeatures(){
     } else {
       el.textContent=f.label||"";
     }
+    el.style.transform=`translate(-50%,-50%) rotate(${f.rot||0}deg)`;
     const rz=document.createElement("div"); rz.className="rz"; el.appendChild(rz);
     makeResizable(rz, el, f);
+    const roth=document.createElement("div"); roth.className="rot-h"; roth.style.left="50%"; roth.style.top="-24px"; roth.style.transform="translateX(-50%)"; el.appendChild(roth);
+    makeRotatable(roth, el, f, ()=>{ el.style.transform=`translate(-50%,-50%) rotate(${f.rot||0}deg)`; });
     el.addEventListener("contextmenu",e=>{ e.preventDefault(); e.stopPropagation(); openFeatureMenu(f,e); });
-    el.title="Drag to move · corner to resize · right-click for surface / delete";
+    el.title="Drag to move · corner to resize · ⟳ to rotate · right-click for surface / layer / delete";
     makeDraggable(el, el, f, ()=>{});
     stage.appendChild(el);
   });
@@ -479,6 +511,7 @@ function renderRoundTable(t, wrap){
     // seat stays anchored at the table edge and grows in width in place (centred on its spot) to fit the name
     wrap.appendChild(buildSeat(t,i, g.ringR*Math.cos(a), g.ringR*Math.sin(a), g.fs, g.seatH));
   }
+  addTableRotateHandle(wrap, t, g.ringR+30);
 }
 
 function headGeom(t){
@@ -505,16 +538,17 @@ function renderHeadTable(t, wrap){
   makeDraggable(disc, wrap, t, ()=>renderTables());
   wrap.appendChild(disc);
 
-  // top row (facing the dance floor, which sits above the head table)
+  // main row on the FAR side of the table, so the couple sits behind the table facing the dance floor
   for(let i=0;i<g.top;i++){
     const relx = -g.innerW/2 + g.slot/2 + i*g.slot;
-    const rely = -(g.tableH/2) - g.seatH/2 - 6;
+    const rely = (g.tableH/2) + g.seatH/2 + 6;
     wrap.appendChild(buildSeat(t,i, relx, rely, g.fs, g.seatH));
   }
   // the two end seats
   const li=g.top, ri=g.top+1, endGap=30; // fixed distance from the table edge; seat grows in place
   if(li<t.capacity) wrap.appendChild(buildSeat(t,li, -(g.tableW/2)-endGap, 0, g.fs, g.seatH));
   if(ri<t.capacity) wrap.appendChild(buildSeat(t,ri,  (g.tableW/2)+endGap, 0, g.fs, g.seatH));
+  addTableRotateHandle(wrap, t, g.tableH/2 + g.seatH + 30);
 }
 
 function renderTables(){
@@ -700,6 +734,67 @@ document.getElementById("decorClose").addEventListener("click",closeDecor);
 document.getElementById("decorModal").addEventListener("click",e=>{ if(e.target.id==="decorModal") closeDecor(); });
 
 // ============================================================
+//  PROFILES (a separate saved plan per couple / event)
+// ============================================================
+function currentProfile(){ return profiles.profiles.find(p=>p.id===profiles.activeId); }
+function renderProfiles(){
+  const sel=document.getElementById("profileSelect");
+  sel.innerHTML=profiles.profiles.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("");
+  sel.value=profiles.activeId;
+}
+function loadActive(){
+  state=loadPlan(profiles.activeId)||defaultState(); uid=state._uid||2001; fontScale=state.seatFontScale||1;
+  applyStage(); document.getElementById("stageFloor").value=state.stageMaterial||"grass";
+  renderProfiles(); renderAll();
+  setTimeout(()=>{ zoom=Math.min(1,Math.max(fitZoom(),0.5)); applyZoom(); },30);
+}
+function switchProfile(id){ save(); profiles.activeId=id; saveProfilesIdx(); loadActive(); }
+function newProfile(){
+  const name=prompt("New profile — couple / event name:\n(e.g. \"Andreas & Lina's wedding\")","");
+  if(name===null) return;
+  save();
+  const id=newProfileId();
+  profiles.profiles.push({id, name:(name.trim()||("Wedding "+(profiles.profiles.length+1)))});
+  profiles.activeId=id; saveProfilesIdx();
+  state=defaultState(); uid=state._uid; fontScale=1;
+  try{ localStorage.setItem(planKey(id), JSON.stringify(state)); }catch(e){}
+  loadActive(); toast("New profile created");
+}
+function renameProfile(){ const p=currentProfile(); const nm=prompt("Rename profile:",p.name); if(nm&&nm.trim()){ p.name=nm.trim(); saveProfilesIdx(); renderProfiles(); } }
+function duplicateProfile(){
+  save(); const p=currentProfile(); const id=newProfileId();
+  try{ localStorage.setItem(planKey(id), JSON.stringify(state)); }catch(e){}
+  profiles.profiles.push({id, name:p.name+" (copy)"}); profiles.activeId=id; saveProfilesIdx(); loadActive(); toast("Profile duplicated");
+}
+function deleteProfile(){
+  if(profiles.profiles.length<=1){ toast("Keep at least one profile"); return; }
+  const p=currentProfile(); if(!confirm(`Delete profile "${p.name}" and its plan? This cannot be undone.`)) return;
+  try{ localStorage.removeItem(planKey(p.id)); }catch(e){}
+  profiles.profiles=profiles.profiles.filter(x=>x.id!==p.id);
+  profiles.activeId=profiles.profiles[0].id; saveProfilesIdx(); loadActive(); toast("Profile deleted");
+}
+function importPlanAsProfile(s, suggestedName){
+  if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s);
+  const name=(s._profileName||suggestedName||"Imported plan"); delete s._profileName;
+  const id=newProfileId();
+  try{ localStorage.setItem(planKey(id), JSON.stringify(s)); }catch(e){}
+  profiles.profiles.push({id, name}); profiles.activeId=id; saveProfilesIdx(); loadActive();
+  toast('Imported as new profile: "'+name+'"');
+}
+function openProfileMenu(evt){
+  const menu=document.getElementById("profilemenu");
+  menu.innerHTML=`<div class="gm-item" data-act="rename">✎ Rename</div><div class="gm-item" data-act="dup">⧉ Duplicate</div><div class="gm-item" data-act="del" style="color:#d9534f">🗑 Delete</div>`;
+  menu.querySelector('[data-act="rename"]').onclick=()=>{ closeProfileMenu(); renameProfile(); };
+  menu.querySelector('[data-act="dup"]').onclick=()=>{ closeProfileMenu(); duplicateProfile(); };
+  menu.querySelector('[data-act="del"]').onclick=()=>{ closeProfileMenu(); deleteProfile(); };
+  showPopover(menu,evt);
+}
+function closeProfileMenu(){ document.getElementById("profilemenu").style.display="none"; }
+document.getElementById("profileSelect").addEventListener("change",e=>switchProfile(e.target.value));
+document.getElementById("profNew").addEventListener("click",newProfile);
+document.getElementById("profMore").addEventListener("click",openProfileMenu);
+
+// ============================================================
 //  DRAG & DROP (guests between seats / pool)
 // ============================================================
 let dragData=null;
@@ -755,7 +850,7 @@ poolEl.addEventListener("drop",e=>{ e.preventDefault(); poolEl.classList.remove(
 // ============================================================
 function makeDraggable(handleEl, moveEl, obj, onEnd){
   handleEl.addEventListener("pointerdown",e=>{
-    if(e.target.closest(".tgear")||e.target.closest(".rz")) return;
+    if(e.target.closest(".tgear")||e.target.closest(".rz")||e.target.closest(".rot-h")) return;
     if(e.button!==0) return;
     e.preventDefault(); e.stopPropagation();
     handleEl.setPointerCapture(e.pointerId);
@@ -787,6 +882,34 @@ function makeResizable(handle, el, f){
     handle.addEventListener("pointermove",mv); handle.addEventListener("pointerup",up);
   });
 }
+// Rotate any object by dragging its ⟳ handle around the object centre.
+function makeRotatable(handle, centerEl, obj, applyFn){
+  handle.addEventListener("pointerdown",e=>{
+    if(e.button!==0) return;
+    e.preventDefault(); e.stopPropagation(); handle.setPointerCapture(e.pointerId);
+    function mv(ev){
+      const r=centerEl.getBoundingClientRect(); const cx=r.left+r.width/2, cy=r.top+r.height/2;
+      let ang=Math.atan2(ev.clientY-cy, ev.clientX-cx)*180/Math.PI + 90;
+      if(ev.shiftKey) ang=Math.round(ang/15)*15;   // hold Shift to snap to 15°
+      obj.rot=Math.round(ang); applyFn();
+    }
+    function up(){ handle.releasePointerCapture(e.pointerId); handle.removeEventListener("pointermove",mv); handle.removeEventListener("pointerup",up); save(); }
+    handle.addEventListener("pointermove",mv); handle.addEventListener("pointerup",up);
+  });
+}
+// Add a rotate handle to a table; keeps the number & names upright while the table spins.
+function addTableRotateHandle(wrap, t, offset){
+  const h=document.createElement("div"); h.className="rot-h";
+  h.style.left="0"; h.style.top=(-offset)+"px"; h.style.transform="translate(-50%,-50%)";
+  wrap.appendChild(h);
+  const apply=()=>{
+    wrap.style.transform=`rotate(${t.rot||0}deg)`;
+    wrap.querySelectorAll(".nm,.tnum,.tcount").forEach(x=>{ x.style.display="inline-block"; x.style.transform=`rotate(${-(t.rot||0)}deg)`; });
+  };
+  apply();
+  makeRotatable(h, wrap, t, apply);
+}
+
 // The whole green space: size + floor material, plus a drag-to-resize corner handle.
 function applyStage(){
   stage.style.width=state.stage.w+"px"; stage.style.height=state.stage.h+"px";
@@ -844,6 +967,8 @@ document.addEventListener("click",e=>{
   if(gm.style.display==="block" && !gm.contains(e.target)) closeGroupMenu();
   const fm=document.getElementById("featuremenu");
   if(fm.style.display==="block" && !fm.contains(e.target)) closeFeatureMenu();
+  const pm=document.getElementById("profilemenu");
+  if(pm.style.display==="block" && !pm.contains(e.target) && e.target.id!=="profMore") closeProfileMenu();
 });
 
 // ============================================================
@@ -879,13 +1004,16 @@ document.getElementById("resetBtn").addEventListener("click",()=>{
   state=defaultState(); uid=state._uid; fontScale=1; applyStage(); document.getElementById("stageFloor").value=state.stageMaterial; save(); renderAll(); toast("Reset to default layout");
 });
 document.getElementById("exportBtn").addEventListener("click",()=>{
-  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
-  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="wedding-seating.json"; a.click(); toast("Downloaded wedding-seating.json");
+  const cur=currentProfile();
+  const blob=new Blob([JSON.stringify({...state, _profileName:cur.name},null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download=((cur.name||"wedding").replace(/[^\w\-]+/g,"_"))+".wedding.json"; a.click(); toast("Downloaded "+a.download);
 });
 document.getElementById("importBtn").addEventListener("click",()=>{
   const inp=document.createElement("input"); inp.type="file"; inp.accept="application/json";
   inp.onchange=()=>{ const f=inp.files[0]; if(!f)return; const r=new FileReader();
-    r.onload=()=>{ try{ const s=JSON.parse(r.result); if(s.tables){ if(!s.groups)s.groups=[]; if(!s.features)s.features=defaultFeatures(); if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s); state=s; uid=state._uid||uid; fontScale=state.seatFontScale||1; applyStage(); document.getElementById("stageFloor").value=state.stageMaterial||"grass"; save(); renderAll(); toast("Imported"); } else if(s.importGuests){ mergeGuestList(s); } else { toast("Not a plan or guest-list file"); } }catch(e){ toast("Invalid file"); } };
+    const suggested=f.name.replace(/\.wedding\.json$|\.json$/i,"").replace(/_/g," ");
+    r.onload=()=>{ try{ const s=JSON.parse(r.result); if(s.tables){ if(!s.groups)s.groups=[]; if(!s.features)s.features=defaultFeatures(); importPlanAsProfile(s, suggested); } else if(s.importGuests){ mergeGuestList(s); } else { toast("Not a plan or guest-list file"); } }catch(e){ toast("Invalid file"); } };
     r.readAsText(f); };
   inp.click();
 });
@@ -961,7 +1089,7 @@ if(!state.stageMaterial) state.stageMaterial="grass";
 applyStage();
 const _stageResize=document.createElement("div"); _stageResize.id="stageResize"; _stageResize.title="Drag to resize the whole space";
 stage.appendChild(_stageResize); makeStageResizable(_stageResize);
-initFloorSelect(); initDecor();
+initFloorSelect(); initDecor(); renderProfiles();
 renderAll();
 setTimeout(()=>{ zoom=Math.min(1, Math.max(fitZoom(), 0.5)); applyZoom(); },50);
 </script>
