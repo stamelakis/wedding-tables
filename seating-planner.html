@@ -261,6 +261,9 @@
 const STORE_KEY = "weddingSeatingPlanner.v2";
 const LAYOUT_VERSION = 5;
 const FONT_FAMILY = '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif';
+// Profile storage keys — declared up here so they're initialised before the startup code below runs.
+const PBASE="weddingSeatingPlanner";
+const PROFILES_KEY=PBASE+".profiles";
 
 // 27 round-table centres on the 1700 x 1360 garden (block of tables above, columns flanking the floor)
 const DEFAULT_POSITIONS = [
@@ -368,8 +371,6 @@ function defaultState(){
 }
 
 // ---------- persistence (multiple named profiles / couples) ----------
-const PBASE="weddingSeatingPlanner";
-const PROFILES_KEY=PBASE+".profiles";
 function planKey(id){ return PBASE+".plan."+id; }
 function newProfileId(){ return "prof"+Date.now()+Math.floor(Math.random()*1000); }
 function loadProfilesIdx(){ try{ const p=JSON.parse(localStorage.getItem(PROFILES_KEY)); if(p&&Array.isArray(p.profiles)&&p.profiles.length) return p; }catch(e){} return null; }
@@ -388,7 +389,9 @@ function ensureProfiles(){
   let migrated=null;
   try{ const old=JSON.parse(localStorage.getItem(STORE_KEY)); if(old&&old.tables) migrated=old; }catch(e){}
   try{ localStorage.setItem(planKey(id), JSON.stringify(migrated||defaultState())); }catch(e){}
-  return { activeId:id, profiles:[{id, name:"Our wedding"}] };
+  const p={ activeId:id, profiles:[{id, name:"Our wedding"}] };
+  try{ localStorage.setItem(PROFILES_KEY, JSON.stringify(p)); }catch(e){}  // persist so we don't re-migrate on next load
+  return p;
 }
 function save(){ try{ localStorage.setItem(planKey(profiles.activeId), JSON.stringify(state)); }catch(e){} }
 // Version-aware migration — keeps guests / groups / seat assignments (and, from v4 on, table positions).
