@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wedding Seating Planner</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root{
+    --grass:#6ab61e; --grass2:#79c62b; --ink:#2b2b2b; --panel:#ffffff; --line:#e2e2e2;
+    --accent:#b5835a; --accent-dark:#8a5f3c; --lake:#2f6fd0; --danger:#d9534f;
+  }
+  html,body{height:100%;}
+  body{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; color:var(--ink); background:#f4f1ec; display:flex; height:100vh; overflow:hidden; }
+
+  /* ---------- Sidebar ---------- */
+  #sidebar{ width:290px; min-width:290px; background:var(--panel); border-right:1px solid var(--line); display:flex; flex-direction:column; height:100%; }
+  #sidebar h1{ font-size:17px; padding:16px 16px 4px; font-weight:700; letter-spacing:.2px; }
+  #sidebar .sub{ padding:0 16px 12px; font-size:12px; color:#888; }
+  .toolbar{ padding:10px 16px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); display:flex; flex-wrap:wrap; gap:8px; }
+  button.btn{ font-size:13px; padding:7px 11px; border:1px solid var(--line); background:#fff; border-radius:8px; cursor:pointer; color:var(--ink); transition:.12s; }
+  button.btn:hover{ background:#f5f5f5; border-color:#ccc; }
+  button.btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.btn.primary:hover{ background:var(--accent-dark); }
+  button.btn.danger{ color:var(--danger); }
+  .section{ padding:12px 16px 4px; }
+  .section-title{ font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#999; margin-bottom:8px; }
+  #groupList{ display:flex; flex-wrap:wrap; gap:6px; }
+  .group-pill{ display:flex; align-items:center; gap:6px; padding:4px 8px 4px 6px; border-radius:16px; border:1.5px solid var(--line); background:#fff; cursor:pointer; font-size:12px; user-select:none; }
+  .group-pill.active{ border-color:#333; box-shadow:0 0 0 2px rgba(0,0,0,.06); }
+  .group-pill .dot{ width:13px; height:13px; border-radius:50%; flex:none; border:1px solid rgba(0,0,0,.15); }
+  .group-pill .gname{ white-space:nowrap; }
+  .group-pill .gcount{ color:#aaa; font-size:11px; }
+  .group-pill.addgroup{ color:#888; border-style:dashed; }
+  .addguest{ padding:8px 16px 6px; }
+  .addguest textarea{ width:100%; height:64px; resize:vertical; padding:8px; font-size:13px; border:1px solid var(--line); border-radius:8px; font-family:inherit; }
+  .addguest .hint{ font-size:11px; color:#999; margin:4px 0 6px; }
+  .pool-head{ display:flex; justify-content:space-between; align-items:center; padding:8px 16px 6px; }
+  .pool-head span{ font-size:13px; font-weight:600; }
+  .pool-head .count{ font-size:12px; color:#888; font-weight:400; }
+  #unassigned{ flex:1; overflow-y:auto; padding:0 16px 16px; display:flex; flex-direction:column; gap:6px; }
+  #unassigned.dragover{ background:#fbf6ef; outline:2px dashed var(--accent); outline-offset:-6px; border-radius:8px; }
+  .guest-chip{ background:#f3ede4; border:1px solid #e6dccb; border-left:4px solid #ccc; border-radius:8px; padding:6px 10px; font-size:13px; cursor:grab; display:flex; align-items:center; justify-content:space-between; user-select:none; }
+  .guest-chip:active{ cursor:grabbing; }
+  .guest-chip .x{ color:#bbb; font-size:15px; padding-left:8px; cursor:pointer; }
+  .guest-chip .x:hover{ color:var(--danger); }
+  .empty-note{ font-size:12px; color:#bbb; padding:14px 4px; text-align:center; }
+
+  /* ---------- Stage ---------- */
+  #stagewrap{ flex:1; position:relative; overflow:auto; }
+  #topbar{ position:sticky; top:0; z-index:20; background:rgba(255,255,255,.92); backdrop-filter:blur(4px); border-bottom:1px solid var(--line); padding:8px 14px; display:flex; align-items:center; gap:10px; font-size:13px; color:#666; }
+  #topbar .spacer{ flex:1; }
+  #topbar .zoom{ display:flex; align-items:center; gap:6px; }
+  #topbar .zoom button{ width:28px; height:28px; border-radius:6px; border:1px solid var(--line); background:#fff; cursor:pointer; font-size:15px; }
+  #stage{ position:relative; width:1500px; height:1100px; margin:24px; background:radial-gradient(circle at 30% 20%, var(--grass2), var(--grass)); border:3px solid #4f8f14; border-radius:6px; transform-origin:top left; }
+
+  .feature{ position:absolute; font-size:12px; color:#fff; font-weight:600; display:flex; align-items:center; justify-content:center; text-align:center; pointer-events:none; transform:translate(-50%,-50%); border-radius:4px; padding:2px 4px; line-height:1.1; }
+  .lake{ background:var(--lake); box-shadow:inset 0 0 20px rgba(0,0,0,.15); }
+  .deck{ background:var(--accent-dark); }
+  .dancefloor{ background:#2f8f2f; border:3px solid #256f25; color:#fff; }
+  .box{ background:#111; color:#fff; }
+  .kiosk{ background:#fff; color:#333; border:1px solid #bbb; }
+  .label-plain{ background:rgba(255,255,255,.85); color:#333; }
+
+  /* ---------- Table ---------- */
+  .table{ position:absolute; width:0; height:0; }
+  .table-disc{ position:absolute; border-radius:50%; background:#ffffff; border:2px solid #d8c4a8; box-shadow:0 3px 8px rgba(0,0,0,.18); display:flex; align-items:center; justify-content:center; flex-direction:column; transform:translate(-50%,-50%); cursor:grab; }
+  .table-disc:active{ cursor:grabbing; }
+  .table-disc .tnum{ font-size:16px; font-weight:800; color:var(--accent-dark); }
+  .table-disc .tcount{ font-size:10px; color:#999; margin-top:1px; }
+  .table-disc .tgear{ position:absolute; top:3px; right:6px; font-size:12px; color:#bbb; cursor:pointer; display:none; }
+  .table:hover .tgear{ display:block; }
+  .seat{ position:absolute; width:50px; height:22px; transform:translate(-50%,-50%); border-radius:11px; border:1.5px dashed #cbb48f; background:rgba(255,255,255,.6); display:flex; align-items:center; justify-content:center; font-size:11px; color:#a08a68; text-align:center; overflow:hidden; cursor:pointer; user-select:none; transition:background .1s, border-color .1s; }
+  .seat.occupied{ border-style:solid; color:#fff; font-weight:700; cursor:grab; }
+  .seat.occupied:active{ cursor:grabbing; }
+  .seat.dragover{ background:#ffe9cf !important; border-color:#e08a1e !important; color:#8a5f3c !important; }
+  .seat .nm{ padding:0 3px; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+  .seat input{ width:46px; border:none; background:transparent; color:#fff; font-size:11px; text-align:center; outline:none; font-family:inherit; }
+  .seat.editing{ background:#fff !important; border-color:#e08a1e; }
+  .seat.editing input{ color:#333; }
+
+  /* popovers */
+  .popover{ position:fixed; z-index:100; background:#fff; border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.18); padding:10px; font-size:13px; display:none; }
+  #tablemenu{ width:220px; }
+  #tablemenu h3{ font-size:13px; margin-bottom:8px; }
+  #tablemenu .row{ display:flex; align-items:center; gap:6px; margin-bottom:8px; }
+  #tablemenu label{ font-size:12px; color:#666; }
+  #tablemenu input[type=text]{ width:100%; padding:5px; border:1px solid var(--line); border-radius:6px; font-size:13px; }
+  #tablemenu .caps{ display:flex; gap:5px; flex-wrap:wrap; }
+  #tablemenu .caps button{ padding:5px 9px; border:1px solid var(--line); background:#fff; border-radius:6px; cursor:pointer; font-size:12px; }
+  #tablemenu .caps button.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
+  #tablemenu input[type=number]{ width:56px; padding:5px; border:1px solid var(--line); border-radius:6px; }
+  #tablemenu .menu-actions{ display:flex; justify-content:space-between; margin-top:6px; }
+  #groupmenu{ width:190px; padding:6px; }
+  #groupmenu .gm-item{ display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; }
+  #groupmenu .gm-item:hover{ background:#f4f0ea; }
+  #groupmenu .gm-item .dot{ width:13px; height:13px; border-radius:50%; border:1px solid rgba(0,0,0,.15); flex:none; }
+  .toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:9px 16px; border-radius:8px; font-size:13px; opacity:0; transition:.3s; z-index:200; }
+  .toast.show{ opacity:.95; }
+
+  /* ---------- Print ---------- */
+  #printarea{ display:none; }
+  @media print{
+    body *{ visibility:hidden; }
+    #printarea, #printarea *{ visibility:visible; }
+    #printarea{ display:block; position:absolute; left:0; top:0; width:100%; padding:0 10px; }
+    .no-print{ display:none !important; }
+  }
+  #printarea h2{ font-size:22px; margin:0 0 2px; }
+  #printarea .psub{ color:#666; margin-bottom:14px; font-size:13px; }
+  #printarea .plegend{ display:flex; flex-wrap:wrap; gap:12px; margin-bottom:16px; font-size:12px; }
+  #printarea .plegend span{ display:flex; align-items:center; gap:5px; }
+  #printarea .plegend .dot{ width:12px; height:12px; border-radius:50%; display:inline-block; }
+  #printarea .ptables{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  #printarea .pcard{ border:1px solid #ccc; border-radius:8px; padding:10px 12px; break-inside:avoid; }
+  #printarea .pcard h3{ font-size:15px; margin-bottom:6px; border-bottom:1px solid #eee; padding-bottom:4px; }
+  #printarea .pcard ol{ margin-left:18px; font-size:12.5px; line-height:1.55; }
+  #printarea .pcard li .gdot{ display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; }
+  #printarea .pcard .empty{ color:#bbb; }
+  #printarea .punassigned{ margin-top:18px; font-size:12.5px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>💍 Seating Planner</h1>
+  <div class="sub">Drag names onto chairs · double-click a chair to type · right-click a guest to set a group</div>
+  <div class="toolbar">
+    <button class="btn primary" id="addTableBtn">＋ Table</button>
+    <button class="btn" id="autoSeatBtn">Auto-fill</button>
+    <button class="btn" id="printBtn">🖨 Print</button>
+    <button class="btn" id="exportBtn">Export</button>
+    <button class="btn" id="importBtn">Import</button>
+    <button class="btn danger" id="resetBtn">Reset</button>
+  </div>
+  <div class="section">
+    <div class="section-title">Groups <span style="font-weight:400;text-transform:none;color:#bbb">— click to set active</span></div>
+    <div id="groupList"></div>
+  </div>
+  <div class="addguest">
+    <textarea id="guestInput" placeholder="Type guest names, one per line…"></textarea>
+    <div class="hint">New names join the active group. Ctrl/⌘+Enter to add.</div>
+    <button class="btn primary" id="addGuestBtn" style="width:100%">Add to guest pool</button>
+  </div>
+  <div class="pool-head"><span>Unassigned guests</span><span class="count" id="poolCount">0</span></div>
+  <div id="unassigned"></div>
+</div>
+
+<div id="stagewrap">
+  <div id="topbar">
+    <strong>Garden layout</strong>
+    <span id="statLine" style="color:#999"></span>
+    <span class="spacer"></span>
+    <span class="zoom">
+      <button id="zoomOut">−</button>
+      <span id="zoomLabel">100%</span>
+      <button id="zoomIn">＋</button>
+      <button id="zoomFit" style="width:auto;padding:0 8px">Fit</button>
+    </span>
+  </div>
+  <div id="stage"></div>
+</div>
+
+<div id="tablemenu" class="popover">
+  <h3>Table settings</h3>
+  <div class="row"><input type="text" id="menuLabel" placeholder="Table name / number"></div>
+  <div class="row" style="flex-direction:column;align-items:flex-start;">
+    <label>Seats</label>
+    <div class="caps" id="menuCaps">
+      <button data-cap="8">8</button>
+      <button data-cap="10">10</button>
+      <button data-cap="12">12</button>
+      <input type="number" id="menuCapCustom" min="1" max="24" placeholder="#">
+    </div>
+  </div>
+  <div class="menu-actions">
+    <button class="btn danger" id="menuDelete">Delete table</button>
+    <button class="btn primary" id="menuClose">Done</button>
+  </div>
+</div>
+
+<div id="groupmenu" class="popover"></div>
+<div class="toast" id="toast"></div>
+<div id="printarea"></div>
+
+<script>
+"use strict";
+// ============================================================
+//  Wedding Seating Planner — single self-contained file
+// ============================================================
+const STORE_KEY = "weddingSeatingPlanner.v2";
+const LAYOUT_VERSION = 3;
+
+// Table centre positions on the 1500 x 1100 garden (keeps the original layout's shape,
+// evenly spaced so nothing overlaps and names stay readable).
+const DEFAULT_POSITIONS = [
+  [440,200],[625,200],[810,200],[995,200],[1180,200],[1365,200],
+  [440,385],[625,385],[810,385],[995,385],[1180,385],[1365,385],
+  [395,570],[580,570],[765,570],[950,570],[1135,570],[1320,570],
+  [395,755],[580,755],[1135,755],[1320,755],
+  [440,940],[625,940],[810,940],[995,940],[1180,940],
+];
+
+// Garden features (centre x/y + size) — lake, deck, entrance, kiosk kept from the original plan.
+const FEATURES = [
+  {cls:"box",        cx:410, cy:95,  w:34, h:34, text:""},
+  {cls:"box",        cx:530, cy:95,  w:34, h:34, text:""},
+  {cls:"label-plain",cx:470, cy:55,  w:172,h:26, text:"ΕΙΣΟΔΟΣ · Entrance"},
+  {cls:"kiosk",      cx:700, cy:68,  w:180,h:42, text:"ΚΙΟΣΚΙ · Welcome drink"},
+  {cls:"box",        cx:300, cy:165, w:60, h:26, text:"DJ"},
+  {cls:"deck",       cx:150, cy:255, w:96, h:120,text:"DECK ΛΙΜΝΗΣ"},
+  {cls:"lake",       cx:150, cy:445, w:96, h:250,text:"ΛΙΜΝΗ · Lake"},
+  {cls:"dancefloor", cx:865, cy:738, w:185,h:175,text:"ΠΙΣΤΑ · Dance floor"},
+  {cls:"label-plain",cx:865, cy:862, w:92, h:24, text:"H\\T · WC"},
+  {cls:"box",        cx:1330,cy:90,  w:130,h:30, text:"Stools"},
+];
+
+const GROUP_PALETTE = ["#e26d8a","#4a90d9","#3aa657","#e0a030","#8e7cc3","#e0663a","#3ab0a6","#b07cc3","#7c9cc3","#c3a03a"];
+
+let state = load() || defaultState();
+let zoom = 1;
+let activeMenuTableId = null;
+let uid = state._uid || 1000;
+function nextId(){ uid++; state._uid = uid; return uid; }
+
+function defaultState(){
+  const tables = DEFAULT_POSITIONS.map((p,i)=>({ id:1000+i+1, label:String(i+1), x:p[0], y:p[1], capacity:10, seats:Array(10).fill(null) }));
+  const groups = [
+    {id:"grp1", name:"Bride's side", color:GROUP_PALETTE[0]},
+    {id:"grp2", name:"Groom's side", color:GROUP_PALETTE[1]},
+    {id:"grp3", name:"Friends",      color:GROUP_PALETTE[2]},
+    {id:"grp4", name:"Family",       color:GROUP_PALETTE[3]},
+  ];
+  return { _uid:1000+DEFAULT_POSITIONS.length+1, tables, guests:{}, groups, activeGroupId:null, layoutVersion:LAYOUT_VERSION };
+}
+
+// ---------- persistence ----------
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){ /* storage may be unavailable; app still works this session */ } }
+function load(){
+  try{
+    const s=JSON.parse(localStorage.getItem(STORE_KEY));
+    if(s&&s.tables){
+      if(!s.groups) s.groups=[];
+      if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s);
+      return s;
+    }
+  }catch(e){}
+  return null;
+}
+// Re-space existing tables to the new layout while KEEPING guests, groups and seat assignments.
+function migrateLayout(s){
+  s.tables.forEach((t,i)=>{ if(DEFAULT_POSITIONS[i]){ t.x=DEFAULT_POSITIONS[i][0]; t.y=DEFAULT_POSITIONS[i][1]; } });
+  s.layoutVersion=LAYOUT_VERSION;
+}
+
+// ---------- helpers ----------
+function assignedGuestIds(){ const set=new Set(); state.tables.forEach(t=>t.seats.forEach(g=>{ if(g)set.add(g); })); return set; }
+function guestName(id){ return state.guests[id]?.name ?? "?"; }
+function guestGroup(id){ const gid=state.guests[id]?.groupId; return gid? state.groups.find(g=>g.id===gid) : null; }
+function guestColor(id){ const g=guestGroup(id); return g? g.color : "#b5835a"; }
+function hexTint(hex){ return hex+"22"; }
+function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._to); t._to=setTimeout(()=>t.classList.remove("show"),1600); }
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+// ============================================================
+//  GEOMETRY — compact seats tucked against each table, no overlap
+// ============================================================
+function tableGeom(n){
+  const seatW=50;
+  const minR = seatW/(2*Math.sin(Math.PI/n))*0.84;
+  const ringR = Math.max(minR, 44);
+  const discR = Math.max(24, ringR-14);
+  return { ringR, discR };
+}
+function seatPositions(cx, cy, n, ringR){
+  const pts=[];
+  for(let i=0;i<n;i++){ const a=(i/n)*2*Math.PI - Math.PI/2; pts.push([cx+ringR*Math.cos(a), cy+ringR*Math.sin(a)]); }
+  return pts;
+}
+
+// ============================================================
+//  RENDER
+// ============================================================
+const stage = document.getElementById("stage");
+
+function renderFeatures(){
+  FEATURES.forEach(f=>{
+    const el=document.createElement("div");
+    el.className="feature "+f.cls;
+    el.style.left=f.cx+"px"; el.style.top=f.cy+"px";
+    el.style.width=f.w+"px"; el.style.height=f.h+"px";
+    el.textContent=f.text;
+    stage.appendChild(el);
+  });
+}
+
+function renderTables(){
+  stage.querySelectorAll(".table").forEach(e=>e.remove());
+  state.tables.forEach(t=>{
+    const n=t.capacity;
+    const {ringR, discR}=tableGeom(n);
+    const wrap=document.createElement("div");
+    wrap.className="table"; wrap.style.left="0"; wrap.style.top="0"; wrap.dataset.tableId=t.id;
+
+    const disc=document.createElement("div");
+    disc.className="table-disc";
+    disc.style.left=t.x+"px"; disc.style.top=t.y+"px";
+    disc.style.width=(discR*2)+"px"; disc.style.height=(discR*2)+"px";
+    const occ=t.seats.filter(Boolean).length;
+    disc.innerHTML=`<span class="tgear" title="Table settings">⚙</span>
+                    <span class="tnum">${escapeHtml(t.label)}</span>
+                    <span class="tcount">${occ}/${n}</span>`;
+    disc.querySelector(".tgear").addEventListener("click",e=>{ e.stopPropagation(); openMenu(t.id,e); });
+    makeTableDraggable(disc,t);
+    wrap.appendChild(disc);
+
+    seatPositions(t.x,t.y,n,ringR).forEach((p,i)=>{
+      const seat=document.createElement("div");
+      const gid=t.seats[i];
+      seat.className="seat"+(gid?" occupied":"");
+      seat.style.left=p[0]+"px"; seat.style.top=p[1]+"px";
+      seat.dataset.tableId=t.id; seat.dataset.seatIndex=i;
+      if(gid){
+        const col=guestColor(gid);
+        seat.style.background=col; seat.style.borderColor=col;
+        seat.innerHTML=`<span class="nm">${escapeHtml(guestName(gid))}</span>`;
+        seat.title=guestName(gid)+(guestGroup(gid)?` · ${guestGroup(gid).name}`:"");
+        seat.draggable=true; seat.dataset.guestId=gid;
+      }else{
+        seat.innerHTML=`<span class="nm" style="opacity:.55">+</span>`;
+      }
+      wireSeat(seat);
+      wrap.appendChild(seat);
+    });
+    stage.appendChild(wrap);
+  });
+  updateStats();
+}
+
+function renderGroups(){
+  const box=document.getElementById("groupList"); box.innerHTML="";
+  const counts={};
+  Object.keys(state.guests).forEach(id=>{ const g=state.guests[id].groupId; if(g)counts[g]=(counts[g]||0)+1; });
+  box.appendChild(makeGroupPill({id:null,name:"No group",color:"#cccccc"}, counts, true));
+  state.groups.forEach(g=> box.appendChild(makeGroupPill(g, counts, false)) );
+  const add=document.createElement("div");
+  add.className="group-pill addgroup"; add.innerHTML="＋ group"; add.title="Add a new group";
+  add.addEventListener("click",addGroup); box.appendChild(add);
+}
+function makeGroupPill(g, counts, isNone){
+  const pill=document.createElement("div");
+  pill.className="group-pill"+(state.activeGroupId===g.id?" active":"");
+  const c=isNone?0:(counts[g.id]||0);
+  pill.innerHTML=`<span class="dot" style="background:${g.color}"></span><span class="gname">${escapeHtml(g.name)}</span>${isNone?"":`<span class="gcount">${c}</span>`}`;
+  pill.addEventListener("click",()=>{ state.activeGroupId=g.id; save(); renderGroups(); });
+  if(!isNone){
+    pill.title="Click: set active · Double-click: rename · Right-click: recolor / delete";
+    pill.addEventListener("dblclick",e=>{ e.stopPropagation(); renameGroup(g.id); });
+    pill.addEventListener("contextmenu",e=>{ e.preventDefault(); editGroup(g.id,e); });
+    pill.querySelector(".dot").addEventListener("click",e=>{ e.stopPropagation(); recolorGroup(g.id); });
+  }
+  return pill;
+}
+
+function renderPool(){
+  const pool=document.getElementById("unassigned"); pool.innerHTML="";
+  const assigned=assignedGuestIds();
+  const un=Object.keys(state.guests).filter(id=>!assigned.has(id));
+  document.getElementById("poolCount").textContent=un.length;
+  if(un.length===0){ pool.innerHTML=`<div class="empty-note">No unassigned guests.<br>Add names above ↑</div>`; return; }
+  un.forEach(id=>{
+    const col=guestColor(id);
+    const chip=document.createElement("div");
+    chip.className="guest-chip"; chip.draggable=true; chip.dataset.guestId=id;
+    chip.style.borderLeftColor=col; chip.style.background=hexTint(col);
+    chip.innerHTML=`<span>${escapeHtml(guestName(id))}</span><span class="x" title="Remove guest">✕</span>`;
+    chip.addEventListener("dragstart",e=>{ dragData={type:"guest",guestId:id,from:"pool"}; e.dataTransfer.effectAllowed="move"; });
+    chip.addEventListener("contextmenu",e=>{ e.preventDefault(); openGroupMenu(id,e); });
+    chip.querySelector(".x").addEventListener("click",()=>{ delete state.guests[id]; save(); renderPool(); renderGroups(); toast("Guest removed"); });
+    pool.appendChild(chip);
+  });
+}
+
+function updateStats(){
+  const totalSeats=state.tables.reduce((s,t)=>s+t.capacity,0);
+  const seated=assignedGuestIds().size;
+  document.getElementById("statLine").textContent=`· ${state.tables.length} tables · ${seated} seated · ${totalSeats} seats`;
+}
+
+// ============================================================
+//  GROUPS
+// ============================================================
+function addGroup(){
+  const name=prompt("New group name:","Group "+(state.groups.length+1)); if(!name)return;
+  const color=GROUP_PALETTE[state.groups.length % GROUP_PALETTE.length];
+  const g={id:"grp"+nextId(), name:name.trim(), color};
+  state.groups.push(g); state.activeGroupId=g.id; save(); renderGroups();
+}
+function renameGroup(id){ const g=state.groups.find(x=>x.id===id); if(!g)return; const nm=prompt("Rename group:",g.name); if(nm&&nm.trim()){ g.name=nm.trim(); save(); renderGroups(); } }
+function recolorGroup(id){
+  const g=state.groups.find(x=>x.id===id); if(!g)return;
+  const inp=document.createElement("input"); inp.type="color"; inp.value=g.color;
+  inp.style.position="fixed"; inp.style.left="-9999px"; document.body.appendChild(inp);
+  inp.addEventListener("input",()=>{ g.color=inp.value; save(); renderGroups(); renderTables(); renderPool(); });
+  inp.addEventListener("change",()=>inp.remove()); inp.click();
+}
+function editGroup(id,evt){
+  const g=state.groups.find(x=>x.id===id); if(!g)return;
+  const menu=document.getElementById("groupmenu");
+  menu.innerHTML=`
+    <div class="gm-item" data-act="rename"><span class="dot" style="background:${g.color}"></span>Rename “${escapeHtml(g.name)}”</div>
+    <div class="gm-item" data-act="recolor"><span class="dot" style="background:${g.color}"></span>Change colour</div>
+    <div class="gm-item" data-act="delete" style="color:#d9534f"><span class="dot" style="background:#d9534f"></span>Delete group</div>`;
+  menu.querySelector('[data-act="rename"]').onclick=()=>{ closeGroupMenu(); renameGroup(id); };
+  menu.querySelector('[data-act="recolor"]').onclick=()=>{ closeGroupMenu(); recolorGroup(id); };
+  menu.querySelector('[data-act="delete"]').onclick=()=>{
+    closeGroupMenu();
+    if(!confirm(`Delete group “${g.name}”? Guests keep their seats but lose the colour.`))return;
+    Object.values(state.guests).forEach(gu=>{ if(gu.groupId===id) gu.groupId=null; });
+    state.groups=state.groups.filter(x=>x.id!==id);
+    if(state.activeGroupId===id) state.activeGroupId=null;
+    save(); renderGroups(); renderTables(); renderPool();
+  };
+  showPopover(menu,evt);
+}
+function openGroupMenu(guestId, evt){
+  const menu=document.getElementById("groupmenu");
+  const rows=[`<div class="gm-item" data-gid=""><span class="dot" style="background:#ccc"></span>No group</div>`]
+    .concat(state.groups.map(g=>`<div class="gm-item" data-gid="${g.id}"><span class="dot" style="background:${g.color}"></span>${escapeHtml(g.name)}</div>`));
+  menu.innerHTML=rows.join("");
+  menu.querySelectorAll(".gm-item").forEach(it=>{ it.onclick=()=>{ state.guests[guestId].groupId=it.dataset.gid||null; save(); renderTables(); renderPool(); renderGroups(); closeGroupMenu(); }; });
+  showPopover(menu,evt);
+}
+function showPopover(menu,evt){
+  menu.style.display="block";
+  const x=Math.min(evt.clientX, window.innerWidth - menu.offsetWidth - 10);
+  const y=Math.min(evt.clientY, window.innerHeight - menu.offsetHeight - 10);
+  menu.style.left=x+"px"; menu.style.top=y+"px";
+}
+function closeGroupMenu(){ document.getElementById("groupmenu").style.display="none"; }
+
+// ============================================================
+//  DRAG & DROP (guests)
+// ============================================================
+let dragData=null;
+function wireSeat(seat){
+  const tableId=+seat.dataset.tableId, idx=+seat.dataset.seatIndex;
+  seat.addEventListener("dragstart",e=>{ if(!seat.classList.contains("occupied"))return; dragData={type:"guest", guestId:seat.dataset.guestId, from:"seat", tableId, seatIndex:idx}; e.dataTransfer.effectAllowed="move"; e.stopPropagation(); });
+  seat.addEventListener("dragover",e=>{ if(dragData&&dragData.type==="guest"){ e.preventDefault(); seat.classList.add("dragover"); }});
+  seat.addEventListener("dragleave",()=>seat.classList.remove("dragover"));
+  seat.addEventListener("drop",e=>{ e.preventDefault(); e.stopPropagation(); seat.classList.remove("dragover"); if(dragData&&dragData.type==="guest"){ placeGuestInSeat(dragData,tableId,idx); dragData=null; } });
+  seat.addEventListener("dblclick",e=>{ e.stopPropagation(); editSeatInline(seat,tableId,idx); });
+  seat.addEventListener("click",e=>{ if(seat.classList.contains("editing"))return; if(!seat.classList.contains("occupied")) editSeatInline(seat,tableId,idx); });
+  seat.addEventListener("contextmenu",e=>{ if(seat.classList.contains("occupied")){ e.preventDefault(); openGroupMenu(seat.dataset.guestId,e); } });
+}
+function placeGuestInSeat(drag, tableId, seatIndex){
+  const table=state.tables.find(t=>t.id===tableId);
+  const occupant=table.seats[seatIndex];
+  if(drag.from==="seat"){
+    const src=state.tables.find(t=>t.id===drag.tableId);
+    src.seats[drag.seatIndex]=occupant;
+    table.seats[seatIndex]=drag.guestId;
+  }else{
+    table.seats[seatIndex]=drag.guestId;
+  }
+  save(); renderTables(); renderPool();
+}
+function editSeatInline(seat, tableId, seatIndex){
+  const table=state.tables.find(t=>t.id===tableId);
+  const gid=table.seats[seatIndex];
+  const current=gid?guestName(gid):"";
+  seat.classList.add("editing"); seat.style.background=""; seat.style.borderColor="";
+  seat.innerHTML=`<input type="text" value="${escapeHtml(current)}" maxlength="40">`;
+  const input=seat.querySelector("input"); input.focus(); input.select();
+  function commit(){
+    const val=input.value.trim();
+    if(val){ if(gid){ state.guests[gid].name=val; } else { const id="g"+nextId(); state.guests[id]={name:val, groupId:state.activeGroupId||null}; table.seats[seatIndex]=id; } }
+    else if(gid){ table.seats[seatIndex]=null; }
+    save(); renderTables(); renderPool(); renderGroups();
+  }
+  input.addEventListener("keydown",e=>{
+    if(e.key==="Enter"){ e.preventDefault(); commit(); const ni=(seatIndex+1)%table.capacity; setTimeout(()=>{ const next=stage.querySelector(`.seat[data-table-id="${tableId}"][data-seat-index="${ni}"]`); if(next) editSeatInline(next,tableId,ni); },0); }
+    if(e.key==="Escape"){ renderTables(); }
+  });
+  input.addEventListener("blur",commit);
+}
+const poolEl=document.getElementById("unassigned");
+poolEl.addEventListener("dragover",e=>{ if(dragData&&dragData.type==="guest"){ e.preventDefault(); poolEl.classList.add("dragover"); }});
+poolEl.addEventListener("dragleave",()=>poolEl.classList.remove("dragover"));
+poolEl.addEventListener("drop",e=>{ e.preventDefault(); poolEl.classList.remove("dragover"); if(dragData&&dragData.type==="guest"&&dragData.from==="seat"){ const src=state.tables.find(t=>t.id===dragData.tableId); src.seats[dragData.seatIndex]=null; save(); renderTables(); renderPool(); } dragData=null; });
+
+// ============================================================
+//  DRAG TABLES
+// ============================================================
+function makeTableDraggable(disc, t){
+  let startX,startY,origX,origY,moved;
+  disc.addEventListener("pointerdown",e=>{
+    if(e.target.classList.contains("tgear"))return;
+    e.preventDefault(); disc.setPointerCapture(e.pointerId);
+    startX=e.clientX; startY=e.clientY; origX=t.x; origY=t.y; moved=false;
+    function move(ev){ const dx=(ev.clientX-startX)/zoom, dy=(ev.clientY-startY)/zoom; if(Math.abs(dx)>3||Math.abs(dy)>3)moved=true; t.x=Math.max(60,Math.min(1440,origX+dx)); t.y=Math.max(60,Math.min(1040,origY+dy)); renderTables(); }
+    function up(){ disc.releasePointerCapture(e.pointerId); disc.removeEventListener("pointermove",move); disc.removeEventListener("pointerup",up); if(moved)save(); }
+    disc.addEventListener("pointermove",move); disc.addEventListener("pointerup",up);
+  });
+}
+
+// ============================================================
+//  TABLE SETTINGS
+// ============================================================
+const menu=document.getElementById("tablemenu");
+function openMenu(tableId, evt){
+  activeMenuTableId=tableId;
+  const t=state.tables.find(x=>x.id===tableId);
+  document.getElementById("menuLabel").value=t.label;
+  document.getElementById("menuCapCustom").value=[8,10,12].includes(t.capacity)?"":t.capacity;
+  menu.querySelectorAll(".caps button").forEach(b=>b.classList.toggle("active",+b.dataset.cap===t.capacity));
+  showPopover(menu,evt);
+}
+function closeMenu(){ menu.style.display="none"; activeMenuTableId=null; }
+document.getElementById("menuLabel").addEventListener("input",e=>{ const t=state.tables.find(x=>x.id===activeMenuTableId); if(!t)return; t.label=e.target.value; save(); renderTables(); });
+menu.querySelectorAll(".caps button").forEach(b=>b.addEventListener("click",()=>setCapacity(+b.dataset.cap)));
+document.getElementById("menuCapCustom").addEventListener("change",e=>{ const v=parseInt(e.target.value,10); if(v>=1&&v<=24) setCapacity(v); });
+function setCapacity(n){
+  const t=state.tables.find(x=>x.id===activeMenuTableId); if(!t)return;
+  const old=t.seats, newSeats=Array(n).fill(null); let bumped=0;
+  for(let i=0;i<old.length;i++){ if(old[i]!=null){ if(i<n)newSeats[i]=old[i]; else{ const free=newSeats.indexOf(null); if(free>=0)newSeats[free]=old[i]; else bumped++; } } }
+  t.capacity=n; t.seats=newSeats; save(); renderTables();
+  menu.querySelectorAll(".caps button").forEach(bt=>bt.classList.toggle("active",+bt.dataset.cap===n));
+  if(bumped) toast(bumped+" guest(s) moved to unassigned");
+  renderPool();
+}
+document.getElementById("menuDelete").addEventListener("click",()=>{
+  const t=state.tables.find(x=>x.id===activeMenuTableId); if(!t)return;
+  if(!confirm(`Delete table "${t.label}"? Its guests go back to unassigned.`))return;
+  state.tables=state.tables.filter(x=>x.id!==activeMenuTableId);
+  save(); renderTables(); renderPool(); closeMenu();
+});
+document.getElementById("menuClose").addEventListener("click",closeMenu);
+document.addEventListener("click",e=>{
+  if(menu.style.display==="block" && !menu.contains(e.target) && !e.target.classList.contains("tgear")) closeMenu();
+  const gm=document.getElementById("groupmenu");
+  if(gm.style.display==="block" && !gm.contains(e.target)) closeGroupMenu();
+});
+
+// ============================================================
+//  TOOLBAR
+// ============================================================
+document.getElementById("addTableBtn").addEventListener("click",()=>{
+  const id=nextId();
+  state.tables.push({id, label:String(state.tables.length+1), x:260, y:950, capacity:10, seats:Array(10).fill(null)});
+  save(); renderTables(); toast("Table added — drag it into place");
+});
+document.getElementById("addGuestBtn").addEventListener("click",()=>{
+  const ta=document.getElementById("guestInput");
+  const lines=ta.value.split("\n").map(s=>s.trim()).filter(Boolean); if(!lines.length)return;
+  lines.forEach(nm=>{ const id="g"+nextId(); state.guests[id]={name:nm, groupId:state.activeGroupId||null}; });
+  ta.value=""; save(); renderPool(); renderGroups(); toast(lines.length+" guest(s) added");
+});
+document.getElementById("guestInput").addEventListener("keydown",e=>{ if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)) document.getElementById("addGuestBtn").click(); });
+document.getElementById("autoSeatBtn").addEventListener("click",()=>{
+  const assigned=assignedGuestIds();
+  const un=Object.keys(state.guests).filter(id=>!assigned.has(id)).sort((a,b)=>String(state.guests[a].groupId).localeCompare(String(state.guests[b].groupId)));
+  let idx=0;
+  for(const t of state.tables){ for(let i=0;i<t.capacity&&idx<un.length;i++){ if(t.seats[i]==null){ t.seats[i]=un[idx++]; } } if(idx>=un.length)break; }
+  save(); renderTables(); renderPool(); toast(idx?`Seated ${idx} guest(s)`:"No open seats / no unassigned guests");
+});
+document.getElementById("resetBtn").addEventListener("click",()=>{
+  if(!confirm("Reset everything back to the default layout? This clears all guests."))return;
+  try{ localStorage.removeItem(STORE_KEY); }catch(e){}
+  state=defaultState(); uid=state._uid; save(); renderAll(); toast("Reset to default layout");
+});
+document.getElementById("exportBtn").addEventListener("click",()=>{
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="wedding-seating.json"; a.click(); toast("Downloaded wedding-seating.json");
+});
+document.getElementById("importBtn").addEventListener("click",()=>{
+  const inp=document.createElement("input"); inp.type="file"; inp.accept="application/json";
+  inp.onchange=()=>{ const f=inp.files[0]; if(!f)return; const r=new FileReader();
+    r.onload=()=>{ try{ const s=JSON.parse(r.result); if(s.tables){ if(!s.groups)s.groups=[]; state=s; uid=state._uid||uid; save(); renderAll(); toast("Imported"); } }catch(e){ toast("Invalid file"); } };
+    r.readAsText(f); };
+  inp.click();
+});
+
+// ============================================================
+//  PRINT
+// ============================================================
+document.getElementById("printBtn").addEventListener("click",buildAndPrint);
+function buildAndPrint(){
+  const area=document.getElementById("printarea");
+  const legend=state.groups.map(g=>`<span><span class="dot" style="background:${g.color}"></span>${escapeHtml(g.name)}</span>`).join("");
+  const cards=state.tables.map(t=>{
+    const rows=t.seats.map(gid=> gid?`<li><span class="gdot" style="background:${guestColor(gid)}"></span>${escapeHtml(guestName(gid))}</li>`:`<li class="empty">— empty —</li>`).join("");
+    const occ=t.seats.filter(Boolean).length;
+    return `<div class="pcard"><h3>Table ${escapeHtml(t.label)} <span style="font-weight:400;color:#888;font-size:12px">(${occ}/${t.capacity})</span></h3><ol>${rows}</ol></div>`;
+  }).join("");
+  const assigned=assignedGuestIds();
+  const un=Object.keys(state.guests).filter(id=>!assigned.has(id));
+  const unHtml=un.length?`<div class="punassigned"><strong>Unassigned (${un.length}):</strong> ${un.map(id=>escapeHtml(guestName(id))).join(", ")}</div>`:"";
+  const seated=assigned.size, totalSeats=state.tables.reduce((s,t)=>s+t.capacity,0);
+  area.innerHTML=`<h2>💍 Wedding Seating Plan</h2>
+    <div class="psub">${state.tables.length} tables · ${seated} guests seated · ${totalSeats} seats total</div>
+    ${legend?`<div class="plegend">${legend}</div>`:""}
+    <div class="ptables">${cards}</div>${unHtml}`;
+  window.print();
+}
+
+// ============================================================
+//  ZOOM
+// ============================================================
+function fitZoom(){ const wrap=document.getElementById("stagewrap"); return Math.min(1,(wrap.clientWidth-60)/1500,(wrap.clientHeight-100)/1100); }
+function applyZoom(){ stage.style.transform=`scale(${zoom})`; document.getElementById("zoomLabel").textContent=Math.round(zoom*100)+"%"; }
+document.getElementById("zoomIn").addEventListener("click",()=>{ zoom=Math.min(2.5,zoom+0.1); applyZoom(); });
+document.getElementById("zoomOut").addEventListener("click",()=>{ zoom=Math.max(0.25,zoom-0.05); applyZoom(); });
+document.getElementById("zoomFit").addEventListener("click",()=>{ zoom=fitZoom(); applyZoom(); });
+
+// ============================================================
+//  INIT
+// ============================================================
+function renderAll(){ renderTables(); renderGroups(); renderPool(); }
+renderFeatures();
+renderAll();
+// On load, keep names readable: never auto-shrink below 60%. Use the Fit button for a full overview.
+setTimeout(()=>{ zoom=Math.min(1, Math.max(fitZoom(), 0.6)); applyZoom(); },50);
+</script>
+</body>
+</html>
