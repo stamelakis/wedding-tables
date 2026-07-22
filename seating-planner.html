@@ -14,7 +14,7 @@
   body{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; color:var(--ink); background:#f4f1ec; display:flex; height:100vh; overflow:hidden; }
 
   /* ---------- Sidebar ---------- */
-  #sidebar{ width:290px; min-width:290px; background:var(--panel); border-right:1px solid var(--line); display:flex; flex-direction:column; height:100%; }
+  #sidebar{ width:290px; min-width:290px; background:var(--panel); border-right:1px solid var(--line); height:100%; overflow-y:auto; }
   #sidebar h1{ font-size:17px; padding:16px 16px 4px; font-weight:700; letter-spacing:.2px; }
   #sidebar .sub{ padding:0 16px 12px; font-size:12px; color:#888; }
   .toolbar{ padding:10px 16px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); display:flex; flex-wrap:wrap; gap:8px; }
@@ -38,7 +38,7 @@
   .pool-head{ display:flex; justify-content:space-between; align-items:center; padding:8px 16px 6px; }
   .pool-head span{ font-size:13px; font-weight:600; }
   .pool-head .count{ font-size:12px; color:#888; font-weight:400; }
-  #unassigned{ flex:1; overflow-y:auto; padding:0 16px 16px; display:flex; flex-direction:column; gap:6px; }
+  #unassigned{ padding:0 16px 16px; display:flex; flex-direction:column; gap:6px; }
   #unassigned.dragover{ background:#fbf6ef; outline:2px dashed var(--accent); outline-offset:-6px; border-radius:8px; }
   .guest-chip{ background:#f3ede4; border:1px solid #e6dccb; border-left:4px solid #ccc; border-radius:8px; padding:6px 10px; font-size:13px; cursor:grab; display:flex; align-items:center; justify-content:space-between; user-select:none; }
   .guest-chip:active{ cursor:grabbing; }
@@ -311,17 +311,17 @@ function renderFeatures(){
   });
 }
 
+const BASE_SLOT=46; // reference seat spacing — table size depends on this + seat count, NOT on name length
 function roundGeom(t){
   const n=t.capacity;
   const fs=Math.round(11*fontScale);
   const seatH=fs+10;
-  let maxW=48;
-  t.seats.forEach(gid=>{ if(gid){ const w=seatWidthFor(guestName(gid),fs); if(w>maxW)maxW=w; } });
-  const need=maxW/(2*Math.sin(Math.PI/n))*0.98;
-  const ringR=Math.max(need, 46, seatH*1.25);
+  const need=BASE_SLOT/(2*Math.sin(Math.PI/n));
+  const ringR=Math.max(need, 46, seatH*1.2);
   const discR=Math.max(24, ringR - seatH/2 - 6);
   return {n,fs,seatH,ringR,discR};
 }
+function seatDisplayWidth(t,i,fs){ const gid=t.seats[i]; return gid? seatWidthFor(guestName(gid),fs) : 42; }
 
 function buildSeat(t,i,relx,rely,fs,seatH){
   const seat=document.createElement("div");
@@ -358,7 +358,10 @@ function renderRoundTable(t, wrap){
   wrap.appendChild(disc);
   for(let i=0;i<t.capacity;i++){
     const a=(i/t.capacity)*2*Math.PI - Math.PI/2;
-    wrap.appendChild(buildSeat(t,i, g.ringR*Math.cos(a), g.ringR*Math.sin(a), g.fs, g.seatH));
+    // wide (long-name) seats float outward so they never cover the table number; the disc stays fixed
+    const w=seatDisplayWidth(t,i,g.fs);
+    const r=g.ringR + Math.max(0,(w-BASE_SLOT)/2);
+    wrap.appendChild(buildSeat(t,i, r*Math.cos(a), r*Math.sin(a), g.fs, g.seatH));
   }
 }
 
