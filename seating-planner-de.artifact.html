@@ -244,6 +244,32 @@
     <div class="decor-grid" id="decorGrid"></div>
   </div>
 </div>
+<div id="exportModal" class="modal-back">
+  <div class="modal">
+    <div class="modal-head"><strong>Plan kopieren / herunterladen</strong><button class="mx" id="exportClose">✕</button></div>
+    <div class="mhint">Kopieren Sie diesen Text und fügen Sie ihn auf einem anderen Gerät unter „Importieren“ ein — oder laden Sie ihn als Datei herunter. (Downloads funktionieren in der Claude-Vorschau nicht, dort bitte Kopieren nutzen.)</div>
+    <div style="padding:12px 16px">
+      <textarea id="exportText" readonly style="width:100%;height:170px;font-family:monospace;font-size:11px;border:1px solid var(--line);border-radius:8px;padding:8px;resize:vertical"></textarea>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn primary" id="exportCopy" style="flex:1">📋 In Zwischenablage kopieren</button>
+        <button class="btn" id="exportDownload" style="flex:1">⬇ Datei herunterladen</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="importModal" class="modal-back">
+  <div class="modal">
+    <div class="modal-head"><strong>Plan importieren</strong><button class="mx" id="importClose">✕</button></div>
+    <div class="mhint">Fügen Sie kopierten Plan-Text ein oder wählen Sie eine heruntergeladene Datei. Er wird als neues Profil geladen.</div>
+    <div style="padding:12px 16px">
+      <textarea id="importText" placeholder="Plan-Text hier einfügen…" style="width:100%;height:150px;font-family:monospace;font-size:11px;border:1px solid var(--line);border-radius:8px;padding:8px;resize:vertical"></textarea>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn primary" id="importPaste" style="flex:1">Eingefügten Plan laden</button>
+        <button class="btn" id="importFile" style="flex:1">📁 Stattdessen Datei wählen</button>
+      </div>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 <div id="printarea"></div>
 
@@ -1000,20 +1026,52 @@ document.getElementById("resetBtn").addEventListener("click",()=>{
   try{ localStorage.removeItem(STORE_KEY); }catch(e){}
   state=defaultState(); uid=state._uid; fontScale=1; applyStage(); document.getElementById("stageFloor").value=state.stageMaterial; save(); renderAll(); toast("Auf Standard-Layout zurückgesetzt");
 });
+function planJSON(){ const cur=currentProfile(); return JSON.stringify({...state, _profileName:cur.name}, null, 2); }
+function planFilename(){ const cur=currentProfile(); return ((cur.name||"wedding").replace(/[^\w\-]+/g,"_"))+".wedding.json"; }
+function copyText(ta){
+  ta.focus(); ta.select(); try{ ta.setSelectionRange(0,999999); }catch(e){}
+  let ok=false; try{ ok=document.execCommand("copy"); }catch(e){}
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(ta.value).then(()=>toast("In Zwischenablage kopiert")).catch(()=>toast(ok?"In Zwischenablage kopiert":"Alles markieren &amp; Strg+C drücken"));
+  } else { toast(ok?"In Zwischenablage kopiert":"Alles markieren &amp; Strg+C drücken"); }
+}
 document.getElementById("exportBtn").addEventListener("click",()=>{
-  const cur=currentProfile();
-  const blob=new Blob([JSON.stringify({...state, _profileName:cur.name},null,2)],{type:"application/json"});
-  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
-  a.download=((cur.name||"wedding").replace(/[^\w\-]+/g,"_"))+".wedding.json"; a.click(); toast("Heruntergeladen: "+a.download);
+  document.getElementById("exportText").value=planJSON();
+  document.getElementById("exportModal").classList.add("open");
+  setTimeout(()=>{ const ta=document.getElementById("exportText"); ta.focus(); ta.select(); },30);
 });
-document.getElementById("importBtn").addEventListener("click",()=>{
+document.getElementById("exportCopy").addEventListener("click",()=>copyText(document.getElementById("exportText")));
+document.getElementById("exportDownload").addEventListener("click",()=>{
+  const blob=new Blob([planJSON()],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=planFilename();
+  document.body.appendChild(a); a.click(); a.remove(); toast("Heruntergeladen: "+a.download);
+});
+document.getElementById("exportClose").addEventListener("click",()=>document.getElementById("exportModal").classList.remove("open"));
+function doImportData(s, suggested){
+  if(s.tables){ if(!s.groups)s.groups=[]; if(!s.features)s.features=defaultFeatures(); importPlanAsProfile(s, suggested); }
+  else if(s.importGuests){ mergeGuestList(s); }
+  else { toast("Keine Plan- oder Gästelisten-Datei"); }
+}
+function pickImportFile(){
   const inp=document.createElement("input"); inp.type="file"; inp.accept="application/json";
   inp.onchange=()=>{ const f=inp.files[0]; if(!f)return; const r=new FileReader();
     const suggested=f.name.replace(/\.wedding\.json$|\.json$/i,"").replace(/_/g," ");
-    r.onload=()=>{ try{ const s=JSON.parse(r.result); if(s.tables){ if(!s.groups)s.groups=[]; if(!s.features)s.features=defaultFeatures(); importPlanAsProfile(s, suggested); } else if(s.importGuests){ mergeGuestList(s); } else { toast("Keine Plan- oder Gästelisten-Datei"); } }catch(e){ toast("Ungültige Datei"); } };
+    r.onload=()=>{ try{ doImportData(JSON.parse(r.result), suggested); document.getElementById("importModal").classList.remove("open"); }catch(e){ toast("Ungültige Datei"); } };
     r.readAsText(f); };
   inp.click();
+}
+document.getElementById("importBtn").addEventListener("click",()=>{
+  document.getElementById("importText").value="";
+  document.getElementById("importModal").classList.add("open");
 });
+document.getElementById("importPaste").addEventListener("click",()=>{
+  const txt=document.getElementById("importText").value.trim(); if(!txt){ toast("Bitte zuerst Plan-Text einfügen"); return; }
+  try{ doImportData(JSON.parse(txt), "Pasted plan"); document.getElementById("importModal").classList.remove("open"); }
+  catch(e){ toast("Dieser Text ist kein gültiger Plan"); }
+});
+document.getElementById("importFile").addEventListener("click",pickImportFile);
+document.getElementById("importClose").addEventListener("click",()=>document.getElementById("importModal").classList.remove("open"));
+["exportModal","importModal"].forEach(id=>document.getElementById(id).addEventListener("click",e=>{ if(e.target.id===id) e.currentTarget.classList.remove("open"); }));
 // Merge a guest LIST into the current plan (adds to the pool; never touches tables or existing guests)
 document.getElementById("importListBtn").addEventListener("click",()=>{
   const inp=document.createElement("input"); inp.type="file"; inp.accept="application/json,.json";
