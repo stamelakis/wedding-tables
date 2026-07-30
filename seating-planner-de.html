@@ -182,6 +182,7 @@
     <button class="btn" id="printBtn">🖨 Drucken</button>
     <button class="btn" id="exportBtn">Exportieren</button>
     <button class="btn" id="importBtn">Importieren</button>
+    <button class="btn" id="cloudBtn" title="Plan online stellen / geräteübergreifend synchronisieren">☁ Teilen</button>
     <button class="btn danger" id="resetBtn">Zurücksetzen</button>
   </div>
   <div class="section">
@@ -274,6 +275,12 @@
         <button class="btn" id="importFile" style="flex:1">📁 Stattdessen Datei wählen</button>
       </div>
     </div>
+  </div>
+</div>
+<div id="cloudModal" class="modal-back">
+  <div class="modal">
+    <div class="modal-head"><strong>☁ Plan teilen &amp; synchronisieren</strong><button class="mx" id="cloudClose">✕</button></div>
+    <div id="cloudBody" style="padding:12px 16px"></div>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -373,6 +380,9 @@ const DECOR_ITEMS = [
 
 const GROUP_PALETTE = ["#e26d8a","#4a90d9","#3aa657","#e0a030","#8e7cc3","#e0663a","#3ab0a6","#b07cc3","#7c9cc3","#c3a03a"];
 
+// ☁ Cloud-Sync-Backend (Cloudflare Worker + KV)
+const SYNC_URL = "https://wedding-sync.andrewstamelakis.workers.dev";
+
 let profiles = ensureProfiles();
 let state = loadPlan(profiles.activeId) || defaultState();
 let zoom = 1;
@@ -419,7 +429,7 @@ function ensureProfiles(){
   try{ localStorage.setItem(PROFILES_KEY, JSON.stringify(p)); }catch(e){}  // persist so we don't re-migrate on next load
   return p;
 }
-function save(){ try{ localStorage.setItem(planKey(profiles.activeId), JSON.stringify(state)); }catch(e){} }
+function save(){ try{ localStorage.setItem(planKey(profiles.activeId), JSON.stringify(state)); }catch(e){} scheduleCloudPush(); }
 // Version-aware migration — keeps guests / groups / seat assignments (and, from v4 on, table positions).
 function migrateLayout(s){
   const from=s.layoutVersion||0;
@@ -1078,6 +1088,95 @@ document.getElementById("importPaste").addEventListener("click",()=>{
 document.getElementById("importFile").addEventListener("click",pickImportFile);
 document.getElementById("importClose").addEventListener("click",()=>document.getElementById("importModal").classList.remove("open"));
 ["exportModal","importModal"].forEach(id=>document.getElementById(id).addEventListener("click",e=>{ if(e.target.id===id) e.currentTarget.classList.remove("open"); }));
+
+// ============================================================
+//  ☁ CLOUD-SYNC  (Cloudflare Worker: POST/GET/PUT /plans)
+// ============================================================
+let cloudTimer=null;
+function planPayload(){ const cur=currentProfile(); return { name:cur.name, plan:{...state, _profileName:cur.name} }; }
+function shareLink(cur){ return location.origin+location.pathname+"?plan="+cur.cloudId+(cur.editKey?("&key="+cur.editKey):""); }
+function setCloudDot(st){ const b=document.getElementById("cloudBtn"); if(!b) return;
+  b.textContent={ok:"☁ Synchronisiert",pending:"☁ Speichert…",err:"☁ Offline"}[st]||"☁ Teilen"; }
+function fmtTime(ms){ try{ return ms? new Date(ms).toLocaleString():"—"; }catch(e){ return "—"; } }
+async function cloudCreate(){
+  const r=await fetch(SYNC_URL+"/plans",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(planPayload())});
+  const d=await r.json(); if(!r.ok||!d.id) throw new Error(d.error||"upload failed");
+  const cur=currentProfile(); cur.cloudId=d.id; cur.editKey=d.editKey; cur.cloudUpdated=d.updated; saveProfilesIdx(); return d;
+}
+async function cloudPush(){
+  const cur=currentProfile(); if(!cur.cloudId||!cur.editKey) return cloudCreate();
+  const r=await fetch(SYNC_URL+"/plans/"+cur.cloudId,{method:"PUT",headers:{"Content-Type":"application/json","X-Edit-Key":cur.editKey},body:JSON.stringify(planPayload())});
+  const d=await r.json(); if(!r.ok) throw new Error(d.error||"update failed");
+  cur.cloudUpdated=d.updated; saveProfilesIdx(); return d;
+}
+async function cloudFetch(id){ const r=await fetch(SYNC_URL+"/plans/"+id); const d=await r.json(); if(!r.ok) throw new Error(d.error||"not found"); return d; }
+function scheduleCloudPush(){
+  const cur=(profiles&&profiles.profiles)?currentProfile():null; if(!cur||!cur.cloudId||!cur.editKey) return;
+  clearTimeout(cloudTimer); setCloudDot("pending");
+  cloudTimer=setTimeout(async()=>{ try{ await cloudPush(); setCloudDot("ok"); }catch(e){ setCloudDot("err"); } }, 2500);
+}
+// Aktuelles Profil durch die aus der Cloud geladene Version ersetzen.
+function applyPulledPlan(cur, d){
+  const s=d.plan||{}; delete s._profileName;
+  if(s.tables){ if(!s.groups)s.groups=[]; if(!s.features)s.features=defaultFeatures(); if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s); }
+  state=s.tables? s : defaultState(); uid=state._uid||2001; fontScale=state.seatFontScale||1;
+  if(d.name) cur.name=d.name; cur.cloudUpdated=d.updated; saveProfilesIdx();
+  try{ localStorage.setItem(planKey(cur.id), JSON.stringify(state)); }catch(e){}
+  applyStage(); document.getElementById("stageFloor").value=state.stageMaterial||"grass";
+  renderProfiles(); renderAll();
+  setTimeout(()=>{ zoom=Math.min(1,Math.max(fitZoom(),0.5)); applyZoom(); },30);
+}
+function renderCloudBody(){
+  const cur=currentProfile(); const body=document.getElementById("cloudBody");
+  if(!cur.cloudId){
+    body.innerHTML=`<div class="mhint">Lade diesen Plan online, um ihn auf dem Handy, einem anderen Computer oder mit deinem Partner zu öffnen — alle mit dem Link sehen die neuste Version.</div>
+      <button class="btn primary" id="cloudUpload" style="width:100%;margin-top:4px">☁ Hochladen &amp; Link erstellen</button>`;
+    document.getElementById("cloudUpload").onclick=async()=>{ const b=document.getElementById("cloudUpload"); b.disabled=true; b.textContent="Wird hochgeladen…";
+      try{ await cloudCreate(); setCloudDot("ok"); renderCloudBody(); toast("Plan ist online ☁"); }
+      catch(e){ b.disabled=false; b.textContent="☁ Hochladen & Link erstellen"; toast("Upload fehlgeschlagen — Verbindung prüfen"); } };
+  } else {
+    const link=shareLink(cur);
+    body.innerHTML=`<div class="mhint">Jeder mit diesem Link kann den Plan öffnen <strong>und bearbeiten</strong>. Deine Änderungen werden automatisch synchronisiert.</div>
+      <input id="cloudLink" readonly value="${escapeHtml(link)}" style="width:100%;font-family:monospace;font-size:11px;border:1px solid var(--line);border-radius:8px;padding:8px">
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn primary" id="cloudCopy" style="flex:1">📋 Link kopieren</button>
+        <button class="btn" id="cloudPushNow" style="flex:1">⬆ Jetzt senden</button>
+        <button class="btn" id="cloudPullNow" style="flex:1">⬇ Neuste laden</button>
+      </div>
+      <div class="mhint" style="margin-top:8px">Zuletzt synchronisiert: ${fmtTime(cur.cloudUpdated)}</div>`;
+    document.getElementById("cloudCopy").onclick=()=>copyText(document.getElementById("cloudLink"));
+    document.getElementById("cloudPushNow").onclick=async()=>{ try{ await cloudPush(); setCloudDot("ok"); renderCloudBody(); toast("In die Cloud gesendet"); }catch(e){ toast("Senden fehlgeschlagen"); } };
+    document.getElementById("cloudPullNow").onclick=async()=>{ if(!confirm("Diesen Plan durch die neuste Version aus der Cloud ersetzen?")) return;
+      try{ const d=await cloudFetch(cur.cloudId); applyPulledPlan(cur,d); renderCloudBody(); toast("Neuste Version aus der Cloud geladen"); }catch(e){ toast("Laden fehlgeschlagen"); } };
+  }
+}
+// Einen ?plan=<id>[&key=<editKey>]-Link öffnen: laden und als Profil übernehmen.
+async function openSharedFromURL(){
+  const params=new URLSearchParams(location.search); const id=params.get("plan"); if(!id) return false;
+  const key=params.get("key")||"";
+  try{ history.replaceState(null,"",location.origin+location.pathname); }catch(e){}
+  try{
+    const d=await cloudFetch(id);
+    let prof=profiles.profiles.find(p=>p.cloudId===id);
+    if(prof){ profiles.activeId=prof.id; if(key&&!prof.editKey) prof.editKey=key; saveProfilesIdx();
+      applyPulledPlan(prof,d); setCloudDot("ok"); toast("Geteilten Plan geöffnet (synchronisiert)"); }
+    else{ const pid=newProfileId(); prof={ id:pid, name:d.name||"Geteilter Plan", cloudId:id, editKey:key, cloudUpdated:d.updated };
+      profiles.profiles.push(prof); profiles.activeId=pid; saveProfilesIdx();
+      applyPulledPlan(prof,d); setCloudDot("ok"); toast('Geteilten Plan geöffnet: "'+(d.name||"Plan")+'"'); }
+  }catch(e){ toast("Konnte den geteilten Link nicht öffnen"); }
+  return true;
+}
+// Beim normalen Laden das aktive Profil aktualisieren, wenn die Cloud-Version neuer ist.
+async function pullIfNewer(){
+  const cur=currentProfile(); if(!cur||!cur.cloudId){ return; }
+  try{ const d=await cloudFetch(cur.cloudId);
+    if(d.updated && (!cur.cloudUpdated || d.updated>cur.cloudUpdated)){ applyPulledPlan(cur,d); toast("Aus der Cloud aktualisiert"); }
+    setCloudDot("ok");
+  }catch(e){ setCloudDot("err"); }
+}
+document.getElementById("cloudBtn").addEventListener("click",()=>{ renderCloudBody(); document.getElementById("cloudModal").classList.add("open"); });
+document.getElementById("cloudClose").addEventListener("click",()=>document.getElementById("cloudModal").classList.remove("open"));
+document.getElementById("cloudModal").addEventListener("click",e=>{ if(e.target.id==="cloudModal") e.currentTarget.classList.remove("open"); });
 // Merge a guest LIST into the current plan (adds to the pool; never touches tables or existing guests)
 document.getElementById("importListBtn").addEventListener("click",()=>{
   const inp=document.createElement("input"); inp.type="file"; inp.accept="application/json,.json";
@@ -1153,6 +1252,8 @@ stage.appendChild(_stageResize); makeStageResizable(_stageResize);
 initFloorSelect(); initDecor(); renderProfiles();
 renderAll();
 setTimeout(()=>{ zoom=Math.min(1, Math.max(fitZoom(), 0.5)); applyZoom(); },50);
+// ☁ geteilten Link öffnen, falls vorhanden — sonst aktives Profil aus der Cloud aktualisieren
+(async()=>{ if(!(await openSharedFromURL())) pullIfNewer(); })();
 </script>
 </body>
 </html>
