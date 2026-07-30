@@ -115,6 +115,18 @@
   #groupmenu .gm-item{ display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; }
   #groupmenu .gm-item:hover{ background:#f4f0ea; }
   #groupmenu .gm-item .dot{ width:13px; height:13px; border-radius:50%; border:1px solid rgba(0,0,0,.15); flex:none; }
+  #guesteditor{ width:224px; padding:10px; }
+  #guesteditor .ge-name{ width:100%; box-sizing:border-box; font-size:14px; padding:7px 9px; border:1px solid var(--line); border-radius:8px; margin-bottom:8px; }
+  #guesteditor .ge-lab{ font-size:10px; letter-spacing:.05em; text-transform:uppercase; color:#9a8f7f; margin:0 2px 5px; }
+  #guesteditor .ge-types{ display:flex; flex-direction:column; gap:2px; max-height:210px; overflow:auto; }
+  #guesteditor .ge-type{ display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; }
+  #guesteditor .ge-type:hover{ background:#f4f0ea; }
+  #guesteditor .ge-type.sel{ background:#efe7db; font-weight:600; }
+  #guesteditor .ge-type .dot{ width:13px; height:13px; border-radius:50%; border:1px solid rgba(0,0,0,.15); flex:none; }
+  #guesteditor .ge-type .chk{ margin-left:auto; color:#3aa657; font-weight:700; }
+  .guest-chip .chip-actions{ display:flex; align-items:center; gap:2px; }
+  .guest-chip .edit{ color:#c3b8a4; font-size:13px; padding-left:6px; cursor:pointer; }
+  .guest-chip .edit:hover{ color:#8a6d3b; }
   .toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:9px 16px; border-radius:8px; font-size:13px; opacity:0; transition:.3s; z-index:200; }
   .toast.show{ opacity:.95; }
 
@@ -242,6 +254,7 @@
 </div>
 
 <div id="groupmenu" class="popover"></div>
+<div id="guesteditor" class="popover"></div>
 <div id="featuremenu" class="popover"></div>
 <div id="profilemenu" class="popover"></div>
 <div id="decorModal" class="modal-back">
@@ -638,9 +651,10 @@ function renderPool(){
     chip.className="guest-chip"; chip.draggable=true; chip.dataset.guestId=id;
     chip.style.borderLeftColor=col; chip.style.background=hexTint(col);
     chip.title=(guestGroup(id)?guestGroup(id).name:"")+statusTitle(id);
-    chip.innerHTML=`<span>${escapeHtml(guestName(id))}${statusTag(id)}</span><span class="x" title="Remove guest">✕</span>`;
+    chip.innerHTML=`<span>${escapeHtml(guestName(id))}${statusTag(id)}</span><span class="chip-actions"><span class="edit" title="Name &amp; Typ bearbeiten">✎</span><span class="x" title="Gast entfernen">✕</span></span>`;
     chip.addEventListener("dragstart",e=>{ dragData={type:"guest",guestId:id,from:"pool"}; e.dataTransfer.effectAllowed="move"; });
-    chip.addEventListener("contextmenu",e=>{ e.preventDefault(); openGroupMenu(id,e); });
+    chip.addEventListener("contextmenu",e=>{ e.preventDefault(); openGuestEditor(id,e); });
+    chip.querySelector(".edit").addEventListener("click",e=>{ e.stopPropagation(); openGuestEditor(id,e); });
     chip.querySelector(".x").addEventListener("click",()=>{ delete state.guests[id]; save(); renderPool(); renderGroups(); toast("Gast entfernt"); });
     pool.appendChild(chip);
   });
@@ -703,6 +717,25 @@ function showPopover(menu,evt){
   menu.style.left=x+"px"; menu.style.top=y+"px";
 }
 function closeGroupMenu(){ document.getElementById("groupmenu").style.display="none"; }
+// Kombinierter Name-&-Typ-Editor (aus dem Pool-Chip ✎ / Rechtsklick und von einem platzierten Gast).
+function openGuestEditor(guestId, evt){
+  const g=state.guests[guestId]; if(!g) return;
+  const menu=document.getElementById("guesteditor");
+  const opts=[{id:"",name:"Kein Typ",color:"#ccc"}].concat(state.groups.map(gr=>({id:gr.id,name:gr.name,color:gr.color})));
+  const rows=opts.map(o=>{ const on=((g.groupId||"")===o.id);
+    return `<div class="ge-type${on?' sel':''}" data-gid="${o.id}"><span class="dot" style="background:${o.color}"></span>${escapeHtml(o.name)}${on?'<span class="chk">✓</span>':''}</div>`; }).join("");
+  menu.innerHTML=`<input id="geName" class="ge-name" type="text" maxlength="40" placeholder="Gastname">
+    <div class="ge-lab">Typ</div><div class="ge-types">${rows}</div>`;
+  const nameInp=menu.querySelector("#geName"); nameInp.value=g.name||"";
+  const commitName=()=>{ const v=nameInp.value.trim(); if(v&&v!==g.name){ g.name=v; save(); renderTables(); renderPool(); } };
+  nameInp.addEventListener("keydown",e=>{ e.stopPropagation(); if(e.key==="Enter"){ e.preventDefault(); commitName(); closeGuestEditor(); } else if(e.key==="Escape"){ closeGuestEditor(); } });
+  nameInp.addEventListener("blur",commitName);
+  menu.querySelectorAll(".ge-type").forEach(it=>{ it.onclick=()=>{ commitName(); g.groupId=it.dataset.gid||null; save(); renderTables(); renderPool(); renderGroups();
+      menu.querySelectorAll(".ge-type").forEach(x=>{ const on=((g.groupId||"")===x.dataset.gid); x.classList.toggle("sel",on); let chk=x.querySelector(".chk"); if(on&&!chk) x.insertAdjacentHTML("beforeend",'<span class="chk">✓</span>'); if(!on&&chk) chk.remove(); }); }; });
+  showPopover(menu,evt);
+  setTimeout(()=>{ nameInp.focus(); nameInp.select(); },0);
+}
+function closeGuestEditor(){ document.getElementById("guesteditor").style.display="none"; }
 
 // ============================================================
 //  SPACE · FLOOR MATERIALS · FEATURE MENU · DECOR
@@ -845,7 +878,7 @@ function wireSeat(seat){
   seat.addEventListener("drop",e=>{ e.preventDefault(); e.stopPropagation(); seat.classList.remove("dragover"); if(dragData&&dragData.type==="guest"){ placeGuestInSeat(dragData,tableId,idx); dragData=null; } });
   seat.addEventListener("dblclick",e=>{ e.stopPropagation(); editSeatInline(seat,tableId,idx); });
   seat.addEventListener("click",e=>{ if(seat.classList.contains("editing"))return; if(!seat.classList.contains("occupied")) editSeatInline(seat,tableId,idx); });
-  seat.addEventListener("contextmenu",e=>{ if(seat.classList.contains("occupied")){ e.preventDefault(); e.stopPropagation(); openGroupMenu(seat.dataset.guestId,e); } });
+  seat.addEventListener("contextmenu",e=>{ if(seat.classList.contains("occupied")){ e.preventDefault(); e.stopPropagation(); openGuestEditor(seat.dataset.guestId,e); } });
 }
 function placeGuestInSeat(drag, tableId, seatIndex){
   const table=state.tables.find(t=>t.id===tableId);
@@ -1008,6 +1041,8 @@ document.addEventListener("click",e=>{
   if(fm.style.display==="block" && !fm.contains(e.target)) closeFeatureMenu();
   const pm=document.getElementById("profilemenu");
   if(pm.style.display==="block" && !pm.contains(e.target) && e.target.id!=="profMore") closeProfileMenu();
+  const ge=document.getElementById("guesteditor");
+  if(ge.style.display==="block" && !ge.contains(e.target)) closeGuestEditor();
 });
 
 // ============================================================
