@@ -787,7 +787,7 @@ function loadActive(){
   renderProfiles(); renderAll();
   setTimeout(()=>{ zoom=Math.min(1,Math.max(fitZoom(),0.5)); applyZoom(); },30);
 }
-function switchProfile(id){ save(); profiles.activeId=id; saveProfilesIdx(); loadActive(); }
+function switchProfile(id){ save(); profiles.activeId=id; saveProfilesIdx(); loadActive(); if(typeof pullIfNewer==="function") pullIfNewer(); }
 function newProfile(){
   const name=prompt("New profile — couple / event name:\n(e.g. \"Andreas & Lina's wedding\")","");
   if(name===null) return;
@@ -1101,15 +1101,49 @@ function fmtTime(ms){ try{ return ms? new Date(ms).toLocaleString():"—"; }catc
 async function cloudCreate(){
   const r=await fetch(SYNC_URL+"/plans",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(planPayload())});
   const d=await r.json(); if(!r.ok||!d.id) throw new Error(d.error||"upload failed");
-  const cur=currentProfile(); cur.cloudId=d.id; cur.editKey=d.editKey; cur.cloudUpdated=d.updated; saveProfilesIdx(); return d;
+  const cur=currentProfile(); cur.cloudId=d.id; cur.editKey=d.editKey; cur.cloudUpdated=d.updated; saveProfilesIdx(); registerUnderCode(cur); return d;
 }
 async function cloudPush(){
   const cur=currentProfile(); if(!cur.cloudId||!cur.editKey) return cloudCreate();
   const r=await fetch(SYNC_URL+"/plans/"+cur.cloudId,{method:"PUT",headers:{"Content-Type":"application/json","X-Edit-Key":cur.editKey},body:JSON.stringify(planPayload())});
   const d=await r.json(); if(!r.ok) throw new Error(d.error||"update failed");
-  cur.cloudUpdated=d.updated; saveProfilesIdx(); return d;
+  cur.cloudUpdated=d.updated; saveProfilesIdx(); registerUnderCode(cur); return d;
 }
 async function cloudFetch(id){ const r=await fetch(SYNC_URL+"/plans/"+id); const d=await r.json(); if(!r.ok) throw new Error(d.error||"not found"); return d; }
+
+// ---- sync code: link all my devices under one shared code ----
+const SYNC_CODE_KEY="weddingSeatingPlanner.syncCode";
+function getSyncCode(){ try{ return localStorage.getItem(SYNC_CODE_KEY)||""; }catch(e){ return ""; } }
+function setSyncCode(c){ try{ if(c) localStorage.setItem(SYNC_CODE_KEY,c); else localStorage.removeItem(SYNC_CODE_KEY); }catch(e){} }
+function codeUrl(){ return SYNC_URL+"/codes/"+encodeURIComponent(getSyncCode()); }
+async function registerUnderCode(prof){ const code=getSyncCode(); prof=prof||currentProfile(); if(!code||!prof||!prof.cloudId) return;
+  try{ await fetch(codeUrl(),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:prof.cloudId,editKey:prof.editKey,name:prof.name,updated:prof.cloudUpdated})}); }catch(e){} }
+async function registerAllUnderCode(){ const code=getSyncCode(); if(!code) return; for(const p of profiles.profiles){ if(p.cloudId) await registerUnderCode(p); } }
+// Pull the code's plan list and add any that aren't already local profiles (so they appear in the dropdown).
+async function syncFromCode(){ const code=getSyncCode(); if(!code) return 0;
+  let plans; try{ const r=await fetch(codeUrl()); plans=(await r.json()).plans||[]; }catch(e){ return 0; }
+  let added=0;
+  for(const p of plans){ if(profiles.profiles.some(x=>x.cloudId===p.id)) continue;
+    try{ const d=await cloudFetch(p.id); const pid=newProfileId(); const s=d.plan||{}; delete s._profileName;
+      if(s.tables){ if(!s.groups)s.groups=[]; if(!s.features)s.features=defaultFeatures(); if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s); }
+      try{ localStorage.setItem(planKey(pid), JSON.stringify(s.tables? s : defaultState())); }catch(e){}
+      profiles.profiles.push({ id:pid, name:d.name||p.name||"Shared plan", cloudId:p.id, editKey:p.editKey||"", cloudUpdated:d.updated }); added++;
+    }catch(e){}
+  }
+  if(added){ saveProfilesIdx(); renderProfiles(); }
+  return added;
+}
+// Light polling so another device's changes / new plans appear without a manual reload.
+let cloudPoll=null;
+function startCloudPoll(){ if(cloudPoll) return;
+  cloudPoll=setInterval(async()=>{
+    if(cloudTimer) return;                       // a local edit is queued to push — don't clobber it
+    if(getSyncCode()) await syncFromCode();      // pick up newly-added plans
+    const cur=currentProfile(); if(cur&&cur.cloudId){
+      try{ const d=await cloudFetch(cur.cloudId); if(d.updated&&(!cur.cloudUpdated||d.updated>cur.cloudUpdated)){ applyPulledPlan(cur,d); toast("Updated from cloud"); } }catch(e){}
+    }
+  }, 15000);
+}
 function scheduleCloudPush(){
   const cur=(profiles&&profiles.profiles)?currentProfile():null; if(!cur||!cur.cloudId||!cur.editKey) return;
   clearTimeout(cloudTimer); setCloudDot("pending");
@@ -1127,16 +1161,33 @@ function applyPulledPlan(cur, d){
   setTimeout(()=>{ zoom=Math.min(1,Math.max(fitZoom(),0.5)); applyZoom(); },30);
 }
 function renderCloudBody(){
-  const cur=currentProfile(); const body=document.getElementById("cloudBody");
+  const cur=currentProfile(); const body=document.getElementById("cloudBody"); const code=getSyncCode();
+  const codeHtml=`<div style="border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:12px">
+      <div class="mhint">Sync code — enter the <strong>same code on every device</strong> to see all your plans in the dropdown and keep them in sync.</div>
+      <div style="display:flex;gap:8px">
+        <input id="syncCodeInput" placeholder="e.g. andreas-wedding" value="${escapeHtml(code)}" style="flex:1;font-family:monospace;font-size:12px;border:1px solid var(--line);border-radius:8px;padding:8px">
+        <button class="btn primary" id="syncCodeConnect">${code?"Update":"Connect"}</button>
+      </div>
+      ${code?`<div class="mhint" style="margin-top:6px">Connected as <strong>${escapeHtml(code)}</strong> · <a href="#" id="syncCodeRefresh">refresh plans now</a></div>`:""}
+    </div>`;
+  const wire=()=>{
+    document.getElementById("syncCodeConnect").onclick=async()=>{
+      const v=document.getElementById("syncCodeInput").value.trim().toLowerCase().replace(/\s+/g,"-");
+      setSyncCode(v); if(v){ await registerAllUnderCode(); const n=await syncFromCode(); toast(n?("Connected · added "+n+" plan(s)"):"Sync code connected"); } else toast("Sync code cleared");
+      renderCloudBody();
+    };
+    const rf=document.getElementById("syncCodeRefresh"); if(rf) rf.onclick=async(e)=>{ e.preventDefault(); const n=await syncFromCode(); toast(n?("Added "+n+" plan(s)"):"Already up to date"); };
+  };
   if(!cur.cloudId){
-    body.innerHTML=`<div class="mhint">Put this plan online so you can open it on your phone, another computer, or share it with your partner — everyone with the link sees the latest version.</div>
+    body.innerHTML=codeHtml+`<div class="mhint">Put this plan online so you can open it on your phone, another computer, or share it with your partner — everyone with the link sees the latest version.</div>
       <button class="btn primary" id="cloudUpload" style="width:100%;margin-top:4px">☁ Upload &amp; create share link</button>`;
+    wire();
     document.getElementById("cloudUpload").onclick=async()=>{ const b=document.getElementById("cloudUpload"); b.disabled=true; b.textContent="Uploading…";
       try{ await cloudCreate(); setCloudDot("ok"); renderCloudBody(); toast("Plan is online ☁"); }
       catch(e){ b.disabled=false; b.textContent="☁ Upload & create share link"; toast("Upload failed — check connection"); } };
   } else {
     const link=shareLink(cur);
-    body.innerHTML=`<div class="mhint">Anyone with this link can open <strong>and edit</strong> this plan. Your changes here sync automatically.</div>
+    body.innerHTML=codeHtml+`<div class="mhint">Anyone with this link can open <strong>and edit</strong> this plan. Your changes here sync automatically.</div>
       <input id="cloudLink" readonly value="${escapeHtml(link)}" style="width:100%;font-family:monospace;font-size:11px;border:1px solid var(--line);border-radius:8px;padding:8px">
       <div style="display:flex;gap:8px;margin-top:10px">
         <button class="btn primary" id="cloudCopy" style="flex:1">📋 Copy link</button>
@@ -1144,6 +1195,7 @@ function renderCloudBody(){
         <button class="btn" id="cloudPullNow" style="flex:1">⬇ Pull latest</button>
       </div>
       <div class="mhint" style="margin-top:8px">Last synced: ${fmtTime(cur.cloudUpdated)}</div>`;
+    wire();
     document.getElementById("cloudCopy").onclick=()=>copyText(document.getElementById("cloudLink"));
     document.getElementById("cloudPushNow").onclick=async()=>{ try{ await cloudPush(); setCloudDot("ok"); renderCloudBody(); toast("Pushed to cloud"); }catch(e){ toast("Push failed"); } };
     document.getElementById("cloudPullNow").onclick=async()=>{ if(!confirm("Replace this plan with the latest version from the cloud?")) return;
@@ -1253,7 +1305,7 @@ initFloorSelect(); initDecor(); renderProfiles();
 renderAll();
 setTimeout(()=>{ zoom=Math.min(1, Math.max(fitZoom(), 0.5)); applyZoom(); },50);
 // ☁ open a shared link if present, otherwise refresh the active profile from the cloud
-(async()=>{ if(!(await openSharedFromURL())) pullIfNewer(); })();
+(async()=>{ if(!(await openSharedFromURL())) await pullIfNewer(); if(getSyncCode()) await syncFromCode(); startCloudPoll(); })();
 </script>
 </body>
 </html>
