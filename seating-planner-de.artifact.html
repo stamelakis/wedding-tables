@@ -109,6 +109,18 @@
   #groupmenu .gm-item{ display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; }
   #groupmenu .gm-item:hover{ background:#f4f0ea; }
   #groupmenu .gm-item .dot{ width:13px; height:13px; border-radius:50%; border:1px solid rgba(0,0,0,.15); flex:none; }
+  #guesteditor{ width:224px; padding:10px; }
+  #guesteditor .ge-name{ width:100%; box-sizing:border-box; font-size:14px; padding:7px 9px; border:1px solid var(--line); border-radius:8px; margin-bottom:8px; }
+  #guesteditor .ge-lab{ font-size:10px; letter-spacing:.05em; text-transform:uppercase; color:#9a8f7f; margin:0 2px 5px; }
+  #guesteditor .ge-types{ display:flex; flex-direction:column; gap:2px; max-height:210px; overflow:auto; }
+  #guesteditor .ge-type{ display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; }
+  #guesteditor .ge-type:hover{ background:#f4f0ea; }
+  #guesteditor .ge-type.sel{ background:#efe7db; font-weight:600; }
+  #guesteditor .ge-type .dot{ width:13px; height:13px; border-radius:50%; border:1px solid rgba(0,0,0,.15); flex:none; }
+  #guesteditor .ge-type .chk{ margin-left:auto; color:#3aa657; font-weight:700; }
+  .guest-chip .chip-actions{ display:flex; align-items:center; gap:2px; }
+  .guest-chip .edit{ color:#c3b8a4; font-size:13px; padding-left:6px; cursor:pointer; }
+  .guest-chip .edit:hover{ color:#8a6d3b; }
   .toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:9px 16px; border-radius:8px; font-size:13px; opacity:0; transition:.3s; z-index:200; }
   .toast.show{ opacity:.95; }
 
@@ -137,6 +149,54 @@
   .decor-item:hover{ background:#faf6f0; border-color:var(--accent); transform:translateY(-1px); }
   .decor-item .di{ font-size:26px; line-height:1; }
 
+  /* ---------- Mobile & touch ---------- */
+  /* Pointer-drag (tables, decor, resize, rotate) only works on touch if the browser
+     isn't stealing the gesture for scrolling/zooming — hence touch-action:none on the
+     draggable bits, and pan-only on the canvas so our own pinch handler gets the pinch. */
+  #stagewrap{ touch-action:pan-x pan-y; }
+  .table-disc, .feature, .rz, .rot-h, #stageResize{ touch-action:none; }
+  #navBtn{ display:none; min-width:34px; height:30px; padding:0 8px; border:1px solid var(--line); background:#fff; border-radius:7px; cursor:pointer; font-size:15px; line-height:1; flex:none; }
+  #navScrim{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.38); z-index:140; }
+  body.nav-open #navScrim{ display:block; }
+  /* "In hand" guest — the touch replacement for drag & drop */
+  .guest-chip.picked{ outline:2px solid var(--accent); outline-offset:1px; }
+  body.picking .seat:not(.occupied){ border-color:var(--accent); border-style:solid; background:rgba(255,255,255,.85); }
+  #pickbar{ display:none; position:fixed; left:50%; bottom:16px; transform:translateX(-50%); z-index:210;
+    background:#2b2b2b; color:#fff; border-radius:999px; padding:6px 7px 6px 15px; font-size:13px;
+    align-items:center; gap:7px; box-shadow:0 6px 22px rgba(0,0,0,.32); max-width:95vw; }
+  body.picking #pickbar{ display:flex; }
+  body.picking .toast{ bottom:66px; }          /* clear the pick bar */
+  #pickbar .pbname{ font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:32vw; }
+  #pickbar .pbhint{ color:#b9b9b9; white-space:nowrap; }
+  #pickbar button{ border:none; background:rgba(255,255,255,.15); color:#fff; border-radius:999px; padding:6px 11px; font-size:12px; font-family:inherit; cursor:pointer; white-space:nowrap; }
+  #pickbar button:hover{ background:rgba(255,255,255,.28); }
+
+  @media (max-width:820px){
+    body{ height:100dvh; }                       /* dvh: excludes the mobile URL bar */
+    /* Sidebar becomes an off-canvas drawer so the canvas gets the full width */
+    #sidebar{ position:fixed; left:0; top:0; bottom:0; width:86vw; max-width:330px; min-width:0;
+      z-index:150; transform:translateX(-100%); transition:transform .22s ease;
+      box-shadow:0 0 34px rgba(0,0,0,.28); overscroll-behavior:contain; }
+    body.nav-open #sidebar{ transform:none; }
+    #navBtn{ display:block; }
+    #stagewrap{ width:100%; }
+    #topbar{ gap:8px; padding:7px 10px; }
+    #topbar .ttl, #topbar #statLine{ display:none; }
+    #topbar .ctl{ gap:4px; }
+    #topbar .ctl .lbl{ display:none; }
+    #topbar .ctl button{ min-width:32px; height:32px; }   /* comfortable tap targets */
+    .modal{ width:96vw; max-height:88vh; }
+    .decor-grid{ grid-template-columns:repeat(auto-fill,minmax(92px,1fr)); gap:8px; padding:12px; }
+    button.btn{ padding:9px 12px; }
+    .profilebar .pbtn{ width:38px; height:38px; }
+    .guest-chip{ padding:9px 10px; }
+    #pickbar{ bottom:12px; }
+  }
+  @media (max-width:420px){
+    #topbar #zoomLabel{ display:none; }
+    #topbar #zoomFit{ padding:0 6px; font-size:12px; }
+  }
+
   /* ---------- Print ---------- */
   #printarea{ display:none; }
   @media print{
@@ -158,11 +218,9 @@
   #printarea .punassigned{ margin-top:18px; font-size:12.5px; }
 </style>
 
-
-
 <div id="sidebar">
   <h1>💍 Sitzplan</h1>
-  <div class="sub">Namen auf Stühle ziehen · Doppelklick zum Tippen · Rechtsklick für Optionen · ⟳ ziehen zum Drehen</div>
+  <div class="sub">Namen antippen, dann Stuhl antippen (oder ziehen am Computer) · leeren Stuhl antippen zum Tippen · Rechtsklick für Optionen · ⟳ ziehen zum Drehen</div>
   <div class="profilebar">
     <select id="profileSelect" title="Paar / Veranstaltung wechseln"></select>
     <button class="pbtn" id="profNew" title="Neues Profil (Paar / Veranstaltung)">＋</button>
@@ -176,6 +234,7 @@
     <button class="btn" id="printBtn">🖨 Drucken</button>
     <button class="btn" id="exportBtn">Exportieren</button>
     <button class="btn" id="importBtn">Importieren</button>
+    <button class="btn" id="cloudBtn" title="Plan online stellen / geräteübergreifend synchronisieren">☁ Teilen</button>
     <button class="btn danger" id="resetBtn">Zurücksetzen</button>
   </div>
   <div class="section">
@@ -199,7 +258,8 @@
 
 <div id="stagewrap">
   <div id="topbar">
-    <strong>Garten-Layout</strong>
+    <button id="navBtn" title="Gäste &amp; Werkzeuge">☰</button>
+    <strong class="ttl">Garten-Layout</strong>
     <span id="statLine" style="color:#999"></span>
     <span class="spacer"></span>
     <span class="ctl"><span class="lbl">Text</span>
@@ -235,6 +295,7 @@
 </div>
 
 <div id="groupmenu" class="popover"></div>
+<div id="guesteditor" class="popover"></div>
 <div id="featuremenu" class="popover"></div>
 <div id="profilemenu" class="popover"></div>
 <div id="decorModal" class="modal-back">
@@ -270,7 +331,15 @@
     </div>
   </div>
 </div>
+<div id="cloudModal" class="modal-back">
+  <div class="modal">
+    <div class="modal-head"><strong>☁ Plan teilen &amp; synchronisieren</strong><button class="mx" id="cloudClose">✕</button></div>
+    <div id="cloudBody" style="padding:12px 16px"></div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
+<div id="navScrim"></div>
+<div id="pickbar"></div>
 <div id="printarea"></div>
 
 <script>
@@ -278,6 +347,15 @@
 // ============================================================
 //  Wedding Seating Planner — single self-contained file
 // ============================================================
+
+// Embedded builds (artifact / iframe hosts) strip the <head>, taking the viewport meta
+// with it — and without that tag a phone lays the page out at 980px, so none of the
+// mobile CSS below ever applies. Re-add it if it's missing.
+if(!document.querySelector('meta[name=viewport]')){
+  const mv=document.createElement("meta");
+  mv.name="viewport"; mv.content="width=device-width, initial-scale=1.0";
+  (document.head||document.documentElement).appendChild(mv);
+}
 const STORE_KEY = "weddingSeatingPlannerDE.v2";
 const LAYOUT_VERSION = 5;
 const FONT_FAMILY = '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif';
@@ -367,6 +445,9 @@ const DECOR_ITEMS = [
 
 const GROUP_PALETTE = ["#e26d8a","#4a90d9","#3aa657","#e0a030","#8e7cc3","#e0663a","#3ab0a6","#b07cc3","#7c9cc3","#c3a03a"];
 
+// ☁ Cloud-Sync-Backend (Cloudflare Worker + KV)
+const SYNC_URL = "https://wedding-sync.andrewstamelakis.workers.dev";
+
 let profiles = ensureProfiles();
 let state = loadPlan(profiles.activeId) || defaultState();
 let zoom = 1;
@@ -413,7 +494,7 @@ function ensureProfiles(){
   try{ localStorage.setItem(PROFILES_KEY, JSON.stringify(p)); }catch(e){}  // persist so we don't re-migrate on next load
   return p;
 }
-function save(){ try{ localStorage.setItem(planKey(profiles.activeId), JSON.stringify(state)); }catch(e){} }
+function save(){ try{ localStorage.setItem(planKey(profiles.activeId), JSON.stringify(state)); }catch(e){} scheduleCloudPush(); }
 // Version-aware migration — keeps guests / groups / seat assignments (and, from v4 on, table positions).
 function migrateLayout(s){
   const from=s.layoutVersion||0;
@@ -622,10 +703,17 @@ function renderPool(){
     chip.className="guest-chip"; chip.draggable=true; chip.dataset.guestId=id;
     chip.style.borderLeftColor=col; chip.style.background=hexTint(col);
     chip.title=(guestGroup(id)?guestGroup(id).name:"")+statusTitle(id);
-    chip.innerHTML=`<span>${escapeHtml(guestName(id))}${statusTag(id)}</span><span class="x" title="Remove guest">✕</span>`;
+    chip.innerHTML=`<span>${escapeHtml(guestName(id))}${statusTag(id)}</span><span class="chip-actions"><span class="edit" title="Name &amp; Typ bearbeiten">✎</span><span class="x" title="Gast entfernen">✕</span></span>`;
+    if(pick && pick.from==="pool" && pick.guestId===id) chip.classList.add("picked");
     chip.addEventListener("dragstart",e=>{ dragData={type:"guest",guestId:id,from:"pool"}; e.dataTransfer.effectAllowed="move"; });
-    chip.addEventListener("contextmenu",e=>{ e.preventDefault(); openGroupMenu(id,e); });
-    chip.querySelector(".x").addEventListener("click",()=>{ delete state.guests[id]; save(); renderPool(); renderGroups(); toast("Gast entfernt"); });
+    chip.addEventListener("click",e=>{
+      if(e.target.closest(".chip-actions")) return;
+      const same = pick && pick.from==="pool" && pick.guestId===id;
+      setPick(same ? null : {type:"guest",guestId:id,from:"pool"});
+    });
+    chip.addEventListener("contextmenu",e=>{ e.preventDefault(); openGuestEditor(id,e); });
+    chip.querySelector(".edit").addEventListener("click",e=>{ e.stopPropagation(); openGuestEditor(id,e); });
+    chip.querySelector(".x").addEventListener("click",()=>{ if(pick&&pick.guestId===id) setPick(null); delete state.guests[id]; save(); renderPool(); renderGroups(); toast("Gast entfernt"); });
     pool.appendChild(chip);
   });
 }
@@ -687,6 +775,25 @@ function showPopover(menu,evt){
   menu.style.left=x+"px"; menu.style.top=y+"px";
 }
 function closeGroupMenu(){ document.getElementById("groupmenu").style.display="none"; }
+// Kombinierter Name-&-Typ-Editor (aus dem Pool-Chip ✎ / Rechtsklick und von einem platzierten Gast).
+function openGuestEditor(guestId, evt){
+  const g=state.guests[guestId]; if(!g) return;
+  const menu=document.getElementById("guesteditor");
+  const opts=[{id:"",name:"Kein Typ",color:"#ccc"}].concat(state.groups.map(gr=>({id:gr.id,name:gr.name,color:gr.color})));
+  const rows=opts.map(o=>{ const on=((g.groupId||"")===o.id);
+    return `<div class="ge-type${on?' sel':''}" data-gid="${o.id}"><span class="dot" style="background:${o.color}"></span>${escapeHtml(o.name)}${on?'<span class="chk">✓</span>':''}</div>`; }).join("");
+  menu.innerHTML=`<input id="geName" class="ge-name" type="text" maxlength="40" placeholder="Gastname">
+    <div class="ge-lab">Typ</div><div class="ge-types">${rows}</div>`;
+  const nameInp=menu.querySelector("#geName"); nameInp.value=g.name||"";
+  const commitName=()=>{ const v=nameInp.value.trim(); if(v&&v!==g.name){ g.name=v; save(); renderTables(); renderPool(); } };
+  nameInp.addEventListener("keydown",e=>{ e.stopPropagation(); if(e.key==="Enter"){ e.preventDefault(); commitName(); closeGuestEditor(); } else if(e.key==="Escape"){ closeGuestEditor(); } });
+  nameInp.addEventListener("blur",commitName);
+  menu.querySelectorAll(".ge-type").forEach(it=>{ it.onclick=()=>{ commitName(); g.groupId=it.dataset.gid||null; save(); renderTables(); renderPool(); renderGroups();
+      menu.querySelectorAll(".ge-type").forEach(x=>{ const on=((g.groupId||"")===x.dataset.gid); x.classList.toggle("sel",on); let chk=x.querySelector(".chk"); if(on&&!chk) x.insertAdjacentHTML("beforeend",'<span class="chk">✓</span>'); if(!on&&chk) chk.remove(); }); }; });
+  showPopover(menu,evt);
+  setTimeout(()=>{ nameInp.focus(); nameInp.select(); },0);
+}
+function closeGuestEditor(){ document.getElementById("guesteditor").style.display="none"; }
 
 // ============================================================
 //  SPACE · FLOOR MATERIALS · FEATURE MENU · DECOR
@@ -769,9 +876,9 @@ function loadActive(){
   state=loadPlan(profiles.activeId)||defaultState(); uid=state._uid||2001; fontScale=state.seatFontScale||1;
   applyStage(); document.getElementById("stageFloor").value=state.stageMaterial||"grass";
   renderProfiles(); renderAll();
-  setTimeout(()=>{ zoom=Math.min(1,Math.max(fitZoom(),0.5)); applyZoom(); },30);
+  setTimeout(()=>{ zoom=initialZoom(); applyZoom(); },30);
 }
-function switchProfile(id){ save(); profiles.activeId=id; saveProfilesIdx(); loadActive(); }
+function switchProfile(id){ save(); profiles.activeId=id; saveProfilesIdx(); loadActive(); if(typeof pullIfNewer==="function") pullIfNewer(); }
 function newProfile(){
   const name=prompt("Neues Profil — Paar / Veranstaltung:\n(z. B. \"Hochzeit von Andreas & Lina\")","");
   if(name===null) return;
@@ -818,6 +925,76 @@ document.getElementById("profNew").addEventListener("click",newProfile);
 document.getElementById("profMore").addEventListener("click",openProfileMenu);
 
 // ============================================================
+//  MOBILE · TOUCH  (drawer sidebar · tap-to-place · pinch zoom)
+// ============================================================
+const isTouch = window.matchMedia("(pointer:coarse)").matches;
+function isNarrow(){ return window.innerWidth<=820; }
+
+// ---- sidebar drawer ----
+function setNav(open){ document.body.classList.toggle("nav-open", !!open); }
+document.getElementById("navBtn").addEventListener("click",e=>{ e.stopPropagation(); setNav(!document.body.classList.contains("nav-open")); });
+document.getElementById("navScrim").addEventListener("click",()=>setNav(false));
+
+// ---- tap to place ----
+// HTML5 drag & drop never fires on touch, so on a phone this is the only way to seat
+// anyone. Additive on desktop: clicking a chip previously did nothing.
+let pick=null;   // same shape as dragData: {type,guestId,from,tableId,seatIndex}
+function setPick(p){
+  pick=p||null;
+  document.body.classList.toggle("picking", !!pick);
+  renderPickBar(); renderPool();
+  if(pick && isNarrow()) setNav(false);   // reveal the seats they're aiming at
+}
+function renderPickBar(){
+  const bar=document.getElementById("pickbar");
+  if(!pick){ bar.innerHTML=""; return; }
+  bar.innerHTML=`<span class="pbname">${escapeHtml(guestName(pick.guestId))}</span>
+    <span class="pbhint">→ Platz antippen</span>
+    <button data-a="edit" title="Name &amp; Typ bearbeiten">✎</button>
+    ${pick.from==="seat"?`<button data-a="unseat">↩ Vom Platz</button>`:""}
+    <button data-a="cancel" title="Abbrechen">✕</button>`;
+  bar.querySelector('[data-a="cancel"]').onclick=()=>setPick(null);
+  bar.querySelector('[data-a="edit"]').onclick=()=>{
+    const r=bar.getBoundingClientRect();
+    openGuestEditor(pick.guestId,{clientX:r.left,clientY:r.top});
+  };
+  const un=bar.querySelector('[data-a="unseat"]');
+  if(un) un.onclick=()=>{
+    const t=state.tables.find(x=>x.id===pick.tableId);
+    if(t) t.seats[pick.seatIndex]=null;
+    setPick(null); save(); renderTables(); renderPool();
+  };
+}
+function placePick(tableId,seatIndex){ const p=pick; setPick(null); placeGuestInSeat(p,tableId,seatIndex); }
+
+// ---- pinch to zoom on the canvas (two fingers) ----
+(function(){
+  const wrap=document.getElementById("stagewrap");
+  const dist=t=>Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY);
+  const mid =t=>({ x:(t[0].clientX+t[1].clientX)/2, y:(t[0].clientY+t[1].clientY)/2 });
+  let base=null;
+  wrap.addEventListener("touchstart",e=>{
+    if(e.touches.length!==2){ base=null; return; }
+    const m=mid(e.touches), r=wrap.getBoundingClientRect();
+    base={ d:dist(e.touches)||1, z:zoom,
+           cx:(wrap.scrollLeft+m.x-r.left)/zoom, cy:(wrap.scrollTop+m.y-r.top)/zoom };
+  },{passive:true});
+  wrap.addEventListener("touchmove",e=>{
+    if(!base||e.touches.length!==2) return;
+    e.preventDefault();
+    zoom=clamp(base.z*dist(e.touches)/base.d, 0.2, 2.5);
+    applyZoom();
+    const m=mid(e.touches), r=wrap.getBoundingClientRect();
+    wrap.scrollLeft=base.cx*zoom-(m.x-r.left);   // hold the pinch centre under the fingers
+    wrap.scrollTop =base.cy*zoom-(m.y-r.top);
+  },{passive:false});
+  const end=e=>{ if(e.touches.length<2) base=null; };
+  wrap.addEventListener("touchend",end,{passive:true});
+  wrap.addEventListener("touchcancel",end,{passive:true});
+})();
+window.addEventListener("resize",()=>applyZoom());
+
+// ============================================================
 //  DRAG & DROP (guests between seats / pool)
 // ============================================================
 let dragData=null;
@@ -828,8 +1005,14 @@ function wireSeat(seat){
   seat.addEventListener("dragleave",()=>seat.classList.remove("dragover"));
   seat.addEventListener("drop",e=>{ e.preventDefault(); e.stopPropagation(); seat.classList.remove("dragover"); if(dragData&&dragData.type==="guest"){ placeGuestInSeat(dragData,tableId,idx); dragData=null; } });
   seat.addEventListener("dblclick",e=>{ e.stopPropagation(); editSeatInline(seat,tableId,idx); });
-  seat.addEventListener("click",e=>{ if(seat.classList.contains("editing"))return; if(!seat.classList.contains("occupied")) editSeatInline(seat,tableId,idx); });
-  seat.addEventListener("contextmenu",e=>{ if(seat.classList.contains("occupied")){ e.preventDefault(); e.stopPropagation(); openGroupMenu(seat.dataset.guestId,e); } });
+  seat.addEventListener("click",e=>{
+    if(seat.classList.contains("editing"))return;
+    if(pick){ e.stopPropagation(); placePick(tableId,idx); return; }
+    if(!seat.classList.contains("occupied")) editSeatInline(seat,tableId,idx);
+    // Touch only: on desktop the two clicks inside a dblclick would flicker the pick bar.
+    else if(isTouch) setPick({type:"guest",guestId:seat.dataset.guestId,from:"seat",tableId,seatIndex:idx});
+  });
+  seat.addEventListener("contextmenu",e=>{ if(seat.classList.contains("occupied")){ e.preventDefault(); e.stopPropagation(); openGuestEditor(seat.dataset.guestId,e); } });
 }
 function placeGuestInSeat(drag, tableId, seatIndex){
   const table=state.tables.find(t=>t.id===tableId);
@@ -944,7 +1127,7 @@ function makeStageResizable(h){
     e.preventDefault(); e.stopPropagation(); h.setPointerCapture(e.pointerId);
     const sx=e.clientX, sy=e.clientY, ow=state.stage.w, oh=state.stage.h;
     function mv(ev){ state.stage.w=Math.max(700,Math.round(ow+(ev.clientX-sx)/zoom)); state.stage.h=Math.max(600,Math.round(oh+(ev.clientY-sy)/zoom)); stage.style.width=state.stage.w+"px"; stage.style.height=state.stage.h+"px"; }
-    function up(){ h.releasePointerCapture(e.pointerId); h.removeEventListener("pointermove",mv); h.removeEventListener("pointerup",up); save(); }
+    function up(){ h.releasePointerCapture(e.pointerId); h.removeEventListener("pointermove",mv); h.removeEventListener("pointerup",up); applyZoom(); save(); }
     h.addEventListener("pointermove",mv); h.addEventListener("pointerup",up);
   });
 }
@@ -992,6 +1175,8 @@ document.addEventListener("click",e=>{
   if(fm.style.display==="block" && !fm.contains(e.target)) closeFeatureMenu();
   const pm=document.getElementById("profilemenu");
   if(pm.style.display==="block" && !pm.contains(e.target) && e.target.id!=="profMore") closeProfileMenu();
+  const ge=document.getElementById("guesteditor");
+  if(ge.style.display==="block" && !ge.contains(e.target)) closeGuestEditor();
 });
 
 // ============================================================
@@ -1072,6 +1257,145 @@ document.getElementById("importPaste").addEventListener("click",()=>{
 document.getElementById("importFile").addEventListener("click",pickImportFile);
 document.getElementById("importClose").addEventListener("click",()=>document.getElementById("importModal").classList.remove("open"));
 ["exportModal","importModal"].forEach(id=>document.getElementById(id).addEventListener("click",e=>{ if(e.target.id===id) e.currentTarget.classList.remove("open"); }));
+
+// ============================================================
+//  ☁ CLOUD-SYNC  (Cloudflare Worker: POST/GET/PUT /plans)
+// ============================================================
+let cloudTimer=null;
+function planPayload(){ const cur=currentProfile(); return { name:cur.name, plan:{...state, _profileName:cur.name} }; }
+function shareLink(cur){ return location.origin+location.pathname+"?plan="+cur.cloudId+(cur.editKey?("&key="+cur.editKey):""); }
+function setCloudDot(st){ const b=document.getElementById("cloudBtn"); if(!b) return;
+  b.textContent={ok:"☁ Synchronisiert",pending:"☁ Speichert…",err:"☁ Offline"}[st]||"☁ Teilen"; }
+function fmtTime(ms){ try{ return ms? new Date(ms).toLocaleString():"—"; }catch(e){ return "—"; } }
+async function cloudCreate(){
+  const r=await fetch(SYNC_URL+"/plans",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(planPayload())});
+  const d=await r.json(); if(!r.ok||!d.id) throw new Error(d.error||"upload failed");
+  const cur=currentProfile(); cur.cloudId=d.id; cur.editKey=d.editKey; cur.cloudUpdated=d.updated; saveProfilesIdx(); registerUnderCode(cur); return d;
+}
+async function cloudPush(){
+  const cur=currentProfile(); if(!cur.cloudId||!cur.editKey) return cloudCreate();
+  const r=await fetch(SYNC_URL+"/plans/"+cur.cloudId,{method:"PUT",headers:{"Content-Type":"application/json","X-Edit-Key":cur.editKey},body:JSON.stringify(planPayload())});
+  const d=await r.json(); if(!r.ok) throw new Error(d.error||"update failed");
+  cur.cloudUpdated=d.updated; saveProfilesIdx(); registerUnderCode(cur); return d;
+}
+async function cloudFetch(id){ const r=await fetch(SYNC_URL+"/plans/"+id); const d=await r.json(); if(!r.ok) throw new Error(d.error||"not found"); return d; }
+
+// ---- Sync-Code: alle Geräte unter einem gemeinsamen Code verbinden ----
+const SYNC_CODE_KEY="weddingSeatingPlanner.syncCode";
+function getSyncCode(){ try{ return localStorage.getItem(SYNC_CODE_KEY)||""; }catch(e){ return ""; } }
+function setSyncCode(c){ try{ if(c) localStorage.setItem(SYNC_CODE_KEY,c); else localStorage.removeItem(SYNC_CODE_KEY); }catch(e){} }
+function codeUrl(){ return SYNC_URL+"/codes/"+encodeURIComponent(getSyncCode()); }
+async function registerUnderCode(prof){ const code=getSyncCode(); prof=prof||currentProfile(); if(!code||!prof||!prof.cloudId) return;
+  try{ await fetch(codeUrl(),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:prof.cloudId,editKey:prof.editKey,name:prof.name,updated:prof.cloudUpdated})}); }catch(e){} }
+async function registerAllUnderCode(){ const code=getSyncCode(); if(!code) return; for(const p of profiles.profiles){ if(p.cloudId) await registerUnderCode(p); } }
+async function syncFromCode(){ const code=getSyncCode(); if(!code) return 0;
+  let plans; try{ const r=await fetch(codeUrl()); plans=(await r.json()).plans||[]; }catch(e){ return 0; }
+  let added=0;
+  for(const p of plans){ if(profiles.profiles.some(x=>x.cloudId===p.id)) continue;
+    try{ const d=await cloudFetch(p.id); const pid=newProfileId(); const s=d.plan||{}; delete s._profileName;
+      if(s.tables){ if(!s.groups)s.groups=[]; if(!s.features)s.features=defaultFeatures(); if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s); }
+      try{ localStorage.setItem(planKey(pid), JSON.stringify(s.tables? s : defaultState())); }catch(e){}
+      profiles.profiles.push({ id:pid, name:d.name||p.name||"Geteilter Plan", cloudId:p.id, editKey:p.editKey||"", cloudUpdated:d.updated }); added++;
+    }catch(e){}
+  }
+  if(added){ saveProfilesIdx(); renderProfiles(); }
+  return added;
+}
+let cloudPoll=null;
+function startCloudPoll(){ if(cloudPoll) return;
+  cloudPoll=setInterval(async()=>{
+    if(cloudTimer) return;
+    if(getSyncCode()) await syncFromCode();
+    const cur=currentProfile(); if(cur&&cur.cloudId){
+      try{ const d=await cloudFetch(cur.cloudId); if(d.updated&&(!cur.cloudUpdated||d.updated>cur.cloudUpdated)){ applyPulledPlan(cur,d); toast("Aus der Cloud aktualisiert"); } }catch(e){}
+    }
+  }, 15000);
+}
+function scheduleCloudPush(){
+  const cur=(profiles&&profiles.profiles)?currentProfile():null; if(!cur||!cur.cloudId||!cur.editKey) return;
+  clearTimeout(cloudTimer); setCloudDot("pending");
+  cloudTimer=setTimeout(async()=>{ try{ await cloudPush(); setCloudDot("ok"); }catch(e){ setCloudDot("err"); } }, 2500);
+}
+// Aktuelles Profil durch die aus der Cloud geladene Version ersetzen.
+function applyPulledPlan(cur, d){
+  const s=d.plan||{}; delete s._profileName;
+  if(s.tables){ if(!s.groups)s.groups=[]; if(!s.features)s.features=defaultFeatures(); if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s); }
+  state=s.tables? s : defaultState(); uid=state._uid||2001; fontScale=state.seatFontScale||1;
+  if(d.name) cur.name=d.name; cur.cloudUpdated=d.updated; saveProfilesIdx();
+  try{ localStorage.setItem(planKey(cur.id), JSON.stringify(state)); }catch(e){}
+  applyStage(); document.getElementById("stageFloor").value=state.stageMaterial||"grass";
+  renderProfiles(); renderAll();
+  setTimeout(()=>{ zoom=initialZoom(); applyZoom(); },30);
+}
+function renderCloudBody(){
+  const cur=currentProfile(); const body=document.getElementById("cloudBody"); const code=getSyncCode();
+  const codeHtml=`<div style="border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:12px">
+      <div class="mhint">Sync-Code — gib auf <strong>jedem Gerät denselben Code</strong> ein, um alle deine Pläne im Dropdown zu sehen und synchron zu halten.</div>
+      <div style="display:flex;gap:8px">
+        <input id="syncCodeInput" placeholder="z. B. andreas-hochzeit" value="${escapeHtml(code)}" style="flex:1;font-family:monospace;font-size:12px;border:1px solid var(--line);border-radius:8px;padding:8px">
+        <button class="btn primary" id="syncCodeConnect">${code?"Aktualisieren":"Verbinden"}</button>
+      </div>
+      ${code?`<div class="mhint" style="margin-top:6px">Verbunden als <strong>${escapeHtml(code)}</strong> · <a href="#" id="syncCodeRefresh">Pläne jetzt aktualisieren</a></div>`:""}
+    </div>`;
+  const wire=()=>{
+    document.getElementById("syncCodeConnect").onclick=async()=>{
+      const v=document.getElementById("syncCodeInput").value.trim().toLowerCase().replace(/\s+/g,"-");
+      setSyncCode(v); if(v){ await registerAllUnderCode(); const n=await syncFromCode(); toast(n?("Verbunden · "+n+" Plan/Pläne hinzugefügt"):"Sync-Code verbunden"); } else toast("Sync-Code gelöscht");
+      renderCloudBody();
+    };
+    const rf=document.getElementById("syncCodeRefresh"); if(rf) rf.onclick=async(e)=>{ e.preventDefault(); const n=await syncFromCode(); toast(n?(n+" Plan/Pläne hinzugefügt"):"Bereits aktuell"); };
+  };
+  if(!cur.cloudId){
+    body.innerHTML=codeHtml+`<div class="mhint">Lade diesen Plan online, um ihn auf dem Handy, einem anderen Computer oder mit deinem Partner zu öffnen — alle mit dem Link sehen die neuste Version.</div>
+      <button class="btn primary" id="cloudUpload" style="width:100%;margin-top:4px">☁ Hochladen &amp; Link erstellen</button>`;
+    wire();
+    document.getElementById("cloudUpload").onclick=async()=>{ const b=document.getElementById("cloudUpload"); b.disabled=true; b.textContent="Wird hochgeladen…";
+      try{ await cloudCreate(); setCloudDot("ok"); renderCloudBody(); toast("Plan ist online ☁"); }
+      catch(e){ b.disabled=false; b.textContent="☁ Hochladen & Link erstellen"; toast("Upload fehlgeschlagen — Verbindung prüfen"); } };
+  } else {
+    const link=shareLink(cur);
+    body.innerHTML=codeHtml+`<div class="mhint">Jeder mit diesem Link kann den Plan öffnen <strong>und bearbeiten</strong>. Deine Änderungen werden automatisch synchronisiert.</div>
+      <input id="cloudLink" readonly value="${escapeHtml(link)}" style="width:100%;font-family:monospace;font-size:11px;border:1px solid var(--line);border-radius:8px;padding:8px">
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn primary" id="cloudCopy" style="flex:1">📋 Link kopieren</button>
+        <button class="btn" id="cloudPushNow" style="flex:1">⬆ Jetzt senden</button>
+        <button class="btn" id="cloudPullNow" style="flex:1">⬇ Neuste laden</button>
+      </div>
+      <div class="mhint" style="margin-top:8px">Zuletzt synchronisiert: ${fmtTime(cur.cloudUpdated)}</div>`;
+    wire();
+    document.getElementById("cloudCopy").onclick=()=>copyText(document.getElementById("cloudLink"));
+    document.getElementById("cloudPushNow").onclick=async()=>{ try{ await cloudPush(); setCloudDot("ok"); renderCloudBody(); toast("In die Cloud gesendet"); }catch(e){ toast("Senden fehlgeschlagen"); } };
+    document.getElementById("cloudPullNow").onclick=async()=>{ if(!confirm("Diesen Plan durch die neuste Version aus der Cloud ersetzen?")) return;
+      try{ const d=await cloudFetch(cur.cloudId); applyPulledPlan(cur,d); renderCloudBody(); toast("Neuste Version aus der Cloud geladen"); }catch(e){ toast("Laden fehlgeschlagen"); } };
+  }
+}
+// Einen ?plan=<id>[&key=<editKey>]-Link öffnen: laden und als Profil übernehmen.
+async function openSharedFromURL(){
+  const params=new URLSearchParams(location.search); const id=params.get("plan"); if(!id) return false;
+  const key=params.get("key")||"";
+  try{ history.replaceState(null,"",location.origin+location.pathname); }catch(e){}
+  try{
+    const d=await cloudFetch(id);
+    let prof=profiles.profiles.find(p=>p.cloudId===id);
+    if(prof){ profiles.activeId=prof.id; if(key&&!prof.editKey) prof.editKey=key; saveProfilesIdx();
+      applyPulledPlan(prof,d); setCloudDot("ok"); toast("Geteilten Plan geöffnet (synchronisiert)"); }
+    else{ const pid=newProfileId(); prof={ id:pid, name:d.name||"Geteilter Plan", cloudId:id, editKey:key, cloudUpdated:d.updated };
+      profiles.profiles.push(prof); profiles.activeId=pid; saveProfilesIdx();
+      applyPulledPlan(prof,d); setCloudDot("ok"); toast('Geteilten Plan geöffnet: "'+(d.name||"Plan")+'"'); }
+  }catch(e){ toast("Konnte den geteilten Link nicht öffnen"); }
+  return true;
+}
+// Beim normalen Laden das aktive Profil aktualisieren, wenn die Cloud-Version neuer ist.
+async function pullIfNewer(){
+  const cur=currentProfile(); if(!cur||!cur.cloudId){ return; }
+  try{ const d=await cloudFetch(cur.cloudId);
+    if(d.updated && (!cur.cloudUpdated || d.updated>cur.cloudUpdated)){ applyPulledPlan(cur,d); toast("Aus der Cloud aktualisiert"); }
+    setCloudDot("ok");
+  }catch(e){ setCloudDot("err"); }
+}
+document.getElementById("cloudBtn").addEventListener("click",()=>{ renderCloudBody(); document.getElementById("cloudModal").classList.add("open"); });
+document.getElementById("cloudClose").addEventListener("click",()=>document.getElementById("cloudModal").classList.remove("open"));
+document.getElementById("cloudModal").addEventListener("click",e=>{ if(e.target.id==="cloudModal") e.currentTarget.classList.remove("open"); });
 // Merge a guest LIST into the current plan (adds to the pool; never touches tables or existing guests)
 document.getElementById("importListBtn").addEventListener("click",()=>{
   const inp=document.createElement("input"); inp.type="file"; inp.accept="application/json,.json";
@@ -1130,7 +1454,18 @@ document.getElementById("fontUp").addEventListener("click",()=>setFontScale(font
 document.getElementById("fontDown").addEventListener("click",()=>setFontScale(fontScale-0.15));
 
 function fitZoom(){ const wrap=document.getElementById("stagewrap"); return Math.min(1,(wrap.clientWidth-60)/state.stage.w,(wrap.clientHeight-100)/state.stage.h); }
-function applyZoom(){ stage.style.transform=`scale(${zoom})`; document.getElementById("zoomLabel").textContent=Math.round(zoom*100)+"%"; }
+// Opening view. The 0.5 floor keeps names readable on a desktop; on a phone that floor
+// would drop you into a corner with no context, so allow fitting much further out — you
+// get the whole garden at a glance and pinch in from there.
+function initialZoom(){ return Math.min(1, Math.max(fitZoom(), isNarrow()?0.2:0.5)); }
+function applyZoom(){
+  stage.style.transform=`scale(${zoom})`;
+  // scale() doesn't change layout size, so the scroll area would stay at 100% and the
+  // far edge would be unreachable when zoomed in — pad the margin box out to match.
+  const m=isNarrow()?12:24, w=(state.stage&&state.stage.w)||1700, h=(state.stage&&state.stage.h)||1360;
+  stage.style.margin=`${m}px ${Math.round(m+w*(zoom-1))}px ${Math.round(m+h*(zoom-1))}px ${m}px`;
+  document.getElementById("zoomLabel").textContent=Math.round(zoom*100)+"%";
+}
 document.getElementById("zoomIn").addEventListener("click",()=>{ zoom=Math.min(2.5,zoom+0.1); applyZoom(); });
 document.getElementById("zoomOut").addEventListener("click",()=>{ zoom=Math.max(0.2,zoom-0.05); applyZoom(); });
 document.getElementById("zoomFit").addEventListener("click",()=>{ zoom=fitZoom(); applyZoom(); });
@@ -1146,5 +1481,7 @@ const _stageResize=document.createElement("div"); _stageResize.id="stageResize";
 stage.appendChild(_stageResize); makeStageResizable(_stageResize);
 initFloorSelect(); initDecor(); renderProfiles();
 renderAll();
-setTimeout(()=>{ zoom=Math.min(1, Math.max(fitZoom(), 0.5)); applyZoom(); },50);
+setTimeout(()=>{ zoom=initialZoom(); applyZoom(); },50);
+// ☁ geteilten Link öffnen, falls vorhanden — sonst aktives Profil aus der Cloud aktualisieren
+(async()=>{ if(!(await openSharedFromURL())) await pullIfNewer(); if(getSyncCode()) await syncFromCode(); startCloudPoll(); })();
 </script>

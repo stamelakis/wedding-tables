@@ -155,6 +155,54 @@
   .decor-item:hover{ background:#faf6f0; border-color:var(--accent); transform:translateY(-1px); }
   .decor-item .di{ font-size:26px; line-height:1; }
 
+  /* ---------- Mobile & touch ---------- */
+  /* Pointer-drag (tables, decor, resize, rotate) only works on touch if the browser
+     isn't stealing the gesture for scrolling/zooming — hence touch-action:none on the
+     draggable bits, and pan-only on the canvas so our own pinch handler gets the pinch. */
+  #stagewrap{ touch-action:pan-x pan-y; }
+  .table-disc, .feature, .rz, .rot-h, #stageResize{ touch-action:none; }
+  #navBtn{ display:none; min-width:34px; height:30px; padding:0 8px; border:1px solid var(--line); background:#fff; border-radius:7px; cursor:pointer; font-size:15px; line-height:1; flex:none; }
+  #navScrim{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.38); z-index:140; }
+  body.nav-open #navScrim{ display:block; }
+  /* "In hand" guest — the touch replacement for drag & drop */
+  .guest-chip.picked{ outline:2px solid var(--accent); outline-offset:1px; }
+  body.picking .seat:not(.occupied){ border-color:var(--accent); border-style:solid; background:rgba(255,255,255,.85); }
+  #pickbar{ display:none; position:fixed; left:50%; bottom:16px; transform:translateX(-50%); z-index:210;
+    background:#2b2b2b; color:#fff; border-radius:999px; padding:6px 7px 6px 15px; font-size:13px;
+    align-items:center; gap:7px; box-shadow:0 6px 22px rgba(0,0,0,.32); max-width:95vw; }
+  body.picking #pickbar{ display:flex; }
+  body.picking .toast{ bottom:66px; }          /* clear the pick bar */
+  #pickbar .pbname{ font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:32vw; }
+  #pickbar .pbhint{ color:#b9b9b9; white-space:nowrap; }
+  #pickbar button{ border:none; background:rgba(255,255,255,.15); color:#fff; border-radius:999px; padding:6px 11px; font-size:12px; font-family:inherit; cursor:pointer; white-space:nowrap; }
+  #pickbar button:hover{ background:rgba(255,255,255,.28); }
+
+  @media (max-width:820px){
+    body{ height:100dvh; }                       /* dvh: excludes the mobile URL bar */
+    /* Sidebar becomes an off-canvas drawer so the canvas gets the full width */
+    #sidebar{ position:fixed; left:0; top:0; bottom:0; width:86vw; max-width:330px; min-width:0;
+      z-index:150; transform:translateX(-100%); transition:transform .22s ease;
+      box-shadow:0 0 34px rgba(0,0,0,.28); overscroll-behavior:contain; }
+    body.nav-open #sidebar{ transform:none; }
+    #navBtn{ display:block; }
+    #stagewrap{ width:100%; }
+    #topbar{ gap:8px; padding:7px 10px; }
+    #topbar .ttl, #topbar #statLine{ display:none; }
+    #topbar .ctl{ gap:4px; }
+    #topbar .ctl .lbl{ display:none; }
+    #topbar .ctl button{ min-width:32px; height:32px; }   /* comfortable tap targets */
+    .modal{ width:96vw; max-height:88vh; }
+    .decor-grid{ grid-template-columns:repeat(auto-fill,minmax(92px,1fr)); gap:8px; padding:12px; }
+    button.btn{ padding:9px 12px; }
+    .profilebar .pbtn{ width:38px; height:38px; }
+    .guest-chip{ padding:9px 10px; }
+    #pickbar{ bottom:12px; }
+  }
+  @media (max-width:420px){
+    #topbar #zoomLabel{ display:none; }
+    #topbar #zoomFit{ padding:0 6px; font-size:12px; }
+  }
+
   /* ---------- Print ---------- */
   #printarea{ display:none; }
   @media print{
@@ -180,7 +228,7 @@
 
 <div id="sidebar">
   <h1>💍 Sitzplan</h1>
-  <div class="sub">Namen auf Stühle ziehen · Doppelklick zum Tippen · Rechtsklick für Optionen · ⟳ ziehen zum Drehen</div>
+  <div class="sub">Namen antippen, dann Stuhl antippen (oder ziehen am Computer) · leeren Stuhl antippen zum Tippen · Rechtsklick für Optionen · ⟳ ziehen zum Drehen</div>
   <div class="profilebar">
     <select id="profileSelect" title="Paar / Veranstaltung wechseln"></select>
     <button class="pbtn" id="profNew" title="Neues Profil (Paar / Veranstaltung)">＋</button>
@@ -218,7 +266,8 @@
 
 <div id="stagewrap">
   <div id="topbar">
-    <strong>Garten-Layout</strong>
+    <button id="navBtn" title="Gäste &amp; Werkzeuge">☰</button>
+    <strong class="ttl">Garten-Layout</strong>
     <span id="statLine" style="color:#999"></span>
     <span class="spacer"></span>
     <span class="ctl"><span class="lbl">Text</span>
@@ -297,6 +346,8 @@
   </div>
 </div>
 <div class="toast" id="toast"></div>
+<div id="navScrim"></div>
+<div id="pickbar"></div>
 <div id="printarea"></div>
 
 <script>
@@ -304,6 +355,15 @@
 // ============================================================
 //  Wedding Seating Planner — single self-contained file
 // ============================================================
+
+// Embedded builds (artifact / iframe hosts) strip the <head>, taking the viewport meta
+// with it — and without that tag a phone lays the page out at 980px, so none of the
+// mobile CSS below ever applies. Re-add it if it's missing.
+if(!document.querySelector('meta[name=viewport]')){
+  const mv=document.createElement("meta");
+  mv.name="viewport"; mv.content="width=device-width, initial-scale=1.0";
+  (document.head||document.documentElement).appendChild(mv);
+}
 const STORE_KEY = "weddingSeatingPlannerDE.v2";
 const LAYOUT_VERSION = 5;
 const FONT_FAMILY = '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif';
@@ -652,10 +712,16 @@ function renderPool(){
     chip.style.borderLeftColor=col; chip.style.background=hexTint(col);
     chip.title=(guestGroup(id)?guestGroup(id).name:"")+statusTitle(id);
     chip.innerHTML=`<span>${escapeHtml(guestName(id))}${statusTag(id)}</span><span class="chip-actions"><span class="edit" title="Name &amp; Typ bearbeiten">✎</span><span class="x" title="Gast entfernen">✕</span></span>`;
+    if(pick && pick.from==="pool" && pick.guestId===id) chip.classList.add("picked");
     chip.addEventListener("dragstart",e=>{ dragData={type:"guest",guestId:id,from:"pool"}; e.dataTransfer.effectAllowed="move"; });
+    chip.addEventListener("click",e=>{
+      if(e.target.closest(".chip-actions")) return;
+      const same = pick && pick.from==="pool" && pick.guestId===id;
+      setPick(same ? null : {type:"guest",guestId:id,from:"pool"});
+    });
     chip.addEventListener("contextmenu",e=>{ e.preventDefault(); openGuestEditor(id,e); });
     chip.querySelector(".edit").addEventListener("click",e=>{ e.stopPropagation(); openGuestEditor(id,e); });
-    chip.querySelector(".x").addEventListener("click",()=>{ delete state.guests[id]; save(); renderPool(); renderGroups(); toast("Gast entfernt"); });
+    chip.querySelector(".x").addEventListener("click",()=>{ if(pick&&pick.guestId===id) setPick(null); delete state.guests[id]; save(); renderPool(); renderGroups(); toast("Gast entfernt"); });
     pool.appendChild(chip);
   });
 }
@@ -818,7 +884,7 @@ function loadActive(){
   state=loadPlan(profiles.activeId)||defaultState(); uid=state._uid||2001; fontScale=state.seatFontScale||1;
   applyStage(); document.getElementById("stageFloor").value=state.stageMaterial||"grass";
   renderProfiles(); renderAll();
-  setTimeout(()=>{ zoom=Math.min(1,Math.max(fitZoom(),0.5)); applyZoom(); },30);
+  setTimeout(()=>{ zoom=initialZoom(); applyZoom(); },30);
 }
 function switchProfile(id){ save(); profiles.activeId=id; saveProfilesIdx(); loadActive(); if(typeof pullIfNewer==="function") pullIfNewer(); }
 function newProfile(){
@@ -867,6 +933,76 @@ document.getElementById("profNew").addEventListener("click",newProfile);
 document.getElementById("profMore").addEventListener("click",openProfileMenu);
 
 // ============================================================
+//  MOBILE · TOUCH  (drawer sidebar · tap-to-place · pinch zoom)
+// ============================================================
+const isTouch = window.matchMedia("(pointer:coarse)").matches;
+function isNarrow(){ return window.innerWidth<=820; }
+
+// ---- sidebar drawer ----
+function setNav(open){ document.body.classList.toggle("nav-open", !!open); }
+document.getElementById("navBtn").addEventListener("click",e=>{ e.stopPropagation(); setNav(!document.body.classList.contains("nav-open")); });
+document.getElementById("navScrim").addEventListener("click",()=>setNav(false));
+
+// ---- tap to place ----
+// HTML5 drag & drop never fires on touch, so on a phone this is the only way to seat
+// anyone. Additive on desktop: clicking a chip previously did nothing.
+let pick=null;   // same shape as dragData: {type,guestId,from,tableId,seatIndex}
+function setPick(p){
+  pick=p||null;
+  document.body.classList.toggle("picking", !!pick);
+  renderPickBar(); renderPool();
+  if(pick && isNarrow()) setNav(false);   // reveal the seats they're aiming at
+}
+function renderPickBar(){
+  const bar=document.getElementById("pickbar");
+  if(!pick){ bar.innerHTML=""; return; }
+  bar.innerHTML=`<span class="pbname">${escapeHtml(guestName(pick.guestId))}</span>
+    <span class="pbhint">→ Platz antippen</span>
+    <button data-a="edit" title="Name &amp; Typ bearbeiten">✎</button>
+    ${pick.from==="seat"?`<button data-a="unseat">↩ Vom Platz</button>`:""}
+    <button data-a="cancel" title="Abbrechen">✕</button>`;
+  bar.querySelector('[data-a="cancel"]').onclick=()=>setPick(null);
+  bar.querySelector('[data-a="edit"]').onclick=()=>{
+    const r=bar.getBoundingClientRect();
+    openGuestEditor(pick.guestId,{clientX:r.left,clientY:r.top});
+  };
+  const un=bar.querySelector('[data-a="unseat"]');
+  if(un) un.onclick=()=>{
+    const t=state.tables.find(x=>x.id===pick.tableId);
+    if(t) t.seats[pick.seatIndex]=null;
+    setPick(null); save(); renderTables(); renderPool();
+  };
+}
+function placePick(tableId,seatIndex){ const p=pick; setPick(null); placeGuestInSeat(p,tableId,seatIndex); }
+
+// ---- pinch to zoom on the canvas (two fingers) ----
+(function(){
+  const wrap=document.getElementById("stagewrap");
+  const dist=t=>Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY);
+  const mid =t=>({ x:(t[0].clientX+t[1].clientX)/2, y:(t[0].clientY+t[1].clientY)/2 });
+  let base=null;
+  wrap.addEventListener("touchstart",e=>{
+    if(e.touches.length!==2){ base=null; return; }
+    const m=mid(e.touches), r=wrap.getBoundingClientRect();
+    base={ d:dist(e.touches)||1, z:zoom,
+           cx:(wrap.scrollLeft+m.x-r.left)/zoom, cy:(wrap.scrollTop+m.y-r.top)/zoom };
+  },{passive:true});
+  wrap.addEventListener("touchmove",e=>{
+    if(!base||e.touches.length!==2) return;
+    e.preventDefault();
+    zoom=clamp(base.z*dist(e.touches)/base.d, 0.2, 2.5);
+    applyZoom();
+    const m=mid(e.touches), r=wrap.getBoundingClientRect();
+    wrap.scrollLeft=base.cx*zoom-(m.x-r.left);   // hold the pinch centre under the fingers
+    wrap.scrollTop =base.cy*zoom-(m.y-r.top);
+  },{passive:false});
+  const end=e=>{ if(e.touches.length<2) base=null; };
+  wrap.addEventListener("touchend",end,{passive:true});
+  wrap.addEventListener("touchcancel",end,{passive:true});
+})();
+window.addEventListener("resize",()=>applyZoom());
+
+// ============================================================
 //  DRAG & DROP (guests between seats / pool)
 // ============================================================
 let dragData=null;
@@ -877,7 +1013,13 @@ function wireSeat(seat){
   seat.addEventListener("dragleave",()=>seat.classList.remove("dragover"));
   seat.addEventListener("drop",e=>{ e.preventDefault(); e.stopPropagation(); seat.classList.remove("dragover"); if(dragData&&dragData.type==="guest"){ placeGuestInSeat(dragData,tableId,idx); dragData=null; } });
   seat.addEventListener("dblclick",e=>{ e.stopPropagation(); editSeatInline(seat,tableId,idx); });
-  seat.addEventListener("click",e=>{ if(seat.classList.contains("editing"))return; if(!seat.classList.contains("occupied")) editSeatInline(seat,tableId,idx); });
+  seat.addEventListener("click",e=>{
+    if(seat.classList.contains("editing"))return;
+    if(pick){ e.stopPropagation(); placePick(tableId,idx); return; }
+    if(!seat.classList.contains("occupied")) editSeatInline(seat,tableId,idx);
+    // Touch only: on desktop the two clicks inside a dblclick would flicker the pick bar.
+    else if(isTouch) setPick({type:"guest",guestId:seat.dataset.guestId,from:"seat",tableId,seatIndex:idx});
+  });
   seat.addEventListener("contextmenu",e=>{ if(seat.classList.contains("occupied")){ e.preventDefault(); e.stopPropagation(); openGuestEditor(seat.dataset.guestId,e); } });
 }
 function placeGuestInSeat(drag, tableId, seatIndex){
@@ -993,7 +1135,7 @@ function makeStageResizable(h){
     e.preventDefault(); e.stopPropagation(); h.setPointerCapture(e.pointerId);
     const sx=e.clientX, sy=e.clientY, ow=state.stage.w, oh=state.stage.h;
     function mv(ev){ state.stage.w=Math.max(700,Math.round(ow+(ev.clientX-sx)/zoom)); state.stage.h=Math.max(600,Math.round(oh+(ev.clientY-sy)/zoom)); stage.style.width=state.stage.w+"px"; stage.style.height=state.stage.h+"px"; }
-    function up(){ h.releasePointerCapture(e.pointerId); h.removeEventListener("pointermove",mv); h.removeEventListener("pointerup",up); save(); }
+    function up(){ h.releasePointerCapture(e.pointerId); h.removeEventListener("pointermove",mv); h.removeEventListener("pointerup",up); applyZoom(); save(); }
     h.addEventListener("pointermove",mv); h.addEventListener("pointerup",up);
   });
 }
@@ -1191,7 +1333,7 @@ function applyPulledPlan(cur, d){
   try{ localStorage.setItem(planKey(cur.id), JSON.stringify(state)); }catch(e){}
   applyStage(); document.getElementById("stageFloor").value=state.stageMaterial||"grass";
   renderProfiles(); renderAll();
-  setTimeout(()=>{ zoom=Math.min(1,Math.max(fitZoom(),0.5)); applyZoom(); },30);
+  setTimeout(()=>{ zoom=initialZoom(); applyZoom(); },30);
 }
 function renderCloudBody(){
   const cur=currentProfile(); const body=document.getElementById("cloudBody"); const code=getSyncCode();
@@ -1320,7 +1462,18 @@ document.getElementById("fontUp").addEventListener("click",()=>setFontScale(font
 document.getElementById("fontDown").addEventListener("click",()=>setFontScale(fontScale-0.15));
 
 function fitZoom(){ const wrap=document.getElementById("stagewrap"); return Math.min(1,(wrap.clientWidth-60)/state.stage.w,(wrap.clientHeight-100)/state.stage.h); }
-function applyZoom(){ stage.style.transform=`scale(${zoom})`; document.getElementById("zoomLabel").textContent=Math.round(zoom*100)+"%"; }
+// Opening view. The 0.5 floor keeps names readable on a desktop; on a phone that floor
+// would drop you into a corner with no context, so allow fitting much further out — you
+// get the whole garden at a glance and pinch in from there.
+function initialZoom(){ return Math.min(1, Math.max(fitZoom(), isNarrow()?0.2:0.5)); }
+function applyZoom(){
+  stage.style.transform=`scale(${zoom})`;
+  // scale() doesn't change layout size, so the scroll area would stay at 100% and the
+  // far edge would be unreachable when zoomed in — pad the margin box out to match.
+  const m=isNarrow()?12:24, w=(state.stage&&state.stage.w)||1700, h=(state.stage&&state.stage.h)||1360;
+  stage.style.margin=`${m}px ${Math.round(m+w*(zoom-1))}px ${Math.round(m+h*(zoom-1))}px ${m}px`;
+  document.getElementById("zoomLabel").textContent=Math.round(zoom*100)+"%";
+}
 document.getElementById("zoomIn").addEventListener("click",()=>{ zoom=Math.min(2.5,zoom+0.1); applyZoom(); });
 document.getElementById("zoomOut").addEventListener("click",()=>{ zoom=Math.max(0.2,zoom-0.05); applyZoom(); });
 document.getElementById("zoomFit").addEventListener("click",()=>{ zoom=fitZoom(); applyZoom(); });
@@ -1336,7 +1489,7 @@ const _stageResize=document.createElement("div"); _stageResize.id="stageResize";
 stage.appendChild(_stageResize); makeStageResizable(_stageResize);
 initFloorSelect(); initDecor(); renderProfiles();
 renderAll();
-setTimeout(()=>{ zoom=Math.min(1, Math.max(fitZoom(), 0.5)); applyZoom(); },50);
+setTimeout(()=>{ zoom=initialZoom(); applyZoom(); },50);
 // ☁ geteilten Link öffnen, falls vorhanden — sonst aktives Profil aus der Cloud aktualisieren
 (async()=>{ if(!(await openSharedFromURL())) await pullIfNewer(); if(getSyncCode()) await syncFromCode(); startCloudPoll(); })();
 </script>
