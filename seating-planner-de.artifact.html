@@ -347,6 +347,15 @@
 // ============================================================
 //  Wedding Seating Planner — single self-contained file
 // ============================================================
+
+// Embedded builds (artifact / iframe hosts) strip the <head>, taking the viewport meta
+// with it — and without that tag a phone lays the page out at 980px, so none of the
+// mobile CSS below ever applies. Re-add it if it's missing.
+if(!document.querySelector('meta[name=viewport]')){
+  const mv=document.createElement("meta");
+  mv.name="viewport"; mv.content="width=device-width, initial-scale=1.0";
+  (document.head||document.documentElement).appendChild(mv);
+}
 const STORE_KEY = "weddingSeatingPlannerDE.v2";
 const LAYOUT_VERSION = 5;
 const FONT_FAMILY = '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif';
