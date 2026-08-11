@@ -94,7 +94,10 @@
   .seat.editing input{ color:#333; }
 
   /* popovers */
-  .popover{ position:fixed; z-index:100; background:#fff; border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.18); padding:10px; font-size:13px; display:none; }
+  .popover{ position:fixed; z-index:250; background:#fff; border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.18); padding:10px; font-size:13px; display:none; }  /* above the mobile drawer (150) + scrim (140) */
+  .feat-gear{ position:absolute; left:-9px; top:-9px; width:22px; height:22px; border-radius:50%; background:#fff; border:1px solid var(--line); box-shadow:0 1px 4px rgba(0,0,0,.2); display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer; z-index:3; touch-action:manipulation; }
+  .group-pill{ touch-action:manipulation; }
+  .group-pill .gmore{ margin-left:2px; color:#999; font-weight:700; padding:0 2px; cursor:pointer; }
   #tablemenu{ width:220px; }
   #tablemenu h3{ font-size:13px; margin-bottom:8px; }
   #tablemenu .row{ display:flex; align-items:center; gap:6px; margin-bottom:8px; }
@@ -364,27 +367,20 @@ const PBASE="weddingSeatingPlannerDE";
 const PROFILES_KEY=PBASE+".profiles";
 
 // 27 round-table centres on the 1700 x 1360 garden (block of tables above, columns flanking the floor)
+// A clean, generic starter layout (12 round tables + a head table) — new plans begin here.
 const DEFAULT_POSITIONS = [
-  [360,190],[555,190],[750,190],[945,190],[1140,190],[1335,190],[1530,190],
-  [360,360],[555,360],[750,360],[945,360],[1140,360],[1335,360],[1530,360],
-  [360,530],[555,530],[750,530],[945,530],[1140,530],[1335,530],[1530,530],
-  [360,720],[360,900],[360,1080],
-  [1530,720],[1530,900],[1530,1080],
+  [420,250],[720,250],[1020,250],[1320,250],
+  [420,500],[720,500],[1020,500],[1320,500],
+  [420,750],[720,750],[1020,750],[1320,750],
 ];
 
 // Garden features — movable & resizable. kind: "zone" (a floor/surface area), "prop" (an item card),
 // "marker" (dark box), "label" (text badge). Zones carry a material; props carry an icon.
 function defaultFeatures(){ return [
-  {id:"f-pil1",  kind:"marker", x:400, y:95,  w:34, h:34, label:""},
-  {id:"f-pil2",  kind:"marker", x:520, y:95,  w:34, h:34, label:""},
-  {id:"f-ent",   kind:"label",  x:460, y:55,  w:172,h:26, label:"Eingang"},
-  {id:"f-kiosk", kind:"prop",   x:720, y:70,  w:150,h:70, label:"Willkommensdrink", icon:"🍹"},
-  {id:"f-lake1", kind:"zone",   x:150, y:320, w:100,h:190,label:"See", material:"water"},
-  {id:"f-deck",  kind:"zone",   x:150, y:460, w:122,h:92, label:"Einzug des Paares", material:"wood"},
-  {id:"f-lake2", kind:"zone",   x:150, y:600, w:100,h:190,label:"", material:"water"},
-  {id:"f-floor", kind:"zone",   x:945, y:925, w:450,h:450,label:"Tanzfläche", material:"parquet"},
-  {id:"f-dj",    kind:"marker", x:120, y:1300,w:78, h:34, label:"DJ"},
-  {id:"f-stools",kind:"marker", x:1560,y:95,  w:130,h:30, label:"Hocker"},
+  {id:"f-ent",   kind:"label",  x:870, y:70,   w:172,h:26, label:"Eingang / Gäste"},
+  {id:"f-kiosk", kind:"prop",   x:1150,y:80,   w:150,h:70, label:"Empfangsgetränk", icon:"🍹"},
+  {id:"f-floor", kind:"zone",   x:870, y:960,  w:460,h:340,label:"Tanzfläche", material:"parquet"},
+  {id:"f-dj",    kind:"marker", x:1210,y:960,  w:78, h:34, label:"DJ"},
 ]; }
 // Convert an old (cls/text) feature to the new model, preserving position & size.
 function upgradeFeature(f){
@@ -478,7 +474,7 @@ function loadProfilesIdx(){ try{ const p=JSON.parse(localStorage.getItem(PROFILE
 function saveProfilesIdx(){ try{ localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles)); }catch(e){} }
 function loadPlan(id){
   try{ const s=JSON.parse(localStorage.getItem(planKey(id)));
-    if(s&&s.tables){ if(!s.groups)s.groups=[]; if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s); return s; }
+    if(s&&s.tables){ sanitizePlan(s); if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s); return s; }
   }catch(e){}
   return null;
 }
@@ -521,9 +517,25 @@ function guestColor(id){ const g=guestGroup(id); return g? g.color : "#b5835a"; 
 function hexTint(hex){ return hex+"22"; }
 function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._to); t._to=setTimeout(()=>t.classList.remove("show"),1600); }
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+// Colours and icons from cloud/imported plans are interpolated into HTML, so clamp them to safe shapes
+// on ingest (a shared plan is attacker-controlled): colours to a hex literal, icons to a short markup-free string.
+function safeColor(c){ return (typeof c==="string" && /^#[0-9a-fA-F]{3,8}$/.test(c)) ? c : "#b5835a"; }
+function safeIcon(s){ s=String(s==null?"📦":s).replace(/[<>&"'`]/g,""); return s.slice(0,4)||"📦"; }
+function sanitizePlan(s){ if(!s||typeof s!=="object") return s;
+    // security: neutralise attacker-controlled colours/icons from shared/imported plans
+    if(Array.isArray(s.groups)) s.groups.forEach(g=>{ if(g&&typeof g==="object") g.color=safeColor(g.color); });
+    if(Array.isArray(s.features)) s.features.forEach(f=>{ if(f&&typeof f==="object"&&"icon" in f) f.icon=safeIcon(f.icon); });
+    // robustness: a malformed plan (bad cloud pull / hand-edited import) must never crash a render (H-9)
+    if(!Array.isArray(s.tables)) s.tables=[];
+    if(!s.guests||typeof s.guests!=="object"||Array.isArray(s.guests)) s.guests={};
+    if(!Array.isArray(s.groups)) s.groups=[];
+    if(!Array.isArray(s.features)) s.features=defaultFeatures();
+    if(!s.stage||typeof s.stage!=="object"||typeof s.stage.w!=="number"||typeof s.stage.h!=="number") s.stage={w:2100,h:1400};
+    if(typeof s.stageMaterial!=="string") s.stageMaterial="grass";
+  return s; }
 function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
-// guest status (πιθανή/πούλο) + free-text note (city · age)
-const STATUS_TXT={ probable:"unsicher", cut:"gestrichen" };
+// guest status + free-text note (e.g. city · age)
+const STATUS_TXT={ probable:"evtl.", cut:"gestrichen" };
 function gStatus(id){ return state.guests[id]?.status || "confirmed"; }
 function gNote(id){ return state.guests[id]?.note || ""; }
 function statusTitle(id){ const s=gStatus(id); const n=gNote(id); return (STATUS_TXT[s]?` · ⚠ ${STATUS_TXT[s]}`:"") + (n?` · ${n}`:""); }
@@ -549,7 +561,7 @@ function renderFeatures(){
       applyMaterial(el, f.material||"grass");
       if(f.label){ const l=document.createElement("div"); l.className="zlabel"; l.textContent=f.label; el.appendChild(l); }
     } else if(f.kind==="prop"){
-      el.innerHTML=`<div class="picon">${f.icon||"📦"}</div>${f.label?`<div class="plabel">${escapeHtml(f.label)}</div>`:""}`;
+      el.innerHTML=`<div class="picon">${escapeHtml(f.icon||"📦")}</div>${f.label?`<div class="plabel">${escapeHtml(f.label)}</div>`:""}`;
     } else {
       el.textContent=f.label||"";
     }
@@ -559,7 +571,11 @@ function renderFeatures(){
     const roth=document.createElement("div"); roth.className="rot-h"; roth.style.left="50%"; roth.style.top="-24px"; roth.style.transform="translateX(-50%)"; el.appendChild(roth);
     makeRotatable(roth, el, f, ()=>{ el.style.transform=`translate(-50%,-50%) rotate(${f.rot||0}deg)`; });
     el.addEventListener("contextmenu",e=>{ e.preventDefault(); e.stopPropagation(); openFeatureMenu(f,e); });
-    el.title="Ziehen zum Verschieben · Ecke zum Skalieren · ⟳ zum Drehen · Rechtsklick für Oberfläche / Ebene / Löschen";
+    const fg=document.createElement("div"); fg.className="feat-gear"; fg.textContent="⚙"; fg.title="Fläche / Ebene / löschen";
+    fg.addEventListener("pointerdown",e=>e.stopPropagation());   // don't start a drag from the gear
+    fg.addEventListener("click",e=>{ e.stopPropagation(); const r=fg.getBoundingClientRect(); openFeatureMenu(f,{clientX:r.left,clientY:r.bottom}); });
+    el.appendChild(fg);
+    el.title="Ziehen zum Verschieben · Ecke zum Skalieren · ⟳ zum Drehen · ⚙ für Fläche / Ebene / löschen";
     makeDraggable(el, el, f, ()=>{});
     stage.appendChild(el);
   });
@@ -570,7 +586,7 @@ function roundGeom(t){
   const n=t.capacity;
   const fs=Math.round(11*fontScale);
   const seatH=fs+10;
-  const need=BASE_SLOT/(2*Math.sin(Math.PI/n));
+  const need = n<2 ? BASE_SLOT : BASE_SLOT/(2*Math.sin(Math.PI/n));   // n=1 would divide by ~0 and explode the ring
   const ringR=Math.max(need, 46, seatH*1.2);
   const discR=Math.max(24, ringR - seatH/2 - 6);
   return {n,fs,seatH,ringR,discR};
@@ -673,7 +689,7 @@ function renderGroups(){
   box.appendChild(makeGroupPill({id:null,name:"Keine Gruppe",color:"#cccccc"}, counts, true));
   state.groups.forEach(g=> box.appendChild(makeGroupPill(g, counts, false)) );
   const add=document.createElement("div");
-  add.className="group-pill addgroup"; add.innerHTML="＋ group"; add.title="Add a new group";
+  add.className="group-pill addgroup"; add.innerHTML="＋ Gruppe"; add.title="Neue Gruppe hinzufügen";
   add.addEventListener("click",addGroup); box.appendChild(add);
 }
 function makeGroupPill(g, counts, isNone){
@@ -687,6 +703,8 @@ function makeGroupPill(g, counts, isNone){
     pill.addEventListener("dblclick",e=>{ e.stopPropagation(); renameGroup(g.id); });
     pill.addEventListener("contextmenu",e=>{ e.preventDefault(); editGroup(g.id,e); });
     pill.querySelector(".dot").addEventListener("click",e=>{ e.stopPropagation(); recolorGroup(g.id); });
+    if(isTouch){ const more=document.createElement("span"); more.className="gmore"; more.textContent="⋯"; more.title="Umbenennen / Farbe / löschen";
+      more.addEventListener("click",e=>{ e.stopPropagation(); editGroup(g.id,e); }); pill.appendChild(more); }   // touch has no right-click / reliable dbl-tap
   }
   return pill;
 }
@@ -696,7 +714,7 @@ function renderPool(){
   const assigned=assignedGuestIds();
   const un=Object.keys(state.guests).filter(id=>!assigned.has(id));
   document.getElementById("poolCount").textContent=un.length;
-  if(un.length===0){ pool.innerHTML=`<div class="empty-note">No unassigned guests.<br>Add names above ↑</div>`; return; }
+  if(un.length===0){ pool.innerHTML=`<div class="empty-note">Keine offenen Gäste.<br>Namen oben hinzufügen ↑</div>`; return; }
   un.forEach(id=>{
     const col=guestColor(id);
     const chip=document.createElement("div");
@@ -784,9 +802,9 @@ function openGuestEditor(guestId, evt){
     return `<div class="ge-type${on?' sel':''}" data-gid="${o.id}"><span class="dot" style="background:${o.color}"></span>${escapeHtml(o.name)}${on?'<span class="chk">✓</span>':''}</div>`; }).join("");
   menu.innerHTML=`<input id="geName" class="ge-name" type="text" maxlength="40" placeholder="Gastname">
     <div class="ge-lab">Typ</div><div class="ge-types">${rows}</div>`;
-  const nameInp=menu.querySelector("#geName"); nameInp.value=g.name||"";
-  const commitName=()=>{ const v=nameInp.value.trim(); if(v&&v!==g.name){ g.name=v; save(); renderTables(); renderPool(); } };
-  nameInp.addEventListener("keydown",e=>{ e.stopPropagation(); if(e.key==="Enter"){ e.preventDefault(); commitName(); closeGuestEditor(); } else if(e.key==="Escape"){ closeGuestEditor(); } });
+  const nameInp=menu.querySelector("#geName"); nameInp.value=g.name||""; let cancelled=false;
+  const commitName=()=>{ if(cancelled) return; const v=nameInp.value.trim(); if(v&&v!==g.name){ g.name=v; save(); renderTables(); renderPool(); } };
+  nameInp.addEventListener("keydown",e=>{ e.stopPropagation(); if(e.key==="Enter"){ e.preventDefault(); commitName(); closeGuestEditor(); } else if(e.key==="Escape"){ cancelled=true; closeGuestEditor(); } });   // Escape cancels, doesn't commit
   nameInp.addEventListener("blur",commitName);
   menu.querySelectorAll(".ge-type").forEach(it=>{ it.onclick=()=>{ commitName(); g.groupId=it.dataset.gid||null; save(); renderTables(); renderPool(); renderGroups();
       menu.querySelectorAll(".ge-type").forEach(x=>{ const on=((g.groupId||"")===x.dataset.gid); x.classList.toggle("sel",on); let chk=x.querySelector(".chk"); if(on&&!chk) x.insertAdjacentHTML("beforeend",'<span class="chk">✓</span>'); if(!on&&chk) chk.remove(); }); }; });
@@ -878,7 +896,10 @@ function loadActive(){
   renderProfiles(); renderAll();
   setTimeout(()=>{ zoom=initialZoom(); applyZoom(); },30);
 }
-function switchProfile(id){ save(); profiles.activeId=id; saveProfilesIdx(); loadActive(); if(typeof pullIfNewer==="function") pullIfNewer(); }
+function switchProfile(id){ save();
+  const snap=pendingSnap; if(snap){ pendingSnap=null; clearTimeout(cloudTimer); cloudTimer=null; cloudPush(snap).catch(()=>{}); }  // flush the old plan's pending push first (H-2/H-8)
+  profiles.activeId=id; saveProfilesIdx(); if(typeof setPick==="function") setPick(null); loadActive();
+  if(typeof pullIfNewer==="function") pullIfNewer(); }
 function newProfile(){
   const name=prompt("Neues Profil — Paar / Veranstaltung:\n(z. B. \"Hochzeit von Andreas & Lina\")","");
   if(name===null) return;
@@ -904,8 +925,9 @@ function deleteProfile(){
   profiles.activeId=profiles.profiles[0].id; saveProfilesIdx(); loadActive(); toast("Profil gelöscht");
 }
 function importPlanAsProfile(s, suggestedName){
+  sanitizePlan(s);
   if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s);
-  const name=(s._profileName||suggestedName||"Imported plan"); delete s._profileName;
+  const name=(s._profileName||suggestedName||"Importierter Plan"); delete s._profileName;
   const id=newProfileId();
   try{ localStorage.setItem(planKey(id), JSON.stringify(s)); }catch(e){}
   profiles.profiles.push({id, name}); profiles.activeId=id; saveProfilesIdx(); loadActive();
@@ -975,6 +997,7 @@ function placePick(tableId,seatIndex){ const p=pick; setPick(null); placeGuestIn
   let base=null;
   wrap.addEventListener("touchstart",e=>{
     if(e.touches.length!==2){ base=null; return; }
+    if(pointerGesture){ base=null; return; }             // a table/decor drag is active — don't fight it with a pinch (M-4)
     const m=mid(e.touches), r=wrap.getBoundingClientRect();
     base={ d:dist(e.touches)||1, z:zoom,
            cx:(wrap.scrollLeft+m.x-r.left)/zoom, cy:(wrap.scrollTop+m.y-r.top)/zoom };
@@ -1016,10 +1039,11 @@ function wireSeat(seat){
 }
 function placeGuestInSeat(drag, tableId, seatIndex){
   const table=state.tables.find(t=>t.id===tableId);
+  if(!table || !drag || !state.guests[drag.guestId]) return;   // stale pick or missing table — ignore instead of crashing (M-1)
   const occupant=table.seats[seatIndex];
   if(drag.from==="seat"){
     const src=state.tables.find(t=>t.id===drag.tableId);
-    src.seats[drag.seatIndex]=occupant;
+    if(src && drag.seatIndex<src.seats.length) src.seats[drag.seatIndex]=occupant;
     table.seats[seatIndex]=drag.guestId;
   }else{
     table.seats[seatIndex]=drag.guestId;
@@ -1041,7 +1065,7 @@ function editSeatInline(seat, tableId, seatIndex){
     save(); renderTables(); renderPool(); renderGroups();
   }
   input.addEventListener("keydown",e=>{
-    if(e.key==="Enter"){ e.preventDefault(); commit(); const ni=(seatIndex+1)%table.capacity; setTimeout(()=>{ const next=stage.querySelector(`.seat[data-table-id="${tableId}"][data-seat-index="${ni}"]`); if(next) editSeatInline(next,tableId,ni); },0); }
+    if(e.key==="Enter"){ e.preventDefault(); commit(); const ni=seatIndex+1; if(ni<table.capacity){ setTimeout(()=>{ const next=stage.querySelector(`.seat[data-table-id="${tableId}"][data-seat-index="${ni}"]`); if(next) editSeatInline(next,tableId,ni); },0); } }  // don't wrap past the last seat and overwrite seat 0
     if(e.key==="Escape"){ renderTables(); }
   });
   input.addEventListener("blur",commit);
@@ -1059,7 +1083,7 @@ function makeDraggable(handleEl, moveEl, obj, onEnd){
     if(e.target.closest(".tgear")||e.target.closest(".rz")||e.target.closest(".rot-h")) return;
     if(e.button!==0) return;
     e.preventDefault(); e.stopPropagation();
-    handleEl.setPointerCapture(e.pointerId);
+    handleEl.setPointerCapture(e.pointerId); pointerGesture=true;
     const sx=e.clientX, sy=e.clientY, ox=obj.x, oy=obj.y; let moved=false;
     const maxX=(state.stage?state.stage.w:1700)-20, maxY=(state.stage?state.stage.h:1360)-20;
     function mv(ev){
@@ -1068,7 +1092,7 @@ function makeDraggable(handleEl, moveEl, obj, onEnd){
       obj.x=clamp(ox+dx, 20, maxX); obj.y=clamp(oy+dy, 20, maxY);
       moveEl.style.left=obj.x+"px"; moveEl.style.top=obj.y+"px";
     }
-    function up(){ handleEl.releasePointerCapture(e.pointerId); handleEl.removeEventListener("pointermove",mv); handleEl.removeEventListener("pointerup",up); if(moved){ save(); if(onEnd)onEnd(); } }
+    function up(){ pointerGesture=false; handleEl.releasePointerCapture(e.pointerId); handleEl.removeEventListener("pointermove",mv); handleEl.removeEventListener("pointerup",up); if(moved){ save(); if(onEnd)onEnd(); } }
     handleEl.addEventListener("pointermove",mv); handleEl.addEventListener("pointerup",up);
   });
 }
@@ -1077,14 +1101,14 @@ function makeResizable(handle, el, f){
   handle.addEventListener("pointerdown",e=>{
     if(e.button!==0) return;
     e.preventDefault(); e.stopPropagation();
-    handle.setPointerCapture(e.pointerId);
+    handle.setPointerCapture(e.pointerId); pointerGesture=true;
     const sx=e.clientX, sy=e.clientY, ow=f.w, oh=f.h, ox=f.x, oy=f.y;
     function mv(ev){
       const nw=Math.max(24, ow+(ev.clientX-sx)/zoom), nh=Math.max(18, oh+(ev.clientY-sy)/zoom);
       f.w=nw; f.h=nh; f.x=ox+(nw-ow)/2; f.y=oy+(nh-oh)/2;
       el.style.width=nw+"px"; el.style.height=nh+"px"; el.style.left=f.x+"px"; el.style.top=f.y+"px";
     }
-    function up(){ handle.releasePointerCapture(e.pointerId); handle.removeEventListener("pointermove",mv); handle.removeEventListener("pointerup",up); save(); }
+    function up(){ pointerGesture=false; handle.releasePointerCapture(e.pointerId); handle.removeEventListener("pointermove",mv); handle.removeEventListener("pointerup",up); save(); }
     handle.addEventListener("pointermove",mv); handle.addEventListener("pointerup",up);
   });
 }
@@ -1092,14 +1116,14 @@ function makeResizable(handle, el, f){
 function makeRotatable(handle, centerEl, obj, applyFn){
   handle.addEventListener("pointerdown",e=>{
     if(e.button!==0) return;
-    e.preventDefault(); e.stopPropagation(); handle.setPointerCapture(e.pointerId);
+    e.preventDefault(); e.stopPropagation(); handle.setPointerCapture(e.pointerId); pointerGesture=true;
     function mv(ev){
       const r=centerEl.getBoundingClientRect(); const cx=r.left+r.width/2, cy=r.top+r.height/2;
       let ang=Math.atan2(ev.clientY-cy, ev.clientX-cx)*180/Math.PI + 90;
       if(ev.shiftKey) ang=Math.round(ang/15)*15;   // hold Shift to snap to 15°
       obj.rot=Math.round(ang); applyFn();
     }
-    function up(){ handle.releasePointerCapture(e.pointerId); handle.removeEventListener("pointermove",mv); handle.removeEventListener("pointerup",up); save(); }
+    function up(){ pointerGesture=false; handle.releasePointerCapture(e.pointerId); handle.removeEventListener("pointermove",mv); handle.removeEventListener("pointerup",up); save(); }
     handle.addEventListener("pointermove",mv); handle.addEventListener("pointerup",up);
   });
 }
@@ -1124,10 +1148,10 @@ function applyStage(){
 function makeStageResizable(h){
   h.addEventListener("pointerdown",e=>{
     if(e.button!==0) return;
-    e.preventDefault(); e.stopPropagation(); h.setPointerCapture(e.pointerId);
+    e.preventDefault(); e.stopPropagation(); h.setPointerCapture(e.pointerId); pointerGesture=true;
     const sx=e.clientX, sy=e.clientY, ow=state.stage.w, oh=state.stage.h;
     function mv(ev){ state.stage.w=Math.max(700,Math.round(ow+(ev.clientX-sx)/zoom)); state.stage.h=Math.max(600,Math.round(oh+(ev.clientY-sy)/zoom)); stage.style.width=state.stage.w+"px"; stage.style.height=state.stage.h+"px"; }
-    function up(){ h.releasePointerCapture(e.pointerId); h.removeEventListener("pointermove",mv); h.removeEventListener("pointerup",up); applyZoom(); save(); }
+    function up(){ pointerGesture=false; h.releasePointerCapture(e.pointerId); h.removeEventListener("pointermove",mv); h.removeEventListener("pointerup",up); applyZoom(); save(); }
     h.addEventListener("pointermove",mv); h.addEventListener("pointerup",up);
   });
 }
@@ -1207,8 +1231,13 @@ document.getElementById("autoSeatBtn").addEventListener("click",()=>{
   save(); renderTables(); renderPool(); toast(idx?`${idx} Gäste gesetzt`:"Keine freien Plätze / keine offenen Gäste");
 });
 document.getElementById("resetBtn").addEventListener("click",()=>{
-  if(!confirm("Alles auf das Standard-Layout zurücksetzen? Dies löscht alle Gäste."))return;
+  const cur=currentProfile();
+  const msg=(cur&&cur.cloudId)
+    ? "Diesen Plan auf das Standard-Layout zurücksetzen? Das löscht alle Gäste — und da er geteilt ist, sehen alle mit dem Link oder Sync-Code die Zurücksetzung ebenfalls."
+    : "Alles auf das Standard-Layout zurücksetzen? Dies löscht alle Gäste.";
+  if(!confirm(msg))return;
   try{ localStorage.removeItem(STORE_KEY); }catch(e){}
+  if(typeof setPick==="function") setPick(null);
   state=defaultState(); uid=state._uid; fontScale=1; applyStage(); document.getElementById("stageFloor").value=state.stageMaterial; save(); renderAll(); toast("Auf Standard-Layout zurückgesetzt");
 });
 function planJSON(){ const cur=currentProfile(); return JSON.stringify({...state, _profileName:cur.name}, null, 2); }
@@ -1233,8 +1262,8 @@ document.getElementById("exportDownload").addEventListener("click",()=>{
 });
 document.getElementById("exportClose").addEventListener("click",()=>document.getElementById("exportModal").classList.remove("open"));
 function doImportData(s, suggested){
-  if(s.tables){ if(!s.groups)s.groups=[]; if(!s.features)s.features=defaultFeatures(); importPlanAsProfile(s, suggested); }
-  else if(s.importGuests){ mergeGuestList(s); }
+  if(s && typeof s==="object" && s.tables){ importPlanAsProfile(s, suggested); }   // importPlanAsProfile sanitises + normalises the shape (H-9)
+  else if(s && typeof s==="object" && s.importGuests){ mergeGuestList(s); }
   else { toast("Keine Plan- oder Gästelisten-Datei"); }
 }
 function pickImportFile(){
@@ -1261,66 +1290,137 @@ document.getElementById("importClose").addEventListener("click",()=>document.get
 // ============================================================
 //  ☁ CLOUD-SYNC  (Cloudflare Worker: POST/GET/PUT /plans)
 // ============================================================
-let cloudTimer=null;
+let cloudTimer=null, pushInFlight=false, pendingSnap=null, pointerGesture=false;
 function planPayload(){ const cur=currentProfile(); return { name:cur.name, plan:{...state, _profileName:cur.name} }; }
-function shareLink(cur){ return location.origin+location.pathname+"?plan="+cur.cloudId+(cur.editKey?("&key="+cur.editKey):""); }
+// Edit key rides in the URL #fragment (never sent to servers / logs); omit it for a view-only link.
+function shareLink(cur, viewOnly){ const base=location.origin+location.pathname+"?plan="+cur.cloudId;
+  return (viewOnly||!cur.editKey)? base : base+"#key="+cur.editKey; }
 function setCloudDot(st){ const b=document.getElementById("cloudBtn"); if(!b) return;
   b.textContent={ok:"☁ Synchronisiert",pending:"☁ Speichert…",err:"☁ Offline"}[st]||"☁ Teilen"; }
 function fmtTime(ms){ try{ return ms? new Date(ms).toLocaleString():"—"; }catch(e){ return "—"; } }
+// A profile can be pushed if we hold its edit key, or a sync code is set (writes go via X-Sync-Code).
+function canPush(prof){ return !!(prof && prof.cloudId && !prof.readonly && (prof.editKey || getSyncCode())); }
+function authHeaders(prof){ const h={"Content-Type":"application/json"};
+  if(prof.editKey) h["X-Edit-Key"]=prof.editKey; else if(getSyncCode()) h["X-Sync-Code"]=getSyncCode(); return h; }
+// True while the user is mid-interaction — used to defer a cloud pull so it can't clobber live edits.
+function interactionBusy(){
+  if(dragData||pick||pointerGesture) return true;
+  const ae=document.activeElement;
+  if(ae && (ae.tagName==="INPUT"||ae.tagName==="TEXTAREA"||ae.isContentEditable)) return true;
+  if(document.querySelector(".modal-back.open")) return true;
+  for(const id of ["groupmenu","guesteditor","tablemenu","featuremenu","profilemenu"]){ const el=document.getElementById(id); if(el && el.style.display==="block") return true; }
+  return false;
+}
 async function cloudCreate(){
   const r=await fetch(SYNC_URL+"/plans",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(planPayload())});
   const d=await r.json(); if(!r.ok||!d.id) throw new Error(d.error||"upload failed");
-  const cur=currentProfile(); cur.cloudId=d.id; cur.editKey=d.editKey; cur.cloudUpdated=d.updated; saveProfilesIdx(); registerUnderCode(cur); return d;
+  const cur=currentProfile(); cur.cloudId=d.id; cur.editKey=d.editKey; cur.cloudUpdated=d.updated; cur.readonly=false; saveProfilesIdx(); registerUnderCode(cur); return d;
 }
-async function cloudPush(){
-  const cur=currentProfile(); if(!cur.cloudId||!cur.editKey) return cloudCreate();
-  const r=await fetch(SYNC_URL+"/plans/"+cur.cloudId,{method:"PUT",headers:{"Content-Type":"application/json","X-Edit-Key":cur.editKey},body:JSON.stringify(planPayload())});
+// Snapshot the plan + its target profile at SCHEDULE time so a later profile switch can't retarget the push.
+function snapshotFor(prof){ return { profId:prof.id, cloudId:prof.cloudId, editKey:prof.editKey||"", name:prof.name,
+  planJSON:JSON.stringify({...state, _profileName:prof.name}), baseUpdated:prof.cloudUpdated||0 }; }
+async function cloudPush(snap){
+  const prof=profiles.profiles.find(p=>p.id===snap.profId); if(!prof||!prof.cloudId) return;
+  const headers={"Content-Type":"application/json"};
+  if(snap.editKey) headers["X-Edit-Key"]=snap.editKey; else if(getSyncCode()) headers["X-Sync-Code"]=getSyncCode();
+  const r=await fetch(SYNC_URL+"/plans/"+snap.cloudId,{method:"PUT",headers,
+    body:JSON.stringify({ name:snap.name, plan:JSON.parse(snap.planJSON), baseUpdated:snap.baseUpdated })});
+  if(r.status===409){                                  // remote is newer — adopt it instead of overwriting
+    const d=await r.json().catch(()=>({}));
+    prof.cloudUpdated=d.updated||prof.cloudUpdated; saveProfilesIdx();
+    if(prof.id===profiles.activeId && d.plan && !interactionBusy()){ applyPulledPlan(prof,d); toast("Neuere Version von einem anderen Gerät geladen"); }
+    return;
+  }
   const d=await r.json(); if(!r.ok) throw new Error(d.error||"update failed");
-  cur.cloudUpdated=d.updated; saveProfilesIdx(); registerUnderCode(cur); return d;
+  prof.cloudUpdated=d.updated; saveProfilesIdx(); registerUnderCode(prof); return d;
 }
 async function cloudFetch(id){ const r=await fetch(SYNC_URL+"/plans/"+id); const d=await r.json(); if(!r.ok) throw new Error(d.error||"not found"); return d; }
+async function cloudDelete(prof){
+  if(!prof||!prof.cloudId) return;
+  try{ await fetch(SYNC_URL+"/plans/"+prof.cloudId,{method:"DELETE",headers:authHeaders(prof)}); }catch(e){}
+  const code=getSyncCode(); if(code){ try{ await fetch(codeUrl(),{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:prof.cloudId})}); }catch(e){} }
+  prof.cloudId=""; prof.editKey=""; prof.cloudUpdated=0; prof.readonly=false; saveProfilesIdx();
+}
 
 // ---- Sync-Code: alle Geräte unter einem gemeinsamen Code verbinden ----
 const SYNC_CODE_KEY="weddingSeatingPlanner.syncCode";
 function getSyncCode(){ try{ return localStorage.getItem(SYNC_CODE_KEY)||""; }catch(e){ return ""; } }
 function setSyncCode(c){ try{ if(c) localStorage.setItem(SYNC_CODE_KEY,c); else localStorage.removeItem(SYNC_CODE_KEY); }catch(e){} }
+// A sync code is a shared secret, so it must be unguessable: 16 chars from a 32-symbol alphabet ≈ 80 bits.
+function randCode(){ const c="abcdefghijkmnpqrstuvwxyz23456789"; let s="";
+  const a=(window.crypto&&crypto.getRandomValues)?crypto.getRandomValues(new Uint8Array(16)):null;
+  for(let i=0;i<16;i++) s+=c[(a?a[i]:Math.floor(Math.random()*256))%c.length]; return s; }
 function codeUrl(){ return SYNC_URL+"/codes/"+encodeURIComponent(getSyncCode()); }
 async function registerUnderCode(prof){ const code=getSyncCode(); prof=prof||currentProfile(); if(!code||!prof||!prof.cloudId) return;
-  try{ await fetch(codeUrl(),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:prof.cloudId,editKey:prof.editKey,name:prof.name,updated:prof.cloudUpdated})}); }catch(e){} }
+  const headers={"Content-Type":"application/json"}; if(prof.editKey) headers["X-Edit-Key"]=prof.editKey;
+  // editKey in the header authorises registration on the new worker; editKey in the body keeps the old worker working
+  // during the deploy window (the new worker ignores the body field and never stores/returns editKeys).
+  try{ await fetch(codeUrl(),{method:"POST",headers,body:JSON.stringify({id:prof.cloudId,editKey:prof.editKey,name:prof.name,updated:prof.cloudUpdated})}); }catch(e){} }
 async function registerAllUnderCode(){ const code=getSyncCode(); if(!code) return; for(const p of profiles.profiles){ if(p.cloudId) await registerUnderCode(p); } }
 async function syncFromCode(){ const code=getSyncCode(); if(!code) return 0;
   let plans; try{ const r=await fetch(codeUrl()); plans=(await r.json()).plans||[]; }catch(e){ return 0; }
   let added=0;
   for(const p of plans){ if(profiles.profiles.some(x=>x.cloudId===p.id)) continue;
-    try{ const d=await cloudFetch(p.id); const pid=newProfileId(); const s=d.plan||{}; delete s._profileName;
-      if(s.tables){ if(!s.groups)s.groups=[]; if(!s.features)s.features=defaultFeatures(); if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s); }
-      try{ localStorage.setItem(planKey(pid), JSON.stringify(s.tables? s : defaultState())); }catch(e){}
+    try{ const d=await cloudFetch(p.id); const s=d.plan||{}; if(!s.tables) continue; delete s._profileName;
+      sanitizePlan(s); if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s);
+      const pid=newProfileId();
+      let stored=true; try{ localStorage.setItem(planKey(pid), JSON.stringify(s)); }catch(e){ stored=false; }
+      if(!stored) continue;                              // don't register a plan we couldn't persist locally
       profiles.profiles.push({ id:pid, name:d.name||p.name||"Geteilter Plan", cloudId:p.id, editKey:p.editKey||"", cloudUpdated:d.updated }); added++;
     }catch(e){}
   }
   if(added){ saveProfilesIdx(); renderProfiles(); }
   return added;
 }
+// Light polling so another device's changes / new plans appear without a manual reload.
 let cloudPoll=null;
 function startCloudPoll(){ if(cloudPoll) return;
   cloudPoll=setInterval(async()=>{
-    if(cloudTimer) return;
-    if(getSyncCode()) await syncFromCode();
+    if(pushInFlight||cloudTimer||pendingSnap) return;    // a local push is pending — don't pull over it
+    if(interactionBusy()) return;                        // user mid-edit — defer the pull
+    if(getSyncCode()) await syncFromCode();              // pick up newly-added plans
     const cur=currentProfile(); if(cur&&cur.cloudId){
-      try{ const d=await cloudFetch(cur.cloudId); if(d.updated&&(!cur.cloudUpdated||d.updated>cur.cloudUpdated)){ applyPulledPlan(cur,d); toast("Aus der Cloud aktualisiert"); } }catch(e){}
+      try{ const d=await cloudFetch(cur.cloudId);
+        if(d.updated && (!cur.cloudUpdated||d.updated>cur.cloudUpdated) && !interactionBusy() && !cloudTimer){ applyPulledPlan(cur,d); toast("Aus der Cloud aktualisiert"); }
+      }catch(e){}
     }
   }, 15000);
 }
+// Debounced push. C-1: the timer is always nulled on fire. H-2: the plan+profile are snapshotted at
+// schedule time, so switching profiles within the debounce window can't retarget the write.
 function scheduleCloudPush(){
-  const cur=(profiles&&profiles.profiles)?currentProfile():null; if(!cur||!cur.cloudId||!cur.editKey) return;
+  const cur=(profiles&&profiles.profiles)?currentProfile():null; if(!canPush(cur)) return;
+  pendingSnap=snapshotFor(cur);
   clearTimeout(cloudTimer); setCloudDot("pending");
-  cloudTimer=setTimeout(async()=>{ try{ await cloudPush(); setCloudDot("ok"); }catch(e){ setCloudDot("err"); } }, 2500);
+  cloudTimer=setTimeout(runPush, 2500);
 }
+async function runPush(){
+  cloudTimer=null; const snap=pendingSnap; if(!snap) return;
+  pushInFlight=true;
+  try{ await cloudPush(snap); pendingSnap=null; setCloudDot("ok"); }
+  catch(e){ setCloudDot("err"); if(navigator.onLine!==false){ clearTimeout(cloudTimer); cloudTimer=setTimeout(runPush, 8000); } }   // retry
+  finally{ pushInFlight=false; }
+}
+// Flush a pending edit synchronously when the tab is hidden/closed so the last edit isn't lost (H-8).
+function flushCloudPush(){
+  if(cloudTimer){ clearTimeout(cloudTimer); cloudTimer=null; }
+  const snap=pendingSnap; if(!snap) return; pendingSnap=null;
+  try{
+    const headers={"Content-Type":"application/json"};
+    if(snap.editKey) headers["X-Edit-Key"]=snap.editKey; else if(getSyncCode()) headers["X-Sync-Code"]=getSyncCode();
+    fetch(SYNC_URL+"/plans/"+snap.cloudId,{method:"PUT",headers,keepalive:true,
+      body:JSON.stringify({ name:snap.name, plan:JSON.parse(snap.planJSON), baseUpdated:snap.baseUpdated })});
+  }catch(e){}
+}
+window.addEventListener("pagehide",flushCloudPush);
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") flushCloudPush(); });
 // Aktuelles Profil durch die aus der Cloud geladene Version ersetzen.
 function applyPulledPlan(cur, d){
   const s=d.plan||{}; delete s._profileName;
-  if(s.tables){ if(!s.groups)s.groups=[]; if(!s.features)s.features=defaultFeatures(); if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s); }
-  state=s.tables? s : defaultState(); uid=state._uid||2001; fontScale=state.seatFontScale||1;
+  if(!s.tables){ cur.cloudUpdated=d.updated; saveProfilesIdx(); return; }   // nothing valid to apply — never blank the plan
+  sanitizePlan(s); if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s);
+  if(typeof setPick==="function") setPick(null); dragData=null;             // drop any in-hand guest from the old plan (H-7)
+  state=s; uid=state._uid||2001; fontScale=state.seatFontScale||1;
   if(d.name) cur.name=d.name; cur.cloudUpdated=d.updated; saveProfilesIdx();
   try{ localStorage.setItem(planKey(cur.id), JSON.stringify(state)); }catch(e){}
   applyStage(); document.getElementById("stageFloor").value=state.stageMaterial||"grass";
@@ -1329,59 +1429,81 @@ function applyPulledPlan(cur, d){
 }
 function renderCloudBody(){
   const cur=currentProfile(); const body=document.getElementById("cloudBody"); const code=getSyncCode();
-  const codeHtml=`<div style="border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:12px">
-      <div class="mhint">Sync-Code — gib auf <strong>jedem Gerät denselben Code</strong> ein, um alle deine Pläne im Dropdown zu sehen und synchron zu halten.</div>
-      <div style="display:flex;gap:8px">
-        <input id="syncCodeInput" placeholder="z. B. andreas-hochzeit" value="${escapeHtml(code)}" style="flex:1;font-family:monospace;font-size:12px;border:1px solid var(--line);border-radius:8px;padding:8px">
-        <button class="btn primary" id="syncCodeConnect">${code?"Aktualisieren":"Verbinden"}</button>
-      </div>
-      ${code?`<div class="mhint" style="margin-top:6px">Verbunden als <strong>${escapeHtml(code)}</strong> · <a href="#" id="syncCodeRefresh">Pläne jetzt aktualisieren</a></div>`:""}
-    </div>`;
+  const codeHtml = code
+    ? `<div style="border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:12px">
+         <div class="mhint">Deine Geräte sind über diesen privaten <strong>Sync-Code</strong> verbunden. Gib ihn auf einem anderen Gerät ein (☁ Teilen → Code einfügen), um dort alle deine Pläne zu sehen und synchron zu halten.</div>
+         <div style="display:flex;gap:8px">
+           <input id="syncCodeShow" readonly value="${escapeHtml(code)}" style="flex:1;font-family:monospace;font-size:12px;border:1px solid var(--line);border-radius:8px;padding:8px">
+           <button class="btn primary" id="syncCodeCopy" title="Code kopieren">📋</button>
+         </div>
+         <div class="mhint" style="margin-top:6px"><a href="#" id="syncCodeRefresh">Pläne jetzt aktualisieren</a> · <a href="#" id="syncCodeDisconnect">dieses Gerät trennen</a></div>
+       </div>`
+    : `<div style="border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:12px">
+         <div class="mhint"><strong>Über all deine Geräte synchronisieren.</strong> Erstelle einen privaten Sync-Code und gib ihn auf dem Handy oder einem anderen Computer ein, um überall alle deine Pläne zu sehen.</div>
+         <button class="btn primary" id="syncCodeGen" style="width:100%;margin-bottom:6px">✨ Sync-Code erstellen</button>
+         <div style="display:flex;gap:8px">
+           <input id="syncCodeInput" placeholder="…oder Code von einem anderen Gerät einfügen" style="flex:1;font-family:monospace;font-size:12px;border:1px solid var(--line);border-radius:8px;padding:8px">
+           <button class="btn" id="syncCodeJoin">Beitreten</button>
+         </div>
+       </div>`;
   const wire=()=>{
-    document.getElementById("syncCodeConnect").onclick=async()=>{
-      const v=document.getElementById("syncCodeInput").value.trim().toLowerCase().replace(/\s+/g,"-");
-      setSyncCode(v); if(v){ await registerAllUnderCode(); const n=await syncFromCode(); toast(n?("Verbunden · "+n+" Plan/Pläne hinzugefügt"):"Sync-Code verbunden"); } else toast("Sync-Code gelöscht");
-      renderCloudBody();
-    };
+    const gen=document.getElementById("syncCodeGen");
+    if(gen) gen.onclick=async()=>{ setSyncCode(randCode()); await registerAllUnderCode(); await syncFromCode(); toast("Sync-Code erstellt"); renderCloudBody(); };
+    const join=document.getElementById("syncCodeJoin");
+    if(join) join.onclick=async()=>{ const v=document.getElementById("syncCodeInput").value.trim().toLowerCase().replace(/\s+/g,"");
+      if(v.length<12){ toast("Dieser Code ist zu kurz"); return; } setSyncCode(v); await registerAllUnderCode(); const n=await syncFromCode(); toast(n?("Beigetreten · "+n+" Plan/Pläne hinzugefügt"):"Beigetreten — synchronisiert"); renderCloudBody(); };
+    const cp=document.getElementById("syncCodeCopy"); if(cp) cp.onclick=()=>copyText(document.getElementById("syncCodeShow"));
     const rf=document.getElementById("syncCodeRefresh"); if(rf) rf.onclick=async(e)=>{ e.preventDefault(); const n=await syncFromCode(); toast(n?(n+" Plan/Pläne hinzugefügt"):"Bereits aktuell"); };
+    const dc=document.getElementById("syncCodeDisconnect"); if(dc) dc.onclick=(e)=>{ e.preventDefault(); if(!confirm("Dieses Gerät von der Synchronisierung trennen? Deine Pläne bleiben hier, sie werden nur nicht mehr mit deinen anderen Geräten synchronisiert.")) return; setSyncCode(""); toast("Getrennt"); renderCloudBody(); };
   };
   if(!cur.cloudId){
-    body.innerHTML=codeHtml+`<div class="mhint">Lade diesen Plan online, um ihn auf dem Handy, einem anderen Computer oder mit deinem Partner zu öffnen — alle mit dem Link sehen die neuste Version.</div>
-      <button class="btn primary" id="cloudUpload" style="width:100%;margin-top:4px">☁ Hochladen &amp; Link erstellen</button>`;
+    body.innerHTML=codeHtml+`<div class="mhint">Stelle diesen Plan online, um ihn auf dem Handy, einem anderen Computer oder mit deinem Partner zu öffnen.</div>
+      <button class="btn primary" id="cloudUpload" style="width:100%;margin-top:4px">☁ Hochladen &amp; Links erstellen</button>`;
     wire();
     document.getElementById("cloudUpload").onclick=async()=>{ const b=document.getElementById("cloudUpload"); b.disabled=true; b.textContent="Wird hochgeladen…";
       try{ await cloudCreate(); setCloudDot("ok"); renderCloudBody(); toast("Plan ist online ☁"); }
-      catch(e){ b.disabled=false; b.textContent="☁ Hochladen & Link erstellen"; toast("Upload fehlgeschlagen — Verbindung prüfen"); } };
+      catch(e){ b.disabled=false; b.textContent="☁ Hochladen & Links erstellen"; toast("Upload fehlgeschlagen — Verbindung prüfen"); } };
   } else {
-    const link=shareLink(cur);
-    body.innerHTML=codeHtml+`<div class="mhint">Jeder mit diesem Link kann den Plan öffnen <strong>und bearbeiten</strong>. Deine Änderungen werden automatisch synchronisiert.</div>
-      <input id="cloudLink" readonly value="${escapeHtml(link)}" style="width:100%;font-family:monospace;font-size:11px;border:1px solid var(--line);border-radius:8px;padding:8px">
-      <div style="display:flex;gap:8px;margin-top:10px">
-        <button class="btn primary" id="cloudCopy" style="flex:1">📋 Link kopieren</button>
+    const editLink=shareLink(cur,false), viewLink=shareLink(cur,true), canEdit=canPush(cur)||!!cur.editKey;
+    body.innerHTML=codeHtml+`
+      ${cur.editKey?`<div class="mhint" style="font-weight:600">Bearbeitungslink — öffnet &amp; synchronisiert (kann den Plan ändern)</div>
+      <input id="cloudLink" readonly value="${escapeHtml(editLink)}" style="width:100%;font-family:monospace;font-size:11px;border:1px solid var(--line);border-radius:8px;padding:8px">`:""}
+      <div class="mhint" style="margin-top:8px;font-weight:600">Nur-Lese-Link — zum Ansehen, nicht Bearbeiten</div>
+      <input id="cloudViewLink" readonly value="${escapeHtml(viewLink)}" style="width:100%;font-family:monospace;font-size:11px;border:1px solid var(--line);border-radius:8px;padding:8px">
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+        ${cur.editKey?`<button class="btn primary" id="cloudCopy" style="flex:1;min-width:120px">📋 Bearbeitungslink kopieren</button>`:""}
+        <button class="btn" id="cloudCopyView" style="flex:1;min-width:120px">📋 Nur-Lese-Link kopieren</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
         <button class="btn" id="cloudPushNow" style="flex:1">⬆ Jetzt senden</button>
         <button class="btn" id="cloudPullNow" style="flex:1">⬇ Neuste laden</button>
+        <button class="btn danger" id="cloudRemove" style="flex:1">🗑 Aus Cloud entfernen</button>
       </div>
-      <div class="mhint" style="margin-top:8px">Zuletzt synchronisiert: ${fmtTime(cur.cloudUpdated)}</div>`;
+      <div class="mhint" style="margin-top:8px">Zuletzt synchronisiert: ${fmtTime(cur.cloudUpdated)}${canEdit?"":" · <em>nur Lesezugriff auf diesem Gerät</em>"}</div>`;
     wire();
-    document.getElementById("cloudCopy").onclick=()=>copyText(document.getElementById("cloudLink"));
-    document.getElementById("cloudPushNow").onclick=async()=>{ try{ await cloudPush(); setCloudDot("ok"); renderCloudBody(); toast("In die Cloud gesendet"); }catch(e){ toast("Senden fehlgeschlagen"); } };
+    const cc=document.getElementById("cloudCopy"); if(cc) cc.onclick=()=>copyText(document.getElementById("cloudLink"));
+    document.getElementById("cloudCopyView").onclick=()=>copyText(document.getElementById("cloudViewLink"));
+    document.getElementById("cloudPushNow").onclick=async()=>{ const c2=currentProfile(); if(!canPush(c2)){ toast("Dieser Plan ist hier nur lesbar"); return; }
+      try{ await cloudPush(snapshotFor(c2)); setCloudDot("ok"); renderCloudBody(); toast("In die Cloud gesendet"); }catch(e){ toast("Senden fehlgeschlagen"); } };
     document.getElementById("cloudPullNow").onclick=async()=>{ if(!confirm("Diesen Plan durch die neuste Version aus der Cloud ersetzen?")) return;
       try{ const d=await cloudFetch(cur.cloudId); applyPulledPlan(cur,d); renderCloudBody(); toast("Neuste Version aus der Cloud geladen"); }catch(e){ toast("Laden fehlgeschlagen"); } };
+    document.getElementById("cloudRemove").onclick=async()=>{ if(!confirm("Diesen Plan aus der Cloud entfernen? Er bleibt auf diesem Gerät, wird aber nicht mehr synchronisiert und die Freigabe-Links funktionieren nicht mehr.")) return;
+      await cloudDelete(currentProfile()); setCloudDot(); renderCloudBody(); toast("Aus der Cloud entfernt"); };
   }
 }
 // Einen ?plan=<id>[&key=<editKey>]-Link öffnen: laden und als Profil übernehmen.
 async function openSharedFromURL(){
   const params=new URLSearchParams(location.search); const id=params.get("plan"); if(!id) return false;
-  const key=params.get("key")||"";
+  const key=(location.hash.match(/(?:^#|&)key=([^&]+)/)||[])[1] || params.get("key") || "";   // key now rides in the #fragment
   try{ history.replaceState(null,"",location.origin+location.pathname); }catch(e){}
   try{
     const d=await cloudFetch(id);
     let prof=profiles.profiles.find(p=>p.cloudId===id);
-    if(prof){ profiles.activeId=prof.id; if(key&&!prof.editKey) prof.editKey=key; saveProfilesIdx();
-      applyPulledPlan(prof,d); setCloudDot("ok"); toast("Geteilten Plan geöffnet (synchronisiert)"); }
-    else{ const pid=newProfileId(); prof={ id:pid, name:d.name||"Geteilter Plan", cloudId:id, editKey:key, cloudUpdated:d.updated };
+    if(prof){ profiles.activeId=prof.id; if(key&&!prof.editKey){ prof.editKey=key; prof.readonly=false; } saveProfilesIdx();
+      applyPulledPlan(prof,d); setCloudDot("ok"); toast((prof.editKey||key)?"Geteilten Plan geöffnet (synchronisiert)":"Geteilten Plan geöffnet (nur Lesen)"); }
+    else{ const pid=newProfileId(); prof={ id:pid, name:d.name||"Geteilter Plan", cloudId:id, editKey:key, cloudUpdated:d.updated, readonly:!key };
       profiles.profiles.push(prof); profiles.activeId=pid; saveProfilesIdx();
-      applyPulledPlan(prof,d); setCloudDot("ok"); toast('Geteilten Plan geöffnet: "'+(d.name||"Plan")+'"'); }
+      applyPulledPlan(prof,d); setCloudDot("ok"); toast((key?'Geteilten Plan geöffnet: "':'Geöffnet (nur Lesen): "')+(d.name||"Plan")+'"'); }
   }catch(e){ toast("Konnte den geteilten Link nicht öffnen"); }
   return true;
 }
@@ -1407,7 +1529,7 @@ document.getElementById("importListBtn").addEventListener("click",()=>{
 function mergeGuestList(data){
   const nameToId={}; state.groups.forEach(g=>nameToId[g.name]=g.id);
   (data.importGroups||[]).forEach(g=>{
-    if(!nameToId[g.name]){ const id="grp"+nextId(); state.groups.push({id,name:g.name,color:g.color||GROUP_PALETTE[state.groups.length%GROUP_PALETTE.length]}); nameToId[g.name]=id; }
+    if(!nameToId[g.name]){ const id="grp"+nextId(); state.groups.push({id,name:g.name,color:(g.color?safeColor(g.color):GROUP_PALETTE[state.groups.length%GROUP_PALETTE.length])}); nameToId[g.name]=id; }
   });
   const seenSrc=new Set(Object.values(state.guests).map(g=>g.srcId).filter(Boolean));
   let added=0, skipped=0;
@@ -1468,7 +1590,7 @@ function applyZoom(){
 }
 document.getElementById("zoomIn").addEventListener("click",()=>{ zoom=Math.min(2.5,zoom+0.1); applyZoom(); });
 document.getElementById("zoomOut").addEventListener("click",()=>{ zoom=Math.max(0.2,zoom-0.05); applyZoom(); });
-document.getElementById("zoomFit").addEventListener("click",()=>{ zoom=fitZoom(); applyZoom(); });
+document.getElementById("zoomFit").addEventListener("click",()=>{ zoom=clamp(fitZoom(),0.2,2.5); applyZoom(); });
 
 // ============================================================
 //  INIT
