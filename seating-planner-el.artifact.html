@@ -1,0 +1,1610 @@
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root{
+    --grass:#6ab61e; --grass2:#79c62b; --ink:#2b2b2b; --panel:#ffffff; --line:#e2e2e2;
+    --accent:#b5835a; --accent-dark:#8a5f3c; --lake:#2f6fd0; --danger:#d9534f;
+  }
+  html,body{height:100%;}
+  body{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; color:var(--ink); background:#f4f1ec; display:flex; height:100vh; overflow:hidden; }
+
+  /* ---------- Sidebar ---------- */
+  #sidebar{ width:290px; min-width:290px; background:var(--panel); border-right:1px solid var(--line); height:100%; overflow-y:auto; }
+  #sidebar h1{ font-size:17px; padding:16px 16px 4px; font-weight:700; letter-spacing:.2px; }
+  #sidebar .sub{ padding:0 16px 10px; font-size:12px; color:#888; }
+  .profilebar{ display:flex; gap:6px; padding:0 16px 12px; align-items:center; }
+  .profilebar select{ flex:1; padding:7px; border:1px solid var(--line); border-radius:8px; font-size:13px; font-family:inherit; background:#fff; font-weight:600; }
+  .profilebar .pbtn{ width:34px; height:34px; border:1px solid var(--line); background:#fff; border-radius:8px; cursor:pointer; font-size:15px; flex:none; }
+  .profilebar .pbtn:hover{ background:#f5f5f5; }
+  #profilemenu{ width:170px; padding:6px; }
+  #profilemenu .gm-item{ display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; }
+  #profilemenu .gm-item:hover{ background:#f4f0ea; }
+  .toolbar{ padding:10px 16px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); display:flex; flex-wrap:wrap; gap:8px; }
+  button.btn{ font-size:13px; padding:7px 11px; border:1px solid var(--line); background:#fff; border-radius:8px; cursor:pointer; color:var(--ink); transition:.12s; }
+  button.btn:hover{ background:#f5f5f5; border-color:#ccc; }
+  button.btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.btn.primary:hover{ background:var(--accent-dark); }
+  button.btn.danger{ color:var(--danger); }
+  .section{ padding:12px 16px 4px; }
+  .section-title{ font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#999; margin-bottom:8px; }
+  #groupList{ display:flex; flex-wrap:wrap; gap:6px; }
+  .group-pill{ display:flex; align-items:center; gap:6px; padding:4px 8px 4px 6px; border-radius:16px; border:1.5px solid var(--line); background:#fff; cursor:pointer; font-size:12px; user-select:none; }
+  .group-pill.active{ border-color:#333; box-shadow:0 0 0 2px rgba(0,0,0,.06); }
+  .group-pill .dot{ width:13px; height:13px; border-radius:50%; flex:none; border:1px solid rgba(0,0,0,.15); }
+  .group-pill .gname{ white-space:nowrap; }
+  .group-pill .gcount{ color:#aaa; font-size:11px; }
+  .group-pill.addgroup{ color:#888; border-style:dashed; }
+  .addguest{ padding:8px 16px 6px; }
+  .addguest textarea{ width:100%; height:64px; resize:vertical; padding:8px; font-size:13px; border:1px solid var(--line); border-radius:8px; font-family:inherit; }
+  .addguest .hint{ font-size:11px; color:#999; margin:4px 0 6px; }
+  .pool-head{ display:flex; justify-content:space-between; align-items:center; padding:8px 16px 6px; }
+  .pool-head span{ font-size:13px; font-weight:600; }
+  .pool-head .count{ font-size:12px; color:#888; font-weight:400; }
+  #unassigned{ padding:0 16px 16px; display:flex; flex-direction:column; gap:6px; }
+  #unassigned.dragover{ background:#fbf6ef; outline:2px dashed var(--accent); outline-offset:-6px; border-radius:8px; }
+  .guest-chip{ background:#f3ede4; border:1px solid #e6dccb; border-left:4px solid #ccc; border-radius:8px; padding:6px 10px; font-size:13px; cursor:grab; display:flex; align-items:center; justify-content:space-between; user-select:none; }
+  .guest-chip:active{ cursor:grabbing; }
+  .guest-chip .x{ color:#bbb; font-size:15px; padding-left:8px; cursor:pointer; }
+  .guest-chip .x:hover{ color:var(--danger); }
+  .guest-chip .stag{ font-size:9px; color:#a0692b; background:#fff4e6; border:1px solid #f0d9bf; border-radius:6px; padding:0 4px; margin-left:6px; vertical-align:middle; }
+  .guest-chip .stag.cut{ color:#b03535; background:#fdeaea; border-color:#f2c7c7; }
+  .empty-note{ font-size:12px; color:#bbb; padding:14px 4px; text-align:center; }
+
+  /* ---------- Stage ---------- */
+  #stagewrap{ flex:1; position:relative; overflow:auto; }
+  #topbar{ position:sticky; top:0; z-index:20; background:rgba(255,255,255,.92); backdrop-filter:blur(4px); border-bottom:1px solid var(--line); padding:8px 14px; display:flex; align-items:center; gap:12px; font-size:13px; color:#666; }
+  #topbar .spacer{ flex:1; }
+  #topbar .ctl{ display:flex; align-items:center; gap:6px; }
+  #topbar .ctl button{ min-width:28px; height:28px; padding:0 6px; border-radius:6px; border:1px solid var(--line); background:#fff; cursor:pointer; font-size:14px; }
+  #topbar .ctl .lbl{ color:#999; }
+  #stage{ position:relative; width:1700px; height:1360px; margin:24px; background:radial-gradient(circle at 30% 20%, var(--grass2), var(--grass)); border:3px solid #4f8f14; border-radius:6px; transform-origin:top left; }
+
+  .feature{ position:absolute; font-size:12px; color:#fff; font-weight:600; display:flex; align-items:center; justify-content:center; text-align:center; transform:translate(-50%,-50%); border-radius:6px; padding:2px 4px; line-height:1.15; cursor:grab; user-select:none; z-index:1; background-repeat:repeat; }
+  .feature:active{ cursor:grabbing; }
+  .feature .rz{ position:absolute; right:-5px; bottom:-5px; width:14px; height:14px; background:#fff; border:1px solid #888; border-radius:3px; cursor:nwse-resize; display:none; z-index:3; }
+  .feature:hover .rz{ display:block; }
+  .rot-h{ position:absolute; width:16px; height:16px; border-radius:50%; background:#fff; border:1px solid #888; cursor:grab; display:none; z-index:4; box-shadow:0 1px 3px rgba(0,0,0,.3); }
+  .rot-h:active{ cursor:grabbing; }
+  .rot-h::after{ content:"⟳"; font-size:11px; color:#666; display:flex; align-items:center; justify-content:center; height:100%; }
+  .feature:hover .rot-h, .table:hover .rot-h{ display:block; }
+  .feature.k-zone{ color:#fff; box-shadow:inset 0 0 24px rgba(0,0,0,.12); border:1px solid rgba(0,0,0,.14); }
+  .feature.k-zone .zlabel{ text-shadow:0 1px 3px rgba(0,0,0,.5); font-size:15px; padding:2px 6px; pointer-events:none; }
+  .feature.k-marker{ background:#111; color:#fff; }
+  .feature.k-label{ background:rgba(255,255,255,.85); color:#333; }
+  .feature.k-prop{ background:#fff; color:#333; border:1px solid #d8c4a8; box-shadow:0 2px 6px rgba(0,0,0,.16); flex-direction:column; gap:1px; padding:3px; }
+  .feature.k-prop .picon{ font-size:22px; line-height:1; pointer-events:none; }
+  .feature.k-prop .plabel{ font-size:11px; color:#444; font-weight:600; pointer-events:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+
+  /* ---------- Tables ---------- */
+  .table{ position:absolute; z-index:5; }
+  .table-disc{ position:absolute; left:0; top:0; border-radius:50%; background:#ffffff; border:2px solid #d8c4a8; box-shadow:0 3px 8px rgba(0,0,0,.18); display:flex; align-items:center; justify-content:center; flex-direction:column; transform:translate(-50%,-50%); cursor:grab; }
+  .table-disc.head{ border-radius:12px; background:#fff7ef; border:2px solid var(--accent); }
+  .table-disc:active{ cursor:grabbing; }
+  .table-disc .tnum{ font-size:15px; font-weight:800; color:var(--accent-dark); text-align:center; padding:0 6px; }
+  .table-disc.head .tnum{ font-size:14px; }
+  .table-disc .tcount{ font-size:10px; color:#999; margin-top:1px; }
+  .table-disc .tgear{ position:absolute; top:3px; right:6px; font-size:12px; color:#bbb; cursor:pointer; display:none; }
+  .table:hover .tgear{ display:block; }
+  .seat{ position:absolute; transform:translate(-50%,-50%); border:1.5px dashed #cbb48f; background:rgba(255,255,255,.6); display:flex; align-items:center; justify-content:center; color:#a08a68; text-align:center; overflow:hidden; cursor:pointer; user-select:none; transition:background .1s, border-color .1s; }
+  .seat.occupied{ border-style:solid; color:#fff; font-weight:700; cursor:grab; }
+  .seat.occupied:active{ cursor:grabbing; }
+  .seat.dragover{ background:#ffe9cf !important; border-color:#e08a1e !important; color:#8a5f3c !important; }
+  .seat .nm{ padding:0 4px; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+  .seat input{ width:100%; border:none; background:transparent; color:#fff; text-align:center; outline:none; font-family:inherit; font-size:inherit; }
+  .seat.editing{ background:#fff !important; border-color:#e08a1e; z-index:9; }
+  .seat.editing input{ color:#333; }
+
+  /* popovers */
+  .popover{ position:fixed; z-index:250; background:#fff; border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.18); padding:10px; font-size:13px; display:none; }  /* above the mobile drawer (150) + scrim (140) */
+  .feat-gear{ position:absolute; left:-9px; top:-9px; width:22px; height:22px; border-radius:50%; background:#fff; border:1px solid var(--line); box-shadow:0 1px 4px rgba(0,0,0,.2); display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer; z-index:3; touch-action:manipulation; }
+  .group-pill{ touch-action:manipulation; }
+  .group-pill .gmore{ margin-left:2px; color:#999; font-weight:700; padding:0 2px; cursor:pointer; }
+  #tablemenu{ width:220px; }
+  #tablemenu h3{ font-size:13px; margin-bottom:8px; }
+  #tablemenu .row{ display:flex; align-items:center; gap:6px; margin-bottom:8px; }
+  #tablemenu label{ font-size:12px; color:#666; }
+  #tablemenu input[type=text]{ width:100%; padding:5px; border:1px solid var(--line); border-radius:6px; font-size:13px; }
+  #tablemenu .caps{ display:flex; gap:5px; flex-wrap:wrap; }
+  #tablemenu .caps button{ padding:5px 9px; border:1px solid var(--line); background:#fff; border-radius:6px; cursor:pointer; font-size:12px; }
+  #tablemenu .caps button.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
+  #tablemenu input[type=number]{ width:56px; padding:5px; border:1px solid var(--line); border-radius:6px; }
+  #tablemenu .menu-actions{ display:flex; justify-content:space-between; margin-top:6px; }
+  #groupmenu{ width:190px; padding:6px; }
+  #groupmenu .gm-item{ display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; }
+  #groupmenu .gm-item:hover{ background:#f4f0ea; }
+  #groupmenu .gm-item .dot{ width:13px; height:13px; border-radius:50%; border:1px solid rgba(0,0,0,.15); flex:none; }
+  #guesteditor{ width:224px; padding:10px; }
+  #guesteditor .ge-name{ width:100%; box-sizing:border-box; font-size:14px; padding:7px 9px; border:1px solid var(--line); border-radius:8px; margin-bottom:8px; }
+  #guesteditor .ge-lab{ font-size:10px; letter-spacing:.05em; text-transform:uppercase; color:#9a8f7f; margin:0 2px 5px; }
+  #guesteditor .ge-types{ display:flex; flex-direction:column; gap:2px; max-height:210px; overflow:auto; }
+  #guesteditor .ge-type{ display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; }
+  #guesteditor .ge-type:hover{ background:#f4f0ea; }
+  #guesteditor .ge-type.sel{ background:#efe7db; font-weight:600; }
+  #guesteditor .ge-type .dot{ width:13px; height:13px; border-radius:50%; border:1px solid rgba(0,0,0,.15); flex:none; }
+  #guesteditor .ge-type .chk{ margin-left:auto; color:#3aa657; font-weight:700; }
+  .guest-chip .chip-actions{ display:flex; align-items:center; gap:2px; }
+  .guest-chip .edit{ color:#c3b8a4; font-size:13px; padding-left:6px; cursor:pointer; }
+  .guest-chip .edit:hover{ color:#8a6d3b; }
+  .toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:9px 16px; border-radius:8px; font-size:13px; opacity:0; transition:.3s; z-index:200; }
+  .toast.show{ opacity:.95; }
+
+  /* ---------- Space resize · floor · decor ---------- */
+  #stageResize{ position:absolute; right:-3px; bottom:-3px; width:26px; height:26px; background:var(--accent); border:2px solid #fff; border-radius:5px; cursor:nwse-resize; z-index:8; box-shadow:0 2px 6px rgba(0,0,0,.3); }
+  #stageResize::after{ content:"⤡"; color:#fff; font-size:15px; display:flex; align-items:center; justify-content:center; height:100%; }
+  #featuremenu{ width:214px; padding:8px; }
+  #featuremenu .fm-cap{ font-size:11px; color:#999; margin-bottom:6px; }
+  #featuremenu .fm-mats{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+  #featuremenu .fm-mat{ cursor:pointer; border-radius:5px; padding:2px; border:2px solid transparent; }
+  #featuremenu .fm-mat:hover{ border-color:var(--accent); }
+  #featuremenu .fm-mat .sw{ display:block; width:30px; height:22px; border-radius:3px; border:1px solid rgba(0,0,0,.2); }
+  #featuremenu .gm-item{ display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; }
+  #featuremenu .gm-item:hover{ background:#f4f0ea; }
+  .floorrow{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .floorrow select{ flex:1; padding:6px; border:1px solid var(--line); border-radius:8px; font-size:13px; font-family:inherit; background:#fff; }
+  .modal-back{ position:fixed; inset:0; background:rgba(0,0,0,.4); display:none; align-items:center; justify-content:center; z-index:300; }
+  .modal-back.open{ display:flex; }
+  .modal{ background:#fff; border-radius:14px; width:min(600px,94vw); max-height:84vh; overflow:auto; box-shadow:0 20px 60px rgba(0,0,0,.3); }
+  .modal-head{ display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid var(--line); position:sticky; top:0; background:#fff; z-index:1; }
+  .modal-head strong{ font-size:15px; }
+  .modal-head .mx{ border:none; background:none; font-size:20px; cursor:pointer; color:#999; line-height:1; }
+  .modal .mhint{ padding:10px 16px 0; font-size:12px; color:#999; }
+  .decor-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px; padding:16px; }
+  .decor-item{ display:flex; flex-direction:column; align-items:center; gap:6px; padding:12px 8px; border:1px solid var(--line); border-radius:10px; cursor:pointer; text-align:center; font-size:12px; background:#fff; transition:.1s; }
+  .decor-item:hover{ background:#faf6f0; border-color:var(--accent); transform:translateY(-1px); }
+  .decor-item .di{ font-size:26px; line-height:1; }
+
+  /* ---------- Mobile & touch ---------- */
+  /* Pointer-drag (tables, decor, resize, rotate) only works on touch if the browser
+     isn't stealing the gesture for scrolling/zooming — hence touch-action:none on the
+     draggable bits, and pan-only on the canvas so our own pinch handler gets the pinch. */
+  #stagewrap{ touch-action:pan-x pan-y; }
+  .table-disc, .feature, .rz, .rot-h, #stageResize{ touch-action:none; }
+  #navBtn{ display:none; min-width:34px; height:30px; padding:0 8px; border:1px solid var(--line); background:#fff; border-radius:7px; cursor:pointer; font-size:15px; line-height:1; flex:none; }
+  #navScrim{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.38); z-index:140; }
+  body.nav-open #navScrim{ display:block; }
+  /* "In hand" guest — the touch replacement for drag & drop */
+  .guest-chip.picked{ outline:2px solid var(--accent); outline-offset:1px; }
+  body.picking .seat:not(.occupied){ border-color:var(--accent); border-style:solid; background:rgba(255,255,255,.85); }
+  #pickbar{ display:none; position:fixed; left:50%; bottom:16px; transform:translateX(-50%); z-index:210;
+    background:#2b2b2b; color:#fff; border-radius:999px; padding:6px 7px 6px 15px; font-size:13px;
+    align-items:center; gap:7px; box-shadow:0 6px 22px rgba(0,0,0,.32); max-width:95vw; }
+  body.picking #pickbar{ display:flex; }
+  body.picking .toast{ bottom:66px; }          /* clear the pick bar */
+  #pickbar .pbname{ font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:32vw; }
+  #pickbar .pbhint{ color:#b9b9b9; white-space:nowrap; }
+  #pickbar button{ border:none; background:rgba(255,255,255,.15); color:#fff; border-radius:999px; padding:6px 11px; font-size:12px; font-family:inherit; cursor:pointer; white-space:nowrap; }
+  #pickbar button:hover{ background:rgba(255,255,255,.28); }
+
+  @media (max-width:820px){
+    body{ height:100dvh; }                       /* dvh: excludes the mobile URL bar */
+    /* Sidebar becomes an off-canvas drawer so the canvas gets the full width */
+    #sidebar{ position:fixed; left:0; top:0; bottom:0; width:86vw; max-width:330px; min-width:0;
+      z-index:150; transform:translateX(-100%); transition:transform .22s ease;
+      box-shadow:0 0 34px rgba(0,0,0,.28); overscroll-behavior:contain; }
+    body.nav-open #sidebar{ transform:none; }
+    #navBtn{ display:block; }
+    #stagewrap{ width:100%; }
+    #topbar{ gap:8px; padding:7px 10px; }
+    #topbar .ttl, #topbar #statLine{ display:none; }
+    #topbar .ctl{ gap:4px; }
+    #topbar .ctl .lbl{ display:none; }
+    #topbar .ctl button{ min-width:32px; height:32px; }   /* comfortable tap targets */
+    .modal{ width:96vw; max-height:88vh; }
+    .decor-grid{ grid-template-columns:repeat(auto-fill,minmax(92px,1fr)); gap:8px; padding:12px; }
+    button.btn{ padding:9px 12px; }
+    .profilebar .pbtn{ width:38px; height:38px; }
+    .guest-chip{ padding:9px 10px; }
+    #pickbar{ bottom:12px; }
+  }
+  @media (max-width:420px){
+    #topbar #zoomLabel{ display:none; }
+    #topbar #zoomFit{ padding:0 6px; font-size:12px; }
+  }
+
+  /* ---------- Print ---------- */
+  #printarea{ display:none; }
+  @media print{
+    body *{ visibility:hidden; }
+    #printarea, #printarea *{ visibility:visible; }
+    #printarea{ display:block; position:absolute; left:0; top:0; width:100%; padding:0 10px; }
+  }
+  #printarea h2{ font-size:22px; margin:0 0 2px; }
+  #printarea .psub{ color:#666; margin-bottom:14px; font-size:13px; }
+  #printarea .plegend{ display:flex; flex-wrap:wrap; gap:12px; margin-bottom:16px; font-size:12px; }
+  #printarea .plegend span{ display:flex; align-items:center; gap:5px; }
+  #printarea .plegend .dot{ width:12px; height:12px; border-radius:50%; display:inline-block; }
+  #printarea .ptables{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  #printarea .pcard{ border:1px solid #ccc; border-radius:8px; padding:10px 12px; break-inside:avoid; }
+  #printarea .pcard h3{ font-size:15px; margin-bottom:6px; border-bottom:1px solid #eee; padding-bottom:4px; }
+  #printarea .pcard ol{ margin-left:18px; font-size:12.5px; line-height:1.55; }
+  #printarea .pcard li .gdot{ display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; }
+  #printarea .pcard .empty{ color:#bbb; }
+  #printarea .punassigned{ margin-top:18px; font-size:12.5px; }
+</style>
+
+<div id="sidebar">
+  <h1>💍 Οργάνωση Τραπεζιών</h1>
+  <div class="sub">Πατήστε ένα όνομα και μετά μια καρέκλα (ή σύρετε, σε υπολογιστή) · πατήστε μια άδεια καρέκλα για πληκτρολόγηση · δεξί κλικ για επιλογές · σύρετε το ⟳ για περιστροφή</div>
+  <div class="profilebar">
+    <select id="profileSelect" title="Αλλαγή ζευγαριού / εκδήλωσης"></select>
+    <button class="pbtn" id="profNew" title="Νέο προφίλ (ζευγάρι / εκδήλωση)">＋</button>
+    <button class="pbtn" id="profMore" title="Μετονομασία · αντιγραφή · διαγραφή">⋯</button>
+  </div>
+  <div class="toolbar">
+    <button class="btn primary" id="addTableBtn">＋ Στρογγυλό τραπέζι</button>
+    <button class="btn" id="addHeadBtn">＋ Νυφικό τραπέζι</button>
+    <button class="btn" id="autoSeatBtn">Αυτόματη τοποθέτηση</button>
+    <button class="btn primary" id="importListBtn">＋ Εισαγωγή καλεσμένων</button>
+    <button class="btn" id="printBtn">🖨 Εκτύπωση</button>
+    <button class="btn" id="exportBtn">Εξαγωγή</button>
+    <button class="btn" id="importBtn">Εισαγωγή</button>
+    <button class="btn" id="cloudBtn" title="Ανεβάστε αυτό το σχέδιο online / συγχρονισμός σε όλες τις συσκευές">☁ Κοινή χρήση</button>
+    <button class="btn danger" id="resetBtn">Επαναφορά</button>
+  </div>
+  <div class="section">
+    <div class="section-title">Χώρος &amp; διακόσμηση</div>
+    <div class="floorrow"><span style="font-size:12px;color:#666">Δάπεδο</span><select id="stageFloor"></select></div>
+    <button class="btn primary" id="decorBtn" style="width:100%">🛋 Προσθήκη διακόσμησης &amp; αντικειμένων…</button>
+    <div class="hint" style="font-size:11px;color:#999;margin-top:6px">Σύρετε τη γωνία ⤡ για αλλαγή μεγέθους του χώρου. Σύρετε οποιοδήποτε αντικείμενο για να το μετακινήσετε, τη γωνία του για αλλαγή μεγέθους, κάντε δεξί κλικ σε αυτό (ή στο δάπεδο / πίστα χορού) για αλλαγή επιφάνειας ή διαγραφή.</div>
+  </div>
+  <div class="section">
+    <div class="section-title">Ομάδες <span style="font-weight:400;text-transform:none;color:#bbb">— κλικ για ενεργοποίηση</span></div>
+    <div id="groupList"></div>
+  </div>
+  <div class="addguest">
+    <textarea id="guestInput" placeholder="Πληκτρολογήστε ονόματα καλεσμένων, ένα ανά γραμμή…"></textarea>
+    <div class="hint">Τα νέα ονόματα προστίθενται στην ενεργή ομάδα. Ctrl/⌘+Enter για προσθήκη.</div>
+    <button class="btn primary" id="addGuestBtn" style="width:100%">Προσθήκη στη λίστα</button>
+  </div>
+  <div class="pool-head"><span>Καλεσμένοι χωρίς θέση</span><span class="count" id="poolCount">0</span></div>
+  <div id="unassigned"></div>
+</div>
+
+<div id="stagewrap">
+  <div id="topbar">
+    <button id="navBtn" title="Καλεσμένοι &amp; εργαλεία">☰</button>
+    <strong class="ttl">Διάταξη κήπου</strong>
+    <span id="statLine" style="color:#999"></span>
+    <span class="spacer"></span>
+    <span class="ctl"><span class="lbl">Κείμενο</span>
+      <button id="fontDown" title="Μικρότερο κείμενο ονομάτων">A−</button>
+      <button id="fontUp" title="Μεγαλύτερο κείμενο ονομάτων">A＋</button>
+    </span>
+    <span class="ctl"><span class="lbl">Ζουμ</span>
+      <button id="zoomOut">−</button>
+      <span id="zoomLabel">100%</span>
+      <button id="zoomIn">＋</button>
+      <button id="zoomFit" style="padding:0 8px">Προσαρμογή</button>
+    </span>
+  </div>
+  <div id="stage"></div>
+</div>
+
+<div id="tablemenu" class="popover">
+  <h3 id="menuTitle">Ρυθμίσεις τραπεζιού</h3>
+  <div class="row"><input type="text" id="menuLabel" placeholder="Όνομα / αριθμός τραπεζιού"></div>
+  <div class="row" style="flex-direction:column;align-items:flex-start;">
+    <label id="menuCapLabel">Θέσεις</label>
+    <div class="caps" id="menuCaps">
+      <button data-cap="8">8</button>
+      <button data-cap="10">10</button>
+      <button data-cap="12">12</button>
+      <input type="number" id="menuCapCustom" min="1" max="30" placeholder="#">
+    </div>
+  </div>
+  <div class="menu-actions">
+    <button class="btn danger" id="menuDelete">Διαγραφή τραπεζιού</button>
+    <button class="btn primary" id="menuClose">Τέλος</button>
+  </div>
+</div>
+
+<div id="groupmenu" class="popover"></div>
+<div id="guesteditor" class="popover"></div>
+<div id="featuremenu" class="popover"></div>
+<div id="profilemenu" class="popover"></div>
+<div id="decorModal" class="modal-back">
+  <div class="modal">
+    <div class="modal-head"><strong>Προσθήκη διακόσμησης &amp; αντικειμένων τελετής</strong><button class="mx" id="decorClose">✕</button></div>
+    <div class="mhint">Κάντε κλικ σε ένα αντικείμενο για να το τοποθετήσετε στον χώρο, μετά σύρετέ το στη θέση του και αλλάξτε το μέγεθος από τη γωνία του.</div>
+    <div class="decor-grid" id="decorGrid"></div>
+  </div>
+</div>
+<div id="exportModal" class="modal-back">
+  <div class="modal">
+    <div class="modal-head"><strong>Αντιγραφή / λήψη αυτού του σχεδίου</strong><button class="mx" id="exportClose">✕</button></div>
+    <div class="mhint">Αντιγράψτε αυτό το κείμενο και επικολλήστε το στο «Εισαγωγή» σε άλλη συσκευή — ή κατεβάστε το ως αρχείο. (Οι λήψεις δεν λειτουργούν μέσα στην προεπισκόπηση του Claude, οπότε εκεί χρησιμοποιήστε την Αντιγραφή.)</div>
+    <div style="padding:12px 16px">
+      <textarea id="exportText" readonly style="width:100%;height:170px;font-family:monospace;font-size:11px;border:1px solid var(--line);border-radius:8px;padding:8px;resize:vertical"></textarea>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn primary" id="exportCopy" style="flex:1">📋 Αντιγραφή στο πρόχειρο</button>
+        <button class="btn" id="exportDownload" style="flex:1">⬇ Λήψη αρχείου</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="importModal" class="modal-back">
+  <div class="modal">
+    <div class="modal-head"><strong>Εισαγωγή σχεδίου</strong><button class="mx" id="importClose">✕</button></div>
+    <div class="mhint">Επικολλήστε κείμενο σχεδίου που αντιγράψατε αλλού, ή επιλέξτε ένα αρχείο που κατεβάσατε. Φορτώνεται ως νέο προφίλ.</div>
+    <div style="padding:12px 16px">
+      <textarea id="importText" placeholder="Επικολλήστε εδώ το κείμενο του σχεδίου…" style="width:100%;height:150px;font-family:monospace;font-size:11px;border:1px solid var(--line);border-radius:8px;padding:8px;resize:vertical"></textarea>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn primary" id="importPaste" style="flex:1">Φόρτωση επικολλημένου σχεδίου</button>
+        <button class="btn" id="importFile" style="flex:1">📁 Επιλογή αρχείου</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="cloudModal" class="modal-back">
+  <div class="modal">
+    <div class="modal-head"><strong>☁ Κοινή χρήση &amp; συγχρονισμός αυτού του σχεδίου</strong><button class="mx" id="cloudClose">✕</button></div>
+    <div id="cloudBody" style="padding:12px 16px"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<div id="navScrim"></div>
+<div id="pickbar"></div>
+<div id="printarea"></div>
+
+<script>
+"use strict";
+// ============================================================
+//  Wedding Seating Planner — single self-contained file
+// ============================================================
+
+// Embedded builds (artifact / iframe hosts) strip the <head>, taking the viewport meta
+// with it — and without that tag a phone lays the page out at 980px, so none of the
+// mobile CSS below ever applies. Re-add it if it's missing.
+if(!document.querySelector('meta[name=viewport]')){
+  const mv=document.createElement("meta");
+  mv.name="viewport"; mv.content="width=device-width, initial-scale=1.0";
+  (document.head||document.documentElement).appendChild(mv);
+}
+const STORE_KEY = "weddingSeatingPlanner.v2";
+const LAYOUT_VERSION = 5;
+const FONT_FAMILY = '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif';
+// Profile storage keys — declared up here so they're initialised before the startup code below runs.
+const PBASE="weddingSeatingPlanner";
+const PROFILES_KEY=PBASE+".profiles";
+
+// 27 round-table centres on the 1700 x 1360 garden (block of tables above, columns flanking the floor)
+// A clean, generic starter layout (12 round tables + a head table) — new plans begin here.
+const DEFAULT_POSITIONS = [
+  [420,250],[720,250],[1020,250],[1320,250],
+  [420,500],[720,500],[1020,500],[1320,500],
+  [420,750],[720,750],[1020,750],[1320,750],
+];
+
+// Garden features — movable & resizable. kind: "zone" (a floor/surface area), "prop" (an item card),
+// "marker" (dark box), "label" (text badge). Zones carry a material; props carry an icon.
+function defaultFeatures(){ return [
+  {id:"f-ent",   kind:"label",  x:870, y:70,   w:172,h:26, label:"Είσοδος καλεσμένων"},
+  {id:"f-kiosk", kind:"prop",   x:1150,y:80,   w:150,h:70, label:"Ποτό υποδοχής", icon:"🍹"},
+  {id:"f-floor", kind:"zone",   x:870, y:960,  w:460,h:340,label:"Πίστα χορού", material:"parquet"},
+  {id:"f-dj",    kind:"marker", x:1210,y:960,  w:78, h:34, label:"DJ"},
+]; }
+// Convert an old (cls/text) feature to the new model, preserving position & size.
+function upgradeFeature(f){
+  if(f.kind) return f;
+  const kindMap={ box:"marker", "label-plain":"label", kiosk:"prop", lake:"zone", deck:"zone", dancefloor:"zone" };
+  const matMap={ lake:"water", deck:"wood", dancefloor:"parquet" };
+  return { id:f.id, kind:kindMap[f.cls]||"marker", x:f.x, y:f.y, w:f.w, h:f.h,
+           label:(f.text!==undefined?f.text:f.label)||"", icon:(f.id==="f-kiosk"?"🍹":null), material:matMap[f.cls]||null };
+}
+
+// Floor / surface materials — applied to the whole space and to any zone (dance floor, deck, patches…)
+const MATERIALS = {
+  grass:   { name:"Γρασίδι",      img:"radial-gradient(circle at 30% 20%, #79c62b, #6ab61e)" },
+  parquet: { name:"Παρκέ",    img:"repeating-linear-gradient(45deg,#c88f52 0 18px,#b87e45 18px 20px)", base:"#c08348" },
+  wood:    { name:"Ξύλινο δάπεδο",  img:"repeating-linear-gradient(90deg,#b07a43 0 24px,#9c6a39 24px 26px)", base:"#a97440" },
+  stone:   { name:"Πέτρα",      img:"repeating-linear-gradient(0deg,#b7b7b1 0 20px,#a9a9a3 20px 22px)", base:"#b0b0aa" },
+  tile:    { name:"Πλακάκι",       img:"linear-gradient(45deg,#d5d5d5 25%,transparent 25%),linear-gradient(-45deg,#d5d5d5 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#d5d5d5 75%),linear-gradient(-45deg,transparent 75%,#d5d5d5 75%)", base:"#efefef", size:"34px 34px", pos:"0 0,0 17px,17px -17px,-17px 0" },
+  marble:  { name:"Μάρμαρο",     img:"linear-gradient(135deg,#f4f4f1,#e2e3e5 45%,#f0f0ee)", base:"#eeeef0" },
+  sand:    { name:"Άμμος",       base:"#e3d2a2" },
+  water:   { name:"Νερό",      img:"linear-gradient(#3f7fd0,#2f6fd0)", base:"#2f6fd0" },
+  carpet:  { name:"Κόκκινο χαλί", base:"#8f2f3a" },
+  concrete:{ name:"Τσιμέντο",   base:"#c9c9c4" },
+};
+function applyMaterial(el, name){
+  const m=MATERIALS[name]||MATERIALS.grass;
+  el.style.backgroundColor=m.base||"transparent";
+  el.style.backgroundImage=m.img||"none";
+  el.style.backgroundSize=m.size||"auto";
+  el.style.backgroundPosition=m.pos||"0 0";
+}
+
+// Items available from the "Add decor" popup (wedding/ceremony furniture + floor patches)
+const DECOR_ITEMS = [
+  {icon:"💌", label:"Τραπέζι ευχών",       w:120,h:70, kind:"prop"},
+  {icon:"🎁", label:"Τραπέζι δώρων",       w:120,h:70, kind:"prop"},
+  {icon:"🎂", label:"Τραπέζι τούρτας",       w:110,h:70, kind:"prop"},
+  {icon:"🍬", label:"Τραπέζι γλυκών",     w:120,h:70, kind:"prop"},
+  {icon:"🥂", label:"Ποτά υποδοχής",   w:130,h:64, kind:"prop"},
+  {icon:"🍸", label:"Μπαρ",              w:150,h:64, kind:"prop"},
+  {icon:"🍽️", label:"Μπουφές",           w:170,h:64, kind:"prop"},
+  {icon:"🛋️", label:"Καθιστικό / καναπές",   w:130,h:80, kind:"prop"},
+  {icon:"📸", label:"Photo booth",      w:110,h:100,kind:"prop"},
+  {icon:"💐", label:"Αψίδα τελετής",    w:140,h:60, kind:"prop"},
+  {icon:"📖", label:"Βιβλίο ευχών",        w:100,h:60, kind:"prop"},
+  {icon:"🎧", label:"Καμπίνα DJ",         w:120,h:80, kind:"prop"},
+  {icon:"🔊", label:"Ηχείο",          w:54, h:74, kind:"prop"},
+  {icon:"🚻", label:"Τουαλέτες",        w:100,h:60, kind:"prop"},
+  {icon:"🪑", label:"Επιπλέον καρέκλες",     w:100,h:60, kind:"prop"},
+  {icon:"🌿", label:"Φυτά / λουλούδια", w:80, h:70, kind:"prop"},
+  {icon:"⛲", label:"Σιντριβάνι",          w:90, h:90, kind:"prop"},
+  {icon:"🕯️", label:"Κεριά",          w:64, h:60, kind:"prop"},
+  {icon:"🎤", label:"Σκηνή / ομιλίες", w:170,h:90, kind:"prop"},
+  {icon:"🅿️", label:"Πάρκινγκ",          w:120,h:80, kind:"prop"},
+  {icon:"🟫", label:"Περιοχή ξύλινου δαπέδου",  w:220,h:150,kind:"zone", material:"wood"},
+  {icon:"⬜", label:"Περιοχή πέτρινου δαπέδου", w:220,h:150,kind:"zone", material:"stone"},
+  {icon:"🟩", label:"Περιοχή με γρασίδι",      w:220,h:150,kind:"zone", material:"grass"},
+];
+
+const GROUP_PALETTE = ["#e26d8a","#4a90d9","#3aa657","#e0a030","#8e7cc3","#e0663a","#3ab0a6","#b07cc3","#7c9cc3","#c3a03a"];
+
+// ☁ Cloud sync backend (Cloudflare Worker + KV)
+const SYNC_URL = "https://wedding-sync.andrewstamelakis.workers.dev";
+
+let profiles = ensureProfiles();
+let state = loadPlan(profiles.activeId) || defaultState();
+let zoom = 1;
+let fontScale = state.seatFontScale || 1;
+let activeMenuTableId = null;
+let uid = state._uid || 2001;
+function nextId(){ uid++; state._uid = uid; return uid; }
+
+function makeHeadTable(id){ return { id, label:"💑 Νυφικό τραπέζι", shape:"head", x:945, y:1245, capacity:10, seats:Array(10).fill(null) }; }
+
+function defaultState(){
+  const tables = DEFAULT_POSITIONS.map((p,i)=>({ id:1001+i, label:String(i+1), shape:"round", x:p[0], y:p[1], capacity:10, seats:Array(10).fill(null) }));
+  tables.push(makeHeadTable(2000));
+  const groups = [
+    {id:"grp1", name:"Πλευρά νύφης", color:GROUP_PALETTE[0]},
+    {id:"grp2", name:"Πλευρά γαμπρού", color:GROUP_PALETTE[1]},
+    {id:"grp3", name:"Φίλοι",      color:GROUP_PALETTE[2]},
+    {id:"grp4", name:"Οικογένεια",       color:GROUP_PALETTE[3]},
+  ];
+  return { _uid:2001, tables, guests:{}, groups, activeGroupId:null, features:defaultFeatures(),
+           seatFontScale:1, stage:{w:2100,h:1400}, stageMaterial:"grass", layoutVersion:LAYOUT_VERSION };
+}
+
+// ---------- persistence (multiple named profiles / couples) ----------
+function planKey(id){ return PBASE+".plan."+id; }
+function newProfileId(){ return "prof"+Date.now()+Math.floor(Math.random()*1000); }
+function loadProfilesIdx(){ try{ const p=JSON.parse(localStorage.getItem(PROFILES_KEY)); if(p&&Array.isArray(p.profiles)&&p.profiles.length) return p; }catch(e){} return null; }
+function saveProfilesIdx(){ try{ localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles)); }catch(e){} }
+function loadPlan(id){
+  try{ const s=JSON.parse(localStorage.getItem(planKey(id)));
+    if(s&&s.tables){ sanitizePlan(s); if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s); return s; }
+  }catch(e){}
+  return null;
+}
+// First run: adopt any pre-profiles single-plan save into an initial "Our wedding" profile.
+function ensureProfiles(){
+  const existing=loadProfilesIdx();
+  if(existing) return existing;
+  const id=newProfileId();
+  let migrated=null;
+  try{ const old=JSON.parse(localStorage.getItem(STORE_KEY)); if(old&&old.tables) migrated=old; }catch(e){}
+  try{ localStorage.setItem(planKey(id), JSON.stringify(migrated||defaultState())); }catch(e){}
+  const p={ activeId:id, profiles:[{id, name:"Ο γάμος μας"}] };
+  try{ localStorage.setItem(PROFILES_KEY, JSON.stringify(p)); }catch(e){}  // persist so we don't re-migrate on next load
+  return p;
+}
+function save(){ try{ localStorage.setItem(planKey(profiles.activeId), JSON.stringify(state)); }catch(e){} scheduleCloudPush(); }
+// Version-aware migration — keeps guests / groups / seat assignments (and, from v4 on, table positions).
+function migrateLayout(s){
+  const from=s.layoutVersion||0;
+  if(from<4){ // first roll-out of the spaced grid + head table
+    let ri=0;
+    s.tables.forEach(t=>{ if(t.shape!=="head"){ t.shape="round"; if(DEFAULT_POSITIONS[ri]){ t.x=DEFAULT_POSITIONS[ri][0]; t.y=DEFAULT_POSITIONS[ri][1]; } ri++; } });
+    if(!s.tables.some(t=>t.shape==="head")){ s._uid=(s._uid||2001)+1; s.tables.push(makeHeadTable(s._uid)); }
+    s.features = defaultFeatures();
+    if(typeof s.seatFontScale!=="number") s.seatFontScale=1;
+  }
+  if(from<5){ // resizable space + materials + richer feature model (positions preserved)
+    if(!s.stage) s.stage={ w:2100, h:1400 };
+    if(!s.stageMaterial) s.stageMaterial="grass";
+    s.features=(s.features||defaultFeatures()).map(upgradeFeature);
+  }
+  s.layoutVersion=LAYOUT_VERSION;
+}
+
+// ---------- helpers ----------
+function assignedGuestIds(){ const set=new Set(); state.tables.forEach(t=>t.seats.forEach(g=>{ if(g)set.add(g); })); return set; }
+function guestName(id){ return state.guests[id]?.name ?? "?"; }
+function guestGroup(id){ const gid=state.guests[id]?.groupId; return gid? state.groups.find(g=>g.id===gid) : null; }
+function guestColor(id){ const g=guestGroup(id); return g? g.color : "#b5835a"; }
+function hexTint(hex){ return hex+"22"; }
+function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._to); t._to=setTimeout(()=>t.classList.remove("show"),1600); }
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+// Colours and icons from cloud/imported plans are interpolated into HTML, so clamp them to safe shapes
+// on ingest (a shared plan is attacker-controlled): colours to a hex literal, icons to a short markup-free string.
+function safeColor(c){ return (typeof c==="string" && /^#[0-9a-fA-F]{3,8}$/.test(c)) ? c : "#b5835a"; }
+function safeIcon(s){ s=String(s==null?"📦":s).replace(/[<>&"'`]/g,""); return s.slice(0,4)||"📦"; }
+function sanitizePlan(s){ if(!s||typeof s!=="object") return s;
+    // security: neutralise attacker-controlled colours/icons from shared/imported plans
+    if(Array.isArray(s.groups)) s.groups.forEach(g=>{ if(g&&typeof g==="object") g.color=safeColor(g.color); });
+    if(Array.isArray(s.features)) s.features.forEach(f=>{ if(f&&typeof f==="object"&&"icon" in f) f.icon=safeIcon(f.icon); });
+    // robustness: a malformed plan (bad cloud pull / hand-edited import) must never crash a render (H-9)
+    if(!Array.isArray(s.tables)) s.tables=[];
+    if(!s.guests||typeof s.guests!=="object"||Array.isArray(s.guests)) s.guests={};
+    if(!Array.isArray(s.groups)) s.groups=[];
+    if(!Array.isArray(s.features)) s.features=defaultFeatures();
+    if(!s.stage||typeof s.stage!=="object"||typeof s.stage.w!=="number"||typeof s.stage.h!=="number") s.stage={w:2100,h:1400};
+    if(typeof s.stageMaterial!=="string") s.stageMaterial="grass";
+  return s; }
+function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+// guest status + free-text note (e.g. city · age)
+const STATUS_TXT={ probable:"πιθανή", cut:"ακυρώθηκε" };
+function gStatus(id){ return state.guests[id]?.status || "confirmed"; }
+function gNote(id){ return state.guests[id]?.note || ""; }
+function statusTitle(id){ const s=gStatus(id); const n=gNote(id); return (STATUS_TXT[s]?` · ⚠ ${STATUS_TXT[s]}`:"") + (n?` · ${n}`:""); }
+function statusTag(id){ const s=gStatus(id); return STATUS_TXT[s]?`<span class="stag${s==="cut"?" cut":""}">${STATUS_TXT[s]}</span>`:""; }
+
+// ---------- text measuring (so seats grow to fit the name) ----------
+const _measureCtx = document.createElement("canvas").getContext("2d");
+function textWidth(txt, fs){ _measureCtx.font = `700 ${fs}px ${FONT_FAMILY}`; return _measureCtx.measureText(txt).width; }
+function seatWidthFor(name, fs){ return Math.round(clamp(textWidth(name,fs)+18, 46, 190)); }
+
+// ============================================================
+//  RENDER
+// ============================================================
+const stage = document.getElementById("stage");
+
+function renderFeatures(){
+  stage.querySelectorAll(".feature").forEach(e=>e.remove());
+  (state.features||[]).forEach(f=>{
+    const el=document.createElement("div");
+    el.className="feature k-"+(f.kind||"marker");
+    el.style.left=f.x+"px"; el.style.top=f.y+"px"; el.style.width=f.w+"px"; el.style.height=f.h+"px";
+    if(f.kind==="zone"){
+      applyMaterial(el, f.material||"grass");
+      if(f.label){ const l=document.createElement("div"); l.className="zlabel"; l.textContent=f.label; el.appendChild(l); }
+    } else if(f.kind==="prop"){
+      el.innerHTML=`<div class="picon">${escapeHtml(f.icon||"📦")}</div>${f.label?`<div class="plabel">${escapeHtml(f.label)}</div>`:""}`;
+    } else {
+      el.textContent=f.label||"";
+    }
+    el.style.transform=`translate(-50%,-50%) rotate(${f.rot||0}deg)`;
+    const rz=document.createElement("div"); rz.className="rz"; el.appendChild(rz);
+    makeResizable(rz, el, f);
+    const roth=document.createElement("div"); roth.className="rot-h"; roth.style.left="50%"; roth.style.top="-24px"; roth.style.transform="translateX(-50%)"; el.appendChild(roth);
+    makeRotatable(roth, el, f, ()=>{ el.style.transform=`translate(-50%,-50%) rotate(${f.rot||0}deg)`; });
+    el.addEventListener("contextmenu",e=>{ e.preventDefault(); e.stopPropagation(); openFeatureMenu(f,e); });
+    const fg=document.createElement("div"); fg.className="feat-gear"; fg.textContent="⚙"; fg.title="Επιφάνεια / επίπεδο / διαγραφή";
+    fg.addEventListener("pointerdown",e=>e.stopPropagation());   // don't start a drag from the gear
+    fg.addEventListener("click",e=>{ e.stopPropagation(); const r=fg.getBoundingClientRect(); openFeatureMenu(f,{clientX:r.left,clientY:r.bottom}); });
+    el.appendChild(fg);
+    el.title="Σύρετε για μετακίνηση · γωνία για αλλαγή μεγέθους · ⟳ για περιστροφή · ⚙ για επιφάνεια / επίπεδο / διαγραφή";
+    makeDraggable(el, el, f, ()=>{});
+    stage.appendChild(el);
+  });
+}
+
+const BASE_SLOT=46; // reference seat spacing — table size depends on this + seat count, NOT on name length
+function roundGeom(t){
+  const n=t.capacity;
+  const fs=Math.round(11*fontScale);
+  const seatH=fs+10;
+  const need = n<2 ? BASE_SLOT : BASE_SLOT/(2*Math.sin(Math.PI/n));   // n=1 would divide by ~0 and explode the ring
+  const ringR=Math.max(need, 46, seatH*1.2);
+  const discR=Math.max(24, ringR - seatH/2 - 6);
+  return {n,fs,seatH,ringR,discR};
+}
+function seatDisplayWidth(t,i,fs){ const gid=t.seats[i]; return gid? seatWidthFor(guestName(gid),fs) : 42; }
+
+function buildSeat(t,i,relx,rely,fs,seatH){
+  const seat=document.createElement("div");
+  const gid=t.seats[i];
+  seat.className="seat"+(gid?" occupied":"");
+  seat.style.left=relx+"px"; seat.style.top=rely+"px";
+  seat.style.height=seatH+"px"; seat.style.borderRadius=(seatH/2)+"px"; seat.style.fontSize=fs+"px";
+  seat.dataset.tableId=t.id; seat.dataset.seatIndex=i;
+  if(gid){
+    const col=guestColor(gid);
+    seat.style.background=col; seat.style.borderColor=col; seat.style.width=seatWidthFor(guestName(gid),fs)+"px";
+    if(gStatus(gid)!=="confirmed") seat.style.borderStyle="dashed";  // flag not-yet-confirmed guests
+    seat.innerHTML=`<span class="nm">${escapeHtml(guestName(gid))}</span>`;
+    seat.title=guestName(gid)+(guestGroup(gid)?` · ${guestGroup(gid).name}`:"")+statusTitle(gid);
+    seat.draggable=true; seat.dataset.guestId=gid;
+  }else{
+    seat.style.width="42px";
+    seat.innerHTML=`<span class="nm" style="opacity:.55">+</span>`;
+  }
+  wireSeat(seat);
+  return seat;
+}
+
+function renderRoundTable(t, wrap){
+  const g=roundGeom(t);
+  const disc=document.createElement("div");
+  disc.className="table-disc";
+  disc.style.width=(g.discR*2)+"px"; disc.style.height=(g.discR*2)+"px";
+  const occ=t.seats.filter(Boolean).length;
+  disc.innerHTML=`<span class="tgear" title="Ρυθμίσεις τραπεζιού">⚙</span><span class="tnum">${escapeHtml(t.label)}</span><span class="tcount">${occ}/${t.capacity}</span>`;
+  disc.querySelector(".tgear").addEventListener("click",e=>{ e.stopPropagation(); openMenu(t.id,e); });
+  disc.addEventListener("contextmenu",e=>{ e.preventDefault(); openMenu(t.id,e); });
+  makeDraggable(disc, wrap, t, ()=>renderTables());
+  wrap.appendChild(disc);
+  for(let i=0;i<t.capacity;i++){
+    const a=(i/t.capacity)*2*Math.PI - Math.PI/2;
+    // seat stays anchored at the table edge and grows in width in place (centred on its spot) to fit the name
+    wrap.appendChild(buildSeat(t,i, g.ringR*Math.cos(a), g.ringR*Math.sin(a), g.fs, g.seatH));
+  }
+  addTableRotateHandle(wrap, t, g.ringR+30);
+}
+
+function headGeom(t){
+  const n=t.capacity;
+  const top=Math.max(1,n-2);
+  const fs=Math.round(11*fontScale);
+  const seatH=fs+10;
+  const slot=Math.round(64*fontScale); // FIXED spacing — table width no longer grows with name length
+  const innerW=top*slot;
+  const tableW=innerW+34;
+  const tableH=seatH+50;
+  return {n,top,fs,seatH,slot,innerW,tableW,tableH};
+}
+
+function renderHeadTable(t, wrap){
+  const g=headGeom(t);
+  const disc=document.createElement("div");
+  disc.className="table-disc head";
+  disc.style.width=g.tableW+"px"; disc.style.height=g.tableH+"px";
+  const occ=t.seats.filter(Boolean).length;
+  disc.innerHTML=`<span class="tgear" title="Ρυθμίσεις τραπεζιού">⚙</span><span class="tnum">${escapeHtml(t.label)}</span><span class="tcount">${occ}/${t.capacity} · βλέπει προς την πίστα χορού</span>`;
+  disc.querySelector(".tgear").addEventListener("click",e=>{ e.stopPropagation(); openMenu(t.id,e); });
+  disc.addEventListener("contextmenu",e=>{ e.preventDefault(); openMenu(t.id,e); });
+  makeDraggable(disc, wrap, t, ()=>renderTables());
+  wrap.appendChild(disc);
+
+  // main row on the FAR side of the table, so the couple sits behind the table facing the dance floor
+  for(let i=0;i<g.top;i++){
+    const relx = -g.innerW/2 + g.slot/2 + i*g.slot;
+    const rely = (g.tableH/2) + g.seatH/2 + 6;
+    wrap.appendChild(buildSeat(t,i, relx, rely, g.fs, g.seatH));
+  }
+  // the two end seats
+  const li=g.top, ri=g.top+1, endGap=30; // fixed distance from the table edge; seat grows in place
+  if(li<t.capacity) wrap.appendChild(buildSeat(t,li, -(g.tableW/2)-endGap, 0, g.fs, g.seatH));
+  if(ri<t.capacity) wrap.appendChild(buildSeat(t,ri,  (g.tableW/2)+endGap, 0, g.fs, g.seatH));
+  addTableRotateHandle(wrap, t, g.tableH/2 + g.seatH + 30);
+}
+
+function renderTables(){
+  stage.querySelectorAll(".table").forEach(e=>e.remove());
+  state.tables.forEach(t=>{
+    const wrap=document.createElement("div");
+    wrap.className="table"; wrap.style.left=t.x+"px"; wrap.style.top=t.y+"px"; wrap.dataset.tableId=t.id;
+    if(t.shape==="head") renderHeadTable(t,wrap); else renderRoundTable(t,wrap);
+    stage.appendChild(wrap);
+  });
+  updateStats();
+}
+
+function renderGroups(){
+  const box=document.getElementById("groupList"); box.innerHTML="";
+  const counts={};
+  Object.keys(state.guests).forEach(id=>{ const g=state.guests[id].groupId; if(g)counts[g]=(counts[g]||0)+1; });
+  box.appendChild(makeGroupPill({id:null,name:"Χωρίς ομάδα",color:"#cccccc"}, counts, true));
+  state.groups.forEach(g=> box.appendChild(makeGroupPill(g, counts, false)) );
+  const add=document.createElement("div");
+  add.className="group-pill addgroup"; add.innerHTML="＋ ομάδα"; add.title="Προσθήκη νέας ομάδας";
+  add.addEventListener("click",addGroup); box.appendChild(add);
+}
+function makeGroupPill(g, counts, isNone){
+  const pill=document.createElement("div");
+  pill.className="group-pill"+(state.activeGroupId===g.id?" active":"");
+  const c=isNone?0:(counts[g.id]||0);
+  pill.innerHTML=`<span class="dot" style="background:${g.color}"></span><span class="gname">${escapeHtml(g.name)}</span>${isNone?"":`<span class="gcount">${c}</span>`}`;
+  pill.addEventListener("click",()=>{ state.activeGroupId=g.id; save(); renderGroups(); });
+  if(!isNone){
+    pill.title="Κλικ: ενεργοποίηση · Διπλό κλικ: μετονομασία · Δεξί κλικ: αλλαγή χρώματος / διαγραφή";
+    pill.addEventListener("dblclick",e=>{ e.stopPropagation(); renameGroup(g.id); });
+    pill.addEventListener("contextmenu",e=>{ e.preventDefault(); editGroup(g.id,e); });
+    pill.querySelector(".dot").addEventListener("click",e=>{ e.stopPropagation(); recolorGroup(g.id); });
+    if(isTouch){ const more=document.createElement("span"); more.className="gmore"; more.textContent="⋯"; more.title="Μετονομασία / αλλαγή χρώματος / διαγραφή";
+      more.addEventListener("click",e=>{ e.stopPropagation(); editGroup(g.id,e); }); pill.appendChild(more); }   // touch has no right-click / reliable dbl-tap
+  }
+  return pill;
+}
+
+function renderPool(){
+  const pool=document.getElementById("unassigned"); pool.innerHTML="";
+  const assigned=assignedGuestIds();
+  const un=Object.keys(state.guests).filter(id=>!assigned.has(id));
+  document.getElementById("poolCount").textContent=un.length;
+  if(un.length===0){ pool.innerHTML=`<div class="empty-note">Δεν υπάρχουν καλεσμένοι χωρίς θέση.<br>Προσθέστε ονόματα παραπάνω ↑</div>`; return; }
+  un.forEach(id=>{
+    const col=guestColor(id);
+    const chip=document.createElement("div");
+    chip.className="guest-chip"; chip.draggable=true; chip.dataset.guestId=id;
+    chip.style.borderLeftColor=col; chip.style.background=hexTint(col);
+    chip.title=(guestGroup(id)?guestGroup(id).name:"")+statusTitle(id);
+    chip.innerHTML=`<span>${escapeHtml(guestName(id))}${statusTag(id)}</span><span class="chip-actions"><span class="edit" title="Επεξεργασία ονόματος & τύπου">✎</span><span class="x" title="Αφαίρεση καλεσμένου">✕</span></span>`;
+    if(pick && pick.from==="pool" && pick.guestId===id) chip.classList.add("picked");
+    chip.addEventListener("dragstart",e=>{ dragData={type:"guest",guestId:id,from:"pool"}; e.dataTransfer.effectAllowed="move"; });
+    chip.addEventListener("contextmenu",e=>{ e.preventDefault(); openGuestEditor(id,e); });
+    chip.addEventListener("click",e=>{
+      if(e.target.closest(".chip-actions")) return;
+      const same = pick && pick.from==="pool" && pick.guestId===id;
+      setPick(same ? null : {type:"guest",guestId:id,from:"pool"});
+    });
+    chip.querySelector(".edit").addEventListener("click",e=>{ e.stopPropagation(); openGuestEditor(id,e); });
+    chip.querySelector(".x").addEventListener("click",()=>{ if(pick&&pick.guestId===id) setPick(null); delete state.guests[id]; save(); renderPool(); renderGroups(); toast("Ο καλεσμένος αφαιρέθηκε"); });
+    pool.appendChild(chip);
+  });
+}
+
+function updateStats(){
+  const totalSeats=state.tables.reduce((s,t)=>s+t.capacity,0);
+  const seated=assignedGuestIds().size;
+  document.getElementById("statLine").textContent=`· ${state.tables.length} τραπέζια · ${seated} με θέση · ${totalSeats} θέσεις`;
+}
+
+// ============================================================
+//  GROUPS
+// ============================================================
+function addGroup(){
+  const name=prompt("Όνομα νέας ομάδας:","Ομάδα "+(state.groups.length+1)); if(!name)return;
+  const color=GROUP_PALETTE[state.groups.length % GROUP_PALETTE.length];
+  const g={id:"grp"+nextId(), name:name.trim(), color};
+  state.groups.push(g); state.activeGroupId=g.id; save(); renderGroups();
+}
+function renameGroup(id){ const g=state.groups.find(x=>x.id===id); if(!g)return; const nm=prompt("Μετονομασία ομάδας:",g.name); if(nm&&nm.trim()){ g.name=nm.trim(); save(); renderGroups(); } }
+function recolorGroup(id){
+  const g=state.groups.find(x=>x.id===id); if(!g)return;
+  const inp=document.createElement("input"); inp.type="color"; inp.value=g.color;
+  inp.style.position="fixed"; inp.style.left="-9999px"; document.body.appendChild(inp);
+  inp.addEventListener("input",()=>{ g.color=inp.value; save(); renderGroups(); renderTables(); renderPool(); });
+  inp.addEventListener("change",()=>inp.remove()); inp.click();
+}
+function editGroup(id,evt){
+  const g=state.groups.find(x=>x.id===id); if(!g)return;
+  const menu=document.getElementById("groupmenu");
+  menu.innerHTML=`
+    <div class="gm-item" data-act="rename"><span class="dot" style="background:${g.color}"></span>Μετονομασία «${escapeHtml(g.name)}»</div>
+    <div class="gm-item" data-act="recolor"><span class="dot" style="background:${g.color}"></span>Αλλαγή χρώματος</div>
+    <div class="gm-item" data-act="delete" style="color:#d9534f"><span class="dot" style="background:#d9534f"></span>Διαγραφή ομάδας</div>`;
+  menu.querySelector('[data-act="rename"]').onclick=()=>{ closeGroupMenu(); renameGroup(id); };
+  menu.querySelector('[data-act="recolor"]').onclick=()=>{ closeGroupMenu(); recolorGroup(id); };
+  menu.querySelector('[data-act="delete"]').onclick=()=>{
+    closeGroupMenu();
+    if(!confirm(`Διαγραφή ομάδας «${g.name}»; Οι καλεσμένοι κρατούν τις θέσεις τους αλλά χάνουν το χρώμα.`))return;
+    Object.values(state.guests).forEach(gu=>{ if(gu.groupId===id) gu.groupId=null; });
+    state.groups=state.groups.filter(x=>x.id!==id);
+    if(state.activeGroupId===id) state.activeGroupId=null;
+    save(); renderGroups(); renderTables(); renderPool();
+  };
+  showPopover(menu,evt);
+}
+function openGroupMenu(guestId, evt){
+  const menu=document.getElementById("groupmenu");
+  const rows=[`<div class="gm-item" data-gid=""><span class="dot" style="background:#ccc"></span>Χωρίς ομάδα</div>`]
+    .concat(state.groups.map(g=>`<div class="gm-item" data-gid="${g.id}"><span class="dot" style="background:${g.color}"></span>${escapeHtml(g.name)}</div>`));
+  menu.innerHTML=rows.join("");
+  menu.querySelectorAll(".gm-item").forEach(it=>{ it.onclick=()=>{ state.guests[guestId].groupId=it.dataset.gid||null; save(); renderTables(); renderPool(); renderGroups(); closeGroupMenu(); }; });
+  showPopover(menu,evt);
+}
+function showPopover(menu,evt){
+  menu.style.display="block";
+  const x=Math.min(evt.clientX, window.innerWidth - menu.offsetWidth - 10);
+  const y=Math.min(evt.clientY, window.innerHeight - menu.offsetHeight - 10);
+  menu.style.left=x+"px"; menu.style.top=y+"px";
+}
+function closeGroupMenu(){ document.getElementById("groupmenu").style.display="none"; }
+// Combined name + type editor (used from the pool chip ✎ / right-click and from a placed guest).
+function openGuestEditor(guestId, evt){
+  const g=state.guests[guestId]; if(!g) return;
+  const menu=document.getElementById("guesteditor");
+  const opts=[{id:"",name:"Χωρίς τύπο",color:"#ccc"}].concat(state.groups.map(gr=>({id:gr.id,name:gr.name,color:gr.color})));
+  const rows=opts.map(o=>{ const on=((g.groupId||"")===o.id);
+    return `<div class="ge-type${on?' sel':''}" data-gid="${o.id}"><span class="dot" style="background:${o.color}"></span>${escapeHtml(o.name)}${on?'<span class="chk">✓</span>':''}</div>`; }).join("");
+  menu.innerHTML=`<input id="geName" class="ge-name" type="text" maxlength="40" placeholder="Όνομα καλεσμένου">
+    <div class="ge-lab">Τύπος</div><div class="ge-types">${rows}</div>`;
+  const nameInp=menu.querySelector("#geName"); nameInp.value=g.name||""; let cancelled=false;
+  const commitName=()=>{ if(cancelled) return; const v=nameInp.value.trim(); if(v&&v!==g.name){ g.name=v; save(); renderTables(); renderPool(); } };
+  nameInp.addEventListener("keydown",e=>{ e.stopPropagation(); if(e.key==="Enter"){ e.preventDefault(); commitName(); closeGuestEditor(); } else if(e.key==="Escape"){ cancelled=true; closeGuestEditor(); } });   // Escape cancels, doesn't commit
+  nameInp.addEventListener("blur",commitName);
+  menu.querySelectorAll(".ge-type").forEach(it=>{ it.onclick=()=>{ commitName(); g.groupId=it.dataset.gid||null; save(); renderTables(); renderPool(); renderGroups();
+      menu.querySelectorAll(".ge-type").forEach(x=>{ const on=((g.groupId||"")===x.dataset.gid); x.classList.toggle("sel",on); let chk=x.querySelector(".chk"); if(on&&!chk) x.insertAdjacentHTML("beforeend",'<span class="chk">✓</span>'); if(!on&&chk) chk.remove(); }); }; });
+  showPopover(menu,evt);
+  setTimeout(()=>{ nameInp.focus(); nameInp.select(); },0);
+}
+function closeGuestEditor(){ document.getElementById("guesteditor").style.display="none"; }
+
+// ============================================================
+//  SPACE · FLOOR MATERIALS · FEATURE MENU · DECOR
+// ============================================================
+function matSwatchesHtml(){ return `<div class="fm-mats">`+Object.keys(MATERIALS).map(k=>`<div class="fm-mat" data-mat="${k}" title="${MATERIALS[k].name}"><span class="sw" data-mat="${k}"></span></div>`).join("")+`</div>`; }
+function paintSwatches(menu){ menu.querySelectorAll(".sw").forEach(sw=>applyMaterial(sw, sw.dataset.mat)); }
+function closeFeatureMenu(){ document.getElementById("featuremenu").style.display="none"; }
+
+// Re-order a feature within the stack (array order = paint order; first = back, last = front).
+// Everything here stays above the base ground and below the tables, which always sit on top.
+function moveFeature(f, dir){
+  const arr=state.features, i=arr.indexOf(f); if(i<0) return;
+  arr.splice(i,1);
+  const j = dir==="back"?0 : dir==="front"?arr.length : dir==="backward"?Math.max(0,i-1) : Math.min(arr.length,i+1);
+  arr.splice(j,0,f); save(); renderFeatures();
+}
+function openFeatureMenu(f, evt){
+  const menu=document.getElementById("featuremenu");
+  let html="";
+  if(f.kind==="zone") html+=`<div class="fm-cap">Επιφάνεια</div>`+matSwatchesHtml();
+  html+=`<div class="fm-cap" style="margin-top:2px">Επίπεδο <span style="color:#bbb">(τα αντικείμενα από πάνω παραμένουν από πάνω)</span></div>`;
+  html+=`<div class="gm-item" data-act="back">⤓ Μεταφορά στο πίσω μέρος</div>`;
+  html+=`<div class="gm-item" data-act="backward">↓ Μεταφορά πιο πίσω</div>`;
+  html+=`<div class="gm-item" data-act="forward">↑ Μεταφορά πιο μπροστά</div>`;
+  html+=`<div class="gm-item" data-act="front">⤒ Μεταφορά στο μπροστινό μέρος</div>`;
+  html+=`<div class="gm-item" data-act="rename">✎ Μετονομασία ετικέτας</div>`;
+  html+=`<div class="gm-item" data-act="delete" style="color:#d9534f">🗑 Διαγραφή</div>`;
+  menu.innerHTML=html; paintSwatches(menu);
+  menu.querySelectorAll(".fm-mat").forEach(m=>m.onclick=()=>{ f.material=m.dataset.mat; save(); renderFeatures(); closeFeatureMenu(); });
+  ["back","backward","forward","front"].forEach(dir=>{ const el=menu.querySelector(`[data-act="${dir}"]`); if(el) el.onclick=()=>{ moveFeature(f,dir); closeFeatureMenu(); }; });
+  menu.querySelector('[data-act="rename"]').onclick=()=>{ const nm=prompt("Ετικέτα (αφήστε κενό για καμία):", f.label||""); if(nm!==null){ f.label=nm; save(); renderFeatures(); } closeFeatureMenu(); };
+  menu.querySelector('[data-act="delete"]').onclick=()=>{ state.features=state.features.filter(x=>x.id!==f.id); save(); renderFeatures(); closeFeatureMenu(); };
+  showPopover(menu,evt);
+}
+// Right-click the empty space → change the whole floor
+function openStageMenu(evt){
+  const menu=document.getElementById("featuremenu");
+  menu.innerHTML=`<div class="fm-cap">Επιφάνεια δαπέδου για ολόκληρο τον χώρο</div>`+matSwatchesHtml(); paintSwatches(menu);
+  menu.querySelectorAll(".fm-mat").forEach(m=>m.onclick=()=>{ state.stageMaterial=m.dataset.mat; document.getElementById("stageFloor").value=m.dataset.mat; applyStage(); save(); closeFeatureMenu(); });
+  showPopover(menu,evt);
+}
+stage.addEventListener("contextmenu",e=>{ if(e.target===stage){ e.preventDefault(); openStageMenu(e); } });
+
+function initFloorSelect(){
+  const sel=document.getElementById("stageFloor");
+  sel.innerHTML=Object.keys(MATERIALS).map(k=>`<option value="${k}">${MATERIALS[k].name}</option>`).join("");
+  sel.value=state.stageMaterial||"grass";
+  sel.addEventListener("change",()=>{ state.stageMaterial=sel.value; applyStage(); save(); });
+}
+function addDecor(item){
+  const wrap=document.getElementById("stagewrap");
+  const cx=Math.round((wrap.scrollLeft + wrap.clientWidth/2)/zoom);
+  const cy=Math.round((wrap.scrollTop + wrap.clientHeight/2)/zoom);
+  state.features.push({ id:"f"+nextId(), kind:item.kind||"prop",
+    x:clamp(cx,60,state.stage.w-60), y:clamp(cy,60,state.stage.h-60),
+    w:item.w, h:item.h, label:item.label, icon:item.icon||null, material:item.material||null });
+  save(); renderFeatures(); toast(item.label+" προστέθηκε — σύρετέ το στη θέση του");
+}
+function initDecor(){
+  const grid=document.getElementById("decorGrid");
+  grid.innerHTML=DECOR_ITEMS.map((it,i)=>`<div class="decor-item" data-i="${i}"><div class="di">${it.icon}</div><div>${escapeHtml(it.label)}</div></div>`).join("");
+  grid.querySelectorAll(".decor-item").forEach(el=>el.addEventListener("click",()=>{ addDecor(DECOR_ITEMS[+el.dataset.i]); closeDecor(); }));
+}
+function openDecor(){ document.getElementById("decorModal").classList.add("open"); }
+function closeDecor(){ document.getElementById("decorModal").classList.remove("open"); }
+document.getElementById("decorBtn").addEventListener("click",openDecor);
+document.getElementById("decorClose").addEventListener("click",closeDecor);
+document.getElementById("decorModal").addEventListener("click",e=>{ if(e.target.id==="decorModal") closeDecor(); });
+
+// ============================================================
+//  PROFILES (a separate saved plan per couple / event)
+// ============================================================
+function currentProfile(){ return profiles.profiles.find(p=>p.id===profiles.activeId); }
+function renderProfiles(){
+  const sel=document.getElementById("profileSelect");
+  sel.innerHTML=profiles.profiles.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("");
+  sel.value=profiles.activeId;
+}
+function loadActive(){
+  state=loadPlan(profiles.activeId)||defaultState(); uid=state._uid||2001; fontScale=state.seatFontScale||1;
+  applyStage(); document.getElementById("stageFloor").value=state.stageMaterial||"grass";
+  renderProfiles(); renderAll();
+  setTimeout(()=>{ zoom=initialZoom(); applyZoom(); },30);
+}
+function switchProfile(id){ save();
+  const snap=pendingSnap; if(snap){ pendingSnap=null; clearTimeout(cloudTimer); cloudTimer=null; cloudPush(snap).catch(()=>{}); }  // flush the old plan's pending push first (H-2/H-8)
+  profiles.activeId=id; saveProfilesIdx(); if(typeof setPick==="function") setPick(null); loadActive();
+  if(typeof pullIfNewer==="function") pullIfNewer(); }
+function newProfile(){
+  const name=prompt("Νέο προφίλ — όνομα ζευγαριού / εκδήλωσης:\n(π.χ. \"Ο γάμος του Ανδρέα & της Λίνας\")","");
+  if(name===null) return;
+  save();
+  const id=newProfileId();
+  profiles.profiles.push({id, name:(name.trim()||("Γάμος "+(profiles.profiles.length+1)))});
+  profiles.activeId=id; saveProfilesIdx();
+  state=defaultState(); uid=state._uid; fontScale=1;
+  try{ localStorage.setItem(planKey(id), JSON.stringify(state)); }catch(e){}
+  loadActive(); toast("Δημιουργήθηκε νέο προφίλ");
+}
+function renameProfile(){ const p=currentProfile(); const nm=prompt("Μετονομασία προφίλ:",p.name); if(nm&&nm.trim()){ p.name=nm.trim(); saveProfilesIdx(); renderProfiles(); } }
+function duplicateProfile(){
+  save(); const p=currentProfile(); const id=newProfileId();
+  try{ localStorage.setItem(planKey(id), JSON.stringify(state)); }catch(e){}
+  profiles.profiles.push({id, name:p.name+" (αντίγραφο)"}); profiles.activeId=id; saveProfilesIdx(); loadActive(); toast("Το προφίλ αντιγράφηκε");
+}
+function deleteProfile(){
+  if(profiles.profiles.length<=1){ toast("Διατηρήστε τουλάχιστον ένα προφίλ"); return; }
+  const p=currentProfile(); if(!confirm(`Διαγραφή προφίλ "${p.name}" και του σχεδίου του; Αυτό δεν μπορεί να αναιρεθεί.`)) return;
+  try{ localStorage.removeItem(planKey(p.id)); }catch(e){}
+  profiles.profiles=profiles.profiles.filter(x=>x.id!==p.id);
+  profiles.activeId=profiles.profiles[0].id; saveProfilesIdx(); loadActive(); toast("Το προφίλ διαγράφηκε");
+}
+function importPlanAsProfile(s, suggestedName){
+  sanitizePlan(s);
+  if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s);
+  const name=(s._profileName||suggestedName||"Εισαγόμενο σχέδιο"); delete s._profileName;
+  const id=newProfileId();
+  try{ localStorage.setItem(planKey(id), JSON.stringify(s)); }catch(e){}
+  profiles.profiles.push({id, name}); profiles.activeId=id; saveProfilesIdx(); loadActive();
+  toast('Εισήχθη ως νέο προφίλ: "'+name+'"');
+}
+function openProfileMenu(evt){
+  const menu=document.getElementById("profilemenu");
+  menu.innerHTML=`<div class="gm-item" data-act="rename">✎ Μετονομασία</div><div class="gm-item" data-act="dup">⧉ Αντιγραφή</div><div class="gm-item" data-act="del" style="color:#d9534f">🗑 Διαγραφή</div>`;
+  menu.querySelector('[data-act="rename"]').onclick=()=>{ closeProfileMenu(); renameProfile(); };
+  menu.querySelector('[data-act="dup"]').onclick=()=>{ closeProfileMenu(); duplicateProfile(); };
+  menu.querySelector('[data-act="del"]').onclick=()=>{ closeProfileMenu(); deleteProfile(); };
+  showPopover(menu,evt);
+}
+function closeProfileMenu(){ document.getElementById("profilemenu").style.display="none"; }
+document.getElementById("profileSelect").addEventListener("change",e=>switchProfile(e.target.value));
+document.getElementById("profNew").addEventListener("click",newProfile);
+document.getElementById("profMore").addEventListener("click",openProfileMenu);
+
+// ============================================================
+//  MOBILE · TOUCH  (drawer sidebar · tap-to-place · pinch zoom)
+// ============================================================
+const isTouch = window.matchMedia("(pointer:coarse)").matches;
+function isNarrow(){ return window.innerWidth<=820; }
+
+// ---- sidebar drawer ----
+function setNav(open){ document.body.classList.toggle("nav-open", !!open); }
+document.getElementById("navBtn").addEventListener("click",e=>{ e.stopPropagation(); setNav(!document.body.classList.contains("nav-open")); });
+document.getElementById("navScrim").addEventListener("click",()=>setNav(false));
+
+// ---- tap to place ----
+// HTML5 drag & drop never fires on touch, so on a phone this is the only way to seat
+// anyone. Additive on desktop: clicking a chip previously did nothing.
+let pick=null;   // same shape as dragData: {type,guestId,from,tableId,seatIndex}
+function setPick(p){
+  pick=p||null;
+  document.body.classList.toggle("picking", !!pick);
+  renderPickBar(); renderPool();
+  if(pick && isNarrow()) setNav(false);   // reveal the seats they're aiming at
+}
+function renderPickBar(){
+  const bar=document.getElementById("pickbar");
+  if(!pick){ bar.innerHTML=""; return; }
+  bar.innerHTML=`<span class="pbname">${escapeHtml(guestName(pick.guestId))}</span>
+    <span class="pbhint">→ πατήστε μια θέση</span>
+    <button data-a="edit" title="Επεξεργασία ονόματος &amp; τύπου">✎</button>
+    ${pick.from==="seat"?`<button data-a="unseat">↩ Αφαίρεση θέσης</button>`:""}
+    <button data-a="cancel" title="Άκυρο">✕</button>`;
+  bar.querySelector('[data-a="cancel"]').onclick=()=>setPick(null);
+  bar.querySelector('[data-a="edit"]').onclick=()=>{
+    const r=bar.getBoundingClientRect();
+    openGuestEditor(pick.guestId,{clientX:r.left,clientY:r.top});
+  };
+  const un=bar.querySelector('[data-a="unseat"]');
+  if(un) un.onclick=()=>{
+    const t=state.tables.find(x=>x.id===pick.tableId);
+    if(t) t.seats[pick.seatIndex]=null;
+    setPick(null); save(); renderTables(); renderPool();
+  };
+}
+function placePick(tableId,seatIndex){ const p=pick; setPick(null); placeGuestInSeat(p,tableId,seatIndex); }
+
+// ---- pinch to zoom on the canvas (two fingers) ----
+(function(){
+  const wrap=document.getElementById("stagewrap");
+  const dist=t=>Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY);
+  const mid =t=>({ x:(t[0].clientX+t[1].clientX)/2, y:(t[0].clientY+t[1].clientY)/2 });
+  let base=null;
+  wrap.addEventListener("touchstart",e=>{
+    if(e.touches.length!==2){ base=null; return; }
+    if(pointerGesture){ base=null; return; }             // a table/decor drag is active — don't fight it with a pinch (M-4)
+    const m=mid(e.touches), r=wrap.getBoundingClientRect();
+    base={ d:dist(e.touches)||1, z:zoom,
+           cx:(wrap.scrollLeft+m.x-r.left)/zoom, cy:(wrap.scrollTop+m.y-r.top)/zoom };
+  },{passive:true});
+  wrap.addEventListener("touchmove",e=>{
+    if(!base||e.touches.length!==2) return;
+    e.preventDefault();
+    zoom=clamp(base.z*dist(e.touches)/base.d, 0.2, 2.5);
+    applyZoom();
+    const m=mid(e.touches), r=wrap.getBoundingClientRect();
+    wrap.scrollLeft=base.cx*zoom-(m.x-r.left);   // hold the pinch centre under the fingers
+    wrap.scrollTop =base.cy*zoom-(m.y-r.top);
+  },{passive:false});
+  const end=e=>{ if(e.touches.length<2) base=null; };
+  wrap.addEventListener("touchend",end,{passive:true});
+  wrap.addEventListener("touchcancel",end,{passive:true});
+})();
+window.addEventListener("resize",()=>applyZoom());
+
+// ============================================================
+//  DRAG & DROP (guests between seats / pool)
+// ============================================================
+let dragData=null;
+function wireSeat(seat){
+  const tableId=+seat.dataset.tableId, idx=+seat.dataset.seatIndex;
+  seat.addEventListener("dragstart",e=>{ if(!seat.classList.contains("occupied"))return; dragData={type:"guest", guestId:seat.dataset.guestId, from:"seat", tableId, seatIndex:idx}; e.dataTransfer.effectAllowed="move"; e.stopPropagation(); });
+  seat.addEventListener("dragover",e=>{ if(dragData&&dragData.type==="guest"){ e.preventDefault(); seat.classList.add("dragover"); }});
+  seat.addEventListener("dragleave",()=>seat.classList.remove("dragover"));
+  seat.addEventListener("drop",e=>{ e.preventDefault(); e.stopPropagation(); seat.classList.remove("dragover"); if(dragData&&dragData.type==="guest"){ placeGuestInSeat(dragData,tableId,idx); dragData=null; } });
+  seat.addEventListener("dblclick",e=>{ e.stopPropagation(); editSeatInline(seat,tableId,idx); });
+  seat.addEventListener("click",e=>{
+    if(seat.classList.contains("editing"))return;
+    if(pick){ e.stopPropagation(); placePick(tableId,idx); return; }
+    if(!seat.classList.contains("occupied")) editSeatInline(seat,tableId,idx);
+    // Touch only: on desktop the two clicks inside a dblclick would flicker the pick bar.
+    else if(isTouch) setPick({type:"guest",guestId:seat.dataset.guestId,from:"seat",tableId,seatIndex:idx});
+  });
+  seat.addEventListener("contextmenu",e=>{ if(seat.classList.contains("occupied")){ e.preventDefault(); e.stopPropagation(); openGuestEditor(seat.dataset.guestId,e); } });
+}
+function placeGuestInSeat(drag, tableId, seatIndex){
+  const table=state.tables.find(t=>t.id===tableId);
+  if(!table || !drag || !state.guests[drag.guestId]) return;   // stale pick or missing table — ignore instead of crashing (M-1)
+  const occupant=table.seats[seatIndex];
+  if(drag.from==="seat"){
+    const src=state.tables.find(t=>t.id===drag.tableId);
+    if(src && drag.seatIndex<src.seats.length) src.seats[drag.seatIndex]=occupant;
+    table.seats[seatIndex]=drag.guestId;
+  }else{
+    table.seats[seatIndex]=drag.guestId;
+  }
+  save(); renderTables(); renderPool();
+}
+function editSeatInline(seat, tableId, seatIndex){
+  const table=state.tables.find(t=>t.id===tableId);
+  const gid=table.seats[seatIndex];
+  const current=gid?guestName(gid):"";
+  seat.classList.add("editing"); seat.style.background=""; seat.style.borderColor="";
+  seat.style.width=Math.max(parseFloat(seat.style.width)||0, 110)+"px";
+  seat.innerHTML=`<input type="text" value="${escapeHtml(current)}" maxlength="40">`;
+  const input=seat.querySelector("input"); input.focus(); input.select();
+  function commit(){
+    const val=input.value.trim();
+    if(val){ if(gid){ state.guests[gid].name=val; } else { const id="g"+nextId(); state.guests[id]={name:val, groupId:state.activeGroupId||null}; table.seats[seatIndex]=id; } }
+    else if(gid){ table.seats[seatIndex]=null; }
+    save(); renderTables(); renderPool(); renderGroups();
+  }
+  input.addEventListener("keydown",e=>{
+    if(e.key==="Enter"){ e.preventDefault(); commit(); const ni=seatIndex+1; if(ni<table.capacity){ setTimeout(()=>{ const next=stage.querySelector(`.seat[data-table-id="${tableId}"][data-seat-index="${ni}"]`); if(next) editSeatInline(next,tableId,ni); },0); } }  // don't wrap past the last seat and overwrite seat 0
+    if(e.key==="Escape"){ renderTables(); }
+  });
+  input.addEventListener("blur",commit);
+}
+const poolEl=document.getElementById("unassigned");
+poolEl.addEventListener("dragover",e=>{ if(dragData&&dragData.type==="guest"){ e.preventDefault(); poolEl.classList.add("dragover"); }});
+poolEl.addEventListener("dragleave",()=>poolEl.classList.remove("dragover"));
+poolEl.addEventListener("drop",e=>{ e.preventDefault(); poolEl.classList.remove("dragover"); if(dragData&&dragData.type==="guest"&&dragData.from==="seat"){ const src=state.tables.find(t=>t.id===dragData.tableId); src.seats[dragData.seatIndex]=null; save(); renderTables(); renderPool(); } dragData=null; });
+
+// ============================================================
+//  MOVE (smooth pointer dragging — moves the element, no rebuild until done)
+// ============================================================
+function makeDraggable(handleEl, moveEl, obj, onEnd){
+  handleEl.addEventListener("pointerdown",e=>{
+    if(e.target.closest(".tgear")||e.target.closest(".rz")||e.target.closest(".rot-h")) return;
+    if(e.button!==0) return;
+    e.preventDefault(); e.stopPropagation();
+    handleEl.setPointerCapture(e.pointerId); pointerGesture=true;
+    const sx=e.clientX, sy=e.clientY, ox=obj.x, oy=obj.y; let moved=false;
+    const maxX=(state.stage?state.stage.w:1700)-20, maxY=(state.stage?state.stage.h:1360)-20;
+    function mv(ev){
+      const dx=(ev.clientX-sx)/zoom, dy=(ev.clientY-sy)/zoom;
+      if(Math.abs(dx)>3||Math.abs(dy)>3) moved=true;
+      obj.x=clamp(ox+dx, 20, maxX); obj.y=clamp(oy+dy, 20, maxY);
+      moveEl.style.left=obj.x+"px"; moveEl.style.top=obj.y+"px";
+    }
+    function up(){ pointerGesture=false; handleEl.releasePointerCapture(e.pointerId); handleEl.removeEventListener("pointermove",mv); handleEl.removeEventListener("pointerup",up); if(moved){ save(); if(onEnd)onEnd(); } }
+    handleEl.addEventListener("pointermove",mv); handleEl.addEventListener("pointerup",up);
+  });
+}
+// Resize a feature from its bottom-right corner, keeping the top-left corner fixed (x/y are the centre).
+function makeResizable(handle, el, f){
+  handle.addEventListener("pointerdown",e=>{
+    if(e.button!==0) return;
+    e.preventDefault(); e.stopPropagation();
+    handle.setPointerCapture(e.pointerId); pointerGesture=true;
+    const sx=e.clientX, sy=e.clientY, ow=f.w, oh=f.h, ox=f.x, oy=f.y;
+    function mv(ev){
+      const nw=Math.max(24, ow+(ev.clientX-sx)/zoom), nh=Math.max(18, oh+(ev.clientY-sy)/zoom);
+      f.w=nw; f.h=nh; f.x=ox+(nw-ow)/2; f.y=oy+(nh-oh)/2;
+      el.style.width=nw+"px"; el.style.height=nh+"px"; el.style.left=f.x+"px"; el.style.top=f.y+"px";
+    }
+    function up(){ pointerGesture=false; handle.releasePointerCapture(e.pointerId); handle.removeEventListener("pointermove",mv); handle.removeEventListener("pointerup",up); save(); }
+    handle.addEventListener("pointermove",mv); handle.addEventListener("pointerup",up);
+  });
+}
+// Rotate any object by dragging its ⟳ handle around the object centre.
+function makeRotatable(handle, centerEl, obj, applyFn){
+  handle.addEventListener("pointerdown",e=>{
+    if(e.button!==0) return;
+    e.preventDefault(); e.stopPropagation(); handle.setPointerCapture(e.pointerId); pointerGesture=true;
+    function mv(ev){
+      const r=centerEl.getBoundingClientRect(); const cx=r.left+r.width/2, cy=r.top+r.height/2;
+      let ang=Math.atan2(ev.clientY-cy, ev.clientX-cx)*180/Math.PI + 90;
+      if(ev.shiftKey) ang=Math.round(ang/15)*15;   // hold Shift to snap to 15°
+      obj.rot=Math.round(ang); applyFn();
+    }
+    function up(){ pointerGesture=false; handle.releasePointerCapture(e.pointerId); handle.removeEventListener("pointermove",mv); handle.removeEventListener("pointerup",up); save(); }
+    handle.addEventListener("pointermove",mv); handle.addEventListener("pointerup",up);
+  });
+}
+// Add a rotate handle to a table; keeps the number & names upright while the table spins.
+function addTableRotateHandle(wrap, t, offset){
+  const h=document.createElement("div"); h.className="rot-h";
+  h.style.left="0"; h.style.top=(-offset)+"px"; h.style.transform="translate(-50%,-50%)";
+  wrap.appendChild(h);
+  const apply=()=>{
+    wrap.style.transform=`rotate(${t.rot||0}deg)`;
+    wrap.querySelectorAll(".nm,.tnum,.tcount").forEach(x=>{ x.style.display="inline-block"; x.style.transform=`rotate(${-(t.rot||0)}deg)`; });
+  };
+  apply();
+  makeRotatable(h, wrap, t, apply);
+}
+
+// The whole green space: size + floor material, plus a drag-to-resize corner handle.
+function applyStage(){
+  stage.style.width=state.stage.w+"px"; stage.style.height=state.stage.h+"px";
+  applyMaterial(stage, state.stageMaterial||"grass");
+}
+function makeStageResizable(h){
+  h.addEventListener("pointerdown",e=>{
+    if(e.button!==0) return;
+    e.preventDefault(); e.stopPropagation(); h.setPointerCapture(e.pointerId); pointerGesture=true;
+    const sx=e.clientX, sy=e.clientY, ow=state.stage.w, oh=state.stage.h;
+    function mv(ev){ state.stage.w=Math.max(700,Math.round(ow+(ev.clientX-sx)/zoom)); state.stage.h=Math.max(600,Math.round(oh+(ev.clientY-sy)/zoom)); stage.style.width=state.stage.w+"px"; stage.style.height=state.stage.h+"px"; }
+    function up(){ pointerGesture=false; h.releasePointerCapture(e.pointerId); h.removeEventListener("pointermove",mv); h.removeEventListener("pointerup",up); applyZoom(); save(); }
+    h.addEventListener("pointermove",mv); h.addEventListener("pointerup",up);
+  });
+}
+
+// ============================================================
+//  TABLE SETTINGS
+// ============================================================
+const menu=document.getElementById("tablemenu");
+function openMenu(tableId, evt){
+  activeMenuTableId=tableId;
+  const t=state.tables.find(x=>x.id===tableId);
+  document.getElementById("menuTitle").textContent = t.shape==="head" ? "Ρυθμίσεις νυφικού τραπεζιού" : "Ρυθμίσεις τραπεζιού";
+  document.getElementById("menuCapLabel").textContent = t.shape==="head" ? "Συνολικές θέσεις (οι 2 είναι οι ακριανές)" : "Θέσεις";
+  document.getElementById("menuLabel").value=t.label;
+  document.getElementById("menuCapCustom").value=[8,10,12].includes(t.capacity)?"":t.capacity;
+  menu.querySelectorAll(".caps button").forEach(b=>b.classList.toggle("active",+b.dataset.cap===t.capacity));
+  showPopover(menu,evt);
+}
+function closeMenu(){ menu.style.display="none"; activeMenuTableId=null; }
+document.getElementById("menuLabel").addEventListener("input",e=>{ const t=state.tables.find(x=>x.id===activeMenuTableId); if(!t)return; t.label=e.target.value; save(); renderTables(); });
+menu.querySelectorAll(".caps button").forEach(b=>b.addEventListener("click",()=>setCapacity(+b.dataset.cap)));
+document.getElementById("menuCapCustom").addEventListener("change",e=>{ const v=parseInt(e.target.value,10); if(v>=1&&v<=30) setCapacity(v); });
+function setCapacity(n){
+  const t=state.tables.find(x=>x.id===activeMenuTableId); if(!t)return;
+  if(t.shape==="head") n=Math.max(3,n);
+  const old=t.seats, newSeats=Array(n).fill(null); let bumped=0;
+  for(let i=0;i<old.length;i++){ if(old[i]!=null){ if(i<n)newSeats[i]=old[i]; else{ const free=newSeats.indexOf(null); if(free>=0)newSeats[free]=old[i]; else bumped++; } } }
+  t.capacity=n; t.seats=newSeats; save(); renderTables();
+  menu.querySelectorAll(".caps button").forEach(bt=>bt.classList.toggle("active",+bt.dataset.cap===n));
+  if(bumped) toast(bumped+" καλεσμένος/-οι μετακινήθηκαν σε χωρίς θέση");
+  renderPool();
+}
+document.getElementById("menuDelete").addEventListener("click",()=>{
+  const t=state.tables.find(x=>x.id===activeMenuTableId); if(!t)return;
+  if(!confirm(`Διαγραφή "${t.label}"; Οι καλεσμένοι του επιστρέφουν στους χωρίς θέση.`))return;
+  state.tables=state.tables.filter(x=>x.id!==activeMenuTableId);
+  save(); renderTables(); renderPool(); closeMenu();
+});
+document.getElementById("menuClose").addEventListener("click",closeMenu);
+document.addEventListener("click",e=>{
+  if(menu.style.display==="block" && !menu.contains(e.target) && !e.target.classList.contains("tgear")) closeMenu();
+  const gm=document.getElementById("groupmenu");
+  if(gm.style.display==="block" && !gm.contains(e.target)) closeGroupMenu();
+  const fm=document.getElementById("featuremenu");
+  if(fm.style.display==="block" && !fm.contains(e.target)) closeFeatureMenu();
+  const pm=document.getElementById("profilemenu");
+  if(pm.style.display==="block" && !pm.contains(e.target) && e.target.id!=="profMore") closeProfileMenu();
+  const ge=document.getElementById("guesteditor");
+  if(ge.style.display==="block" && !ge.contains(e.target)) closeGuestEditor();
+});
+
+// ============================================================
+//  TOOLBAR
+// ============================================================
+document.getElementById("addTableBtn").addEventListener("click",()=>{
+  const id=nextId();
+  const roundCount=state.tables.filter(t=>t.shape!=="head").length;
+  state.tables.push({id, label:String(roundCount+1), shape:"round", x:850, y:250, capacity:10, seats:Array(10).fill(null)});
+  save(); renderTables(); toast("Προστέθηκε στρογγυλό τραπέζι — σύρετέ το στη θέση του");
+});
+document.getElementById("addHeadBtn").addEventListener("click",()=>{
+  const t=makeHeadTable(nextId()); t.y=1245; state.tables.push(t);
+  save(); renderTables(); toast("Προστέθηκε νυφικό τραπέζι — σύρετέ το στη θέση του");
+});
+document.getElementById("addGuestBtn").addEventListener("click",()=>{
+  const ta=document.getElementById("guestInput");
+  const lines=ta.value.split("\n").map(s=>s.trim()).filter(Boolean); if(!lines.length)return;
+  lines.forEach(nm=>{ const id="g"+nextId(); state.guests[id]={name:nm, groupId:state.activeGroupId||null}; });
+  ta.value=""; save(); renderPool(); renderGroups(); toast(lines.length+" καλεσμένος/-οι προστέθηκαν");
+});
+document.getElementById("guestInput").addEventListener("keydown",e=>{ if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)) document.getElementById("addGuestBtn").click(); });
+document.getElementById("autoSeatBtn").addEventListener("click",()=>{
+  const assigned=assignedGuestIds();
+  const un=Object.keys(state.guests).filter(id=>!assigned.has(id)).sort((a,b)=>String(state.guests[a].groupId).localeCompare(String(state.guests[b].groupId)));
+  let idx=0;
+  for(const t of state.tables){ if(t.shape==="head") continue; for(let i=0;i<t.capacity&&idx<un.length;i++){ if(t.seats[i]==null){ t.seats[i]=un[idx++]; } } if(idx>=un.length)break; }
+  save(); renderTables(); renderPool(); toast(idx?`Τοποθετήθηκαν ${idx} καλεσμένος/-οι`:"Δεν υπάρχουν ελεύθερες θέσεις / καλεσμένοι χωρίς θέση");
+});
+document.getElementById("resetBtn").addEventListener("click",()=>{
+  const cur=currentProfile();
+  const msg=(cur&&cur.cloudId)
+    ? "Επαναφορά αυτού του σχεδίου στην προεπιλεγμένη διάταξη; Αυτό διαγράφει όλους τους καλεσμένους — και επειδή είναι κοινόχρηστο, όποιος έχει τον σύνδεσμο ή τον κωδικό συγχρονισμού θα δει και αυτός την επαναφορά."
+    : "Επαναφορά στην προεπιλεγμένη διάταξη; Αυτό διαγράφει όλους τους καλεσμένους.";
+  if(!confirm(msg))return;
+  try{ localStorage.removeItem(STORE_KEY); }catch(e){}
+  if(typeof setPick==="function") setPick(null);
+  state=defaultState(); uid=state._uid; fontScale=1; applyStage(); document.getElementById("stageFloor").value=state.stageMaterial; save(); renderAll(); toast("Επαναφορά στην προεπιλεγμένη διάταξη");
+});
+function planJSON(){ const cur=currentProfile(); return JSON.stringify({...state, _profileName:cur.name}, null, 2); }
+function planFilename(){ const cur=currentProfile(); return ((cur.name||"wedding").replace(/[^\w\-]+/g,"_"))+".wedding.json"; }
+function copyText(ta){
+  ta.focus(); ta.select(); try{ ta.setSelectionRange(0,999999); }catch(e){}
+  let ok=false; try{ ok=document.execCommand("copy"); }catch(e){}
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(ta.value).then(()=>toast("Αντιγράφηκε στο πρόχειρο")).catch(()=>toast(ok?"Αντιγράφηκε στο πρόχειρο":"Επιλέξτε όλα &amp; πατήστε Ctrl+C"));
+  } else { toast(ok?"Αντιγράφηκε στο πρόχειρο":"Επιλέξτε όλα &amp; πατήστε Ctrl+C"); }
+}
+document.getElementById("exportBtn").addEventListener("click",()=>{
+  document.getElementById("exportText").value=planJSON();
+  document.getElementById("exportModal").classList.add("open");
+  setTimeout(()=>{ const ta=document.getElementById("exportText"); ta.focus(); ta.select(); },30);
+});
+document.getElementById("exportCopy").addEventListener("click",()=>copyText(document.getElementById("exportText")));
+document.getElementById("exportDownload").addEventListener("click",()=>{
+  const blob=new Blob([planJSON()],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=planFilename();
+  document.body.appendChild(a); a.click(); a.remove(); toast("Λήφθηκε "+a.download);
+});
+document.getElementById("exportClose").addEventListener("click",()=>document.getElementById("exportModal").classList.remove("open"));
+function doImportData(s, suggested){
+  if(s && typeof s==="object" && s.tables){ importPlanAsProfile(s, suggested); }   // importPlanAsProfile sanitises + normalises the shape (H-9)
+  else if(s && typeof s==="object" && s.importGuests){ mergeGuestList(s); }
+  else { toast("Δεν είναι αρχείο σχεδίου ή λίστας καλεσμένων"); }
+}
+function pickImportFile(){
+  const inp=document.createElement("input"); inp.type="file"; inp.accept="application/json";
+  inp.onchange=()=>{ const f=inp.files[0]; if(!f)return; const r=new FileReader();
+    const suggested=f.name.replace(/\.wedding\.json$|\.json$/i,"").replace(/_/g," ");
+    r.onload=()=>{ try{ doImportData(JSON.parse(r.result), suggested); document.getElementById("importModal").classList.remove("open"); }catch(e){ toast("Μη έγκυρο αρχείο"); } };
+    r.readAsText(f); };
+  inp.click();
+}
+document.getElementById("importBtn").addEventListener("click",()=>{
+  document.getElementById("importText").value="";
+  document.getElementById("importModal").classList.add("open");
+});
+document.getElementById("importPaste").addEventListener("click",()=>{
+  const txt=document.getElementById("importText").value.trim(); if(!txt){ toast("Επικολλήστε πρώτα κείμενο σχεδίου"); return; }
+  try{ doImportData(JSON.parse(txt), "Επικολλημένο σχέδιο"); document.getElementById("importModal").classList.remove("open"); }
+  catch(e){ toast("Αυτό το κείμενο δεν είναι έγκυρο σχέδιο"); }
+});
+document.getElementById("importFile").addEventListener("click",pickImportFile);
+document.getElementById("importClose").addEventListener("click",()=>document.getElementById("importModal").classList.remove("open"));
+["exportModal","importModal"].forEach(id=>document.getElementById(id).addEventListener("click",e=>{ if(e.target.id===id) e.currentTarget.classList.remove("open"); }));
+
+// ============================================================
+//  ☁ CLOUD SYNC  (Cloudflare Worker: POST/GET/PUT /plans)
+// ============================================================
+let cloudTimer=null, pushInFlight=false, pendingSnap=null, pointerGesture=false;
+function planPayload(){ const cur=currentProfile(); return { name:cur.name, plan:{...state, _profileName:cur.name} }; }
+// Edit key rides in the URL #fragment (never sent to servers / logs); omit it for a view-only link.
+function shareLink(cur, viewOnly){ const base=location.origin+location.pathname+"?plan="+cur.cloudId;
+  return (viewOnly||!cur.editKey)? base : base+"#key="+cur.editKey; }
+function setCloudDot(st){ const b=document.getElementById("cloudBtn"); if(!b) return;
+  b.textContent={ok:"☁ Συγχρονισμένο",pending:"☁ Αποθήκευση…",err:"☁ Εκτός σύνδεσης"}[st]||"☁ Κοινή χρήση"; }
+function fmtTime(ms){ try{ return ms? new Date(ms).toLocaleString():"—"; }catch(e){ return "—"; } }
+// A profile can be pushed if we hold its edit key, or a sync code is set (writes go via X-Sync-Code).
+function canPush(prof){ return !!(prof && prof.cloudId && !prof.readonly && (prof.editKey || getSyncCode())); }
+function authHeaders(prof){ const h={"Content-Type":"application/json"};
+  if(prof.editKey) h["X-Edit-Key"]=prof.editKey; else if(getSyncCode()) h["X-Sync-Code"]=getSyncCode(); return h; }
+// True while the user is mid-interaction — used to defer a cloud pull so it can't clobber live edits.
+function interactionBusy(){
+  if(dragData||pick||pointerGesture) return true;
+  const ae=document.activeElement;
+  if(ae && (ae.tagName==="INPUT"||ae.tagName==="TEXTAREA"||ae.isContentEditable)) return true;
+  if(document.querySelector(".modal-back.open")) return true;
+  for(const id of ["groupmenu","guesteditor","tablemenu","featuremenu","profilemenu"]){ const el=document.getElementById(id); if(el && el.style.display==="block") return true; }
+  return false;
+}
+async function cloudCreate(){
+  const r=await fetch(SYNC_URL+"/plans",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(planPayload())});
+  const d=await r.json(); if(!r.ok||!d.id) throw new Error(d.error||"upload failed");
+  const cur=currentProfile(); cur.cloudId=d.id; cur.editKey=d.editKey; cur.cloudUpdated=d.updated; cur.readonly=false; saveProfilesIdx(); registerUnderCode(cur); return d;
+}
+// Snapshot the plan + its target profile at SCHEDULE time so a later profile switch can't retarget the push.
+function snapshotFor(prof){ return { profId:prof.id, cloudId:prof.cloudId, editKey:prof.editKey||"", name:prof.name,
+  planJSON:JSON.stringify({...state, _profileName:prof.name}), baseUpdated:prof.cloudUpdated||0 }; }
+async function cloudPush(snap){
+  const prof=profiles.profiles.find(p=>p.id===snap.profId); if(!prof||!prof.cloudId) return;
+  const headers={"Content-Type":"application/json"};
+  if(snap.editKey) headers["X-Edit-Key"]=snap.editKey; else if(getSyncCode()) headers["X-Sync-Code"]=getSyncCode();
+  const r=await fetch(SYNC_URL+"/plans/"+snap.cloudId,{method:"PUT",headers,
+    body:JSON.stringify({ name:snap.name, plan:JSON.parse(snap.planJSON), baseUpdated:snap.baseUpdated })});
+  if(r.status===409){                                  // remote is newer — adopt it instead of overwriting
+    const d=await r.json().catch(()=>({}));
+    prof.cloudUpdated=d.updated||prof.cloudUpdated; saveProfilesIdx();
+    if(prof.id===profiles.activeId && d.plan && !interactionBusy()){ applyPulledPlan(prof,d); toast("Φορτώθηκε νεότερη έκδοση από άλλη συσκευή"); }
+    return;
+  }
+  const d=await r.json(); if(!r.ok) throw new Error(d.error||"update failed");
+  prof.cloudUpdated=d.updated; saveProfilesIdx(); registerUnderCode(prof); return d;
+}
+async function cloudFetch(id){ const r=await fetch(SYNC_URL+"/plans/"+id); const d=await r.json(); if(!r.ok) throw new Error(d.error||"not found"); return d; }
+async function cloudDelete(prof){
+  if(!prof||!prof.cloudId) return;
+  try{ await fetch(SYNC_URL+"/plans/"+prof.cloudId,{method:"DELETE",headers:authHeaders(prof)}); }catch(e){}
+  const code=getSyncCode(); if(code){ try{ await fetch(codeUrl(),{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:prof.cloudId})}); }catch(e){} }
+  prof.cloudId=""; prof.editKey=""; prof.cloudUpdated=0; prof.readonly=false; saveProfilesIdx();
+}
+
+// ---- sync code: link all my devices under one shared code ----
+const SYNC_CODE_KEY="weddingSeatingPlanner.syncCode";
+function getSyncCode(){ try{ return localStorage.getItem(SYNC_CODE_KEY)||""; }catch(e){ return ""; } }
+function setSyncCode(c){ try{ if(c) localStorage.setItem(SYNC_CODE_KEY,c); else localStorage.removeItem(SYNC_CODE_KEY); }catch(e){} }
+// A sync code is a shared secret, so it must be unguessable: 16 chars from a 32-symbol alphabet ≈ 80 bits.
+function randCode(){ const c="abcdefghijkmnpqrstuvwxyz23456789"; let s="";
+  const a=(window.crypto&&crypto.getRandomValues)?crypto.getRandomValues(new Uint8Array(16)):null;
+  for(let i=0;i<16;i++) s+=c[(a?a[i]:Math.floor(Math.random()*256))%c.length]; return s; }
+function codeUrl(){ return SYNC_URL+"/codes/"+encodeURIComponent(getSyncCode()); }
+async function registerUnderCode(prof){ const code=getSyncCode(); prof=prof||currentProfile(); if(!code||!prof||!prof.cloudId) return;
+  const headers={"Content-Type":"application/json"}; if(prof.editKey) headers["X-Edit-Key"]=prof.editKey;
+  // editKey in the header authorises registration on the new worker; editKey in the body keeps the old worker working
+  // during the deploy window (the new worker ignores the body field and never stores/returns editKeys).
+  try{ await fetch(codeUrl(),{method:"POST",headers,body:JSON.stringify({id:prof.cloudId,editKey:prof.editKey,name:prof.name,updated:prof.cloudUpdated})}); }catch(e){} }
+async function registerAllUnderCode(){ const code=getSyncCode(); if(!code) return; for(const p of profiles.profiles){ if(p.cloudId) await registerUnderCode(p); } }
+// Pull the code's plan list and add any that aren't already local profiles (so they appear in the dropdown).
+async function syncFromCode(){ const code=getSyncCode(); if(!code) return 0;
+  let plans; try{ const r=await fetch(codeUrl()); plans=(await r.json()).plans||[]; }catch(e){ return 0; }
+  let added=0;
+  for(const p of plans){ if(profiles.profiles.some(x=>x.cloudId===p.id)) continue;
+    try{ const d=await cloudFetch(p.id); const s=d.plan||{}; if(!s.tables) continue; delete s._profileName;
+      sanitizePlan(s); if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s);
+      const pid=newProfileId();
+      let stored=true; try{ localStorage.setItem(planKey(pid), JSON.stringify(s)); }catch(e){ stored=false; }
+      if(!stored) continue;                              // don't register a plan we couldn't persist locally
+      profiles.profiles.push({ id:pid, name:d.name||p.name||"Κοινόχρηστο σχέδιο", cloudId:p.id, editKey:p.editKey||"", cloudUpdated:d.updated }); added++;
+    }catch(e){}
+  }
+  if(added){ saveProfilesIdx(); renderProfiles(); }
+  return added;
+}
+// Light polling so another device's changes / new plans appear without a manual reload.
+let cloudPoll=null;
+function startCloudPoll(){ if(cloudPoll) return;
+  cloudPoll=setInterval(async()=>{
+    if(pushInFlight||cloudTimer||pendingSnap) return;    // a local push is pending — don't pull over it
+    if(interactionBusy()) return;                        // user mid-edit — defer the pull
+    if(getSyncCode()) await syncFromCode();              // pick up newly-added plans
+    const cur=currentProfile(); if(cur&&cur.cloudId){
+      try{ const d=await cloudFetch(cur.cloudId);
+        if(d.updated && (!cur.cloudUpdated||d.updated>cur.cloudUpdated) && !interactionBusy() && !cloudTimer){ applyPulledPlan(cur,d); toast("Ενημερώθηκε από το cloud"); }
+      }catch(e){}
+    }
+  }, 15000);
+}
+// Debounced push. C-1: the timer is always nulled on fire. H-2: the plan+profile are snapshotted at
+// schedule time, so switching profiles within the debounce window can't retarget the write.
+function scheduleCloudPush(){
+  const cur=(profiles&&profiles.profiles)?currentProfile():null; if(!canPush(cur)) return;
+  pendingSnap=snapshotFor(cur);
+  clearTimeout(cloudTimer); setCloudDot("pending");
+  cloudTimer=setTimeout(runPush, 2500);
+}
+async function runPush(){
+  cloudTimer=null; const snap=pendingSnap; if(!snap) return;
+  pushInFlight=true;
+  try{ await cloudPush(snap); pendingSnap=null; setCloudDot("ok"); }
+  catch(e){ setCloudDot("err"); if(navigator.onLine!==false){ clearTimeout(cloudTimer); cloudTimer=setTimeout(runPush, 8000); } }   // retry
+  finally{ pushInFlight=false; }
+}
+// Flush a pending edit synchronously when the tab is hidden/closed so the last edit isn't lost (H-8).
+function flushCloudPush(){
+  if(cloudTimer){ clearTimeout(cloudTimer); cloudTimer=null; }
+  const snap=pendingSnap; if(!snap) return; pendingSnap=null;
+  try{
+    const headers={"Content-Type":"application/json"};
+    if(snap.editKey) headers["X-Edit-Key"]=snap.editKey; else if(getSyncCode()) headers["X-Sync-Code"]=getSyncCode();
+    fetch(SYNC_URL+"/plans/"+snap.cloudId,{method:"PUT",headers,keepalive:true,
+      body:JSON.stringify({ name:snap.name, plan:JSON.parse(snap.planJSON), baseUpdated:snap.baseUpdated })});
+  }catch(e){}
+}
+window.addEventListener("pagehide",flushCloudPush);
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") flushCloudPush(); });
+// Replace the CURRENT profile's plan with one fetched from the cloud.
+function applyPulledPlan(cur, d){
+  const s=d.plan||{}; delete s._profileName;
+  if(!s.tables){ cur.cloudUpdated=d.updated; saveProfilesIdx(); return; }   // nothing valid to apply — never blank the plan
+  sanitizePlan(s); if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s);
+  if(typeof setPick==="function") setPick(null); dragData=null;             // drop any in-hand guest from the old plan (H-7)
+  state=s; uid=state._uid||2001; fontScale=state.seatFontScale||1;
+  if(d.name) cur.name=d.name; cur.cloudUpdated=d.updated; saveProfilesIdx();
+  try{ localStorage.setItem(planKey(cur.id), JSON.stringify(state)); }catch(e){}
+  applyStage(); document.getElementById("stageFloor").value=state.stageMaterial||"grass";
+  renderProfiles(); renderAll();
+  setTimeout(()=>{ zoom=initialZoom(); applyZoom(); },30);
+}
+function renderCloudBody(){
+  const cur=currentProfile(); const body=document.getElementById("cloudBody"); const code=getSyncCode();
+  const codeHtml = code
+    ? `<div style="border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:12px">
+         <div class="mhint">Οι συσκευές σας συνδέονται με αυτόν τον ιδιωτικό <strong>κωδικό συγχρονισμού</strong>. Εισαγάγετέ τον σε άλλη συσκευή (☁ Κοινή χρήση → επικόλληση κωδικού) για να βλέπετε εκεί όλα τα σχέδιά σας και να παραμένουν συγχρονισμένα.</div>
+         <div style="display:flex;gap:8px">
+           <input id="syncCodeShow" readonly value="${escapeHtml(code)}" style="flex:1;font-family:monospace;font-size:12px;border:1px solid var(--line);border-radius:8px;padding:8px">
+           <button class="btn primary" id="syncCodeCopy" title="Αντιγραφή κωδικού">📋</button>
+         </div>
+         <div class="mhint" style="margin-top:6px"><a href="#" id="syncCodeRefresh">ανανέωση σχεδίων τώρα</a> · <a href="#" id="syncCodeDisconnect">αποσύνδεση αυτής της συσκευής</a></div>
+       </div>`
+    : `<div style="border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:12px">
+         <div class="mhint"><strong>Συγχρονισμός σε όλες τις συσκευές σας.</strong> Δημιουργήστε έναν ιδιωτικό κωδικό συγχρονισμού και μετά εισαγάγετέ τον στο κινητό ή σε άλλον υπολογιστή για να βλέπετε παντού όλα τα σχέδιά σας.</div>
+         <button class="btn primary" id="syncCodeGen" style="width:100%;margin-bottom:6px">✨ Δημιουργία κωδικού συγχρονισμού</button>
+         <div style="display:flex;gap:8px">
+           <input id="syncCodeInput" placeholder="…ή επικολλήστε έναν κωδικό από άλλη συσκευή" style="flex:1;font-family:monospace;font-size:12px;border:1px solid var(--line);border-radius:8px;padding:8px">
+           <button class="btn" id="syncCodeJoin">Σύνδεση</button>
+         </div>
+       </div>`;
+  const wire=()=>{
+    const gen=document.getElementById("syncCodeGen");
+    if(gen) gen.onclick=async()=>{ setSyncCode(randCode()); await registerAllUnderCode(); await syncFromCode(); toast("Δημιουργήθηκε κωδικός συγχρονισμού"); renderCloudBody(); };
+    const join=document.getElementById("syncCodeJoin");
+    if(join) join.onclick=async()=>{ const v=document.getElementById("syncCodeInput").value.trim().toLowerCase().replace(/\s+/g,"");
+      if(v.length<12){ toast("Αυτός ο κωδικός φαίνεται πολύ σύντομος"); return; } setSyncCode(v); await registerAllUnderCode(); const n=await syncFromCode(); toast(n?("Συνδεθήκατε · προστέθηκαν "+n+" σχέδιο/-α"):"Συνδεθήκατε — συγχρονισμένο"); renderCloudBody(); };
+    const cp=document.getElementById("syncCodeCopy"); if(cp) cp.onclick=()=>copyText(document.getElementById("syncCodeShow"));
+    const rf=document.getElementById("syncCodeRefresh"); if(rf) rf.onclick=async(e)=>{ e.preventDefault(); const n=await syncFromCode(); toast(n?("Προστέθηκαν "+n+" σχέδιο/-α"):"Ήδη ενημερωμένο"); };
+    const dc=document.getElementById("syncCodeDisconnect"); if(dc) dc.onclick=(e)=>{ e.preventDefault(); if(!confirm("Αποσύνδεση αυτής της συσκευής από τον συγχρονισμό; Τα σχέδιά σας παραμένουν εδώ· απλώς σταματούν να συγχρονίζονται με τις άλλες συσκευές σας.")) return; setSyncCode(""); toast("Αποσυνδέθηκε"); renderCloudBody(); };
+  };
+  if(!cur.cloudId){
+    body.innerHTML=codeHtml+`<div class="mhint">Ανεβάστε αυτό το σχέδιο online ώστε να μπορείτε να το ανοίξετε στο κινητό σας, σε άλλον υπολογιστή ή να το μοιραστείτε με τον/την σύντροφό σας.</div>
+      <button class="btn primary" id="cloudUpload" style="width:100%;margin-top:4px">☁ Μεταφόρτωση &amp; δημιουργία συνδέσμων κοινής χρήσης</button>`;
+    wire();
+    document.getElementById("cloudUpload").onclick=async()=>{ const b=document.getElementById("cloudUpload"); b.disabled=true; b.textContent="Μεταφόρτωση…";
+      try{ await cloudCreate(); setCloudDot("ok"); renderCloudBody(); toast("Το σχέδιο είναι online ☁"); }
+      catch(e){ b.disabled=false; b.textContent="☁ Μεταφόρτωση & δημιουργία συνδέσμων κοινής χρήσης"; toast("Η μεταφόρτωση απέτυχε — ελέγξτε τη σύνδεση"); } };
+  } else {
+    const editLink=shareLink(cur,false), viewLink=shareLink(cur,true), canEdit=canPush(cur)||!!cur.editKey;
+    body.innerHTML=codeHtml+`
+      ${cur.editKey?`<div class="mhint" style="font-weight:600">Σύνδεσμος επεξεργασίας — ανοίγει &amp; συγχρονίζει (μπορεί να αλλάξει το σχέδιο)</div>
+      <input id="cloudLink" readonly value="${escapeHtml(editLink)}" style="width:100%;font-family:monospace;font-size:11px;border:1px solid var(--line);border-radius:8px;padding:8px">`:""}
+      <div class="mhint" style="margin-top:8px;font-weight:600">Σύνδεσμος μόνο για προβολή — για να βλέπουν οι καλεσμένοι, όχι να επεξεργάζονται</div>
+      <input id="cloudViewLink" readonly value="${escapeHtml(viewLink)}" style="width:100%;font-family:monospace;font-size:11px;border:1px solid var(--line);border-radius:8px;padding:8px">
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+        ${cur.editKey?`<button class="btn primary" id="cloudCopy" style="flex:1;min-width:120px">📋 Αντιγραφή συνδέσμου επεξεργασίας</button>`:""}
+        <button class="btn" id="cloudCopyView" style="flex:1;min-width:120px">📋 Αντιγραφή συνδέσμου προβολής</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button class="btn" id="cloudPushNow" style="flex:1">⬆ Αποστολή τώρα</button>
+        <button class="btn" id="cloudPullNow" style="flex:1">⬇ Λήψη πιο πρόσφατου</button>
+        <button class="btn danger" id="cloudRemove" style="flex:1">🗑 Αφαίρεση από το cloud</button>
+      </div>
+      <div class="mhint" style="margin-top:8px">Τελευταίος συγχρονισμός: ${fmtTime(cur.cloudUpdated)}${canEdit?"":" · <em>μόνο για προβολή σε αυτή τη συσκευή</em>"}</div>`;
+    wire();
+    const cc=document.getElementById("cloudCopy"); if(cc) cc.onclick=()=>copyText(document.getElementById("cloudLink"));
+    document.getElementById("cloudCopyView").onclick=()=>copyText(document.getElementById("cloudViewLink"));
+    document.getElementById("cloudPushNow").onclick=async()=>{ const c2=currentProfile(); if(!canPush(c2)){ toast("Αυτό το σχέδιο είναι μόνο για προβολή εδώ"); return; }
+      try{ await cloudPush(snapshotFor(c2)); setCloudDot("ok"); renderCloudBody(); toast("Στάλθηκε στο cloud"); }catch(e){ toast("Η αποστολή απέτυχε"); } };
+    document.getElementById("cloudPullNow").onclick=async()=>{ if(!confirm("Αντικατάσταση αυτού του σχεδίου με την πιο πρόσφατη έκδοση από το cloud;")) return;
+      try{ const d=await cloudFetch(cur.cloudId); applyPulledPlan(cur,d); renderCloudBody(); toast("Λήφθηκε το πιο πρόσφατο από το cloud"); }catch(e){ toast("Η λήψη απέτυχε"); } };
+    document.getElementById("cloudRemove").onclick=async()=>{ if(!confirm("Αφαίρεση αυτού του σχεδίου από το cloud; Παραμένει σε αυτή τη συσκευή αλλά σταματά ο συγχρονισμός και οι σύνδεσμοι κοινής χρήσης παύουν να λειτουργούν.")) return;
+      await cloudDelete(currentProfile()); setCloudDot(); renderCloudBody(); toast("Αφαιρέθηκε από το cloud"); };
+  }
+}
+// Open a ?plan=<id>[&key=<editKey>] link: fetch it and load as (or into) a profile.
+async function openSharedFromURL(){
+  const params=new URLSearchParams(location.search); const id=params.get("plan"); if(!id) return false;
+  const key=(location.hash.match(/(?:^#|&)key=([^&]+)/)||[])[1] || params.get("key") || "";   // key now rides in the #fragment
+  try{ history.replaceState(null,"",location.origin+location.pathname); }catch(e){}
+  try{
+    const d=await cloudFetch(id);
+    let prof=profiles.profiles.find(p=>p.cloudId===id);
+    if(prof){ profiles.activeId=prof.id; if(key&&!prof.editKey){ prof.editKey=key; prof.readonly=false; } saveProfilesIdx();
+      applyPulledPlan(prof,d); setCloudDot("ok"); toast((prof.editKey||key)?"Άνοιξε κοινόχρηστο σχέδιο (συγχρονισμένο)":"Άνοιξε κοινόχρηστο σχέδιο (μόνο για προβολή)"); }
+    else{ const pid=newProfileId(); prof={ id:pid, name:d.name||"Κοινόχρηστο σχέδιο", cloudId:id, editKey:key, cloudUpdated:d.updated, readonly:!key };
+      profiles.profiles.push(prof); profiles.activeId=pid; saveProfilesIdx();
+      applyPulledPlan(prof,d); setCloudDot("ok"); toast((key?'Άνοιξε κοινόχρηστο σχέδιο: "':'Άνοιξε (μόνο για προβολή): "')+(d.name||"σχέδιο")+'"'); }
+  }catch(e){ toast("Δεν ήταν δυνατό το άνοιγμα αυτού του κοινόχρηστου συνδέσμου"); }
+  return true;
+}
+// On normal load, refresh the active profile if the cloud copy is newer (e.g. edited on another device).
+async function pullIfNewer(){
+  const cur=currentProfile(); if(!cur||!cur.cloudId){ return; }
+  try{ const d=await cloudFetch(cur.cloudId);
+    if(d.updated && (!cur.cloudUpdated || d.updated>cur.cloudUpdated)){ applyPulledPlan(cur,d); toast("Ενημερώθηκε από το cloud"); }
+    setCloudDot("ok");
+  }catch(e){ setCloudDot("err"); }
+}
+document.getElementById("cloudBtn").addEventListener("click",()=>{ renderCloudBody(); document.getElementById("cloudModal").classList.add("open"); });
+document.getElementById("cloudClose").addEventListener("click",()=>document.getElementById("cloudModal").classList.remove("open"));
+document.getElementById("cloudModal").addEventListener("click",e=>{ if(e.target.id==="cloudModal") e.currentTarget.classList.remove("open"); });
+// Merge a guest LIST into the current plan (adds to the pool; never touches tables or existing guests)
+document.getElementById("importListBtn").addEventListener("click",()=>{
+  const inp=document.createElement("input"); inp.type="file"; inp.accept="application/json,.json";
+  inp.onchange=()=>{ const f=inp.files[0]; if(!f)return; const r=new FileReader();
+    r.onload=()=>{ try{ const d=JSON.parse(r.result); if(d.importGuests) mergeGuestList(d); else if(d.tables) toast("Αυτό είναι πλήρες σχέδιο — χρησιμοποιήστε το κουμπί Εισαγωγή"); else toast("Δεν είναι αρχείο λίστας καλεσμένων"); }catch(e){ toast("Μη έγκυρο αρχείο"); } };
+    r.readAsText(f); };
+  inp.click();
+});
+function mergeGuestList(data){
+  const nameToId={}; state.groups.forEach(g=>nameToId[g.name]=g.id);
+  (data.importGroups||[]).forEach(g=>{
+    if(!nameToId[g.name]){ const id="grp"+nextId(); state.groups.push({id,name:g.name,color:(g.color?safeColor(g.color):GROUP_PALETTE[state.groups.length%GROUP_PALETTE.length])}); nameToId[g.name]=id; }
+  });
+  const seenSrc=new Set(Object.values(state.guests).map(g=>g.srcId).filter(Boolean));
+  let added=0, skipped=0;
+  (data.importGuests||[]).forEach(gi=>{
+    const nm=(gi.name||"").trim(); if(!nm) return;
+    if(gi.srcId && seenSrc.has(gi.srcId)){ skipped++; return; }
+    const id="g"+nextId();
+    state.guests[id]={ name:nm, groupId: gi.group? (nameToId[gi.group]||null):null, status: gi.status||"confirmed", note: gi.note||"", srcId: gi.srcId||null };
+    if(gi.srcId) seenSrc.add(gi.srcId);
+    added++;
+  });
+  save(); renderAll();
+  toast(`Προστέθηκαν ${added} καλεσμένος/-οι`+(skipped?` · παραλείφθηκαν ${skipped} ήδη εισαγμένοι`:""));
+}
+
+// ============================================================
+//  PRINT
+// ============================================================
+document.getElementById("printBtn").addEventListener("click",buildAndPrint);
+function buildAndPrint(){
+  const area=document.getElementById("printarea");
+  const legend=state.groups.map(g=>`<span><span class="dot" style="background:${g.color}"></span>${escapeHtml(g.name)}</span>`).join("");
+  const cards=state.tables.map(t=>{
+    const rows=t.seats.map(gid=> gid?`<li><span class="gdot" style="background:${guestColor(gid)}"></span>${escapeHtml(guestName(gid))}${STATUS_TXT[gStatus(gid)]?` <span style="color:#a00">(${STATUS_TXT[gStatus(gid)]})</span>`:""}</li>`:`<li class="empty">— κενή —</li>`).join("");
+    const occ=t.seats.filter(Boolean).length;
+    return `<div class="pcard"><h3>${escapeHtml(t.label)} <span style="font-weight:400;color:#888;font-size:12px">(${occ}/${t.capacity})</span></h3><ol>${rows}</ol></div>`;
+  }).join("");
+  const assigned=assignedGuestIds();
+  const un=Object.keys(state.guests).filter(id=>!assigned.has(id));
+  const unHtml=un.length?`<div class="punassigned"><strong>Χωρίς θέση (${un.length}):</strong> ${un.map(id=>escapeHtml(guestName(id))).join(", ")}</div>`:"";
+  const seated=assigned.size, totalSeats=state.tables.reduce((s,t)=>s+t.capacity,0);
+  area.innerHTML=`<h2>💍 Σχέδιο Τραπεζιών Γάμου</h2>
+    <div class="psub">${state.tables.length} τραπέζια · ${seated} καλεσμένοι με θέση · ${totalSeats} θέσεις συνολικά</div>
+    ${legend?`<div class="plegend">${legend}</div>`:""}
+    <div class="ptables">${cards}</div>${unHtml}`;
+  window.print();
+}
+
+// ============================================================
+//  TEXT SIZE + ZOOM
+// ============================================================
+function setFontScale(v){ fontScale=clamp(v,0.6,2.0); state.seatFontScale=fontScale; save(); renderTables(); toast("Μέγεθος ονομάτων "+Math.round(fontScale*100)+"%"); }
+document.getElementById("fontUp").addEventListener("click",()=>setFontScale(fontScale+0.15));
+document.getElementById("fontDown").addEventListener("click",()=>setFontScale(fontScale-0.15));
+
+function fitZoom(){ const wrap=document.getElementById("stagewrap"); return Math.min(1,(wrap.clientWidth-60)/state.stage.w,(wrap.clientHeight-100)/state.stage.h); }
+// Opening view. The 0.5 floor keeps names readable on a desktop; on a phone that floor
+// would drop you into a corner with no context, so allow fitting much further out — you
+// get the whole garden at a glance and pinch in from there.
+function initialZoom(){ return Math.min(1, Math.max(fitZoom(), isNarrow()?0.2:0.5)); }
+function applyZoom(){
+  stage.style.transform=`scale(${zoom})`;
+  // scale() doesn't change layout size, so the scroll area would stay at 100% and the
+  // far edge would be unreachable when zoomed in — pad the margin box out to match.
+  const m=isNarrow()?12:24, w=(state.stage&&state.stage.w)||1700, h=(state.stage&&state.stage.h)||1360;
+  stage.style.margin=`${m}px ${Math.round(m+w*(zoom-1))}px ${Math.round(m+h*(zoom-1))}px ${m}px`;
+  document.getElementById("zoomLabel").textContent=Math.round(zoom*100)+"%";
+}
+document.getElementById("zoomIn").addEventListener("click",()=>{ zoom=Math.min(2.5,zoom+0.1); applyZoom(); });
+document.getElementById("zoomOut").addEventListener("click",()=>{ zoom=Math.max(0.2,zoom-0.05); applyZoom(); });
+document.getElementById("zoomFit").addEventListener("click",()=>{ zoom=clamp(fitZoom(),0.2,2.5); applyZoom(); });
+
+// ============================================================
+//  INIT
+// ============================================================
+function renderAll(){ renderFeatures(); renderTables(); renderGroups(); renderPool(); }
+if(!state.stage) state.stage={w:2100,h:1400};
+if(!state.stageMaterial) state.stageMaterial="grass";
+applyStage();
+const _stageResize=document.createElement("div"); _stageResize.id="stageResize"; _stageResize.title="Σύρετε για αλλαγή μεγέθους ολόκληρου του χώρου";
+stage.appendChild(_stageResize); makeStageResizable(_stageResize);
+initFloorSelect(); initDecor(); renderProfiles();
+renderAll();
+setTimeout(()=>{ zoom=initialZoom(); applyZoom(); },50);
+// ☁ open a shared link if present, otherwise refresh the active profile from the cloud
+(async()=>{ if(!(await openSharedFromURL())) await pullIfNewer(); if(getSyncCode()) await syncFromCode(); startCloudPoll(); })();
+</script>
