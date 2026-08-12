@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Owner Admin — Wedding Venues</title>
+<style>
+  :root{ --paper:#f6f4f1; --card:#fffdfb; --card2:#f2ece6; --ink:#25211c; --soft:#655c52; --faint:#968c7d;
+         --line:#e5ddd4; --accent:#7d5a8c; --accent-ink:#5c3f68; --accent-soft:#efe6f2;
+         --good:#3f7a52; --good-soft:#e4efe6; --danger:#c0392b; --shadow:0 1px 2px rgba(40,30,20,.05),0 6px 20px rgba(40,30,20,.06); }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.5; }
+  .wrap{ max-width:920px; margin:0 auto; padding:24px 18px 80px; }
+  h1{ font-family:"Iowan Old Style",Palatino,Georgia,serif; font-weight:600; font-size:25px; margin:0; }
+  h2{ font-size:16px; margin:0 0 12px; }
+  a{ color:var(--accent-ink); }
+  .btn{ font:inherit; font-size:14px; font-weight:600; border:1px solid var(--line); background:var(--card); color:var(--ink); padding:8px 13px; border-radius:9px; cursor:pointer; }
+  .btn:hover{ background:#f2ece6; } .btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn.danger{ color:var(--danger); border-color:#e3b4ac; background:#fbeeec; } .btn.sm{ padding:5px 9px; font-size:12.5px; }
+  .btn:disabled{ opacity:.5; cursor:not-allowed; }
+  input,select{ font:inherit; font-size:14px; padding:9px 11px; border:1px solid var(--line); border-radius:9px; background:var(--card); color:var(--ink); width:100%; }
+  label{ font-size:12px; font-weight:700; color:var(--soft); text-transform:uppercase; letter-spacing:.04em; display:block; margin-bottom:4px; }
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); padding:18px; }
+  .login{ max-width:420px; margin:8vh auto 0; text-align:center; }
+  .grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .full{ grid-column:1/-1; }
+  .row{ display:flex; gap:8px; align-items:center; }
+  .mono{ font-family:ui-monospace,Menlo,Consolas,monospace; }
+  .keybox{ background:var(--good-soft); border:1px solid #bcdcc6; border-radius:10px; padding:12px 14px; margin-top:12px; }
+  .keybox .k{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:13px; word-break:break-all; color:var(--ink); font-weight:700; }
+  table{ width:100%; border-collapse:collapse; font-size:14px; }
+  th,td{ text-align:left; padding:10px 8px; border-top:1px solid var(--line); vertical-align:middle; }
+  th{ font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--faint); border-top:none; }
+  .badge{ font-size:11.5px; font-weight:700; padding:2px 8px; border-radius:20px; }
+  .badge.season{ background:var(--accent-soft); color:var(--accent-ink); } .badge.per{ background:var(--good-soft); color:var(--good); }
+  .badge.off{ background:#eee; color:#888; }
+  .muted{ color:var(--faint); font-size:12.5px; }
+  .section{ margin-top:22px; }
+  #toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#25211c; color:#fff; padding:10px 16px; border-radius:10px; font-size:14px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:10; }
+  #toast.show{ opacity:1; }
+  .tablewrap{ overflow-x:auto; }
+  @media (max-width:620px){ .grid{ grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<div id="toast"></div>
+<script>
+const SYNC_URL="https://wedding-sync.andrewstamelakis.workers.dev";
+const KEY_STORE="weddingOwnerKey";
+const app=document.getElementById("app");
+let venuesCache=[];
+const getKey=()=>{ try{ return sessionStorage.getItem(KEY_STORE)||""; }catch(e){ return ""; } };
+const setKey=k=>{ try{ k?sessionStorage.setItem(KEY_STORE,k):sessionStorage.removeItem(KEY_STORE); }catch(e){} };
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1900); }
+function fmtDate(iso){ if(!iso) return "—"; try{ return new Date(iso).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}); }catch(e){ return iso; } }
+function venueConsoleLink(){ return new URL("venue.html", location.href).href; }
+async function api(path, opts={}){ return fetch(SYNC_URL+path,{ ...opts, headers:{ "Content-Type":"application/json", "X-Owner-Key":getKey(), ...(opts.headers||{}) } }); }
+function copy(t){ (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast("Copied")).catch(()=>prompt("Copy:",t)); }
+
+function licenseText(L){ L=L||{};
+  return L.type==="per_wedding" ? `Per-wedding · quota ${L.quota||"∞"}`
+    : `Seasonal · ${fmtDate(L.seasonStart)} → ${fmtDate(L.seasonEnd)}${L.cap?` · cap ${L.cap}`:""}`; }
+
+function renderLogin(err){
+  app.innerHTML=`<div class="card login">
+    <h1>Owner Admin</h1>
+    <p class="muted" style="margin:6px 0 16px">Create and manage the venues (κτήματα) that use the planner.</p>
+    <input id="ok" type="password" placeholder="Owner key" autocomplete="off">
+    ${err?`<div class="muted" style="color:var(--danger);margin-top:8px">${esc(err)}</div>`:""}
+    <div style="margin-top:12px"><button class="btn primary" id="go" style="width:100%">Sign in</button></div>
+    <div class="muted" style="margin-top:12px">The owner key is the <span class="mono">OWNER_KEY</span> secret set on the Cloudflare worker.</div>
+  </div>`;
+  const go=()=>{ const k=document.getElementById("ok").value.trim(); if(!k) return; setKey(k); load(); };
+  document.getElementById("go").onclick=go;
+  document.getElementById("ok").addEventListener("keydown",e=>{ if(e.key==="Enter") go(); });
+}
+
+function licenseFields(prefix){
+  return `<div class="grid">
+    <div class="full"><label>License</label>
+      <select id="${prefix}type">
+        <option value="seasonal">Seasonal (unlimited weddings in a date window)</option>
+        <option value="per_wedding">Per-wedding (a fixed number of weddings)</option>
+      </select></div>
+    <div class="seasonal"><label>Season start</label><input type="date" id="${prefix}start"></div>
+    <div class="seasonal"><label>Season end</label><input type="date" id="${prefix}end"></div>
+    <div class="seasonal"><label>Cap (optional, concurrent)</label><input type="number" id="${prefix}cap" min="0" placeholder="0 = unlimited"></div>
+    <div class="perw" style="display:none"><label>Wedding quota</label><input type="number" id="${prefix}quota" min="1" placeholder="e.g. 20"></div>
+  </div>`;
+}
+function wireLicenseToggle(prefix, scope){
+  const sel=scope.querySelector("#"+prefix+"type");
+  const upd=()=>{ const per=sel.value==="per_wedding";
+    scope.querySelectorAll(".seasonal").forEach(e=>e.style.display=per?"none":"");
+    scope.querySelectorAll(".perw").forEach(e=>e.style.display=per?"":"none"); };
+  sel.addEventListener("change",upd); upd();
+}
+function readLicense(prefix, scope){
+  const type=scope.querySelector("#"+prefix+"type").value;
+  if(type==="per_wedding") return { type, quota:parseInt(scope.querySelector("#"+prefix+"quota").value)||0 };
+  return { type:"seasonal", seasonStart:scope.querySelector("#"+prefix+"start").value||null,
+    seasonEnd:scope.querySelector("#"+prefix+"end").value||null, cap:parseInt(scope.querySelector("#"+prefix+"cap").value)||0 };
+}
+
+function venuesSectionHtml(venues){
+  return `<h2>Venues <span class="muted">(${venues.length})</span></h2>
+    <div class="card tablewrap">
+      <table><thead><tr><th>Venue</th><th>License</th><th>Weddings</th><th>Status</th><th></th></tr></thead>
+      <tbody>${venues.length? venues.map(rowHtml).join("") : `<tr><td colspan="5" class="muted" style="padding:20px;text-align:center">No venues yet.</td></tr>`}</tbody></table>
+    </div>`;
+}
+function renderDashboard(venues){
+  venuesCache=venues;
+  app.innerHTML=`
+    <div class="row" style="justify-content:space-between;margin-bottom:18px">
+      <h1>Owner Admin</h1>
+      <button class="btn" id="logout">Sign out</button>
+    </div>
+    <div class="card section" style="margin-top:0">
+      <h2>Add a venue</h2>
+      <div class="grid">
+        <div><label>Venue name</label><input id="nname" placeholder="e.g. Κτήμα Ηλιοβασίλεμα"></div>
+        <div><label>Contact (optional)</label><input id="ncontact" placeholder="email / phone"></div>
+      </div>
+      <div style="margin-top:12px" id="licwrap">${licenseFields("n")}</div>
+      <div style="margin-top:14px"><button class="btn primary" id="createV">Create venue</button></div>
+      <div id="newkey"></div>
+    </div>
+    <div class="section" id="venuesSection">${venuesSectionHtml(venues)}</div>`;
+  document.getElementById("logout").onclick=()=>{ setKey(""); renderLogin(); };
+  wireLicenseToggle("n", document.getElementById("licwrap"));
+  document.getElementById("createV").onclick=createVenue;
+  document.getElementById("venuesSection").addEventListener("click", onRowAction());
+}
+async function refreshVenues(){
+  const r=await api("/admin/venues"); if(!r.ok) return;
+  const d=await r.json(); venuesCache=(d.venues||[]).sort((a,b)=>b.createdAt-a.createdAt);
+  const sec=document.getElementById("venuesSection"); if(sec) sec.innerHTML=venuesSectionHtml(venuesCache);
+}
+function rowHtml(v){
+  const L=v.license||{};
+  const usage = L.type==="per_wedding" ? `${v.used||0}/${L.quota||"∞"}` : `${v.weddingCount||0}${L.cap?`/${L.cap}`:""}`;
+  return `<tr data-id="${v.id}">
+    <td><strong>${esc(v.name)}</strong>${v.contact?`<div class="muted">${esc(v.contact)}</div>`:""}</td>
+    <td><span class="badge ${L.type==='per_wedding'?'per':'season'}">${L.type==='per_wedding'?'Per-wedding':'Seasonal'}</span><div class="muted">${esc(licenseText(L))}</div></td>
+    <td>${usage}</td>
+    <td>${v.active?`<span class="badge season">Active</span>`:`<span class="badge off">Off</span>`}</td>
+    <td><div class="row" style="gap:6px;flex-wrap:wrap">
+      <button class="btn sm" data-a="key">Key</button>
+      <button class="btn sm" data-a="toggle">${v.active?"Disable":"Enable"}</button>
+      <button class="btn sm danger" data-a="del">Delete</button>
+    </div></td></tr>`;
+}
+async function createVenue(){
+  const name=document.getElementById("nname").value.trim(); if(!name){ toast("Enter a venue name"); return; }
+  const contact=document.getElementById("ncontact").value.trim();
+  const license=readLicense("n", document.getElementById("licwrap"));
+  const btn=document.getElementById("createV"); btn.disabled=true;
+  const r=await api("/admin/venues",{method:"POST",body:JSON.stringify({name,contact,license})});
+  btn.disabled=false;
+  if(!r.ok){ toast("Create failed"); return; }
+  const d=await r.json();
+  const link=venueConsoleLink();
+  document.getElementById("newkey").innerHTML=`<div class="keybox">
+    <div style="font-weight:700;margin-bottom:6px">✅ Venue created — give this to the venue:</div>
+    <div class="muted">Console link</div><div class="k">${esc(link)}</div>
+    <div class="muted" style="margin-top:8px">Venue key</div><div class="k" id="vkey">${esc(d.key)}</div>
+    <div class="row" style="margin-top:10px;gap:8px">
+      <button class="btn sm" id="copykey">Copy key</button>
+      <button class="btn sm" id="copyboth">Copy link + key</button>
+    </div></div>`;
+  document.getElementById("copykey").onclick=()=>copy(d.key);
+  document.getElementById("copyboth").onclick=()=>copy("Κονσόλα: "+link+"\nΚωδικός: "+d.key);
+  document.getElementById("nname").value=""; document.getElementById("ncontact").value="";
+  toast("Venue created"); refreshVenues();
+}
+function onRowAction(){ return async e=>{
+  const btn=e.target.closest("button[data-a]"); if(!btn) return;
+  const id=btn.closest("tr").dataset.id; const v=venuesCache.find(x=>x.id===id); if(!v) return;
+  if(btn.dataset.a==="key"){ const r=await api("/admin/venues/"+id); if(r.ok){ const d=await r.json(); copy(d.key); } else toast("Failed"); }
+  else if(btn.dataset.a==="toggle"){ const r=await api("/admin/venues/"+id,{method:"PATCH",body:JSON.stringify({active:!v.active})}); if(r.ok){ toast(v.active?"Disabled":"Enabled"); refreshVenues(); } else toast("Failed"); }
+  else if(btn.dataset.a==="del"){ if(!confirm(`Delete venue "${v.name}"? Its weddings' plans stay in the cloud but the venue can no longer manage them.`)) return;
+    const r=await api("/admin/venues/"+id,{method:"DELETE"}); if(r.ok){ toast("Deleted"); refreshVenues(); } else toast("Failed"); }
+}; }
+
+async function load(silent){
+  if(!getKey()){ renderLogin(); return; }
+  if(!silent) app.innerHTML=`<div class="muted" style="text-align:center;padding:40px">Loading…</div>`;
+  let r; try{ r=await api("/admin/venues"); }catch(e){ renderLogin("Connection error."); return; }
+  if(r.status===403){ setKey(""); renderLogin("Wrong owner key."); return; }
+  if(r.status===503){ renderLogin("Admin is disabled — set the OWNER_KEY secret on the worker first."); return; }
+  if(!r.ok){ renderLogin("Something went wrong."); return; }
+  const d=await r.json(); renderDashboard((d.venues||[]).sort((a,b)=>b.createdAt-a.createdAt));
+}
+load();
+</script>
+</body>
+</html>

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Κονσόλα Κτήματος — Γάμοι</title>
+<style>
+  :root{ --paper:#f7f4f1; --card:#fffdfb; --ink:#2a2620; --soft:#6a6157; --faint:#9a8f7f;
+         --line:#e7dfd7; --accent:#7d5a8c; --accent-ink:#5c3f68; --accent-soft:#efe6f2;
+         --good:#3f7a52; --good-soft:#e4efe6; --danger:#c0392b; --shadow:0 1px 2px rgba(40,30,20,.05),0 6px 20px rgba(40,30,20,.06); }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; }
+  .wrap{ max-width:860px; margin:0 auto; padding:24px 18px 80px; }
+  h1{ font-family:"Iowan Old Style",Palatino,Georgia,serif; font-weight:600; font-size:26px; margin:0; }
+  a{ color:var(--accent-ink); }
+  .btn{ font:inherit; font-size:14px; font-weight:600; border:1px solid var(--line); background:var(--card); color:var(--ink); padding:9px 14px; border-radius:9px; cursor:pointer; }
+  .btn:hover{ background:#f2ece6; }
+  .btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn.primary:hover{ filter:brightness(1.05); }
+  .btn.danger{ color:var(--danger); border-color:#e3b4ac; background:#fbeeec; }
+  .btn:disabled{ opacity:.5; cursor:not-allowed; }
+  input{ font:inherit; font-size:15px; padding:10px 12px; border:1px solid var(--line); border-radius:9px; width:100%; background:var(--card); color:var(--ink); }
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); }
+  /* login */
+  .login{ max-width:440px; margin:8vh auto 0; padding:28px; text-align:center; }
+  .login h1{ margin-bottom:6px; }
+  .login p{ color:var(--soft); margin:0 0 18px; font-size:14px; }
+  .login .row{ display:flex; gap:8px; margin-top:8px; }
+  /* dashboard */
+  header.top{ display:flex; align-items:flex-start; gap:14px; flex-wrap:wrap; margin-bottom:20px; }
+  header.top .meta{ flex:1; min-width:200px; }
+  header.top .sub{ color:var(--soft); font-size:14px; margin-top:2px; }
+  .badge{ display:inline-block; font-size:12px; font-weight:700; padding:3px 9px; border-radius:20px; }
+  .badge.season{ background:var(--accent-soft); color:var(--accent-ink); }
+  .badge.per{ background:var(--good-soft); color:var(--good); }
+  .badge.warn{ background:#fbeeec; color:var(--danger); }
+  .toolbar{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
+  .newform{ display:flex; gap:8px; flex:1; min-width:240px; }
+  .w-list{ display:flex; flex-direction:column; gap:10px; }
+  .w{ display:flex; align-items:center; gap:12px; padding:14px 16px; }
+  .w .nm{ font-weight:700; font-size:16px; }
+  .w .dt{ color:var(--faint); font-size:12.5px; margin-top:1px; }
+  .w .grow{ flex:1; min-width:0; }
+  .w .acts{ display:flex; gap:7px; flex-wrap:wrap; }
+  .empty{ text-align:center; color:var(--faint); padding:40px 10px; }
+  .hint{ font-size:12.5px; color:var(--faint); margin-top:4px; }
+  #toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#2a2620; color:#fff; padding:10px 16px; border-radius:10px; font-size:14px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:10; }
+  #toast.show{ opacity:1; }
+  @media (max-width:560px){ .w{ flex-direction:column; align-items:flex-start; } }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<div id="toast"></div>
+<script>
+const SYNC_URL="https://wedding-sync.andrewstamelakis.workers.dev";
+const KEY_STORE="weddingVenueKey";
+const app=document.getElementById("app");
+const getKey=()=>{ try{ return localStorage.getItem(KEY_STORE)||""; }catch(e){ return ""; } };
+const setKey=k=>{ try{ k?localStorage.setItem(KEY_STORE,k):localStorage.removeItem(KEY_STORE); }catch(e){} };
+const vidOf=k=>(k||"").split(".")[0];
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1800); }
+function fmtDate(ms){ try{ return new Date(ms).toLocaleDateString("el-GR",{day:"2-digit",month:"short",year:"numeric"}); }catch(e){ return ""; } }
+function coupleLink(planId, editKey){ return new URL("seating-planner-el.html?plan="+planId+"#key="+editKey, location.href).href; }
+async function api(path, opts={}){
+  return fetch(SYNC_URL+path, { ...opts, headers:{ "Content-Type":"application/json", "X-Venue-Key":getKey(), ...(opts.headers||{}) } });
+}
+function copy(text){ (navigator.clipboard?navigator.clipboard.writeText(text):Promise.reject()).then(()=>toast("Ο σύνδεσμος αντιγράφηκε")).catch(()=>{ prompt("Αντιγράψτε τον σύνδεσμο:", text); }); }
+
+// ---- license status text ----
+function licenseBadge(v){
+  const L=v.license||{};
+  if(L.type==="per_wedding"){ const left=(L.quota||0)-(v.used||0);
+    return `<span class="badge ${left<=0?'warn':'per'}">Ανά γάμο · ${v.used||0}/${L.quota||"∞"} · απομένουν ${Math.max(0,left)}</span>`; }
+  const end=L.seasonEnd?fmtDate(Date.parse(L.seasonEnd)):"—";
+  return `<span class="badge season">Σεζόν έως ${end}${L.cap?` · μέχρι ${L.cap} ταυτόχρονα`:""}</span>`;
+}
+const REASON={ inactive:"Ο λογαριασμός είναι ανενεργός — επικοινωνήστε μαζί μας.",
+  before_season:"Η σεζόν δεν έχει ξεκινήσει ακόμη.", after_season:"Η σεζόν έχει λήξει — ανανεώστε για να συνεχίσετε.",
+  quota_reached:"Εξαντλήθηκε το όριο γάμων — ανανεώστε για περισσότερους.", cap_reached:"Έχετε φτάσει το όριο ταυτόχρονων γάμων." };
+
+// ---- views ----
+function renderLogin(err){
+  app.innerHTML=`<div class="card login">
+    <h1>Κονσόλα Κτήματος</h1>
+    <p>Διαχειριστείτε τους γάμους σας και μοιραστείτε το τραπεζολόγιο με κάθε ζευγάρι.</p>
+    <input id="key" placeholder="Κωδικός κτήματος" autocomplete="off">
+    ${err?`<div class="hint" style="color:var(--danger);margin-top:8px">${esc(err)}</div>`:""}
+    <div class="row"><button class="btn primary" id="go" style="flex:1">Σύνδεση</button></div>
+    <div class="hint" style="margin-top:14px">Δεν έχετε κωδικό; Επικοινωνήστε μαζί μας για πρόσβαση.</div>
+  </div>`;
+  const go=async()=>{ const k=document.getElementById("key").value.trim(); if(!k) return; setKey(k); load(); };
+  document.getElementById("go").onclick=go;
+  document.getElementById("key").addEventListener("keydown",e=>{ if(e.key==="Enter") go(); });
+}
+
+function renderDashboard(data){
+  const v=data.venue, weddings=(data.weddings||[]).slice().sort((a,b)=>b.createdAt-a.createdAt);
+  app.innerHTML=`
+    <header class="top">
+      <div class="meta">
+        <h1>${esc(v.name)}</h1>
+        <div class="sub">${licenseBadge(v)}</div>
+      </div>
+      <button class="btn" id="logout">Αποσύνδεση</button>
+    </header>
+    <div class="toolbar">
+      <div class="newform">
+        <input id="newlabel" placeholder="Όνομα ζευγαριού (π.χ. Μαρία &amp; Νίκος)" ${data.canCreate?"":"disabled"}>
+        <button class="btn primary" id="create" ${data.canCreate?"":"disabled"}>+ Νέος γάμος</button>
+      </div>
+    </div>
+    ${data.canCreate?"":`<div class="hint" style="color:var(--danger);margin:-8px 0 14px">${esc(REASON[data.reason]||"Δεν είναι δυνατή η δημιουργία νέου γάμου αυτή τη στιγμή.")}</div>`}
+    <div class="w-list" id="list">
+      ${weddings.length? weddings.map(w=>`
+        <div class="card w" data-id="${w.planId}">
+          <div class="grow"><div class="nm">${esc(w.label)}</div><div class="dt">Δημιουργήθηκε ${fmtDate(w.createdAt)}</div></div>
+          <div class="acts">
+            <button class="btn" data-a="open">Άνοιγμα</button>
+            <button class="btn" data-a="link">Σύνδεσμος ζευγαριού</button>
+            <button class="btn danger" data-a="del">Διαγραφή</button>
+          </div>
+        </div>`).join("")
+      : `<div class="empty">Δεν υπάρχουν γάμοι ακόμη.<br>Προσθέστε τον πρώτο σας παραπάνω ↑</div>`}
+    </div>`;
+  document.getElementById("logout").onclick=()=>{ setKey(""); renderLogin(); };
+  const create=document.getElementById("create");
+  if(create) create.onclick=async()=>{
+    const label=document.getElementById("newlabel").value.trim(); if(!label){ toast("Γράψτε το όνομα του ζευγαριού"); return; }
+    create.disabled=true;
+    const r=await api("/venues/"+v.id+"/weddings",{method:"POST",body:JSON.stringify({label})});
+    if(r.ok){ toast("Ο γάμος δημιουργήθηκε"); load(); }
+    else{ const d=await r.json().catch(()=>({})); toast(REASON[d.error]||"Αποτυχία δημιουργίας"); create.disabled=false; }
+  };
+  document.getElementById("list").addEventListener("click",async e=>{
+    const btn=e.target.closest("button[data-a]"); if(!btn) return;
+    const row=btn.closest(".w"); const id=row.dataset.id;
+    const w=weddings.find(x=>x.planId===id); if(!w) return;
+    const link=coupleLink(w.planId, w.editKey);
+    if(btn.dataset.a==="open") window.open(link,"_blank");
+    else if(btn.dataset.a==="link") copy(link);
+    else if(btn.dataset.a==="del"){ if(!confirm(`Διαγραφή του γάμου «${w.label}»; Το τραπεζολόγιο θα χαθεί οριστικά.`)) return;
+      const r=await api("/venues/"+v.id+"/weddings/"+id,{method:"DELETE"});
+      if(r.ok){ toast("Διαγράφηκε"); load(); } else toast("Αποτυχία διαγραφής"); }
+  });
+}
+
+async function load(){
+  const key=getKey(); if(!key){ renderLogin(); return; }
+  const vid=vidOf(key);
+  app.innerHTML=`<div class="empty">Φόρτωση…</div>`;
+  let r; try{ r=await api("/venues/"+vid); }catch(e){ renderLogin("Σφάλμα σύνδεσης — δοκιμάστε ξανά."); return; }
+  if(r.status===403||r.status===404){ setKey(""); renderLogin("Ο κωδικός δεν είναι έγκυρος."); return; }
+  if(!r.ok){ renderLogin("Κάτι πήγε στραβά — δοκιμάστε ξανά."); return; }
+  renderDashboard(await r.json());
+}
+load();
+</script>
+</body>
+</html>

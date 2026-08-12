@@ -25,8 +25,8 @@
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type, X-Edit-Key, X-Sync-Code",
-  "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, X-Edit-Key, X-Sync-Code, X-Owner-Key, X-Venue-Key",
+  "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
   "Access-Control-Max-Age": "86400",
 };
 const MAX_PLAN_BYTES = 512 * 1024;   // reject absurd payloads (KV value limit is 25MB; a real plan is a few KB)
@@ -127,6 +127,73 @@ export default {
           return json({ ok: true });
         }
       }
+      // ---------------- admin: venues (owner only) ----------------
+      if (parts[0] === "admin" && parts[1] === "venues") {
+        if (!env.OWNER_KEY) return json({ error: "admin disabled — set OWNER_KEY" }, 503);
+        if ((request.headers.get("X-Owner-Key") || "") !== env.OWNER_KEY) return json({ error: "unauthorized" }, 403);
+        if (parts.length === 2 && request.method === "POST") {
+          const b = await request.json().catch(() => ({}));
+          const id = rnd(10), key = id + "." + rnd(28);
+          const v = { id, name: String(b.name || "Venue").slice(0, 120), contact: String(b.contact || "").slice(0, 200),
+            key, license: normLicense(b.license), used: 0, weddings: [], active: true, createdAt: Date.now() };
+          await env.PLANS.put("venue:" + id, JSON.stringify(v));
+          await addVenueIndex(env, id);
+          return json({ id, key, venue: adminVenue(v) });
+        }
+        if (parts.length === 2 && request.method === "GET") {
+          const ids = safeParse(await env.PLANS.get("venues:index")) || [];
+          const out = [];
+          for (const vid of ids) { const v = safeParse(await env.PLANS.get("venue:" + vid)); if (v) out.push(adminVenue(v)); }
+          return json({ venues: out });
+        }
+        if (parts.length === 3 && request.method === "GET") {
+          const v = safeParse(await env.PLANS.get("venue:" + parts[2])); if (!v) return json({ error: "not found" }, 404);
+          return json({ venue: adminVenue(v), key: v.key });
+        }
+        if (parts.length === 3 && (request.method === "PATCH" || request.method === "PUT")) {
+          const v = safeParse(await env.PLANS.get("venue:" + parts[2])); if (!v) return json({ error: "not found" }, 404);
+          const b = await request.json().catch(() => ({}));
+          if (b.name != null) v.name = String(b.name).slice(0, 120);
+          if (b.contact != null) v.contact = String(b.contact).slice(0, 200);
+          if (b.active != null) v.active = !!b.active;
+          if (b.license) v.license = normLicense(b.license);
+          await env.PLANS.put("venue:" + parts[2], JSON.stringify(v));
+          return json({ venue: adminVenue(v) });
+        }
+        if (parts.length === 3 && request.method === "DELETE") {
+          await env.PLANS.delete("venue:" + parts[2]);
+          await removeVenueIndex(env, parts[2]);
+          return json({ ok: true });
+        }
+      }
+      // ---------------- venue console (venue key) ----------------
+      if (parts[0] === "venues" && parts[1]) {
+        const v = safeParse(await env.PLANS.get("venue:" + parts[1]));
+        if (!v) return json({ error: "not found" }, 404);
+        if ((request.headers.get("X-Venue-Key") || "") !== v.key) return json({ error: "unauthorized" }, 403);
+        if (parts.length === 2 && request.method === "GET") {
+          const gate = canCreateWedding(v);
+          return json({ venue: publicVenue(v), weddings: v.weddings || [], canCreate: gate.ok, reason: gate.reason });
+        }
+        if (parts.length === 3 && parts[2] === "weddings" && request.method === "POST") {
+          const gate = canCreateWedding(v);
+          if (!gate.ok) return json({ error: gate.reason }, 403);
+          const b = await request.json().catch(() => ({}));
+          const id = rnd(22), editKey = rnd(28);
+          const rec = { name: String(b.label || "Wedding").slice(0, 120), plan: b.plan ?? null, editKey, updated: Date.now(), venueId: v.id };
+          await env.PLANS.put("plan:" + id, JSON.stringify(rec));
+          v.weddings = v.weddings || []; v.weddings.push({ planId: id, label: rec.name, createdAt: rec.updated, editKey });
+          v.used = (v.used || 0) + 1;
+          await env.PLANS.put("venue:" + v.id, JSON.stringify(v));
+          return json({ planId: id, editKey, updated: rec.updated });
+        }
+        if (parts.length === 4 && parts[2] === "weddings" && request.method === "DELETE") {
+          v.weddings = (v.weddings || []).filter(w => w.planId !== parts[3]);
+          await env.PLANS.put("venue:" + v.id, JSON.stringify(v));
+          await env.PLANS.delete("plan:" + parts[3]);
+          return json({ ok: true });
+        }
+      }
       return json({ error: "not found" }, 404);
     } catch (e) {
       return json({ error: "server error" }, 500);      // never leak internal exception text
@@ -139,4 +206,46 @@ function rnd(n) {
   const a = crypto.getRandomValues(new Uint8Array(n));
   let s = ""; for (let i = 0; i < n; i++) s += c[a[i] % c.length];
   return s;
+}
+
+// ---- venue helpers ----
+function normLicense(l) {
+  l = l || {};
+  const type = l.type === "per_wedding" ? "per_wedding" : "seasonal";
+  return {
+    type,
+    seasonStart: l.seasonStart || null,          // ISO date string, e.g. "2026-05-01"
+    seasonEnd: l.seasonEnd || null,
+    quota: Math.max(0, parseInt(l.quota, 10) || 0),   // per_wedding: max weddings that can be created
+    cap: Math.max(0, parseInt(l.cap, 10) || 0),       // seasonal: optional cap on concurrent weddings (0 = unlimited)
+  };
+}
+function canCreateWedding(v) {
+  if (!v.active) return { ok: false, reason: "inactive" };
+  const L = v.license || {};
+  if (L.type === "per_wedding") {
+    if (L.quota && (v.used || 0) >= L.quota) return { ok: false, reason: "quota_reached" };
+    return { ok: true };
+  }
+  // seasonal — allowed within the season window; optional cap on how many weddings at once
+  const now = Date.now();
+  if (L.seasonStart && now < Date.parse(L.seasonStart)) return { ok: false, reason: "before_season" };
+  if (L.seasonEnd && now > Date.parse(L.seasonEnd) + 86400000) return { ok: false, reason: "after_season" };
+  if (L.cap && (v.weddings || []).length >= L.cap) return { ok: false, reason: "cap_reached" };
+  return { ok: true };
+}
+function publicVenue(v) {   // returned to the venue itself (no key)
+  return { id: v.id, name: v.name, contact: v.contact, license: v.license, used: v.used || 0,
+    active: v.active, createdAt: v.createdAt, weddingCount: (v.weddings || []).length };
+}
+function adminVenue(v) {     // returned to the owner — strips per-wedding editKeys
+  return { ...publicVenue(v), weddings: (v.weddings || []).map(w => ({ planId: w.planId, label: w.label, createdAt: w.createdAt })) };
+}
+async function addVenueIndex(env, id) {
+  const ids = safeParse(await env.PLANS.get("venues:index")) || [];
+  if (!ids.includes(id)) { ids.push(id); await env.PLANS.put("venues:index", JSON.stringify(ids)); }
+}
+async function removeVenueIndex(env, id) {
+  const ids = (safeParse(await env.PLANS.get("venues:index")) || []).filter(x => x !== id);
+  await env.PLANS.put("venues:index", JSON.stringify(ids));
 }
