@@ -53,7 +53,7 @@
 <div class="wrap" id="app"></div>
 <div id="toast"></div>
 <script>
-const SYNC_URL="https://wedding-sync.andrewstamelakis.workers.dev";
+const SYNC_URL = /(^|\.)takeaseat\.gr$/i.test(location.hostname) ? "" : "https://wedding-sync.andrewstamelakis.workers.dev";
 const KEY_STORE="weddingVenueKey";
 const app=document.getElementById("app");
 const getKey=()=>{ try{ return localStorage.getItem(KEY_STORE)||""; }catch(e){ return ""; } };

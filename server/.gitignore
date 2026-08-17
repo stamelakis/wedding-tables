@@ -1,0 +1,7 @@
+# local-only / secrets / build artifacts
+worker.mjs        # copied from ../wedding-sync-worker.js at build (and for local dev)
+server.env        # OWNER_KEY and any secrets
+data/             # local SQLite database
+node_modules/
+*.db
+*.db-*

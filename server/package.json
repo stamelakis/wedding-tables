@@ -1,0 +1,14 @@
+{
+  "name": "takeaseat-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Self-hosted TakeaSeat API + static host (reuses the Cloudflare Worker logic over SQLite).",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "cross-env KV_BACKEND=memory node server.mjs"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1"
+  }
+}

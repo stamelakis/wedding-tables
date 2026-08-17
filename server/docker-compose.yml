@@ -1,0 +1,28 @@
+name: takeaseat
+
+# Runs alongside the existing edu-admin stack and is reverse-proxied by ITS Caddy.
+# The api container joins the edu-admin internal network so Caddy can reach it by name.
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    image: takeaseat-api
+    container_name: takeaseat-api
+    restart: unless-stopped
+    env_file:
+      - server.env          # OWNER_KEY=... (kept out of git)
+    volumes:
+      - tas_data:/data      # the SQLite database lives here
+    expose:
+      - "8080"
+    networks:
+      - edu
+
+networks:
+  edu:
+    external: true
+    name: edu-admin_internal   # the network the edu-admin Caddy is on
+
+volumes:
+  tas_data:

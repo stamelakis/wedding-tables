@@ -46,7 +46,7 @@
 <div class="wrap" id="app"></div>
 <div id="toast"></div>
 <script>
-const SYNC_URL="https://wedding-sync.andrewstamelakis.workers.dev";
+const SYNC_URL = /(^|\.)takeaseat\.gr$/i.test(location.hostname) ? "" : "https://wedding-sync.andrewstamelakis.workers.dev";
 const KEY_STORE="weddingOwnerKey";
 const app=document.getElementById("app");
 let venuesCache=[];

@@ -451,7 +451,7 @@ const DECOR_ITEMS = [
 const GROUP_PALETTE = ["#e26d8a","#4a90d9","#3aa657","#e0a030","#8e7cc3","#e0663a","#3ab0a6","#b07cc3","#7c9cc3","#c3a03a"];
 
 // ☁ Cloud sync backend (Cloudflare Worker + KV)
-const SYNC_URL = "https://wedding-sync.andrewstamelakis.workers.dev";
+const SYNC_URL = /(^|\.)takeaseat\.gr$/i.test(location.hostname) ? "" : "https://wedding-sync.andrewstamelakis.workers.dev";
 
 let profiles = ensureProfiles();
 let state = loadPlan(profiles.activeId) || defaultState();
