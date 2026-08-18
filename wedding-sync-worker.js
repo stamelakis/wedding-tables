@@ -175,6 +175,18 @@ export default {
           const gate = canCreateWedding(v);
           return json({ venue: publicVenue(v), weddings: v.weddings || [], canCreate: gate.ok, reason: gate.reason });
         }
+        // Venue changes its OWN key (privacy): authed by the CURRENT key above. Optional custom secret,
+        // else a strong random one. vid stays the same so the console can still parse it.
+        if (parts.length === 3 && parts[2] === "rotate" && request.method === "POST") {
+          const body = await request.json().catch(() => ({}));
+          const provided = body.secret != null && String(body.secret).trim() !== "";
+          let secret = provided ? String(body.secret).replace(/[^A-Za-z0-9]/g, "") : "";
+          if (provided && secret.length < 12) return json({ error: "too_short" }, 400);   // provided but too weak
+          if (!provided) secret = rnd(28);                                                 // no secret -> strong random
+          v.key = v.id + "." + secret;
+          await env.PLANS.put("venue:" + v.id, JSON.stringify(v));
+          return json({ ok: true, key: v.key });
+        }
         if (parts.length === 3 && parts[2] === "weddings" && request.method === "POST") {
           const gate = canCreateWedding(v);
           if (!gate.ok) return json({ error: gate.reason }, 403);

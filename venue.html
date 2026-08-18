@@ -103,8 +103,21 @@ function renderDashboard(data){
         <h1>${esc(v.name)}</h1>
         <div class="sub">${licenseBadge(v)}</div>
       </div>
-      <button class="btn" id="logout">Αποσύνδεση</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" id="keyBtn">🔑 Κωδικός</button>
+        <button class="btn" id="logout">Αποσύνδεση</button>
+      </div>
     </header>
+    <div id="keyPanel" class="card" style="display:none;padding:18px;margin-bottom:16px">
+      <div style="font-weight:700;margin-bottom:4px">Αλλαγή κωδικού πρόσβασης</div>
+      <div class="hint" style="margin-bottom:12px">Ορίστε δικό σας κωδικό, ώστε μόνο εσείς να τον γνωρίζετε. Ο παλιός κωδικός παύει να ισχύει αμέσως.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input id="newkeyinput" type="text" autocomplete="off" placeholder="Νέος κωδικός (τουλάχ. 12 χαρακτήρες)" style="flex:1;min-width:220px">
+        <button class="btn primary" id="setKeyBtn">Ορισμός</button>
+        <button class="btn" id="genKeyBtn" title="Δημιουργία ισχυρού τυχαίου κωδικού">🎲 Τυχαίος</button>
+      </div>
+      <div id="keyResult"></div>
+    </div>
     <div class="toolbar">
       <div class="newform">
         <input id="newlabel" placeholder="Όνομα ζευγαριού (π.χ. Μαρία &amp; Νίκος)" ${data.canCreate?"":"disabled"}>
@@ -125,6 +138,9 @@ function renderDashboard(data){
       : `<div class="empty">Δεν υπάρχουν γάμοι ακόμη.<br>Προσθέστε τον πρώτο σας παραπάνω ↑</div>`}
     </div>`;
   document.getElementById("logout").onclick=()=>{ setKey(""); renderLogin(); };
+  document.getElementById("keyBtn").onclick=()=>{ const p=document.getElementById("keyPanel"); p.style.display=p.style.display==="none"?"block":"none"; };
+  document.getElementById("setKeyBtn").onclick=()=>rotateKey(v.id, document.getElementById("newkeyinput").value.trim());
+  document.getElementById("genKeyBtn").onclick=()=>rotateKey(v.id, "");
   const create=document.getElementById("create");
   if(create) create.onclick=async()=>{
     const label=document.getElementById("newlabel").value.trim(); if(!label){ toast("Γράψτε το όνομα του ζευγαριού"); return; }
@@ -146,6 +162,22 @@ function renderDashboard(data){
   });
 }
 
+// Venue sets its own key (custom passphrase, or random) — the old one stops working immediately.
+async function rotateKey(vid, secret){
+  if(secret && secret.replace(/[^A-Za-z0-9]/g,"").length<12){ toast("Τουλάχ. 12 γράμματα/αριθμοί"); return; }
+  const r=await api("/venues/"+vid+"/rotate",{method:"POST",body:JSON.stringify(secret?{secret}:{})});
+  if(!r.ok){ const d=await r.json().catch(()=>({})); toast(d.error==="too_short"?"Τουλάχ. 12 χαρακτήρες":"Αποτυχία αλλαγής"); return; }
+  const d=await r.json();
+  setKey(d.key);
+  const res=document.getElementById("keyResult");
+  if(res) res.innerHTML=`<div style="margin-top:12px;background:var(--good-soft);border:1px solid #bcdcc6;border-radius:10px;padding:12px 14px">
+     <div style="font-weight:700;margin-bottom:6px">✅ Ο κωδικός άλλαξε. Αποθηκεύστε τον — είναι ο νέος σας κωδικός εισόδου:</div>
+     <div style="font-family:ui-monospace,monospace;font-size:13px;word-break:break-all;font-weight:700">${esc(d.key)}</div>
+     <button class="btn" id="copyNewKey" style="margin-top:10px;padding:6px 12px;font-size:13px">📋 Αντιγραφή</button></div>`;
+  const c=document.getElementById("copyNewKey"); if(c) c.onclick=()=>copy(d.key);
+  const inp=document.getElementById("newkeyinput"); if(inp) inp.value="";
+  toast("Ο κωδικός άλλαξε");
+}
 async function load(){
   const key=getKey(); if(!key){ renderLogin(); return; }
   const vid=vidOf(key);
