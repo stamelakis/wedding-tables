@@ -1,7 +1,12 @@
 # local-only / secrets / build artifacts
-worker.mjs        # copied from ../wedding-sync-worker.js at build (and for local dev)
-server.env        # OWNER_KEY and any secrets
-data/             # local SQLite database
+# (gitignore does NOT support inline comments after a pattern — keep them on their own line)
+
+# copied from ../wedding-sync-worker.js at build (and for local dev)
+worker.mjs
+# OWNER_KEY and any secrets
+server.env
+# local SQLite database
+data/
 node_modules/
 *.db
 *.db-*
