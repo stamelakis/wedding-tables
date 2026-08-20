@@ -10,6 +10,11 @@ services:
     image: takeaseat-api
     container_name: takeaseat-api
     restart: unless-stopped
+    # hardening: no extra Linux capabilities, no privilege escalation, bounded resources
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 512m
+    pids_limit: 256
     env_file:
       - server.env          # OWNER_KEY=... (kept out of git)
     volumes:

@@ -14,7 +14,7 @@ RUN npm install --omit=dev && npm cache clean --force
 COPY wedding-sync-worker.js ./worker.mjs
 COPY server/server.mjs ./
 RUN mkdir -p /app/public
-COPY index.html seating-planner.html seating-planner-de.html seating-planner-el.html admin.html venue.html /app/public/
+COPY index.html seating-planner.html seating-planner-de.html seating-planner-el.html admin.html venue.html privacy.html terms.html dpa.html /app/public/
 
 ENV PORT=8080 \
     DB_PATH=/data/wedding.db \
