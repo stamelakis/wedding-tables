@@ -29,6 +29,7 @@ if (process.env.KV_BACKEND === 'memory') {
   const { default: Database } = await import('better-sqlite3');
   const db = new Database(DB_PATH);
   db.pragma('journal_mode = WAL');
+  db.pragma('busy_timeout = 5000');   // wait instead of failing when the nightly backup holds a lock
   db.exec('CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
   const sGet = db.prepare('SELECT value FROM kv WHERE key = ?');
   const sPut = db.prepare('INSERT INTO kv(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
@@ -62,9 +63,37 @@ function serveStatic(res, urlPath) {
   });
 }
 
+// ---- abuse guards: per-IP rate limiting + disk-full protection ----
+const RL = new Map();   // key -> [timestamps]
+function rateOk(key, limit, windowMs) {
+  const now = Date.now();
+  const arr = (RL.get(key) || []).filter(t => now - t < windowMs);
+  if (arr.length >= limit) { RL.set(key, arr); return false; }
+  arr.push(now); RL.set(key, arr); return true;
+}
+setInterval(() => { const now = Date.now();
+  for (const [k, arr] of RL) { const f = arr.filter(t => now - t < 60000); if (f.length) RL.set(k, f); else RL.delete(k); }
+}, 300000).unref?.();
+async function diskLow() {
+  try { const s = await fs.promises.statfs(path.dirname(DB_PATH)); return (s.bavail * s.bsize) < 300 * 1024 * 1024; }
+  catch (e) { return false; }   // fail-open if statfs is unavailable
+}
+const clientIp = req => (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+
 http.createServer(async (req, res) => {
   const urlPath = req.url.split('?')[0];
   if (!isApiPath(urlPath)) return serveStatic(res, req.url);
+  // ---- abuse guards on writes (unauth POST /plans is the disk-fill vector) ----
+  if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS') {
+    const ip = clientIp(req);
+    const isCreate = req.method === 'POST' && urlPath === '/plans';
+    if (!rateOk(ip + (isCreate ? ':create' : ':write'), isCreate ? 20 : 120, 60000)) {
+      res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '60' }); res.end('{"error":"rate_limited"}'); return;
+    }
+    if (isCreate && await diskLow()) {
+      res.writeHead(507, { 'Content-Type': 'application/json' }); res.end('{"error":"storage_full"}'); return;
+    }
+  }
   // ---- API: hand off to the worker ----
   try {
     const chunks = []; for await (const c of req) chunks.push(c);

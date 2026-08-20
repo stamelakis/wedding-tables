@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>if(location.hostname.endsWith("github.io"))location.replace("https://takeaseat.gr"+location.pathname+location.search+location.hash);</script>
 <title>Κονσόλα Κτήματος — Γάμοι</title>
 <style>
   :root{ --paper:#f7f4f1; --card:#fffdfb; --ink:#2a2620; --soft:#6a6157; --faint:#9a8f7f;
@@ -53,7 +54,7 @@
 <div class="wrap" id="app"></div>
 <div id="toast"></div>
 <script>
-const SYNC_URL = /(^|\.)takeaseat\.gr$/i.test(location.hostname) ? "" : "https://wedding-sync.andrewstamelakis.workers.dev";
+const SYNC_URL = "";   // same-origin (self-hosted takeaseat.gr). The Cloudflare-worker fallback is retired.
 const KEY_STORE="weddingVenueKey";
 const app=document.getElementById("app");
 const getKey=()=>{ try{ return localStorage.getItem(KEY_STORE)||""; }catch(e){ return ""; } };

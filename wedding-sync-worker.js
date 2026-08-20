@@ -24,7 +24,10 @@
 // Write routes accept auth header X-Edit-Key or X-Sync-Code.
 
 const CORS = {
-  "Access-Control-Allow-Origin": "*",
+  // The app is served same-origin from takeaseat.gr, so lock cross-origin to the product domain
+  // (defense-in-depth; same-origin requests are unaffected by CORS).
+  "Access-Control-Allow-Origin": "https://takeaseat.gr",
+  "Vary": "Origin",
   "Access-Control-Allow-Headers": "Content-Type, X-Edit-Key, X-Sync-Code, X-Owner-Key, X-Venue-Key",
   "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
   "Access-Control-Max-Age": "86400",
@@ -161,6 +164,12 @@ export default {
           return json({ venue: adminVenue(v) });
         }
         if (parts.length === 3 && request.method === "DELETE") {
+          // Cascade-purge the venue's weddings (their guest lists) so nothing is orphaned and
+          // couple links stop resolving — the right-to-erasure behaviour.
+          const dv = safeParse(await env.PLANS.get("venue:" + parts[2]));
+          if (dv && Array.isArray(dv.weddings)) {
+            for (const w of dv.weddings) { if (w && w.planId) await env.PLANS.delete("plan:" + w.planId); }
+          }
           await env.PLANS.delete("venue:" + parts[2]);
           await removeVenueIndex(env, parts[2]);
           return json({ ok: true });
