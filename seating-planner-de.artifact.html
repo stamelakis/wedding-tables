@@ -451,7 +451,7 @@ const DECOR_ITEMS = [
 const GROUP_PALETTE = ["#e26d8a","#4a90d9","#3aa657","#e0a030","#8e7cc3","#e0663a","#3ab0a6","#b07cc3","#7c9cc3","#c3a03a"];
 
 // ☁ Cloud-Sync-Backend (Cloudflare Worker + KV)
-const SYNC_URL = /(^|\.)takeaseat\.gr$/i.test(location.hostname) ? "" : "https://wedding-sync.andrewstamelakis.workers.dev";
+const SYNC_URL = "";   // same-origin (self-hosted takeaseat.gr). The Cloudflare-worker fallback is retired.
 
 let profiles = ensureProfiles();
 let state = loadPlan(profiles.activeId) || defaultState();
@@ -1503,7 +1503,7 @@ function renderCloudBody(){
 // Einen ?plan=<id>[&key=<editKey>]-Link öffnen: laden und als Profil übernehmen.
 async function openSharedFromURL(){
   const params=new URLSearchParams(location.search); const id=params.get("plan"); if(!id) return false;
-  const key=(location.hash.match(/(?:^#|&)key=([^&]+)/)||[])[1] || params.get("key") || "";   // key now rides in the #fragment
+  const key=(location.hash.match(/(?:^#|&)key=([^&]+)/)||[])[1] || "";   // fragment-only; never read the write key from the query string
   try{ history.replaceState(null,"",location.origin+location.pathname); }catch(e){}
   try{
     const d=await cloudFetch(id);
