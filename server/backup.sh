@@ -32,8 +32,8 @@ fi
 find "$DEST" -name "takeaseat-*.db.gz.age" -mtime +14 -delete
 find "$DEST" -name "takeaseat-*.db.gz"     -mtime +14 -delete
 
-# --- OFF-SITE (fill in once you have a target) -----------------------------------------
-# Push the newest encrypted backup off the box so a disk loss isn't total. Examples:
-#   rclone copy "$DEST" b2:my-bucket/takeaseat --include "takeaseat-*.db.gz.age"
-#   scp "$DEST"/takeaseat-*.db.gz.age  u123456@u123456.your-storagebox.de:backups/
+# --- OFF-SITE --------------------------------------------------------------------------
+# Handled by /opt/offsite-push.sh (repo: server/offsite-push.sh), a separate cron at
+# 03:40 that age-encrypts + rclone-copies every backup in $DEST to Backblaze B2
+# (bucket TakeaSeat/backups). Keeps this script focused on the local snapshot.
 # ---------------------------------------------------------------------------------------
