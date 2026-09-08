@@ -98,11 +98,7 @@
   .plan .price b{ font-size:40px; line-height:1; font-weight:600; letter-spacing:-.02em; }
   .plan .price span{ color:var(--faint); font-size:14px; font-family:var(--sans); }
   .plan .btn{ width:100%; justify-content:center; }
-  .couples{ background:var(--paper-2); border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
-  .couples .wrap{ display:grid; grid-template-columns:1.1fr .9fr; gap:34px; align-items:center; }
-  .couples .box{ background:var(--card); border:1px solid var(--line); border-radius:18px; padding:26px; box-shadow:var(--shadow); }
-  .couples .box p{ color:var(--soft); font-size:15px; margin:0 0 16px; }
-  footer .q{ color:inherit; text-decoration:none; }
+  footer .q, footer .q:hover{ color:inherit; text-decoration:none; cursor:default; }
 
   /* CTA band */
   .cta-band{ background:linear-gradient(150deg,var(--hero-1),var(--hero-2)); color:#fff; text-align:center; }
@@ -119,7 +115,7 @@
   @media (max-width:820px){
     .hero .wrap{ grid-template-columns:1fr; gap:26px; }
     .hero .art{ order:-1; max-width:420px; }
-    .steps,.fgrid,.plans{ grid-template-columns:1fr; }
+    .steps,.fgrid,.plans,.plans.three{ grid-template-columns:1fr; }
     .nav .links a.txt.hide-sm{ display:none; }
   }
 </style>
@@ -213,7 +209,7 @@
   <div class="wrap">
     <div class="sec-tag">Τιμές</div>
     <h2 class="sec">Απλές τιμές, χωρίς κρυφές χρεώσεις</h2>
-    <p class="sub">Τα κτήματα έχουν ειδική τιμή συνεργάτη. Το τιμολόγιο εκδίδεται κανονικά στην επιχείρησή σας.</p>
+    <p class="sub">Τα κτήματα έχουν ειδική τιμή συνεργάτη, με τιμολόγιο στην επιχείρησή τους. Τα ζευγάρια πληρώνουν μία φορά, με απόδειξη.</p>
     <div class="plans three">
       <div class="plan reco">
         <span class="badge">Για κτήματα · Δημοφιλές</span>
@@ -250,7 +246,7 @@
           <li>Από κινητό &amp; υπολογιστή, συγχρονισμένο</li>
           <li>Εκτύπωση λίστας τραπεζιών</li>
         </ul>
-        <a class="btn line" href="mailto:info@takeaseat.gr?subject=TakeaSeat%20%CE%B3%CE%B9%CE%B1%20%CF%84%CE%BF%CE%BD%20%CE%B3%CE%AC%CE%BC%CE%BF%20%CE%BC%CE%B1%CF%82&amp;body=%CE%93%CE%B5%CE%B9%CE%B1%20%CF%83%CE%B1%CF%82%2C%20%CE%B8%CE%AD%CE%BB%CE%BF%CF%85%CE%BC%CE%B5%20%CF%84%CE%BF%20TakeaSeat%20%CE%B3%CE%B9%CE%B1%20%CF%84%CE%BF%CE%BD%20%CE%B3%CE%AC%CE%BC%CE%BF%20%CE%BC%CE%B1%CF%82.%20%CE%9F%CE%BD%CF%8C%CE%BC%CE%B1%CF%84%CE%B1%3A%20...%20%CE%97%CE%BC%CE%B5%CF%81%CE%BF%CE%BC%CE%B7%CE%BD%CE%AF%CE%B1%3A%20...">Ξεκινήστε</a>
+        <a class="btn line" href="mailto:info@takeaseat.gr?subject=TakeaSeat%20%CE%B3%CE%B9%CE%B1%20%CF%84%CE%BF%CE%BD%20%CE%B3%CE%AC%CE%BC%CE%BF%20%CE%BC%CE%B1%CF%82&amp;body=%CE%93%CE%B5%CE%B9%CE%B1%20%CF%83%CE%B1%CF%82%2C%20%CE%B8%CE%AD%CE%BB%CE%BF%CF%85%CE%BC%CE%B5%20%CF%84%CE%BF%20TakeaSeat%20%CE%B3%CE%B9%CE%B1%20%CF%84%CE%BF%CE%BD%20%CE%B3%CE%AC%CE%BC%CE%BF%20%CE%BC%CE%B1%CF%82.%0A%0A%CE%9F%CE%BD%CF%8C%CE%BC%CE%B1%CF%84%CE%B1%3A%20%0A%CE%97%CE%BC%CE%B5%CF%81%CE%BF%CE%BC%CE%B7%CE%BD%CE%AF%CE%B1%20%CE%B3%CE%AC%CE%BC%CE%BF%CF%85%3A%20%0A%CE%9A%CF%84%CE%AE%CE%BC%CE%B1%3A%20">Ξεκινήστε</a>
       </div>
     </div>
     <p class="price-note">Τιμές κτημάτων χωρίς ΦΠΑ · τιμή ζευγαριών τελική. Θέλετε πακέτο στα μέτρα σας; <a href="#contact">Επικοινωνήστε μαζί μας</a>.</p>
@@ -275,7 +271,7 @@
     <a href="/privacy.html">Απόρρητο</a>
     <a href="/terms.html">Όροι</a>
     <a href="mailto:info@takeaseat.gr">Επικοινωνία</a>
-    <span class="sp">© <a class="q" href="/lab.html">2026</a> TakeaSeat</span>
+    <span class="sp">© <a class="q" href="/lab.html" rel="nofollow" aria-label="Lab" tabindex="-1">2026</a> TakeaSeat</span>
   </div>
 </footer>
 

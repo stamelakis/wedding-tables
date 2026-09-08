@@ -63,7 +63,9 @@ const vidOf=k=>(k||"").split(".")[0];
 function esc(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1800); }
 function fmtDate(ms){ try{ return new Date(ms).toLocaleDateString("el-GR",{day:"2-digit",month:"short",year:"numeric"}); }catch(e){ return ""; } }
-function coupleLink(planId, editKey){ return new URL("seating-planner-el.html?plan="+planId+"#key="+editKey, location.href).href; }
+const PLANNER_FILE={ el:"seating-planner-el.html", en:"seating-planner.html", de:"seating-planner-de.html" };
+function linkLang(){ const s=document.getElementById("linklang"); return (s&&PLANNER_FILE[s.value])?s.value:"el"; }
+function coupleLink(planId, editKey){ return new URL(PLANNER_FILE[linkLang()]+"?plan="+planId+"#key="+editKey, location.href).href; }
 async function api(path, opts={}){
   return fetch(SYNC_URL+path, { ...opts, headers:{ "Content-Type":"application/json", "X-Venue-Key":getKey(), ...(opts.headers||{}) } });
 }
@@ -124,6 +126,9 @@ function renderDashboard(data){
         <input id="newlabel" placeholder="Όνομα ζευγαριού (π.χ. Μαρία &amp; Νίκος)" ${data.canCreate?"":"disabled"}>
         <button class="btn primary" id="create" ${data.canCreate?"":"disabled"}>+ Νέος γάμος</button>
       </div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--soft)" title="Γλώσσα του τραπεζολογίου στους συνδέσμους που ανοίγετε ή αντιγράφετε">Γλώσσα ζευγαριού
+        <select id="linklang" style="width:auto;padding:7px 9px;font-size:13px"><option value="el">Ελληνικά</option><option value="en">English</option><option value="de">Deutsch</option></select>
+      </label>
     </div>
     ${data.canCreate?"":`<div class="hint" style="color:var(--danger);margin:-8px 0 14px">${esc(REASON[data.reason]||"Δεν είναι δυνατή η δημιουργία νέου γάμου αυτή τη στιγμή.")}</div>`}
     <div class="w-list" id="list">
@@ -133,6 +138,7 @@ function renderDashboard(data){
           <div class="acts">
             <button class="btn" data-a="open">Άνοιγμα</button>
             <button class="btn" data-a="link">Σύνδεσμος ζευγαριού</button>
+            <button class="btn" data-a="rename" title="Μετονομασία">✎</button>
             <button class="btn danger" data-a="del">Διαγραφή</button>
           </div>
         </div>`).join("")
@@ -157,6 +163,9 @@ function renderDashboard(data){
     const link=coupleLink(w.planId, w.editKey);
     if(btn.dataset.a==="open") window.open(link,"_blank");
     else if(btn.dataset.a==="link") copy(link);
+    else if(btn.dataset.a==="rename"){ const nm=prompt("Νέο όνομα ζευγαριού:", w.label); if(nm===null||!nm.trim()||nm.trim()===w.label) return;
+      const r=await api("/venues/"+v.id+"/weddings/"+id,{method:"PATCH",body:JSON.stringify({label:nm.trim()})});
+      if(r.ok){ toast("Μετονομάστηκε"); load(); } else toast("Αποτυχία μετονομασίας"); }
     else if(btn.dataset.a==="del"){ if(!confirm(`Διαγραφή του γάμου «${w.label}»; Το τραπεζολόγιο θα χαθεί οριστικά.`)) return;
       const r=await api("/venues/"+v.id+"/weddings/"+id,{method:"DELETE"});
       if(r.ok){ toast("Διαγράφηκε"); load(); } else toast("Αποτυχία διαγραφής"); }

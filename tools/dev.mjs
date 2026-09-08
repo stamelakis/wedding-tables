@@ -9,5 +9,6 @@ fs.copyFileSync(path.join(root, 'wedding-sync-worker.js'), path.join(root, 'serv
 process.env.KV_BACKEND = process.env.KV_BACKEND || 'memory';
 process.env.PUBLIC_DIR = root;
 process.env.PORT = process.env.PORT || '8080';
+process.env.HOST = process.env.HOST || '127.0.0.1';   // the repo root is served — never expose it to the LAN
 process.env.OWNER_KEY = process.env.OWNER_KEY || 'dev-owner-key';
 await import('../server/server.mjs');

@@ -50,18 +50,29 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 const API_PREFIXES = ['/plans', '/codes', '/venues', '/admin'];
 const isApiPath = p => API_PREFIXES.some(pre => p === pre || p.startsWith(pre + '/'));
 
-function serveStatic(res, urlPath) {
-  let rel = decodeURIComponent(urlPath.split('?')[0].split('#')[0]);
+function serveStatic(req, res, urlPath) {
+  let rel;
+  try { rel = decodeURIComponent(urlPath.split('?')[0].split('#')[0]); }
+  catch (e) { res.writeHead(400, { 'Content-Type': 'text/plain' }); res.end('bad request'); return; }   // a malformed %-escape must never crash the process
   if (rel === '/' || rel === '') rel = '/index.html';
   const full = path.normalize(path.join(PUBLIC_DIR, rel));
   if (full !== PUBLIC_DIR && !full.startsWith(PUBLIC_DIR + path.sep)) { res.writeHead(403); res.end('forbidden'); return; }
-  fs.readFile(full, (err, data) => {
-    if (err) { res.writeHead(404, { 'Content-Type': 'text/plain' }); res.end('not found'); return; }
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(full).toLowerCase()] || 'application/octet-stream',
-      'Cache-Control': path.extname(full) === '.html' ? 'no-cache' : 'public, max-age=3600' });
-    res.end(data);
+  const ext = path.extname(full).toLowerCase();
+  // only known app file types, never dotfiles / dot-directories (.git, .env, ACCESS.local.md live next to the app in dev)
+  if (!MIME[ext] || rel.split('/').some(s => s.startsWith('.')) || /\.local\./i.test(rel)) { res.writeHead(404, { 'Content-Type': 'text/plain' }); res.end('not found'); return; }
+  fs.stat(full, (serr, st) => {
+    if (serr || !st.isFile()) { res.writeHead(404, { 'Content-Type': 'text/plain' }); res.end('not found'); return; }
+    const etag = '"' + st.size + '-' + Math.floor(st.mtimeMs) + '"';
+    const cache = ext === '.html' ? 'no-cache' : 'public, max-age=3600';
+    if (req.headers['if-none-match'] === etag) { res.writeHead(304, { 'ETag': etag, 'Cache-Control': cache }); res.end(); return; }   // revalidation → 304, not a 168 KB re-download
+    fs.readFile(full, (err, data) => {
+      if (err) { res.writeHead(404, { 'Content-Type': 'text/plain' }); res.end('not found'); return; }
+      res.writeHead(200, { 'Content-Type': MIME[ext], 'Cache-Control': cache, 'ETag': etag });
+      res.end(data);
+    });
   });
 }
+process.on('unhandledRejection', e => console.error('unhandled rejection', e));
 
 // ---- abuse guards: per-IP rate limiting + disk-full protection ----
 const RL = new Map();   // key -> [timestamps]
@@ -82,7 +93,7 @@ const clientIp = req => (req.headers['x-forwarded-for'] || '').split(',')[0].tri
 
 http.createServer(async (req, res) => {
   const urlPath = req.url.split('?')[0];
-  if (!isApiPath(urlPath)) return serveStatic(res, req.url);
+  if (!isApiPath(urlPath)) { try { return serveStatic(req, res, req.url); } catch (e) { res.writeHead(500); return res.end('server error'); } }
   // ---- abuse guards on writes (unauth POST /plans is the disk-fill vector) ----
   if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS') {
     const ip = clientIp(req);
@@ -111,4 +122,4 @@ http.createServer(async (req, res) => {
     res.writeHead(500, { 'Content-Type': 'application/json' });
     res.end('{"error":"server error"}');
   }
-}).listen(PORT, () => console.log(`TakeaSeat server on :${PORT}  (static: ${PUBLIC_DIR})`));
+}).listen(PORT, process.env.HOST || '0.0.0.0', () => console.log(`TakeaSeat server on ${process.env.HOST || '0.0.0.0'}:${PORT}  (static: ${PUBLIC_DIR})`));

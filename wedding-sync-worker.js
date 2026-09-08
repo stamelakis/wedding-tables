@@ -208,6 +208,19 @@ export default {
           await env.PLANS.put("venue:" + v.id, JSON.stringify(v));
           return json({ planId: id, editKey, updated: rec.updated });
         }
+        // Rename a wedding (the venue console label + the plan's own name).
+        if (parts.length === 4 && parts[2] === "weddings" && (request.method === "PATCH" || request.method === "PUT")) {
+          const b = await request.json().catch(() => ({}));
+          const label = String(b.label || "").trim().slice(0, 120);
+          if (!label) return json({ error: "missing label" }, 400);
+          const w = (v.weddings || []).find(x => x.planId === parts[3]);
+          if (!w) return json({ error: "not found" }, 404);
+          w.label = label;
+          await env.PLANS.put("venue:" + v.id, JSON.stringify(v));
+          const rec = safeParse(await env.PLANS.get("plan:" + parts[3]));
+          if (rec) { rec.name = label; rec.updated = Date.now(); await env.PLANS.put("plan:" + parts[3], JSON.stringify(rec)); }
+          return json({ ok: true, label });
+        }
         if (parts.length === 4 && parts[2] === "weddings" && request.method === "DELETE") {
           v.weddings = (v.weddings || []).filter(w => w.planId !== parts[3]);
           await env.PLANS.put("venue:" + v.id, JSON.stringify(v));

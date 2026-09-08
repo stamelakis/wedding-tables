@@ -21,7 +21,8 @@
   .brand{ font-family:var(--serif); font-weight:700; font-size:19px; letter-spacing:-.01em; white-space:nowrap; }
   .brand em{ color:var(--accent); font-style:normal; }
   .planpick{ display:flex; gap:4px; align-items:center; min-width:0; }
-  .planpick select{ max-width:220px; min-width:0; height:32px; padding:0 8px; border:1px solid var(--line); border-radius:9px; font-weight:600; font-size:13px; }
+  .planpick select{ max-width:220px; min-width:110px; height:32px; padding:0 8px; border:1px solid var(--line); border-radius:9px; font-weight:600; font-size:13px; }
+  body.mode-lab #cloudBtn{ display:none; }   /* the lab is local-only: no cloud, no share links */
   .ibtn{ height:32px; min-width:32px; padding:0 9px; border:1px solid var(--line); background:var(--card); border-radius:9px; cursor:pointer; font-size:14px; line-height:1; display:inline-flex; align-items:center; justify-content:center; gap:6px; white-space:nowrap; transition:background .12s,border-color .12s,color .12s; }
   .ibtn:hover{ background:var(--paper); border-color:var(--line-2); }
   .ibtn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
@@ -29,7 +30,7 @@
   .ibtn.on{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent-ink); }
   .ibtn.danger{ color:var(--danger); }
   .ibtn:disabled{ opacity:.5; cursor:default; }
-  .stat{ font-size:12.5px; color:var(--faint); white-space:nowrap; }
+  .stat{ font-size:12.5px; color:var(--faint); white-space:nowrap; min-width:0; overflow:hidden; text-overflow:ellipsis; }
   .spacer{ flex:1; }
   .ctl{ display:inline-flex; align-items:center; gap:3px; }
   .ctl .lbl{ font-size:11px; color:var(--faint); padding:0 4px; min-width:38px; text-align:center; }
@@ -95,7 +96,8 @@
   /* ---------- Stage ---------- */
   #stagewrap{ flex:1; position:relative; overflow:auto; background:var(--paper-2); background-image:radial-gradient(rgba(60,40,20,.09) 1px,transparent 1.2px); background-size:22px 22px; touch-action:pan-x pan-y; }
   #stage{ position:relative; width:1700px; height:1360px; margin:24px; border-radius:14px; transform-origin:top left; box-shadow:0 2px 4px rgba(0,0,0,.12),0 24px 60px rgba(40,30,20,.22),inset 0 0 0 1px rgba(0,0,0,.14); }
-  #stage::after{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; z-index:0; background:radial-gradient(ellipse at 50% 45%,transparent 58%,rgba(20,20,10,.16) 100%); }
+  #stage::after{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; z-index:2; background:radial-gradient(ellipse at 50% 45%,transparent 58%,rgba(20,20,10,.16) 100%); }
+  .feature.k-prop, .feature.k-marker, .feature.k-label{ z-index:3; }   /* cards float above the vignette; floor zones sit under it like the ground */
 
   .feature{ position:absolute; font-size:12px; color:#fff; font-weight:600; display:flex; align-items:center; justify-content:center; text-align:center; transform:translate(-50%,-50%); border-radius:8px; padding:2px 4px; line-height:1.15; cursor:grab; user-select:none; z-index:1; }
   .feature:active{ cursor:grabbing; }
@@ -121,7 +123,9 @@
   .table-disc.head{ border-radius:14px; background:linear-gradient(180deg,#fffaf1 0%,#f6ecd9 100%); border:1.5px solid #cdb07a; }
   .table-disc:active{ cursor:grabbing; }
   .table:hover .table-disc{ box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 12px 26px rgba(30,20,10,.28),0 2px 4px rgba(30,20,10,.12); }
-  .table.focused .table-disc{ box-shadow:0 0 0 3px #fff,0 0 0 6px var(--accent),0 12px 26px rgba(30,20,10,.3); }
+  .table.focused .table-disc{ box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 12px 26px rgba(30,20,10,.3); }
+  /* focus ring drawn around the WHOLE table (seats included) — --frx/--fry are set per table in renderTables */
+  .table.focused::before{ content:""; position:absolute; left:calc(-1*var(--frx,120px)); top:calc(-1*var(--fry,90px)); width:calc(2*var(--frx,120px)); height:calc(2*var(--fry,90px)); border-radius:50%; border:2px solid var(--accent); box-shadow:0 0 0 5px rgba(125,90,140,.16), inset 0 0 0 60px rgba(255,255,255,.08); pointer-events:none; z-index:0; }
   .table-disc .tnum{ font-family:var(--serif); font-size:17px; font-weight:700; color:var(--accent-ink); text-align:center; padding:0 6px; line-height:1.1; }
   .table-disc.head .tnum{ font-size:14px; }
   .table-disc .tcount{ font-size:10px; color:var(--faint); margin-top:2px; font-weight:600; letter-spacing:.02em; }
@@ -142,10 +146,11 @@
   /* ---------- Focus panel (table sheet) ---------- */
   #focus{ width:var(--focus-w); flex:none; background:var(--card); border-left:1px solid var(--line); display:none; flex-direction:column; min-height:0; }
   body.focused #focus{ display:flex; }
-  .fhandle{ display:none; width:44px; height:5px; border-radius:3px; background:var(--line-2); margin:8px auto 0; cursor:pointer; flex:none; }
+  .fhandle{ display:none; width:100%; height:24px; padding:9px 0 0; cursor:pointer; flex:none; touch-action:manipulation; }
+  .fhandle::before{ content:""; display:block; width:44px; height:5px; border-radius:3px; background:var(--line-2); margin:0 auto; }
   .fhead{ display:flex; align-items:center; gap:5px; padding:10px 10px 8px; border-bottom:1px solid var(--line); flex:none; }
   .fhead .ftitle{ flex:1; min-width:0; padding:0 2px; }
-  .fhead .ftitle b{ font-family:var(--serif); font-size:18px; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.15; }
+  .fhead .ftitle b{ font-family:var(--serif); font-size:18px; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.35; cursor:pointer; }
   .fhead .ftitle span{ font-size:12px; color:var(--faint); }
   .fhint{ font-size:12px; color:var(--faint); padding:8px 14px 4px; line-height:1.4; flex:none; }
   #fSeats{ flex:1; overflow-y:auto; padding:6px 10px 10px; min-height:0; overscroll-behavior:contain; }
@@ -180,7 +185,7 @@
   #pickbar .pbhint{ color:#c9c2b8; white-space:nowrap; }
   #pickbar button{ border:none; background:rgba(255,255,255,.14); color:#fff; border-radius:999px; padding:7px 12px; font-size:12px; cursor:pointer; white-space:nowrap; }
   #pickbar button:hover{ background:rgba(255,255,255,.28); }
-  .gchip, .seat, .chip{ touch-action:manipulation; }
+  .gchip, .seat, .chip, button, .fsug div, .frow, .gm-item, #pickbar, #focus, .fhead{ touch-action:manipulation; }
   .table-disc, .feature, .rz, .rot-h, #stageResize{ touch-action:none; }
 
   /* ---------- Popovers & modals ---------- */
@@ -189,6 +194,7 @@
   .gm-item:hover{ background:var(--paper); }
   .gm-item .dot{ width:12px; height:12px; border-radius:50%; box-shadow:inset 0 0 0 1px rgba(0,0,0,.12); flex:none; }
   .gm-item.danger{ color:var(--danger); }
+  .gm-item.on{ background:var(--accent-soft); color:var(--accent-ink); font-weight:600; }
   .gm-item .n{ margin-left:auto; color:var(--faint); font-size:11.5px; padding-left:10px; }
   .gm-sep{ height:1px; background:var(--line); margin:4px 2px; }
   .gm-cap{ font-size:11px; color:var(--faint); padding:4px 9px 6px; letter-spacing:.04em; text-transform:uppercase; font-weight:700; }
@@ -238,6 +244,8 @@
   .toast.show{ opacity:.96; }
 
   /* ---------- Mobile ---------- */
+  @media (max-width:1180px){ #appbar .stat{ display:none; } }
+  @supports (height:1dvh){ :root{ --sheet-h:46dvh; } }
   @media (max-width:900px){
     body{ height:100dvh; }
     #appbar{ padding:0 8px; gap:6px; }
@@ -248,20 +256,32 @@
     .planpick{ flex:1; }
     .planpick select{ max-width:none; width:100%; min-width:90px; }
     #profNew, #profMore, #zoomFit{ display:none; }
-    #sidebar{ position:fixed; left:0; top:0; bottom:0; width:88vw; max-width:360px; z-index:150; transform:translateX(-100%); transition:transform .22s ease; box-shadow:0 0 40px rgba(0,0,0,.3); }
+    /* iOS zooms the page when a focused field is under 16px — keep every field at 16px on phones */
+    input, select, textarea{ font-size:16px !important; }
+    /* the guest drawer must sit above the seat sheet (160) so the pool stays reachable while a table is open */
+    #sidebar{ position:fixed; left:0; top:0; bottom:0; width:88vw; max-width:360px; z-index:180; transform:translateX(-100%); transition:transform .22s ease; box-shadow:0 0 40px rgba(0,0,0,.3); }
+    #navScrim{ z-index:170; }
     body.nav-open #sidebar{ transform:none; }
     body.nav-open #navScrim{ display:block; }
-    #stagewrap{ padding-bottom:70px; }
+    .side-scroll{ padding-bottom:env(safe-area-inset-bottom); }
+    #stagewrap{ padding-bottom:calc(90px + env(safe-area-inset-bottom)); }
+    body.focused #stagewrap{ padding-bottom:calc(var(--sheet-h) + 60px); }   /* room to scroll a low table above the sheet */
     #stage{ margin:12px; }
     #mobilebar{ display:flex; }
     body.focused #mobilebar, body.picking #mobilebar{ display:none; }
-    #focus{ position:fixed; left:0; right:0; bottom:0; height:var(--sheet-h); width:auto; border-left:none; border-top:1px solid var(--line); border-radius:18px 18px 0 0; box-shadow:0 -10px 40px rgba(0,0,0,.25); z-index:160; transition:height .2s; }
-    #focus.tall{ height:88vh; }
+    #focus{ position:fixed; left:0; right:0; bottom:0; height:var(--sheet-h); width:auto; border-left:none; border-top:1px solid var(--line); border-radius:18px 18px 0 0; box-shadow:0 -10px 40px rgba(0,0,0,.25); z-index:160; transition:height .2s; padding-bottom:env(safe-area-inset-bottom); }
+    #focus.tall{ height:88vh; height:min(88dvh, calc(100dvh - var(--appbar-h))); }
     .fhandle{ display:block; }
     .fhint{ display:none; }
     .modal{ width:96vw; max-height:88vh; }
     .decor-grid{ grid-template-columns:repeat(auto-fill,minmax(92px,1fr)); gap:8px; padding:12px; }
-    #pickbar{ bottom:14px; }
+    #pickbar{ bottom:calc(14px + env(safe-area-inset-bottom)); }
+    #pickbar .pbhint{ display:none; }
+    #pickbar .pbname{ max-width:none; flex:1; }
+    body.focused #pickbar{ bottom:calc(var(--sheet-h) + 10px); }
+    .toast{ bottom:calc(70px + env(safe-area-inset-bottom)); }
+    body.focused .toast, body.picking .toast{ bottom:calc(var(--sheet-h) + 12px); }
+    body.touch .feature .rz, body.touch .feature .rot-h{ display:block; }   /* no hover on touch — show decor handles */
     .ibtn{ height:36px; min-width:36px; }
     .tools .ibtn{ height:40px; }
     .gchip{ padding:9px 6px 9px 10px; }
@@ -271,9 +291,9 @@
   /* ---------- Print ---------- */
   #printarea{ display:none; }
   @media print{
-    body *{ visibility:hidden; }
-    #printarea, #printarea *{ visibility:visible; }
-    #printarea{ display:block; position:absolute; left:0; top:0; width:100%; padding:0 10px; }
+    html, body{ height:auto !important; overflow:visible !important; display:block !important; }
+    #appbar, #main, #mobilebar, #pickbar, .toast, .popover, .modal-back, #navScrim{ display:none !important; }
+    #printarea{ display:block; position:static; width:100%; padding:0 10px; }
   }
   #printarea h2{ font-size:22px; margin:0 0 2px; font-family:var(--serif); }
   #printarea .psub{ color:#666; margin-bottom:14px; font-size:13px; }
@@ -288,8 +308,6 @@
   #printarea .pcard .empty{ color:#bbb; }
   #printarea .punassigned{ margin-top:18px; font-size:12.5px; }
 </style>
-</head>
-<body>
 
 <header id="appbar">
   <button id="navBtn" class="ibtn" data-t-title="guestsTools">☰</button>
@@ -333,7 +351,7 @@
         <details class="addnames" id="addNames">
           <summary data-t="addNames"></summary>
           <textarea id="guestInput" data-t-ph="namesPh"></textarea>
-          <div class="hint" data-t="namesHint"></div>
+          <div class="hint" id="namesHint" data-t="namesHint"></div>
           <button class="ibtn primary" id="addGuestBtn" style="width:100%;height:36px" data-t="addToList"></button>
         </details>
       </div>
@@ -433,6 +451,7 @@
 // ============================================================
 const LANG="de", MODE="app", IS_LAB=(MODE==="lab");
 document.body.classList.add("mode-"+MODE);
+if(!document.documentElement.lang) document.documentElement.lang=LANG;   // artifact twins have no <html lang>
 
 // Embedded builds (artifact / iframe hosts) strip the <head>, taking the viewport meta
 // with it — and without that tag a phone lays the page out at 980px. Re-add it if missing.
@@ -453,8 +472,8 @@ el:{
   shareTitle:"Κοινή χρήση & συγχρονισμός", fontDown:"Μικρότερα ονόματα", fontUp:"Μεγαλύτερα ονόματα", fit:"Προσαρμογή", zoomIn:"Μεγέθυνση", zoomOut:"Σμίκρυνση", print:"Εκτύπωση", more:"Περισσότερα",
   tools:"Τραπέζια & χώρος", addRound:"＋ Στρογγυλό", addHead:"＋ Νυφικό", decor:"🛋 Διακόσμηση", autoSeat:"✨ Αυτόματα", floor:"Δάπεδο",
   guests:"Καλεσμένοι", unseatedN:"{n} χωρίς θέση", searchPh:"Αναζήτηση ονόματος…", all:"Όλοι", addGroup:"＋ ομάδα", addGroupTitle:"Νέα ομάδα",
-  addNames:"Προσθήκη ονομάτων", namesPh:"Ένα όνομα ανά γραμμή…", namesHint:"Μπαίνουν στην επιλεγμένη ομάδα · Ctrl+Enter για προσθήκη", addToList:"Προσθήκη στη λίστα",
-  poolEmpty:"Όλοι οι καλεσμένοι έχουν θέση 🎉", poolEmptyNew:"Δεν υπάρχουν καλεσμένοι ακόμη.<br>Προσθέστε ονόματα παρακάτω ↓", noMatch:"Κανένα όνομα δεν ταιριάζει",
+  addNames:"Προσθήκη ονομάτων", namesPh:"Ένα όνομα ανά γραμμή…", namesHint:"Μπαίνουν στην επιλεγμένη ομάδα · Ctrl+Enter για προσθήκη", namesTo:"Τα νέα ονόματα μπαίνουν σε: {g} · Ctrl+Enter", addToList:"Προσθήκη στη λίστα",
+  poolEmpty:"Όλοι οι καλεσμένοι έχουν θέση 🎉", poolEmptyNew:"Δεν υπάρχουν καλεσμένοι ακόμη.<br>Προσθέστε ονόματα παρακάτω ↓", poolEmptyGroup:"Κανείς χωρίς θέση σε αυτή την ομάδα — δείτε «Όλοι»", noMatch:"Κανένα όνομα δεν ταιριάζει",
   chipEdit:"Επεξεργασία ονόματος & ομάδας", chipRemove:"Αφαίρεση καλεσμένου", groupTip:"Κλικ: επιλογή · Διπλό κλικ: μετονομασία · Δεξί κλικ: χρώμα / διαγραφή", groupMore:"Μετονομασία / χρώμα / διαγραφή",
   prevTable:"Προηγούμενο τραπέζι", nextTable:"Επόμενο τραπέζι", tableSettings:"Ρυθμίσεις τραπεζιού", close:"Κλείσιμο",
   focusHint:"Γράψτε ένα όνομα και πατήστε Enter για την επόμενη θέση — ή διαλέξτε από τις προτάσεις.",
@@ -503,8 +522,8 @@ en:{
   shareTitle:"Share & sync", fontDown:"Smaller names", fontUp:"Larger names", fit:"Fit", zoomIn:"Zoom in", zoomOut:"Zoom out", print:"Print", more:"More",
   tools:"Tables & space", addRound:"＋ Round table", addHead:"＋ Head table", decor:"🛋 Decor", autoSeat:"✨ Auto-seat", floor:"Floor",
   guests:"Guests", unseatedN:"{n} unseated", searchPh:"Search a name…", all:"All", addGroup:"＋ group", addGroupTitle:"New group",
-  addNames:"Add names", namesPh:"One name per line…", namesHint:"They join the selected group · Ctrl+Enter to add", addToList:"Add to list",
-  poolEmpty:"Everyone has a seat 🎉", poolEmptyNew:"No guests yet.<br>Add names below ↓", noMatch:"No name matches",
+  addNames:"Add names", namesPh:"One name per line…", namesHint:"They join the selected group · Ctrl+Enter to add", namesTo:"New names go to: {g} · Ctrl+Enter", addToList:"Add to list",
+  poolEmpty:"Everyone has a seat 🎉", poolEmptyNew:"No guests yet.<br>Add names below ↓", poolEmptyGroup:"No unseated guests in this group — see “All”", noMatch:"No name matches",
   chipEdit:"Edit name & group", chipRemove:"Remove guest", groupTip:"Click: select · Double-click: rename · Right-click: colour / delete", groupMore:"Rename / colour / delete",
   prevTable:"Previous table", nextTable:"Next table", tableSettings:"Table settings", close:"Close",
   focusHint:"Type a name and press Enter for the next seat — or pick one of the suggestions.",
@@ -553,8 +572,8 @@ de:{
   shareTitle:"Teilen & synchronisieren", fontDown:"Kleinere Namen", fontUp:"Größere Namen", fit:"Einpassen", zoomIn:"Vergrößern", zoomOut:"Verkleinern", print:"Drucken", more:"Mehr",
   tools:"Tische & Fläche", addRound:"＋ Runder Tisch", addHead:"＋ Brauttisch", decor:"🛋 Deko", autoSeat:"✨ Auto-Füllen", floor:"Boden",
   guests:"Gäste", unseatedN:"{n} ohne Platz", searchPh:"Namen suchen…", all:"Alle", addGroup:"＋ Gruppe", addGroupTitle:"Neue Gruppe",
-  addNames:"Namen hinzufügen", namesPh:"Ein Name pro Zeile…", namesHint:"Kommen in die gewählte Gruppe · Strg+Enter zum Hinzufügen", addToList:"Zur Liste hinzufügen",
-  poolEmpty:"Alle Gäste haben einen Platz 🎉", poolEmptyNew:"Noch keine Gäste.<br>Namen unten hinzufügen ↓", noMatch:"Kein Name passt",
+  addNames:"Namen hinzufügen", namesPh:"Ein Name pro Zeile…", namesHint:"Kommen in die gewählte Gruppe · Strg+Enter zum Hinzufügen", namesTo:"Neue Namen kommen in: {g} · Strg+Enter", addToList:"Zur Liste hinzufügen",
+  poolEmpty:"Alle Gäste haben einen Platz 🎉", poolEmptyNew:"Noch keine Gäste.<br>Namen unten hinzufügen ↓", poolEmptyGroup:"Niemand ohne Platz in dieser Gruppe — siehe „Alle“", noMatch:"Kein Name passt",
   chipEdit:"Name & Gruppe bearbeiten", chipRemove:"Gast entfernen", groupTip:"Klick: auswählen · Doppelklick: umbenennen · Rechtsklick: Farbe / löschen", groupMore:"Umbenennen / Farbe / löschen",
   prevTable:"Vorheriger Tisch", nextTable:"Nächster Tisch", tableSettings:"Tisch-Einstellungen", close:"Schließen",
   focusHint:"Namen eingeben und Enter drücken für den nächsten Platz — oder einen Vorschlag wählen.",
@@ -694,8 +713,9 @@ const MATERIALS = {
   concrete:{ img:svgUri(texConcrete()), base:"#c9c8c2", size:"256px 256px" },
 };
 function matName(k){ return (T.mats&&T.mats[k])||(T_ALL.el.mats[k])||k; }
+function isMaterial(k){ return typeof k==="string" && Object.prototype.hasOwnProperty.call(MATERIALS,k); }
 function applyMaterial(el, name){
-  const m=MATERIALS[name]||MATERIALS.grass;
+  const m=isMaterial(name)?MATERIALS[name]:MATERIALS.grass;
   el.style.backgroundColor=m.base; el.style.backgroundImage=m.img; el.style.backgroundSize=m.size||"auto";
   el.style.backgroundPosition="0 0"; el.style.backgroundRepeat="repeat";
 }
@@ -795,15 +815,40 @@ function norm(s){ return String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").t
 // on ingest (a shared plan is attacker-controlled): colours to a hex literal, icons to a short markup-free string.
 function safeColor(c){ return (typeof c==="string" && /^#[0-9a-fA-F]{3,8}$/.test(c)) ? c : "#7e6d5f"; }
 function safeIcon(s){ s=String(s==null?"📦":s).replace(/[<>&"'`]/g,""); return s.slice(0,4)||"📦"; }
+const FEATURE_KINDS=["zone","prop","marker","label"];
+const isNum=v=>typeof v==="number"&&isFinite(v);
+// A plan from a shared link / imported file is attacker-controlled: every field that reaches the DOM,
+// a CSS class, an attribute or a render loop is clamped here, on ingest.
 function sanitizePlan(s){ if(!s||typeof s!=="object") return s;
-    if(Array.isArray(s.groups)) s.groups.forEach(g=>{ if(g&&typeof g==="object") g.color=safeColor(g.color); });
-    if(Array.isArray(s.features)) s.features.forEach(f=>{ if(f&&typeof f==="object"&&"icon" in f) f.icon=safeIcon(f.icon); });
     if(!Array.isArray(s.tables)) s.tables=[];
     if(!s.guests||typeof s.guests!=="object"||Array.isArray(s.guests)) s.guests={};
     if(!Array.isArray(s.groups)) s.groups=[];
     if(!Array.isArray(s.features)) s.features=defaultFeatures();
-    if(!s.stage||typeof s.stage!=="object"||typeof s.stage.w!=="number"||typeof s.stage.h!=="number") s.stage={w:2100,h:1400};
-    if(typeof s.stageMaterial!=="string") s.stageMaterial="grass";
+    s.tables=s.tables.filter(t=>t&&typeof t==="object");
+    s.groups=s.groups.filter(g=>g&&typeof g==="object"&&(typeof g.id==="string"||typeof g.id==="number")).map(g=>{ g.id=String(g.id).replace(/[^\w-]/g,"").slice(0,40)||("grp"+Math.floor(Math.random()*1e6)); g.name=String(g.name??"").slice(0,80); g.color=safeColor(g.color); return g; });
+    s.features=s.features.filter(f=>f&&typeof f==="object");
+    for(const k of Object.keys(s.guests)){ const g=s.guests[k]; if(!g||typeof g!=="object"){ delete s.guests[k]; continue; }
+      g.name=String(g.name??"").slice(0,80); if(g.groupId!=null&&typeof g.groupId!=="string") g.groupId=null; if(g.note!=null) g.note=String(g.note).slice(0,200); }
+    s.tables.forEach(t=>{
+      t.capacity=clamp(Math.floor(+t.capacity)||10,1,30);
+      t.label=String(t.label??"").slice(0,60); t.shape=(t.shape==="head")?"head":"round";
+      if(!isNum(t.x)) t.x=200; if(!isNum(t.y)) t.y=200; if(t.rot!=null&&!isNum(t.rot)) t.rot=0;
+      if(!Array.isArray(t.seats)) t.seats=[];
+      t.seats=t.seats.slice(0,t.capacity).map(x=>(typeof x==="string"&&s.guests[x])?x:null);   // drop dangling guest ids
+      while(t.seats.length<t.capacity) t.seats.push(null);
+    });
+    s.features.forEach(f=>{
+      if("kind" in f && !FEATURE_KINDS.includes(f.kind)) f.kind="marker";
+      if("icon" in f) f.icon=safeIcon(f.icon);
+      if(f.label!=null) f.label=String(f.label).slice(0,80);
+      if(f.material!=null && !isMaterial(f.material)) f.material=null;
+      ["x","y","w","h"].forEach(k=>{ if(!isNum(f[k])) f[k]=(k==="w"||k==="h")?100:200; }); f.w=clamp(f.w,8,20000); f.h=clamp(f.h,8,20000);
+    });
+    if(!s.stage||typeof s.stage!=="object"||!isNum(s.stage.w)||!isNum(s.stage.h)) s.stage={w:2100,h:1400};
+    s.stage.w=clamp(Math.round(s.stage.w),700,20000); s.stage.h=clamp(Math.round(s.stage.h),600,20000);
+    if(!isMaterial(s.stageMaterial)) s.stageMaterial="grass";
+    if(!(s.seatFontScale>=0.6&&s.seatFontScale<=2)) s.seatFontScale=1;
+    if(s.activeGroupId!=null && !s.groups.some(g=>g.id===s.activeGroupId)) s.activeGroupId=null;
   return s; }
 function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
 // guest status + free-text note (e.g. city · age)
@@ -830,12 +875,13 @@ function renderFeatures(){
   stage.querySelectorAll(".feature").forEach(e=>e.remove());
   (state.features||[]).forEach(f=>{
     const el=document.createElement("div");
-    el.className="feature k-"+(f.kind||"marker");
+    const kind=FEATURE_KINDS.includes(f.kind)?f.kind:"marker";
+    el.className="feature k-"+kind;
     el.style.left=f.x+"px"; el.style.top=f.y+"px"; el.style.width=f.w+"px"; el.style.height=f.h+"px";
-    if(f.kind==="zone"){
+    if(kind==="zone"){
       applyMaterial(el, f.material||"grass");
       if(f.label){ const l=document.createElement("div"); l.className="zlabel"; l.textContent=f.label; el.appendChild(l); }
-    } else if(f.kind==="prop"){
+    } else if(kind==="prop"){
       el.innerHTML=`<div class="picon">${escapeHtml(f.icon||"📦")}</div>${f.label?`<div class="plabel">${escapeHtml(f.label)}</div>`:""}`;
     } else {
       el.textContent=f.label||"";
@@ -876,7 +922,7 @@ function buildSeat(t,i,relx,rely,fs,seatH){
   if(gid){
     const col=guestColor(gid);
     seat.style.background=col; seat.style.width=seatWidthFor(guestName(gid),fs)+"px";
-    if(gStatus(gid)!=="confirmed") seat.style.outline="2px dashed rgba(255,255,255,.7)";
+    if(gStatus(gid)!=="confirmed"){ seat.style.borderStyle="dashed"; seat.style.borderColor="rgba(255,255,255,.9)"; seat.style.backgroundClip="padding-box"; }   // not-yet-confirmed: white dashes inside the pill, visible on any floor
     seat.innerHTML=`<span class="nm">${escapeHtml(guestName(gid))}</span>`;
     seat.title=guestName(gid)+(guestGroup(gid)?` · ${guestGroup(gid).name}`:"")+statusTitle(gid);
     seat.draggable=true; seat.dataset.guestId=gid;
@@ -949,6 +995,7 @@ function renderTables(){
     const wrap=document.createElement("div");
     wrap.className="table"+(t.id===focusId?" focused":""); wrap.style.left=t.x+"px"; wrap.style.top=t.y+"px"; wrap.dataset.tableId=t.id;
     if(t.shape==="head") renderHeadTable(t,wrap); else renderRoundTable(t,wrap);
+    const ext=tableExtent(t); wrap.style.setProperty("--frx", Math.round(ext.rx+4)+"px"); wrap.style.setProperty("--fry", Math.round(ext.ry+4)+"px");
     stage.appendChild(wrap);
   });
   updateStats();
@@ -959,11 +1006,13 @@ function renderTables(){
 function renderGroups(){
   const box=$("groupList"); box.innerHTML="";
   const counts={}; Object.keys(state.guests).forEach(id=>{ const g=state.guests[id].groupId; if(g)counts[g]=(counts[g]||0)+1; });
-  box.appendChild(makeGroupChip({id:null,name:tr("all"),color:null}, Object.keys(state.guests).length, true));
+  const allChip=makeGroupChip({id:null,name:tr("all"),color:null}, Object.keys(state.guests).length, true); allChip.title=tr("noGroup"); box.appendChild(allChip);
   state.groups.forEach(g=> box.appendChild(makeGroupChip(g, counts[g.id]||0, false)) );
   const add=document.createElement("div");
   add.className="chip add"; add.textContent=tr("addGroup"); add.title=tr("addGroupTitle");
   add.addEventListener("click",addGroup); box.appendChild(add);
+  const ag=state.groups.find(g=>g.id===state.activeGroupId);   // say where new names will go
+  const hint=$("namesHint"); if(hint) hint.textContent=tr("namesTo",{g:ag?ag.name:tr("noGroup")});
 }
 function makeGroupChip(g, count, isAll){
   const chip=document.createElement("div");
@@ -996,7 +1045,8 @@ function renderPool(){
   $("mbCount").textContent=un.length;
   $("searchWrap").classList.toggle("has", !!searchQ);
   if(ids.length===0){
-    pool.innerHTML=`<div class="empty-note">${searchQ?escapeHtml(tr("noMatch")):(Object.keys(state.guests).length?escapeHtml(tr("poolEmpty")):tr("poolEmptyNew"))}</div>`;
+    const msg = searchQ ? escapeHtml(tr("noMatch")) : (state.activeGroupId&&un.length) ? escapeHtml(tr("poolEmptyGroup")) : (Object.keys(state.guests).length ? escapeHtml(tr("poolEmpty")) : tr("poolEmptyNew"));
+    pool.innerHTML=`<div class="empty-note">${msg}</div>`;
     if(!Object.keys(state.guests).length) $("addNames").open=true;
     return;
   }
@@ -1077,7 +1127,7 @@ function openGuestEditor(guestId, evt){
   const menu=$("guesteditor");
   const opts=[{id:"",name:tr("noGroup"),color:"#d8d2c8"}].concat(state.groups.map(gr=>({id:gr.id,name:gr.name,color:gr.color})));
   const rows=opts.map(o=>{ const on=((g.groupId||"")===o.id);
-    return `<div class="ge-type${on?' sel':''}" data-gid="${o.id}"><span class="dot" style="background:${o.color}"></span>${escapeHtml(o.name)}${on?'<span class="chk">✓</span>':''}</div>`; }).join("");
+    return `<div class="ge-type${on?' sel':''}" data-gid="${escapeHtml(o.id)}"><span class="dot" style="background:${safeColor(o.color)}"></span>${escapeHtml(o.name)}${on?'<span class="chk">✓</span>':''}</div>`; }).join("");
   menu.innerHTML=`<input id="geName" class="ge-name" type="text" maxlength="40" placeholder="${escapeHtml(tr("geName"))}">
     <div class="ge-lab">${escapeHtml(tr("geType"))}</div><div class="ge-types">${rows}</div>`;
   const nameInp=menu.querySelector("#geName"); nameInp.value=g.name||""; let cancelled=false;
@@ -1251,7 +1301,7 @@ function renderPickBar(){
     ${pick.from==="seat"?`<button data-a="unseat">${escapeHtml(tr("pbUnseat"))}</button>`:""}
     <button data-a="cancel" title="${escapeHtml(tr("pbCancel"))}">✕</button>`;
   bar.querySelector('[data-a="cancel"]').onclick=()=>setPick(null);
-  bar.querySelector('[data-a="edit"]').onclick=()=>{ const r=bar.getBoundingClientRect(); openGuestEditor(pick.guestId,{clientX:r.left,clientY:r.top-260}); };
+  bar.querySelector('[data-a="edit"]').onclick=e=>{ e.stopPropagation(); const r=bar.getBoundingClientRect(); openGuestEditor(pick.guestId,{clientX:r.left,clientY:r.top-260}); };
   const un=bar.querySelector('[data-a="unseat"]');
   if(un) un.onclick=()=>{ const t=state.tables.find(x=>x.id===pick.tableId); if(t) t.seats[pick.seatIndex]=null; setPick(null); save(); renderTables(); renderPool(); };
 }
@@ -1340,16 +1390,17 @@ function makeDraggable(handleEl, moveEl, obj, onEnd, onTap){
     e.preventDefault(); e.stopPropagation();
     handleEl.setPointerCapture(e.pointerId); pointerGesture=true;
     const sx=e.clientX, sy=e.clientY, ox=obj.x, oy=obj.y; let moved=false;
+    const slop=e.pointerType==="touch"?10:4;   // a thumb rolls a few px during a tap — don't turn that into a drag
     const maxX=(state.stage?state.stage.w:1700)-20, maxY=(state.stage?state.stage.h:1360)-20;
     function mv(ev){
       const dx=(ev.clientX-sx)/zoom, dy=(ev.clientY-sy)/zoom;
-      if(Math.abs(ev.clientX-sx)>4||Math.abs(ev.clientY-sy)>4) moved=true;
+      if(Math.abs(ev.clientX-sx)>slop||Math.abs(ev.clientY-sy)>slop) moved=true;
       if(!moved) return;
       obj.x=clamp(ox+dx, 20, maxX); obj.y=clamp(oy+dy, 20, maxY);
       moveEl.style.left=obj.x+"px"; moveEl.style.top=obj.y+"px";
     }
-    function up(){ pointerGesture=false; try{ handleEl.releasePointerCapture(e.pointerId); }catch(x){} handleEl.removeEventListener("pointermove",mv); handleEl.removeEventListener("pointerup",up); handleEl.removeEventListener("pointercancel",up);
-      if(moved){ save(); if(onEnd)onEnd(); } else if(onTap) onTap(); }
+    function up(ev){ pointerGesture=false; try{ handleEl.releasePointerCapture(e.pointerId); }catch(x){} handleEl.removeEventListener("pointermove",mv); handleEl.removeEventListener("pointerup",up); handleEl.removeEventListener("pointercancel",up);
+      if(moved){ save(); if(onEnd)onEnd(); } else if(onTap && ev.type!=="pointercancel") onTap(); }
     handleEl.addEventListener("pointermove",mv); handleEl.addEventListener("pointerup",up); handleEl.addEventListener("pointercancel",up);
   });
 }
@@ -1391,7 +1442,9 @@ function addTableRotateHandle(wrap, t, offset){
   wrap.appendChild(h);
   const apply=()=>{
     wrap.style.transform=`rotate(${t.rot||0}deg)`;
-    wrap.querySelectorAll(".nm,.tnum,.tcount").forEach(x=>{ x.style.display="inline-block"; x.style.transform=`rotate(${-(t.rot||0)}deg)`; });
+    // counter-rotate the whole seat pill (not just its text) so names stay upright AND unclipped
+    wrap.querySelectorAll(".seat").forEach(s=>{ s.style.transform=`translate(-50%,-50%) rotate(${-(t.rot||0)}deg)`; });
+    wrap.querySelectorAll(".tnum,.tcount").forEach(x=>{ x.style.display="inline-block"; x.style.transform=`rotate(${-(t.rot||0)}deg)`; });
   };
   apply();
   makeRotatable(h, wrap, t, apply);
@@ -1481,23 +1534,36 @@ function viewTo(cx,cy,z,animate){
     viewAnim = p<1 ? requestAnimationFrame(step) : null; };
   viewAnim=requestAnimationFrame(step);
 }
+// A seat row may still hold an uncommitted edit (a disc tap preventDefaults pointerdown, so the input never blurs).
+// Commit it against the table it belongs to before anything changes focusId or tears the rows down.
+function flushLiveRow(){
+  const ae=document.activeElement;
+  if(!ae || ae.tagName!=="INPUT" || !ae.closest("#fSeats") || ae.dataset.done) return;
+  const tb=state.tables.find(x=>x.id===+fSeats.dataset.tid); if(!tb) return;
+  const i=+ae.closest(".frow").dataset.i; ae.dataset.done="1"; hideSug();
+  if(ae.value.trim() || !tb.seats[i]) commitRow(tb,i,ae.value,null);
+}
 function focusTable(id, opts={}){
   const t=state.tables.find(x=>x.id===id); if(!t) return;
+  if(focusId!==id) flushLiveRow();
   const wasOpen=document.body.classList.contains("focused");
-  focusId=id; focusRowWanted=(opts.row!=null)?opts.row:null;
+  focusId=id;
   document.body.classList.add("focused"); setNav(false); hideSug();
   stage.querySelectorAll(".table").forEach(w=>w.classList.toggle("focused", +w.dataset.tableId===id));
   renderFocus();
+  // focus the wanted row synchronously — iOS only opens the keyboard for focus() inside the user gesture
+  if(opts.row!=null) focusRow(opts.row);
   // zoom onto the table once the panel has taken its space (layout changes on open)
   requestAnimationFrame(()=>{
+    if(focusId!==id) return;
     const ext=tableExtent(t), b=visibleBox();
     const z=clamp(Math.min(b.w*0.82/(ext.rx*2), b.h*0.82/(ext.ry*2)), 0.5, 1.6);
     viewTo(t.x, t.y, z, wasOpen || !isNarrow());
-    if(focusRowWanted!=null){ const i=focusRowWanted; focusRowWanted=null; setTimeout(()=>focusRow(i),60); }
   });
 }
 function unfocusTable(){
   if(focusId==null && !document.body.classList.contains("focused")) return;
+  flushLiveRow();
   focusId=null; hideSug(); document.body.classList.remove("focused"); focusEl.classList.remove("tall");
   stage.querySelectorAll(".table.focused").forEach(w=>w.classList.remove("focused"));
 }
@@ -1505,9 +1571,11 @@ function renderFocus(){
   const t=focusedTable(); if(!t){ unfocusTable(); return; }
   const occ=t.seats.filter(Boolean).length;
   $("fName").textContent=t.label; $("fCount").textContent=`${occ}/${t.capacity}`;
-  // keep a live (uncommitted) input alive across re-renders
+  // keep a live (uncommitted) input alive across re-renders — only if the rows still belong to the same table
   const ae=document.activeElement; let keep=null;
-  if(ae && ae.tagName==="INPUT" && ae.closest("#fSeats") && !ae.dataset.done){ keep={ i:+ae.closest(".frow").dataset.i, v:ae.value, s:ae.selectionStart }; }
+  if(ae && ae.tagName==="INPUT" && ae.closest("#fSeats") && !ae.dataset.done && +fSeats.dataset.tid===t.id){ keep={ i:+ae.closest(".frow").dataset.i, v:ae.value, s:ae.selectionStart, e:ae.selectionEnd }; }
+  const st=fSeats.scrollTop;
+  fSeats.dataset.tid=t.id;
   fSeats.innerHTML="";
   for(let i=0;i<t.capacity;i++){
     const gid=t.seats[i];
@@ -1517,13 +1585,21 @@ function renderFocus(){
     inp.addEventListener("focus",()=>{ markSeat(i); showSug(i,inp.value); });
     inp.addEventListener("input",()=>showSug(i,inp.value));
     inp.addEventListener("keydown",e=>onRowKey(e,i,inp));
-    inp.addEventListener("blur",()=>{ setTimeout(()=>{ if(!inp.isConnected||inp.dataset.done) return; const tb=focusedTable(); if(!tb) return; hideSug();
-      if(!inp.value.trim() && tb.seats[i]){ inp.value=guestName(tb.seats[i]); return; }   // blurring an emptied seat just restores it (× or Enter unseat)
-      commitRow(tb,i,inp.value,null); },120); });
+    inp.addEventListener("blur",()=>{
+      if(inp.dataset.done) return;
+      const tb=focusedTable(), v=inp.value; if(!tb) return;   // capture NOW — the rows may be rebuilt or the panel closed before the timer fires
+      setTimeout(()=>{
+        if(inp.dataset.done||!state.tables.includes(tb)) return; inp.dataset.done="1";
+        if(sug&&sug.i===i) hideSug();
+        if(!v.trim() && tb.seats[i]){ if(inp.isConnected) inp.value=guestName(tb.seats[i]); return; }   // blurring an emptied seat just restores it (× or Enter unseat)
+        commitRow(tb,i,v,null);
+      },120);
+    });
     row.querySelector(".fx").addEventListener("click",()=>{ const tb=focusedTable(); if(tb&&tb.seats[i]){ tb.seats[i]=null; save(); renderTables(); renderPool(); } });
     fSeats.appendChild(row);
   }
-  if(keep){ const inp=rowInput(keep.i); if(inp){ inp.value=keep.v; inp.focus({preventScroll:true}); try{ inp.setSelectionRange(keep.s,keep.s); }catch(e){} } }
+  fSeats.scrollTop=st;
+  if(keep){ const inp=rowInput(keep.i); if(inp){ inp.value=keep.v; inp.focus({preventScroll:true}); try{ inp.setSelectionRange(keep.s,keep.e); }catch(e){} } }
 }
 function rowInput(i){ return fSeats.querySelector(`.frow[data-i="${i}"] input`); }
 function focusRow(i){ const inp=rowInput(i); if(!inp) return; inp.focus(); inp.select(); inp.scrollIntoView({block:"nearest"}); }
@@ -1532,29 +1608,35 @@ function onRowKey(e,i,inp){
   e.stopPropagation();
   const tb=focusedTable(); if(!tb) return;
   if(e.key==="ArrowDown"||e.key==="ArrowUp"){
-    if(sug&&sug.i===i&&sug.items.length){ e.preventDefault(); sug.sel=(sug.sel+(e.key==="ArrowDown"?1:-1)+sug.items.length)%sug.items.length; paintSug(); }
+    if(sug&&sug.i===i&&sug.items.length){ e.preventDefault(); sug.sel=(sug.sel+(e.key==="ArrowDown"?1:-1)+sug.items.length)%sug.items.length; sug.nav=true; paintSug(); }
     return;
   }
   if(e.key==="Escape"){ e.preventDefault(); if(sug){ hideSug(); } else { inp.dataset.done="1"; inp.blur(); unfocusTable(); } return; }
   if(e.key==="Enter"||e.key==="Tab"){
     e.preventDefault(); inp.dataset.done="1";
-    const choice=(sug&&sug.i===i&&sug.items.length)?sug.items[sug.sel]:null; hideSug();
     const v=inp.value.trim();
-    if(choice&&choice.id!=="__new") commitRow(tb,i,"",choice.id);
-    else if(!v && tb.seats[i]){ tb.seats[i]=null; save(); renderTables(); renderPool(); }   // Enter on an emptied seat = unseat
+    // a suggestion is only taken when the user typed something or arrowed onto it — never on an untouched row
+    const choice=(sug&&sug.i===i&&sug.items.length&&(v||sug.nav))?sug.items[sug.sel]:null; hideSug();
+    if(!v && tb.seats[i]){ tb.seats[i]=null; save(); renderTables(); renderPool(); }   // Enter on an emptied seat = unseat
+    else if(choice&&choice.id!=="__new") commitRow(tb,i,"",choice.id);
     else commitRow(tb,i,v,null);
     renderFocus();
     const next=e.shiftKey? i-1 : i+1;
-    if(next>=0 && next<tb.capacity) focusRow(next);
+    if(next>=0 && next<tb.capacity) focusRow(next); else (e.shiftKey?$("fClose"):$("fFill")).focus();
   }
 }
 // Apply what was typed/chosen for seat i. Returns true if the plan changed.
 function commitRow(tb,i,text,chosenId){
-  const cur=tb.seats[i]; const v=(text||"").trim(); let changed=false;
+  let cur=tb.seats[i]; const v=(text||"").trim(); let changed=false;
+  if(cur && !state.guests[cur]){ tb.seats[i]=null; cur=null; changed=true; }   // dangling id from a desynced plan
   if(chosenId && state.guests[chosenId]){ if(cur!==chosenId){ tb.seats[i]=chosenId; changed=true; } }
   else if(v){
     if(cur){ if(state.guests[cur].name!==v){ state.guests[cur].name=v; changed=true; } }
-    else { const id="g"+nextId(); state.guests[id]={ name:v, groupId:state.activeGroupId||null }; tb.seats[i]=id; changed=true; }
+    else {
+      const ex=unseatedIds().find(id=>norm(guestName(id))===norm(v));   // typed an existing unseated name → seat that guest, no duplicate
+      if(ex) tb.seats[i]=ex; else { const id="g"+nextId(); state.guests[id]={ name:v, groupId:state.activeGroupId||null }; tb.seats[i]=id; }
+      changed=true;
+    }
   }
   if(changed){ save(); renderTables(); renderPool(); renderGroups(); }
   return changed;
@@ -1563,15 +1645,16 @@ function commitRow(tb,i,text,chosenId){
 function showSug(i,q){
   const tb=focusedTable(); if(!tb) return;
   const nq=norm(q); const cur=tb.seats[i];
-  if(cur && nq===norm(guestName(cur))){ hideSug(); return; }
+  if(cur && (!nq || nq===norm(guestName(cur)))){ hideSug(); return; }   // an occupied row offers nothing until a different name is typed
   let pool=unseatedIds();
-  if(nq) pool=pool.filter(id=>norm(guestName(id)).includes(nq));
+  if(nq){ pool=pool.filter(id=>norm(guestName(id)).includes(nq)); const ex=pool.find(id=>norm(guestName(id))===nq); if(ex) pool=[ex,...pool.filter(id=>id!==ex)]; }   // exact match always first
   else if(state.activeGroupId){ const g=pool.filter(id=>state.guests[id].groupId===state.activeGroupId); if(g.length) pool=g; }
   const items=pool.slice(0,5).map(id=>({id, name:guestName(id), color:guestColor(id)}));
   const exact=nq && items.some(it=>norm(it.name)===nq);
   if(nq && !exact) items.push({ id:"__new", name:cur? tr("renameTo",{n:q.trim()}) : tr("createNew",{n:q.trim()}) });
   if(!items.length){ hideSug(); return; }
-  sug={ i, items, sel:0, more:Math.max(0,pool.length-5) };
+  const renameIdx=items.findIndex(it=>it.id==="__new");
+  sug={ i, items, sel:(cur&&renameIdx>=0)?renameIdx:0, nav:false, more:Math.max(0,pool.length-5) };   // editing an occupant defaults to "rename", not "swap"
   paintSug();
 }
 function paintSug(){
@@ -1606,6 +1689,7 @@ $("fNext").addEventListener("click",()=>stepTable(1));
 $("fClose").addEventListener("click",()=>unfocusTable());
 $("fSettings").addEventListener("click",e=>{ if(focusId!=null) openMenu(focusId, anchorOf(e.currentTarget)); });
 $("fHandle").addEventListener("click",()=>focusEl.classList.toggle("tall"));
+$("fName").addEventListener("click",()=>{ if(isNarrow()) focusEl.classList.toggle("tall"); });
 $("fClear").addEventListener("click",()=>{ const t=focusedTable(); if(!t) return; if(!t.seats.some(Boolean)) return;
   if(!confirm(tr("clearConfirm",{n:t.label}))) return; t.seats=t.seats.map(()=>null); save(); renderTables(); renderPool(); toast(tr("tCleared")); });
 $("fFill").addEventListener("click",e=>{
@@ -1613,7 +1697,7 @@ $("fFill").addEventListener("click",e=>{
   const un=unseatedIds(); const per={}; un.forEach(id=>{ const g=state.guests[id].groupId||""; per[g]=(per[g]||0)+1; });
   const m=$("fillmenu");
   const rows=[{id:"",name:tr("all"),color:null,n:un.length}].concat(state.groups.map(g=>({id:g.id,name:g.name,color:g.color,n:per[g.id]||0})));
-  m.innerHTML=rows.map(r=>`<div class="gm-item" data-gid="${r.id}">${r.color?`<span class="dot" style="background:${r.color}"></span>`:""}${escapeHtml(r.name)}<span class="n">${r.n}</span></div>`).join("");
+  m.innerHTML=rows.map(r=>`<div class="gm-item" data-gid="${escapeHtml(r.id)}">${r.color?`<span class="dot" style="background:${safeColor(r.color)}"></span>`:""}${escapeHtml(r.name)}<span class="n">${r.n}</span></div>`).join("");
   m.querySelectorAll(".gm-item").forEach(it=>it.onclick=()=>{ m.style.display="none"; fillFrom(t, it.dataset.gid||null); });
   showPopover(m, anchorOf(e.currentTarget));
 });
@@ -1623,8 +1707,14 @@ function fillFrom(t, gid){
   let k=0; for(let i=0;i<t.capacity&&k<ids.length;i++){ if(!t.seats[i]) t.seats[i]=ids[k++]; }
   save(); renderTables(); renderPool(); renderGroups(); toast(tr("filled",{n:k}));
 }
-// Clicking bare floor / canvas background closes the names panel and drops a picked guest.
-stagewrap.addEventListener("click",e=>{ if(e.target===stage||e.target===stagewrap){ if(pick) setPick(null); else unfocusTable(); } });
+// Clicking bare floor / canvas background closes the names panel (and, with a mouse, drops a picked guest —
+// a finger that misses a small seat must not lose the pick). A tap that merely dismisses a popover does nothing else.
+stagewrap.addEventListener("click",e=>{
+  if(e.target!==stage&&e.target!==stagewrap) return;
+  if(menu.style.display==="block"||$("featuremenu").style.display==="block"||$("guesteditor").style.display==="block") return;
+  if(pick){ if(!isTouch) setPick(null); return; }
+  unfocusTable();
+});
 document.addEventListener("keydown",e=>{
   if(e.key!=="Escape") return;
   if(document.querySelector(".modal-back.open")){ document.querySelectorAll(".modal-back.open").forEach(m=>m.classList.remove("open")); return; }
@@ -1671,12 +1761,12 @@ $("autoSeatBtn").addEventListener("click",autoSeat);
 function resetPlan(){
   const cur=currentProfile();
   if(!confirm((cur&&cur.cloudId)?tr("confirmResetShared"):tr("confirmReset")))return;
-  try{ localStorage.removeItem(STORE_KEY); }catch(e){}
+  if(!IS_LAB){ try{ localStorage.removeItem(STORE_KEY); }catch(e){} }   // the lab must never touch the real app's legacy save
   setPick(null); unfocusTable();
   state=IS_LAB?labState():defaultState(); uid=state._uid; fontScale=1; applyStage(); $("stageFloor").value=state.stageMaterial; save(); renderAll(); toast(tr("tReset"));
 }
 function planJSON(){ const cur=currentProfile(); return JSON.stringify({...state, _profileName:cur.name}, null, 2); }
-function planFilename(){ const cur=currentProfile(); return ((cur.name||"wedding").replace(/[^\w\-]+/g,"_"))+".wedding.json"; }
+function planFilename(){ const cur=currentProfile(); const s=(cur.name||"").replace(/[^\p{L}\p{N}\-]+/gu,"_").replace(/^_+|_+$/g,""); return (s||"wedding")+".wedding.json"; }
 function copyText(ta){
   ta.focus(); ta.select(); try{ ta.setSelectionRange(0,999999); }catch(e){}
   let ok=false; try{ ok=document.execCommand("copy"); }catch(e){}
@@ -1743,14 +1833,15 @@ function mergeGuestList(data){
 // ⋯ menu: everything that isn't needed every minute
 $("moreBtn").addEventListener("click",e=>{
   const m=$("moremenu");
-  const items=[["share",tr("mShare")],["guests",tr("mImportGuests")]];
-  if(isNarrow()) items.push(["sep"],["newplan","＋ "+tr("newPlan")],["planmore","✎ "+tr("planMore")],["sep"],["head",tr("mHead")],["decor",tr("mDecor")],["auto",tr("mAuto")]);
+  const items=[]; if(!IS_LAB) items.push(["share",tr("mShare")]); items.push(["guests",tr("mImportGuests")]);
+  if(isNarrow()) items.push(["sep"],["newplan","＋ "+tr("newPlan")],["planmore","✎ "+tr("planMore")],["sep"],["head",tr("mHead")],["decor",tr("mDecor")],["auto",tr("mAuto")],["sep"],["fontup","A＋ "+tr("fontUp")],["fontdown","A− "+tr("fontDown")]);
   items.push(["sep"],["export",tr("mExport")],["import",tr("mImport")],["print",tr("mPrint")],["sep"],["reset",tr("mReset")]);
   if(!IS_LAB) items.push(["sep"],["lang-el","ΕΛ · Ελληνικά"],["lang-en","EN · English"],["lang-de","DE · Deutsch"]);
   m.innerHTML=items.map(([a,l])=>a==="sep"?`<div class="gm-sep"></div>`:`<div class="gm-item${a==="reset"?" danger":""}${a==="lang-"+LANG?" on":""}" data-act="${a}">${escapeHtml(l)}</div>`).join("");
-  m.querySelectorAll(".gm-item").forEach(it=>it.onclick=()=>{ m.style.display="none"; const a=it.dataset.act;
+  m.querySelectorAll(".gm-item").forEach(it=>it.onclick=ev=>{ ev.stopPropagation(); m.style.display="none"; const a=it.dataset.act;
     if(a==="share") openCloud(); else if(a==="guests") importGuestList(); else if(a==="head") $("addHeadBtn").click(); else if(a==="decor") openDecor();
     else if(a==="newplan") newProfile(); else if(a==="planmore") openProfileMenu(anchorOf($("moreBtn")));
+    else if(a==="fontup") setFontScale(fontScale+0.15); else if(a==="fontdown") setFontScale(fontScale-0.15);
     else if(a==="auto") autoSeat(); else if(a==="export") openExport(); else if(a==="import") openImport(); else if(a==="print") buildAndPrint(); else if(a==="reset") resetPlan();
     else if(a.startsWith("lang-")){ const l=a.slice(5); location.href=({el:"seating-planner-el.html",en:"seating-planner.html",de:"seating-planner-de.html"})[l]; } });
   showPopover(m, anchorOf(e.currentTarget));
@@ -1766,8 +1857,10 @@ function shareLink(cur, viewOnly){ const base=location.origin+location.pathname+
   return (viewOnly||!cur.editKey)? base : base+"#key="+cur.editKey; }
 function setCloudDot(st){ const b=$("cloudBtn"); if(!b) return;
   b.textContent={ok:tr("cloudOk"),pending:tr("cloudPending"),err:tr("cloudErr")}[st]||tr("cloudIdle"); b.classList.toggle("on", st==="ok"); }
-function fmtTime(ms){ try{ return ms? new Date(ms).toLocaleString():"—"; }catch(e){ return "—"; } }
-function canPush(prof){ return !!(prof && prof.cloudId && !prof.readonly && (prof.editKey || getSyncCode())); }
+function fmtTime(ms){ try{ return ms? new Date(ms).toLocaleString(LANG):"—"; }catch(e){ return "—"; } }
+function canPush(prof){ return !IS_LAB && !!(prof && prof.cloudId && !prof.readonly && (prof.editKey || getSyncCode())); }
+const PLAN_ID_RE=/^[A-Za-z0-9_-]{8,64}$/;   // plan ids are opaque handles — never let one rewrite an API path
+function planPath(id){ return SYNC_URL+"/plans/"+encodeURIComponent(id); }
 function authHeaders(prof){ const h={"Content-Type":"application/json"};
   if(prof.editKey) h["X-Edit-Key"]=prof.editKey; else if(getSyncCode()) h["X-Sync-Code"]=getSyncCode(); return h; }
 // True while the user is mid-interaction — used to defer a cloud pull so it can't clobber live edits.
@@ -1790,7 +1883,7 @@ async function cloudPush(snap){
   const prof=profiles.profiles.find(p=>p.id===snap.profId); if(!prof||!prof.cloudId) return;
   const headers={"Content-Type":"application/json"};
   if(snap.editKey) headers["X-Edit-Key"]=snap.editKey; else if(getSyncCode()) headers["X-Sync-Code"]=getSyncCode();
-  const r=await fetch(SYNC_URL+"/plans/"+snap.cloudId,{method:"PUT",headers,
+  const r=await fetch(planPath(snap.cloudId),{method:"PUT",headers,
     body:JSON.stringify({ name:snap.name, plan:JSON.parse(snap.planJSON), baseUpdated:snap.baseUpdated })});
   if(r.status===409){
     const d=await r.json().catch(()=>({}));
@@ -1801,10 +1894,10 @@ async function cloudPush(snap){
   const d=await r.json(); if(!r.ok) throw new Error(d.error||"update failed");
   prof.cloudUpdated=d.updated; saveProfilesIdx(); registerUnderCode(prof); return d;
 }
-async function cloudFetch(id){ const r=await fetch(SYNC_URL+"/plans/"+id); const d=await r.json(); if(!r.ok) throw new Error(d.error||"not found"); return d; }
+async function cloudFetch(id){ if(!PLAN_ID_RE.test(String(id))) throw new Error("bad id"); const r=await fetch(planPath(id)); const d=await r.json(); if(!r.ok) throw new Error(d.error||"not found"); return d; }
 async function cloudDelete(prof){
   if(!prof||!prof.cloudId) return;
-  try{ await fetch(SYNC_URL+"/plans/"+prof.cloudId,{method:"DELETE",headers:authHeaders(prof)}); }catch(e){}
+  try{ await fetch(planPath(prof.cloudId),{method:"DELETE",headers:authHeaders(prof)}); }catch(e){}
   const code=getSyncCode(); if(code){ try{ await fetch(codeUrl(),{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:prof.cloudId})}); }catch(e){} }
   prof.cloudId=""; prof.editKey=""; prof.cloudUpdated=0; prof.readonly=false; saveProfilesIdx();
 }
@@ -1867,7 +1960,7 @@ function flushCloudPush(){
   try{
     const headers={"Content-Type":"application/json"};
     if(snap.editKey) headers["X-Edit-Key"]=snap.editKey; else if(getSyncCode()) headers["X-Sync-Code"]=getSyncCode();
-    fetch(SYNC_URL+"/plans/"+snap.cloudId,{method:"PUT",headers,keepalive:true,
+    fetch(planPath(snap.cloudId),{method:"PUT",headers,keepalive:true,
       body:JSON.stringify({ name:snap.name, plan:JSON.parse(snap.planJSON), baseUpdated:snap.baseUpdated })});
   }catch(e){}
 }
@@ -1883,7 +1976,8 @@ function applyPulledPlan(cur, d){
   try{ localStorage.setItem(planKey(cur.id), JSON.stringify(state)); }catch(e){}
   applyStage(); $("stageFloor").value=state.stageMaterial||"grass";
   renderProfiles(); renderAll();
-  setTimeout(()=>{ zoom=initialZoom(); applyZoom(); },30);
+  if(focusId!=null && focusedTable()) requestAnimationFrame(()=>focusTable(focusId));   // keep the open table in view
+  else setTimeout(()=>{ zoom=initialZoom(); applyZoom(); },30);
 }
 function renderCloudBody(){
   const cur=currentProfile(); const body=$("cloudBody"); const code=getSyncCode();
@@ -1937,10 +2031,14 @@ function renderCloudBody(){
   }
 }
 // Open a ?plan=<id>#key=<editKey> link: fetch it and load as (or into) a profile.
+// If a gated visitor's link turns out to be dead, send them home instead of leaving an ungated planner behind.
+function gatedVisitor(){ return !IS_LAB && /(^|\.)takeaseat\.gr$/i.test(location.hostname) && !localStorage.getItem("weddingVenueKey") && !profiles.profiles.some(p=>p.cloudId); }
 async function openSharedFromURL(){
+  if(IS_LAB) return false;
   const params=new URLSearchParams(location.search); const id=params.get("plan"); if(!id) return false;
   const key=(location.hash.match(/(?:^#|&)key=([^&]+)/)||[])[1] || "";
   try{ history.replaceState(null,"",location.origin+location.pathname); }catch(e){}
+  if(!PLAN_ID_RE.test(id)){ if(gatedVisitor()){ location.replace("/"); return true; } toast(tr("cOpenFail")); return true; }
   try{
     const d=await cloudFetch(id);
     let prof=profiles.profiles.find(p=>p.cloudId===id);
@@ -1949,7 +2047,7 @@ async function openSharedFromURL(){
     else{ const pid=newProfileId(); prof={ id:pid, name:d.name||tr("sharedPlan"), cloudId:id, editKey:key, cloudUpdated:d.updated, readonly:!key };
       profiles.profiles.push(prof); profiles.activeId=pid; saveProfilesIdx();
       applyPulledPlan(prof,d); setCloudDot("ok"); toast(key?tr("cOpenedNamed",{n:d.name||""}):tr("cOpenedNamedView",{n:d.name||""})); }
-  }catch(e){ toast(tr("cOpenFail")); }
+  }catch(e){ if(gatedVisitor()){ location.replace("/"); return true; } toast(tr("cOpenFail")); }
   return true;
 }
 async function pullIfNewer(){
@@ -1959,7 +2057,7 @@ async function pullIfNewer(){
     setCloudDot("ok");
   }catch(e){ setCloudDot("err"); }
 }
-function openCloud(){ renderCloudBody(); $("cloudModal").classList.add("open"); }
+function openCloud(){ if(IS_LAB){ toast(tr("labHint")); return; } renderCloudBody(); $("cloudModal").classList.add("open"); }
 $("cloudBtn").addEventListener("click",openCloud);
 $("cloudClose").addEventListener("click",()=>$("cloudModal").classList.remove("open"));
 $("cloudModal").addEventListener("click",e=>{ if(e.target.id==="cloudModal") e.currentTarget.classList.remove("open"); });
@@ -2017,6 +2115,6 @@ stage.appendChild(_stageResize); makeStageResizable(_stageResize);
 initFloorSelect(); initDecor(); renderProfiles();
 renderAll();
 setTimeout(()=>{ zoom=initialZoom(); applyZoom(); },50);
-// ☁ open a shared link if present, otherwise refresh the active profile from the cloud
-(async()=>{ if(!(await openSharedFromURL())) await pullIfNewer(); if(getSyncCode()) await syncFromCode(); startCloudPoll(); })();
+// ☁ open a shared link if present, otherwise refresh the active profile from the cloud (the lab never talks to the cloud)
+if(!IS_LAB) (async()=>{ if(!(await openSharedFromURL())) await pullIfNewer(); if(getSyncCode()) await syncFromCode(); startCloudPoll(); })();
 </script>

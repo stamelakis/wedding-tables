@@ -55,7 +55,8 @@ Browser ──HTTPS──> Caddy (edu-admin-caddy-1, owns :80/:443 on the shared
 | `index.html` | Marketing home page (Greek, B2B + couples tier). Footer links to legal pages; the year "2026" is the hidden link to `/lab.html`. |
 | `planner.src.html` | **THE planner source.** One file with all three UI languages embedded (`T_ALL`) and `__LANG__` / `__MODE__` / `__TITLE__` placeholders. Edit only this. |
 | `tools/build-planner.mjs` | Builds every planner output from the source: 3 language files + 3 `.artifact.html` twins + `lab.html`. `--check` fails if outputs are stale. |
-| `tools/dev.mjs` | Local dev server (`node tools/dev.mjs` → http://localhost:8080): the real server over an in-memory KV. |
+| `tools/dev.mjs` | Local dev server (`node tools/dev.mjs` → http://127.0.0.1:8080, loopback only): the real server over an in-memory KV. |
+| `hermes/takeaseat_control.py` | **Hermes voice shim** (Andreas's local voice/watch assistant, `C:\Users\andre\hermes`). Headless local process that registers "TakeaSeat τραπεζολόγιο" and forwards each spoken question to the live API. Config in git-ignored `hermes/.env` (see `.env.example`). Autostarts via the Startup shortcut `TakeaSeatHermes.lnk`. Writes only ever go to venues listed in `TAKEASEAT_OWN_VENUES` — never to a venue we have sold to. |
 | `seating-planner.html` / `-de.html` / `-el.html` | **Generated** seat editor — EN / DE / EL. Do not hand-edit. |
 | `seating-planner*.artifact.html` | **Generated** claude.ai-artifact twins (the file minus its `<head>/<body>` wrapper). |
 | `lab.html` | **Generated** sandbox build (Greek, `MODE=lab`: demo data, storage under `weddingSeatingPlanner.lab.*`, no gate). |
@@ -166,5 +167,12 @@ cascade-purges its plans; venues can rotate their own key; backups encrypted at 
   panel on PC, bottom sheet on phone); type a name + Enter for the next seat, with suggestions from unseated guests.
   Floor textures are procedural inline SVGs (no asset files; CSP `img-src data:`). Fonts are system stacks — the CSP
   blocks Google Fonts, so don't add `<link>` fonts without also changing the Caddy CSP.
+- **Review pass (2026-09-09)**: a 9-lens adversarial review found 83 issues; the real ones were fixed (uncommitted
+  seat-row text leaking into another table, Enter seating an unwanted suggestion, XSS via group ids, unbounded
+  capacity from a shared plan, server crash on a malformed URL, mobile sheet/drawer stacking, iOS input zoom, print
+  clipping, lab talking to the live cloud — now local-only, and more). The Docker build now refuses stale planner
+  outputs (`--check --no-twins`) and the build script enforces i18n completeness across the three dictionaries.
+- **Venue console**: weddings can be renamed (✎ → `PATCH /venues/:id/weddings/:planId {label}`, also renames the
+  plan) and couple links can be generated in ΕΛ/EN/DE (language select next to "Νέος γάμος").
 - **Memory**: if the next agent is Claude Code on Andreas's PC, the memory files (`wedding-tables-app.md`,
   `takeaseat-owner-access.md`) already carry this state and the access links.

@@ -16,6 +16,11 @@ COPY server/server.mjs ./
 RUN mkdir -p /app/public
 COPY index.html seating-planner.html seating-planner-de.html seating-planner-el.html lab.html admin.html venue.html privacy.html terms.html dpa.html /app/public/
 
+# Refuse to ship stale planner outputs: the committed html must match what planner.src.html builds.
+COPY planner.src.html /chk/
+COPY tools/build-planner.mjs /chk/tools/
+RUN cp /app/public/seating-planner*.html /app/public/lab.html /chk/ && cd /chk && node tools/build-planner.mjs --check --no-twins && rm -rf /chk
+
 ENV PORT=8080 \
     DB_PATH=/data/wedding.db \
     PUBLIC_DIR=/app/public \

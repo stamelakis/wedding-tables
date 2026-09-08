@@ -7,3 +7,5 @@ wedding-seating.json
 # Secrets / access — real keys, NEVER commit (repo is public). See HANDOFF.md.
 ACCESS.local.md
 *.local.md
+hermes/.env
+hermes/__pycache__/
