@@ -1,3 +1,27 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<script>
+// Access gate: on the live domain the planner isn't a free public tool. Allow only an
+// invite/plan link (?plan=), a signed-in venue, or a returning couple (a cloud-linked
+// local profile). Everyone else is sent to the marketing home page. Runs before render.
+// The lab build (lab.html) is a sandbox and is never gated.
+(function(){
+  if("lab"==="lab") return;
+  if(location.hostname.endsWith("github.io")){ location.replace("https://takeaseat.gr"+location.pathname+location.search+location.hash); return; }
+  if(!/(^|\.)takeaseat\.gr$/i.test(location.hostname)) return;   // only gate the live product
+  try{
+    if(new URLSearchParams(location.search).get("plan")) return;              // has a plan/couple link
+    if(localStorage.getItem("weddingVenueKey")) return;                       // signed-in venue
+    var idx=JSON.parse(localStorage.getItem("weddingSeatingPlanner.profiles")||"null");
+    if(idx&&idx.profiles&&idx.profiles.some(function(x){return x.cloudId;})) return;  // returning couple
+  }catch(e){ return; }
+  location.replace("/");
+})();
+</script>
+<title>TakeaSeat Lab 🧪</title>
 <style>
   *{ box-sizing:border-box; margin:0; padding:0; }
   :root{
@@ -431,7 +455,7 @@
 //  TakeaSeat — wedding seating planner (single self-contained file)
 //  Built from planner.src.html by tools/build-planner.mjs — edit the SOURCE, not the outputs.
 // ============================================================
-const LANG="en", MODE="app", IS_LAB=(MODE==="lab");
+const LANG="el", MODE="lab", IS_LAB=(MODE==="lab");
 document.body.classList.add("mode-"+MODE);
 
 // Embedded builds (artifact / iframe hosts) strip the <head>, taking the viewport meta
@@ -443,7 +467,7 @@ if(!document.querySelector('meta[name=viewport]')){
 }
 
 // ============================================================
-//  i18n — all three UI languages live here; the build picks one via en
+//  i18n — all three UI languages live here; the build picks one via el
 // ============================================================
 const T_ALL={
 el:{
@@ -2020,3 +2044,5 @@ setTimeout(()=>{ zoom=initialZoom(); applyZoom(); },50);
 // ☁ open a shared link if present, otherwise refresh the active profile from the cloud
 (async()=>{ if(!(await openSharedFromURL())) await pullIfNewer(); if(getSyncCode()) await syncFromCode(); startCloudPoll(); })();
 </script>
+</body>
+</html>

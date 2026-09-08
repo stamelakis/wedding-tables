@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "takeaseat-local",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["tools/dev.mjs"],
+      "port": 8080
+    }
+  ]
+}

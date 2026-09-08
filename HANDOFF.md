@@ -11,11 +11,19 @@
 A venue creates one plan per couple; the couple opens a private link on their phone and places
 their guests at tables. Live at **https://takeaseat.gr**.
 
-- **Marketing home** (Greek, for venues): https://takeaseat.gr/ (`index.html`)
+- **Marketing home** (Greek; venues first, plus a couples tier): https://takeaseat.gr/ (`index.html`)
 - **Seat editor** (the planner, 3 languages): `seating-planner-el.html` (EL), `-de.html` (DE), `seating-planner.html` (EN)
+- **Lab / sandbox** (Andreas's experimental copy of the planner — Greek, demo data, its own local storage, no login
+  gate, never touches real plans): https://takeaseat.gr/lab.html — reachable from anywhere via the **hidden link on the
+  year "2026" in the home-page footer**.
 - **Owner console** (Andreas, manages venues + licenses): https://takeaseat.gr/admin.html
 - **Venue console** (a κτήμα manages its weddings): https://takeaseat.gr/venue.html
 - **Legal**: `/privacy.html`, `/terms.html`, `/dpa.html`
+
+**Pricing on the site (2026-09-08):** venues season **129 €/season** (unlimited weddings), venues per wedding **9 €**,
+couples **19 € one-off** (the "expensive" tier — never called that; venues simply get the partner price). All three
+numbers live only in the pricing section of `index.html`. Couples currently sign up by e-mail (the CTA is a mailto);
+fulfil by creating a wedding for them under a "Direct couples" venue in `admin.html` and sending the couple link.
 
 ## 2. Architecture
 
@@ -44,9 +52,13 @@ Browser ──HTTPS──> Caddy (edu-admin-caddy-1, owns :80/:443 on the shared
 
 | Path | What |
 |---|---|
-| `index.html` | Marketing home page (Greek, B2B). Footer links to legal pages. |
-| `seating-planner.html` / `-de.html` / `-el.html` | The seat editor — EN / DE / EL. Functionally identical; only UI strings differ. |
-| `seating-planner*.artifact.html` | claude.ai-artifact build of each planner (the file minus its `<head>/<body>` wrapper). |
+| `index.html` | Marketing home page (Greek, B2B + couples tier). Footer links to legal pages; the year "2026" is the hidden link to `/lab.html`. |
+| `planner.src.html` | **THE planner source.** One file with all three UI languages embedded (`T_ALL`) and `__LANG__` / `__MODE__` / `__TITLE__` placeholders. Edit only this. |
+| `tools/build-planner.mjs` | Builds every planner output from the source: 3 language files + 3 `.artifact.html` twins + `lab.html`. `--check` fails if outputs are stale. |
+| `tools/dev.mjs` | Local dev server (`node tools/dev.mjs` → http://localhost:8080): the real server over an in-memory KV. |
+| `seating-planner.html` / `-de.html` / `-el.html` | **Generated** seat editor — EN / DE / EL. Do not hand-edit. |
+| `seating-planner*.artifact.html` | **Generated** claude.ai-artifact twins (the file minus its `<head>/<body>` wrapper). |
+| `lab.html` | **Generated** sandbox build (Greek, `MODE=lab`: demo data, storage under `weddingSeatingPlanner.lab.*`, no gate). |
 | `admin.html` | Owner console (create/manage venues, licenses). |
 | `venue.html` | Venue console (a κτήμα: log in with venue key → create weddings → copy couple links → 🔑 rotate key). |
 | `privacy.html` / `terms.html` / `dpa.html` | Legal (GR+EN). Privacy+Terms are publishable; DPA has per-signature blanks. |
@@ -58,9 +70,10 @@ Browser ──HTTPS──> Caddy (edu-admin-caddy-1, owns :80/:443 on the shared
 | `server/offsite-push.sh` | Nightly off-site push to Backblaze B2, age-encrypted (deployed as `/opt/offsite-push.sh`). |
 | `server/uptime-check.sh` | 5-min health check + auto-restart + email alert (deployed as `/opt/takeaseat-uptime.sh`). |
 
-> **Editing rule:** a change to the planner must be applied to **all three** language files
-> **and** their `.artifact.html` twins. Regenerate a twin with the mkartifact helper
-> (`node /tmp/mkartifact.mjs write <src.html> <dst.artifact.html>` — recreate the helper if the temp dir was cleared).
+> **Editing rule:** edit `planner.src.html` only, then run `node tools/build-planner.mjs` — it regenerates the three
+> language files, their `.artifact.html` twins and `lab.html` in one go. Commit the source **and** the outputs
+> (the Docker image copies the outputs). UI strings live in the `T_ALL` dictionary near the top of the script
+> (keys must exist in all three languages; missing keys fall back to Greek).
 
 ## 4. How to access everything
 
@@ -147,6 +160,11 @@ cascade-purges its plans; venues can rotate their own key; backups encrypted at 
 - **Shared box runs the live educationproject.gr business.** Caddy owns 80/443. Back up the Caddyfile and
   `caddy validate` before any reload; confirm edu still serves 200 afterward.
 - **`worker.mjs` is generated** from `wedding-sync-worker.js` at build — edit the source, not the copy.
-- **Planner edits × 6**: 3 language files + 3 `.artifact.html` twins must stay in parity.
+- **Planner outputs are generated**: never hand-edit `seating-planner*.html` or `lab.html` — edit `planner.src.html`
+  and rebuild (`node tools/build-planner.mjs`), or the next build silently overwrites your change.
+- **Planner UX (2026-09-08 redesign)**: tap/click a table → the canvas glides onto it and a seat list opens (right
+  panel on PC, bottom sheet on phone); type a name + Enter for the next seat, with suggestions from unseated guests.
+  Floor textures are procedural inline SVGs (no asset files; CSP `img-src data:`). Fonts are system stacks — the CSP
+  blocks Google Fonts, so don't add `<link>` fonts without also changing the Caddy CSP.
 - **Memory**: if the next agent is Claude Code on Andreas's PC, the memory files (`wedding-tables-app.md`,
   `takeaseat-owner-access.md`) already carry this state and the access links.

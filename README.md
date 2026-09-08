@@ -11,11 +11,12 @@ couple; the couple opens a private link on their phone and places guests at tabl
 
 ## The app
 
-- **Home** (`index.html`) — Greek marketing page for venues.
-- **Seat editor** — `seating-planner-el.html` (EL), `-de.html` (DE), `seating-planner.html` (EN).
-  Same code, different UI strings; each has an `.artifact.html` twin. A planner edit must be applied
-  to all three languages **and** their twins.
+- **Home** (`index.html`) — Greek marketing page (venue tiers + a couples tier).
+- **Seat editor** — built from the single source `planner.src.html` by `node tools/build-planner.mjs` into
+  `seating-planner-el.html` (EL), `-de.html` (DE), `seating-planner.html` (EN), their `.artifact.html` twins and
+  `lab.html` (the sandbox). Edit the source, never the outputs.
 - **Consoles** — `admin.html` (owner) and `venue.html` (venue self-service).
+- **Local dev** — `node tools/dev.mjs` serves everything at http://localhost:8080 over an in-memory database.
 - **Legal** — `privacy.html`, `terms.html`, `dpa.html`.
 
 ## Backend

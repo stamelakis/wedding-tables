@@ -92,6 +92,17 @@
   .plan li:first-child{ border-top:none; }
   .plan li::before{ content:"✓"; position:absolute; left:0; color:var(--good); font-weight:700; }
   .price-note{ text-align:center; color:var(--faint); font-size:14px; margin-top:20px; }
+  .plans.three{ grid-template-columns:repeat(3,1fr); }
+  .plan .badge.alt{ background:var(--paper-2); color:var(--soft); border:1px solid var(--line); }
+  .plan .price{ display:flex; align-items:baseline; gap:8px; margin:6px 0 4px; font-family:var(--serif); }
+  .plan .price b{ font-size:40px; line-height:1; font-weight:600; letter-spacing:-.02em; }
+  .plan .price span{ color:var(--faint); font-size:14px; font-family:var(--sans); }
+  .plan .btn{ width:100%; justify-content:center; }
+  .couples{ background:var(--paper-2); border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+  .couples .wrap{ display:grid; grid-template-columns:1.1fr .9fr; gap:34px; align-items:center; }
+  .couples .box{ background:var(--card); border:1px solid var(--line); border-radius:18px; padding:26px; box-shadow:var(--shadow); }
+  .couples .box p{ color:var(--soft); font-size:15px; margin:0 0 16px; }
+  footer .q{ color:inherit; text-decoration:none; }
 
   /* CTA band */
   .cta-band{ background:linear-gradient(150deg,var(--hero-1),var(--hero-2)); color:#fff; text-align:center; }
@@ -121,7 +132,7 @@
     <nav class="links">
       <a class="txt hide-sm" href="#how">Πώς δουλεύει</a>
       <a class="txt hide-sm" href="#features">Χαρακτηριστικά</a>
-      <a class="txt hide-sm" href="#pricing">Πακέτα</a>
+      <a class="txt hide-sm" href="#pricing">Τιμές</a>
       <a class="txt" href="/venue.html">Είσοδος κτήματος</a>
       <a class="btn primary" href="#contact" style="padding:9px 16px">Ζητήστε demo</a>
     </nav>
@@ -138,7 +149,7 @@
         <a class="btn primary" href="#contact">Ζητήστε demo</a>
         <a class="btn ghost" href="/venue.html">Είσοδος κτήματος</a>
       </div>
-      <div class="tiny">Ένα εργαλείο για <b>όλους τους γάμους της σεζόν</b>. Πολύγλωσσο για ξένους καλεσμένους.</div>
+      <div class="tiny">Ένα εργαλείο για <b>όλους τους γάμους της σεζόν</b>. Πολύγλωσσο για ξένους καλεσμένους. Είστε ζευγάρι; <a href="#pricing" style="color:#e7dcef;text-decoration:underline">Υπάρχει επιλογή και για εσάς</a>.</div>
     </div>
     <div class="art">
       <svg class="illo" viewBox="0 0 460 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Κάτοψη τραπεζιών γάμου">
@@ -200,32 +211,49 @@
 
 <section id="pricing">
   <div class="wrap">
-    <div class="sec-tag">Πακέτα</div>
-    <h2 class="sec">Πληρώνετε όπως ταιριάζει στο κτήμα σας</h2>
-    <p class="sub">Δύο απλοί τρόποι, χωρίς κρυφές χρεώσεις. Το τιμολόγιο εκδίδεται κανονικά στην επιχείρησή σας.</p>
-    <div class="plans">
+    <div class="sec-tag">Τιμές</div>
+    <h2 class="sec">Απλές τιμές, χωρίς κρυφές χρεώσεις</h2>
+    <p class="sub">Τα κτήματα έχουν ειδική τιμή συνεργάτη. Το τιμολόγιο εκδίδεται κανονικά στην επιχείρησή σας.</p>
+    <div class="plans three">
       <div class="plan reco">
-        <span class="badge">Δημοφιλές</span>
+        <span class="badge">Για κτήματα · Δημοφιλές</span>
         <h3>Εποχιακή συνδρομή</h3>
+        <div class="price"><b>129€</b><span>/ σεζόν</span></div>
         <p class="who">Για κτήματα με πολλούς γάμους τη σεζόν</p>
         <ul>
           <li>Απεριόριστοι γάμοι μέσα στη σεζόν</li>
           <li>Δικός σας λογαριασμός κτήματος</li>
-          <li>Σύνδεσμοι για κάθε ζευγάρι</li>
+          <li>Σύνδεσμος για κάθε ζευγάρι</li>
           <li>Προτεραιότητα υποστήριξης</li>
         </ul>
+        <a class="btn primary" href="#contact">Ζητήστε demo</a>
       </div>
       <div class="plan">
+        <span class="badge alt">Για κτήματα</span>
         <h3>Ανά γάμο</h3>
+        <div class="price"><b>9€</b><span>/ γάμο</span></div>
         <p class="who">Για μικρότερα κτήματα ή για δοκιμή</p>
         <ul>
           <li>Πληρώνετε μόνο για τους γάμους που κάνετε</li>
           <li>Ίδια εργαλεία, χωρίς δέσμευση σεζόν</li>
-          <li>Ιδανικό για να ξεκινήσετε</li>
+          <li>Αναβάθμιση σε σεζόν όποτε θέλετε</li>
         </ul>
+        <a class="btn line" href="#contact">Ζητήστε demo</a>
+      </div>
+      <div class="plan">
+        <span class="badge alt">Για ζευγάρια</span>
+        <h3>Ο γάμος σας</h3>
+        <div class="price"><b>19€</b><span>εφάπαξ</span></div>
+        <p class="who">Δεν συνεργάζεται ακόμη το κτήμα σας; Οργανώστε το μόνοι σας.</p>
+        <ul>
+          <li>Πλήρες τραπεζολόγιο για έναν γάμο</li>
+          <li>Από κινητό &amp; υπολογιστή, συγχρονισμένο</li>
+          <li>Εκτύπωση λίστας τραπεζιών</li>
+        </ul>
+        <a class="btn line" href="mailto:info@takeaseat.gr?subject=TakeaSeat%20%CE%B3%CE%B9%CE%B1%20%CF%84%CE%BF%CE%BD%20%CE%B3%CE%AC%CE%BC%CE%BF%20%CE%BC%CE%B1%CF%82&amp;body=%CE%93%CE%B5%CE%B9%CE%B1%20%CF%83%CE%B1%CF%82%2C%20%CE%B8%CE%AD%CE%BB%CE%BF%CF%85%CE%BC%CE%B5%20%CF%84%CE%BF%20TakeaSeat%20%CE%B3%CE%B9%CE%B1%20%CF%84%CE%BF%CE%BD%20%CE%B3%CE%AC%CE%BC%CE%BF%20%CE%BC%CE%B1%CF%82.%20%CE%9F%CE%BD%CF%8C%CE%BC%CE%B1%CF%84%CE%B1%3A%20...%20%CE%97%CE%BC%CE%B5%CF%81%CE%BF%CE%BC%CE%B7%CE%BD%CE%AF%CE%B1%3A%20...">Ξεκινήστε</a>
       </div>
     </div>
-    <p class="price-note">Θέλετε πακέτο στα μέτρα σας; <a href="#contact">Επικοινωνήστε μαζί μας</a> για τιμή.</p>
+    <p class="price-note">Τιμές κτημάτων χωρίς ΦΠΑ · τιμή ζευγαριών τελική. Θέλετε πακέτο στα μέτρα σας; <a href="#contact">Επικοινωνήστε μαζί μας</a>.</p>
   </div>
 </section>
 
@@ -242,12 +270,12 @@
   <div class="wrap">
     <span class="brand">Take<span class="dot" style="color:var(--accent)">a</span>Seat</span>
     <a href="#how">Πώς δουλεύει</a>
-    <a href="#pricing">Πακέτα</a>
+    <a href="#pricing">Τιμές</a>
     <a href="/venue.html">Είσοδος κτήματος</a>
     <a href="/privacy.html">Απόρρητο</a>
     <a href="/terms.html">Όροι</a>
     <a href="mailto:info@takeaseat.gr">Επικοινωνία</a>
-    <span class="sp">© 2026 TakeaSeat</span>
+    <span class="sp">© <a class="q" href="/lab.html">2026</a> TakeaSeat</span>
   </div>
 </footer>
 
