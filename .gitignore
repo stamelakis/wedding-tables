@@ -3,3 +3,7 @@ groom-side-guests.json
 bride-side-guests.json
 wedding-seating.json
 *.xlsx
+
+# Secrets / access — real keys, NEVER commit (repo is public). See HANDOFF.md.
+ACCESS.local.md
+*.local.md
