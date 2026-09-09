@@ -166,6 +166,7 @@
   .grow .gname{ flex:1; min-width:0; height:36px; padding:0 10px; border:1px solid var(--line); border-radius:9px; font-size:14px; }
   .grow .n{ font-size:12px; color:var(--faint); min-width:26px; text-align:right; font-variant-numeric:tabular-nums; }
   .grow.add{ border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
+  #palette, #groupmenu{ z-index:320; }   /* may open from inside a modal (300) — must sit above it */
   #palette{ width:auto; padding:6px; }
   .pal{ display:grid; grid-template-columns:repeat(5,34px); gap:6px; padding:4px; }
   .psw{ width:34px; height:34px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 1px var(--line-2); cursor:pointer; padding:0; }
