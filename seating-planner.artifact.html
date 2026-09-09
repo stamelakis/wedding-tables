@@ -316,30 +316,35 @@
   }
   @media (max-width:420px){ #zoomFit{ padding:0 7px; font-size:12px; } }
 
-  /* ---------- Phone: table chooser under the canvas (overview ⇄ one table) ---------- */
-  #tablestrip{ display:none; }
+  /* ---------- Table chooser (overview ⇄ one table): a column right of the floor on PC, under the floor on phones.
+     The right side is always "tables": this list when nothing is selected, the seat list when a table is. ---------- */
+  #tablestrip{ display:flex; flex-direction:column; flex:none; width:176px; min-height:0; background:var(--card); border-left:1px solid var(--line); }
+  body.focused #tablestrip{ display:none; }
+  body.strip-collapsed .ts-grid{ display:none; }
+  body.strip-collapsed #tablestrip{ width:auto; }
+  .ts-head{ display:flex; align-items:center; gap:6px; padding:8px 10px; flex:none; flex-wrap:wrap; }
+  .ts-head .ts-title{ font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); }
+  .ts-head .ts-cnt{ font-size:12px; color:var(--soft); margin-right:auto; font-variant-numeric:tabular-nums; }
+  .ts-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(62px,1fr)); gap:6px; padding:0 10px 10px; overflow-y:auto; overscroll-behavior:contain; }
+  .ts-chip{ border:1px solid var(--line); border-radius:10px; padding:6px 4px 5px; text-align:center; background:var(--paper); cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation; transition:background .1s,border-color .1s; }
+  .ts-chip:hover{ border-color:var(--accent); background:#fff; }
+  .ts-chip:active{ background:var(--accent-soft); }
+  .ts-chip .lbl{ font-family:var(--serif); font-weight:700; font-size:16px; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ts-chip .occ{ font-size:10.5px; color:var(--faint); margin-top:1px; font-variant-numeric:tabular-nums; }
+  .ts-chip .bar{ height:3px; border-radius:2px; background:var(--line); margin-top:4px; overflow:hidden; }
+  .ts-chip .bar i{ display:block; height:100%; background:var(--accent); }
+  .ts-chip.full .bar i{ background:var(--good); }
   @media (max-width:900px){
     #main{ flex-direction:column; }
     /* overview: the canvas is sized to the fitted floor (layoutCanvas) and the list takes the rest;
        zoomed in: the canvas grows and the list shrinks to a strip */
-    #tablestrip{ display:flex; flex-direction:column; flex:1 1 auto; min-height:0; background:var(--card); border-top:1px solid var(--line); padding-bottom:calc(58px + env(safe-area-inset-bottom)); }
+    #tablestrip{ flex:1 1 auto; width:auto; border-left:none; border-top:1px solid var(--line); padding-bottom:calc(58px + env(safe-area-inset-bottom)); }
+    body.strip-collapsed #tablestrip{ width:auto; }
     body.zoomed #tablestrip{ flex:0 1 auto; max-height:26vh; }
     body.zoomed #stagewrap{ flex:1 1 auto; }
-    body.focused #tablestrip, body.picking #tablestrip{ display:none; }
+    body.picking #tablestrip{ display:none; }
     #stagewrap{ padding-bottom:0; }
     #appbar #viewBtn, #appbar #undoBtn, #appbar #redoBtn{ display:none; }   /* they live in the bottom bar on phones */
-    body.strip-collapsed .ts-grid{ display:none; }
-    .ts-head{ display:flex; align-items:center; gap:8px; padding:6px 10px; flex:none; }
-    .ts-head .ts-title{ font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); }
-    .ts-head .ts-cnt{ font-size:12px; color:var(--soft); margin-right:auto; font-variant-numeric:tabular-nums; }
-    .ts-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(62px,1fr)); gap:6px; padding:0 10px 10px; overflow-y:auto; overscroll-behavior:contain; }
-    .ts-chip{ border:1px solid var(--line); border-radius:10px; padding:6px 4px 5px; text-align:center; background:var(--paper); cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
-    .ts-chip:active{ background:var(--accent-soft); }
-    .ts-chip .lbl{ font-family:var(--serif); font-weight:700; font-size:16px; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .ts-chip .occ{ font-size:10.5px; color:var(--faint); margin-top:1px; font-variant-numeric:tabular-nums; }
-    .ts-chip .bar{ height:3px; border-radius:2px; background:var(--line); margin-top:4px; overflow:hidden; }
-    .ts-chip .bar i{ display:block; height:100%; background:var(--accent); }
-    .ts-chip.full .bar i{ background:var(--good); }
   }
 
   /* ---------- Print ---------- */
