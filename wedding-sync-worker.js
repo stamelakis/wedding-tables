@@ -84,6 +84,12 @@ export default {
           }
           if (body.plan !== undefined) {
             if (tooBig(body.plan)) return json({ error: "plan too large" }, 413);
+            // A save that would wipe a plan (≥5 guests → 0) is refused unless the client says it is deliberate
+            // (reset / undo). A device with a broken local copy must never be able to empty everyone's plan.
+            const before = planStats(rec.plan), after = planStats(body.plan);
+            if (before.guests >= 5 && after.guests === 0 && body.allowWipe !== true) {
+              return json({ error: "wipe_refused", guests: before.guests, updated: rec.updated }, 422);
+            }
             if (rec.plan) await pushHistory(env, parts[1], rec);   // every overwrite keeps the previous version
             rec.plan = body.plan;
           }
