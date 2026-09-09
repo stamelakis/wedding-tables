@@ -172,6 +172,14 @@ cascade-purges its plans; venues can rotate their own key; backups encrypted at 
   capacity from a shared plan, server crash on a malformed URL, mobile sheet/drawer stacking, iOS input zoom, print
   clipping, lab talking to the live cloud — now local-only, and more). The Docker build now refuses stale planner
   outputs (`--check --no-twins`) and the build script enforces i18n completeness across the three dictionaries.
+- **Controls (2026-09-09)**: undo/redo (↶ ↷ in the app bar and the phone bar; Ctrl+Z / Ctrl+Y) — one snapshot per
+  saved change, per plan; "Aa" view menu on both PC and phone: guest names full / short («Ανδρέας Σ.») / initials
+  («Α.Σ.»), name size, table-number size, zoom. `state.nameMode` / `state.tableFontScale` are saved with the plan.
+- **Touch moving**: on phones a finger on a table or decor PANS the floor; holding still ~⅓ s lifts it (haptic tick +
+  glow) and only then does dragging move it. Mouse drags immediately. One-time hint toast explains it.
+- **Performance**: textures are rasterised to JPEG bitmaps at load (the SVG noise filters were re-rendered on every
+  zoom step); only the touched table(s) re-render on a seat change (`renderTables([ids])`); pinch/wheel zoom sets
+  `will-change` on the stage for the gesture; touch devices drop the soft shadows and the dotted paper.
 - **Venue console**: weddings can be renamed (✎ → `PATCH /venues/:id/weddings/:planId {label}`, also renames the
   plan) and couple links can be generated in ΕΛ/EN/DE (language select next to "Νέος γάμος").
 - **Memory**: if the next agent is Claude Code on Andreas's PC, the memory files (`wedding-tables-app.md`,
