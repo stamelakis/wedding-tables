@@ -82,7 +82,11 @@ export default {
           if (body.baseUpdated != null && rec.updated && body.baseUpdated < rec.updated) {
             return json({ error: "conflict", updated: rec.updated, name: rec.name, plan: rec.plan }, 409);
           }
-          if (body.plan !== undefined) { if (tooBig(body.plan)) return json({ error: "plan too large" }, 413); rec.plan = body.plan; }
+          if (body.plan !== undefined) {
+            if (tooBig(body.plan)) return json({ error: "plan too large" }, 413);
+            if (rec.plan) await pushHistory(env, parts[1], rec);   // every overwrite keeps the previous version
+            rec.plan = body.plan;
+          }
           if (body.name) rec.name = String(body.name).slice(0, 120);
           rec.updated = Date.now();
           await env.PLANS.put("plan:" + parts[1], JSON.stringify(rec));
@@ -93,7 +97,29 @@ export default {
           if (!rec) return json({ ok: true });                 // already gone
           if (!(await authorized(request, env, parts[1], rec))) return json({ error: "unauthorized" }, 403);
           await env.PLANS.delete("plan:" + parts[1]);
+          await env.PLANS.delete("hist:" + parts[1]);
           return json({ ok: true });
+        }
+        // ---- version history: list the kept versions, or restore one (the current version is kept too) ----
+        if (parts.length === 3 && parts[2] === "history" && request.method === "GET") {
+          const rec = safeParse(await env.PLANS.get("plan:" + parts[1]));
+          if (!rec) return json({ error: "not found" }, 404);
+          if (!(await authorized(request, env, parts[1], rec))) return json({ error: "unauthorized" }, 403);
+          const h = safeParse(await env.PLANS.get("hist:" + parts[1])) || [];
+          return json({ versions: h.slice().reverse().map(v => ({ updated: v.updated, name: v.name, ...planStats(v.plan) })) });
+        }
+        if (parts.length === 3 && parts[2] === "restore" && request.method === "POST") {
+          const rec = safeParse(await env.PLANS.get("plan:" + parts[1]));
+          if (!rec) return json({ error: "not found" }, 404);
+          if (!(await authorized(request, env, parts[1], rec))) return json({ error: "unauthorized" }, 403);
+          const body = await request.json().catch(() => ({}));
+          const h = safeParse(await env.PLANS.get("hist:" + parts[1])) || [];
+          const v = h.find(x => x.updated === Number(body.updated));
+          if (!v) return json({ error: "version not found" }, 404);
+          if (rec.plan) await pushHistory(env, parts[1], rec);
+          rec.plan = v.plan; if (v.name) rec.name = v.name; rec.updated = Date.now();
+          await env.PLANS.put("plan:" + parts[1], JSON.stringify(rec));
+          return json({ ok: true, updated: rec.updated });
         }
       }
       // ---------------- codes (device linking; the code is a shared secret) ----------------
@@ -168,7 +194,7 @@ export default {
           // couple links stop resolving — the right-to-erasure behaviour.
           const dv = safeParse(await env.PLANS.get("venue:" + parts[2]));
           if (dv && Array.isArray(dv.weddings)) {
-            for (const w of dv.weddings) { if (w && w.planId) await env.PLANS.delete("plan:" + w.planId); }
+            for (const w of dv.weddings) { if (w && w.planId) { await env.PLANS.delete("plan:" + w.planId); await env.PLANS.delete("hist:" + w.planId); } }
           }
           await env.PLANS.delete("venue:" + parts[2]);
           await removeVenueIndex(env, parts[2]);
@@ -225,6 +251,7 @@ export default {
           v.weddings = (v.weddings || []).filter(w => w.planId !== parts[3]);
           await env.PLANS.put("venue:" + v.id, JSON.stringify(v));
           await env.PLANS.delete("plan:" + parts[3]);
+          await env.PLANS.delete("hist:" + parts[3]);
           return json({ ok: true });
         }
       }
@@ -234,6 +261,23 @@ export default {
     }
   },
 };
+
+// ---- plan version history (key hist:<planId>): the last HIST_MAX versions, oldest first, capped in bytes ----
+const HIST_MAX = 30, HIST_BYTES = 3 * 1024 * 1024;
+function planStats(p) {
+  const tables = (p && Array.isArray(p.tables)) ? p.tables : [];
+  const seated = new Set(); tables.forEach(t => (Array.isArray(t.seats) ? t.seats : []).forEach(g => { if (g) seated.add(g); }));
+  return { tables: tables.length, guests: (p && p.guests && typeof p.guests === "object") ? Object.keys(p.guests).length : 0, seated: seated.size };
+}
+async function pushHistory(env, id, rec) {
+  const h = safeParse(await env.PLANS.get("hist:" + id)) || [];
+  if (h.length && h[h.length - 1].updated === rec.updated) return;          // already kept
+  h.push({ updated: rec.updated, name: rec.name, plan: rec.plan });
+  while (h.length > HIST_MAX) h.shift();
+  let s = JSON.stringify(h);
+  while (s.length > HIST_BYTES && h.length > 1) { h.shift(); s = JSON.stringify(h); }
+  await env.PLANS.put("hist:" + id, s);
+}
 
 function rnd(n) {
   const c = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";

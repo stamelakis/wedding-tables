@@ -285,6 +285,10 @@
   .modal textarea{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:11px; resize:vertical; }
   .mrow{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
   .mrow .ibtn{ flex:1; min-width:120px; height:38px; }
+  .hist{ display:flex; flex-direction:column; gap:6px; padding:10px 16px 16px; }
+  .hrow{ display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; }
+  .hrow>div{ flex:1; min-width:0; }
+  .hrow .muted{ font-size:12px; color:var(--faint); }
   .decor-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(112px,1fr)); gap:10px; padding:16px; }
   .decor-item{ display:flex; flex-direction:column; align-items:center; gap:6px; padding:12px 8px; border:1px solid var(--line); border-radius:12px; cursor:pointer; text-align:center; font-size:12px; background:var(--card); transition:.1s; }
   .decor-item:hover{ background:var(--paper); border-color:var(--accent); transform:translateY(-1px); box-shadow:var(--shadow-1); }
@@ -526,6 +530,12 @@
     <div id="cloudBody" class="mbody"></div>
   </div>
 </div>
+<div id="histModal" class="modal-back">
+  <div class="modal">
+    <div class="modal-head"><strong data-t="histTitle"></strong><button class="mx" id="histClose">✕</button></div>
+    <div id="histBody"></div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 <div id="navScrim"></div>
 <div id="pickbar"></div>
@@ -559,6 +569,8 @@ el:{
   switchPlan:"Αλλαγή ζευγαριού / εκδήλωσης", newPlan:"Νέο σχέδιο (ζευγάρι / εκδήλωση)", planMore:"Μετονομασία · αντιγραφή · διαγραφή",
   shareTitle:"Κοινή χρήση & συγχρονισμός", fontDown:"Μικρότερα ονόματα", fontUp:"Μεγαλύτερα ονόματα", fit:"Προσαρμογή", zoomIn:"Μεγέθυνση", zoomOut:"Σμίκρυνση", print:"Εκτύπωση", more:"Περισσότερα",
   tsTitle:"Τραπέζια", tsAll:"Όλα", tsToggle:"Εμφάνιση / απόκρυψη λίστας τραπεζιών",
+  mHistory:"🕘 Ιστορικό εκδόσεων", histTitle:"Ιστορικό εκδόσεων", histHint:"Κάθε αποθήκευση κρατά την προηγούμενη έκδοση στον διακομιστή. Επαναφέρετε όποια θέλετε — η τωρινή έκδοση κρατιέται κι αυτή.", histRow:"{g} καλεσμένοι · {s} με θέση · {n} τραπέζια", histRestore:"Επαναφορά", histConfirm:"Επαναφορά της έκδοσης «{t}»; Η τωρινή έκδοση μένει στο ιστορικό.", histRestored:"Επαναφέρθηκε η έκδοση «{t}»", histEmpty:"Δεν υπάρχουν προηγούμενες εκδόσεις ακόμη.", histFail:"Δεν ήταν δυνατή η ανάκτηση του ιστορικού", histNoCloud:"Το ιστορικό υπάρχει μόνο για σχέδια που είναι online.",
+  resetWarn2:"ΠΡΟΣΟΧΗ: το σχέδιο έχει {g} καλεσμένους ({s} με θέση). Να σβηστούν ΟΛΑ;", tResetHist:"Έγινε επαναφορά — η προηγούμενη έκδοση υπάρχει στο ⋯ → Ιστορικό εκδόσεων",
   view:"Προβολή", names:"Ονόματα καλεσμένων", nm_full:"Πλήρη", nm_short:"Σύντομα", nm_initials:"Αρχικά", nameSize:"Μέγεθος ονομάτων", numSize:"Μέγεθος αριθμών τραπεζιών", zoomLbl:"Ζουμ", undo:"Αναίρεση", redo:"Επανάληψη", tUndo:"Αναιρέθηκε", tRedo:"Επαναλήφθηκε", tNumSize:"Μέγεθος αριθμών {n}%", mRound:"＋ Στρογγυλό τραπέζι", holdToMove:"Για να μετακινήσετε τραπέζι ή αντικείμενο, κρατήστε το πατημένο μισό δευτερόλεπτο και σύρετε. Αλλιώς σύρετε ελεύθερα για να μετακινηθείτε στον χώρο.",
   tools:"Τραπέζια & χώρος", addRound:"＋ Στρογγυλό", addHead:"＋ Νυφικό", decor:"🛋 Διακόσμηση", autoSeat:"✨ Αυτόματα", floor:"Δάπεδο",
   guests:"Καλεσμένοι", unseatedN:"{n} χωρίς θέση", searchPh:"Αναζήτηση ονόματος…", all:"Όλοι", addGroup:"＋ ομάδα", addGroupTitle:"Νέα ομάδα",
@@ -611,6 +623,8 @@ en:{
   switchPlan:"Switch couple / event", newPlan:"New plan (couple / event)", planMore:"Rename · duplicate · delete",
   shareTitle:"Share & sync", fontDown:"Smaller names", fontUp:"Larger names", fit:"Fit", zoomIn:"Zoom in", zoomOut:"Zoom out", print:"Print", more:"More",
   tsTitle:"Tables", tsAll:"All", tsToggle:"Show / hide the table list",
+  mHistory:"🕘 Version history", histTitle:"Version history", histHint:"Every save keeps the previous version on the server. Restore any of them — the current version is kept too.", histRow:"{g} guests · {s} seated · {n} tables", histRestore:"Restore", histConfirm:"Restore the version from “{t}”? The current version stays in the history.", histRestored:"Restored the version from “{t}”", histEmpty:"No previous versions yet.", histFail:"Couldn't load the history", histNoCloud:"History exists only for plans that are online.",
+  resetWarn2:"WARNING: this plan has {g} guests ({s} seated). Delete ALL of them?", tResetHist:"Reset done — the previous version is under ⋯ → Version history",
   view:"View", names:"Guest names", nm_full:"Full", nm_short:"Short", nm_initials:"Initials", nameSize:"Name size", numSize:"Table number size", zoomLbl:"Zoom", undo:"Undo", redo:"Redo", tUndo:"Undone", tRedo:"Redone", tNumSize:"Table numbers {n}%", mRound:"＋ Round table", holdToMove:"To move a table or item, hold it for half a second, then drag. Otherwise drag freely to pan around the venue.",
   tools:"Tables & space", addRound:"＋ Round table", addHead:"＋ Head table", decor:"🛋 Decor", autoSeat:"✨ Auto-seat", floor:"Floor",
   guests:"Guests", unseatedN:"{n} unseated", searchPh:"Search a name…", all:"All", addGroup:"＋ group", addGroupTitle:"New group",
@@ -663,6 +677,8 @@ de:{
   switchPlan:"Paar / Veranstaltung wechseln", newPlan:"Neuer Plan (Paar / Veranstaltung)", planMore:"Umbenennen · duplizieren · löschen",
   shareTitle:"Teilen & synchronisieren", fontDown:"Kleinere Namen", fontUp:"Größere Namen", fit:"Einpassen", zoomIn:"Vergrößern", zoomOut:"Verkleinern", print:"Drucken", more:"Mehr",
   tsTitle:"Tische", tsAll:"Alle", tsToggle:"Tischliste ein-/ausblenden",
+  mHistory:"🕘 Versionsverlauf", histTitle:"Versionsverlauf", histHint:"Jedes Speichern behält die vorherige Version auf dem Server. Stellen Sie jede beliebige wieder her — die aktuelle bleibt ebenfalls erhalten.", histRow:"{g} Gäste · {s} platziert · {n} Tische", histRestore:"Wiederherstellen", histConfirm:"Version vom „{t}“ wiederherstellen? Die aktuelle Version bleibt im Verlauf.", histRestored:"Version vom „{t}“ wiederhergestellt", histEmpty:"Noch keine früheren Versionen.", histFail:"Verlauf konnte nicht geladen werden", histNoCloud:"Einen Verlauf gibt es nur für Pläne, die online sind.",
+  resetWarn2:"ACHTUNG: Dieser Plan hat {g} Gäste ({s} platziert). Wirklich ALLE löschen?", tResetHist:"Zurückgesetzt — die vorherige Version steht unter ⋯ → Versionsverlauf",
   view:"Ansicht", names:"Gästenamen", nm_full:"Voll", nm_short:"Kurz", nm_initials:"Initialen", nameSize:"Namensgröße", numSize:"Größe der Tischnummern", zoomLbl:"Zoom", undo:"Rückgängig", redo:"Wiederholen", tUndo:"Rückgängig gemacht", tRedo:"Wiederholt", tNumSize:"Tischnummern {n}%", mRound:"＋ Runder Tisch", holdToMove:"Um einen Tisch oder ein Objekt zu verschieben, eine halbe Sekunde gedrückt halten und dann ziehen. Sonst frei ziehen, um sich im Raum zu bewegen.",
   tools:"Tische & Fläche", addRound:"＋ Runder Tisch", addHead:"＋ Brauttisch", decor:"🛋 Deko", autoSeat:"✨ Auto-Füllen", floor:"Boden",
   guests:"Gäste", unseatedN:"{n} ohne Platz", searchPh:"Namen suchen…", all:"Alle", addGroup:"＋ Gruppe", addGroupTitle:"Neue Gruppe",
@@ -1955,9 +1971,12 @@ $("autoSeatBtn").addEventListener("click",autoSeat);
 function resetPlan(){
   const cur=currentProfile();
   if(!confirm((cur&&cur.cloudId)?tr("confirmResetShared"):tr("confirmReset")))return;
+  const g=Object.keys(state.guests).length, s=assignedGuestIds().size;
+  if(g>0 && !confirm(tr("resetWarn2",{g,s}))) return;   // a plan with real guests needs a second, explicit yes
   if(!IS_LAB){ try{ localStorage.removeItem(STORE_KEY); }catch(e){} }   // the lab must never touch the real app's legacy save
   setPick(null); unfocusTable();
-  state=IS_LAB?labState():defaultState(); uid=state._uid; fontScale=1; applyStage(); $("stageFloor").value=state.stageMaterial; save(); renderAll(); toast(tr("tReset"));
+  state=IS_LAB?labState():defaultState(); uid=state._uid; fontScale=1; applyStage(); $("stageFloor").value=state.stageMaterial; save(); renderAll();
+  toast((cur&&cur.cloudId)?tr("tResetHist"):tr("tReset"),3500);
 }
 function planJSON(){ const cur=currentProfile(); return JSON.stringify({...state, _profileName:cur.name}, null, 2); }
 function planFilename(){ const cur=currentProfile(); const s=(cur.name||"").replace(/[^\p{L}\p{N}\-]+/gu,"_").replace(/^_+|_+$/g,""); return (s||"wedding")+".wedding.json"; }
@@ -2029,13 +2048,15 @@ $("moreBtn").addEventListener("click",e=>{
   const m=$("moremenu");
   const items=[]; if(!IS_LAB) items.push(["share",tr("mShare")]); items.push(["guests",tr("mImportGuests")]);
   if(isNarrow()) items.push(["sep"],["newplan","＋ "+tr("newPlan")],["planmore","✎ "+tr("planMore")],["sep"],["round",tr("mRound")],["head",tr("mHead")],["decor",tr("mDecor")],["auto",tr("mAuto")]);
-  items.push(["sep"],["export",tr("mExport")],["import",tr("mImport")],["print",tr("mPrint")],["sep"],["reset",tr("mReset")]);
+  items.push(["sep"],["export",tr("mExport")],["import",tr("mImport")],["print",tr("mPrint")],["sep"]);
+  if(!IS_LAB) items.push(["history",tr("mHistory")]);
+  items.push(["reset",tr("mReset")]);
   if(!IS_LAB) items.push(["sep"],["lang-el","ΕΛ · Ελληνικά"],["lang-en","EN · English"],["lang-de","DE · Deutsch"]);
   m.innerHTML=items.map(([a,l])=>a==="sep"?`<div class="gm-sep"></div>`:`<div class="gm-item${a==="reset"?" danger":""}${a==="lang-"+LANG?" on":""}" data-act="${a}">${escapeHtml(l)}</div>`).join("");
   m.querySelectorAll(".gm-item").forEach(it=>it.onclick=ev=>{ ev.stopPropagation(); m.style.display="none"; const a=it.dataset.act;
     if(a==="share") openCloud(); else if(a==="guests") importGuestList(); else if(a==="head") $("addHeadBtn").click(); else if(a==="decor") openDecor();
     else if(a==="newplan") newProfile(); else if(a==="planmore") openProfileMenu(anchorOf($("moreBtn")));
-    else if(a==="round") addRoundTable();
+    else if(a==="round") addRoundTable(); else if(a==="history") openHistory();
     else if(a==="auto") autoSeat(); else if(a==="export") openExport(); else if(a==="import") openImport(); else if(a==="print") buildAndPrint(); else if(a==="reset") resetPlan();
     else if(a.startsWith("lang-")){ const l=a.slice(5); location.href=({el:"seating-planner-el.html",en:"seating-planner.html",de:"seating-planner-de.html"})[l]; } });
   showPopover(m, anchorOf(e.currentTarget));
@@ -2044,7 +2065,7 @@ $("moreBtn").addEventListener("click",e=>{
 // ============================================================
 //  ☁ CLOUD SYNC  (same-origin API: POST/GET/PUT /plans, /codes)
 // ============================================================
-let cloudTimer=null, pushInFlight=false, pendingSnap=null, pointerGesture=false;
+let cloudTimer=null, pushInFlight=false, pendingSnap=null, pointerGesture=false, conflictTimer=null;
 function planPayload(){ const cur=currentProfile(); return { name:cur.name, plan:{...state, _profileName:cur.name} }; }
 // Edit key rides in the URL #fragment (never sent to servers / logs); omit it for a view-only link.
 function shareLink(cur, viewOnly){ const base=location.origin+location.pathname+"?plan="+cur.cloudId;
@@ -2080,9 +2101,11 @@ async function cloudPush(snap){
   const r=await fetch(planPath(snap.cloudId),{method:"PUT",headers,
     body:JSON.stringify({ name:snap.name, plan:JSON.parse(snap.planJSON), baseUpdated:snap.baseUpdated })});
   if(r.status===409){
+    // The server has a newer copy. Adopt it — the WHOLE of it. Never take just its timestamp: a device that did
+    // would pass the next conflict check and overwrite everyone with its stale plan (that is how a plan was lost once).
     const d=await r.json().catch(()=>({}));
-    prof.cloudUpdated=d.updated||prof.cloudUpdated; saveProfilesIdx();
     if(prof.id===profiles.activeId && d.plan && !interactionBusy()){ applyPulledPlan(prof,d); toast(tr("cNewer")); }
+    else { setCloudDot("pending"); clearTimeout(conflictTimer); conflictTimer=setTimeout(()=>{ pullIfNewer(); },4000); }   // busy right now — try again shortly
     return;
   }
   const d=await r.json(); if(!r.ok) throw new Error(d.error||"update failed");
@@ -2247,10 +2270,27 @@ async function openSharedFromURL(){
 async function pullIfNewer(){
   const cur=currentProfile(); if(!cur||!cur.cloudId){ setCloudDot(); return; }
   try{ const d=await cloudFetch(cur.cloudId);
-    if(d.updated && (!cur.cloudUpdated || d.updated>cur.cloudUpdated)){ applyPulledPlan(cur,d); toast(tr("cUpdated")); }
+    if(d.updated && (!cur.cloudUpdated || d.updated>cur.cloudUpdated)){
+      if(interactionBusy()){ clearTimeout(conflictTimer); conflictTimer=setTimeout(pullIfNewer,4000); return; }   // never apply under the user's fingers — retry
+      applyPulledPlan(cur,d); toast(tr("cUpdated")); }
     setCloudDot("ok");
   }catch(e){ setCloudDot("err"); }
 }
+// ---- version history (kept on the server on every save) ----
+async function openHistory(){
+  const cur=currentProfile(); if(!cur||!cur.cloudId){ toast(tr("histNoCloud")); return; }
+  const body=$("histBody"); body.innerHTML=`<div class="mhint">${escapeHtml(tr("histHint"))}</div>`; $("histModal").classList.add("open");
+  let d; try{ const r=await fetch(planPath(cur.cloudId)+"/history",{headers:authHeaders(cur)}); if(!r.ok) throw 0; d=await r.json(); }
+  catch(e){ body.innerHTML+=`<div class="mhint">${escapeHtml(tr("histFail"))}</div>`; return; }
+  const vs=d.versions||[]; if(!vs.length){ body.innerHTML+=`<div class="mhint">${escapeHtml(tr("histEmpty"))}</div>`; return; }
+  body.innerHTML+=`<div class="hist">`+vs.map(v=>`<div class="hrow"><div><b>${escapeHtml(fmtTime(v.updated))}</b><div class="muted">${escapeHtml(tr("histRow",{g:v.guests,s:v.seated,n:v.tables}))}</div></div><button class="ibtn" data-u="${v.updated}">${escapeHtml(tr("histRestore"))}</button></div>`).join("")+`</div>`;
+  body.querySelectorAll("[data-u]").forEach(b=>b.onclick=async()=>{ const u=+b.dataset.u; if(!confirm(tr("histConfirm",{t:fmtTime(u)}))) return;
+    try{ const r=await fetch(planPath(cur.cloudId)+"/restore",{method:"POST",headers:authHeaders(cur),body:JSON.stringify({updated:u})}); if(!r.ok) throw 0;
+      const dd=await cloudFetch(cur.cloudId); setPick(null); unfocusTable(); applyPulledPlan(cur,dd); $("histModal").classList.remove("open"); toast(tr("histRestored",{t:fmtTime(u)}),3000); }
+    catch(e){ toast(tr("histFail")); } });
+}
+$("histClose").addEventListener("click",()=>$("histModal").classList.remove("open"));
+$("histModal").addEventListener("click",e=>{ if(e.target.id==="histModal") e.currentTarget.classList.remove("open"); });
 function openCloud(){ if(IS_LAB){ toast(tr("labHint")); return; } renderCloudBody(); $("cloudModal").classList.add("open"); }
 $("cloudBtn").addEventListener("click",openCloud);
 $("cloudClose").addEventListener("click",()=>$("cloudModal").classList.remove("open"));
