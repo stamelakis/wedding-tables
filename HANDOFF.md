@@ -204,8 +204,12 @@ cascade-purges its plans; venues can rotate their own key; backups encrypted at 
   collapses it (remembered per device).
 - **Guided tour**: starts automatically on a device's first visit (flag `weddingSeatingPlanner.tour.v1` in
   localStorage) and again from ⋯ → "❓ Οδηγός χρήσης" or the "?" button (PC). Two flows chosen by screen width
-  (`tourSteps()`): phone = list → sheet → guests drawer → moving → bottom bar → ⋯; PC = guests → table column →
-  seat panel → floor → tools → Aa → ☁ → ⋯. Texts live in `T_ALL.<lang>.tour`. Spotlight = `#tourSpot` box-shadow.
+  (`tourSteps()`), deliberately short after a tester found the first version exhausting (2026-09-09):
+  phone = welcome → tables list → names sheet → 👥 + hold-to-move → ⋯/done (5 cards);
+  PC = welcome → guests → seat panel → floor → ☁ + Aa → ⋯/done (6 cards; lab spotlights Aa instead of ☁).
+  Every card has a ✕ and a "Παράλειψη οδηγού" button; the welcome card's primary button is "Ξεκινάμε".
+  One or two sentences per card — if you add a step, keep it that short. Texts live in `T_ALL.<lang>.tour`.
+  Spotlight = `#tourSpot` box-shadow.
 - **Seat sheet**: "‹ Τραπέζια" (back) replaces ✕; each row has a colour dot — on an occupied row it changes that
   guest's group, on an empty row it picks the group new names will join. "⚙ Διαχείριση ομάδων…" (also ⋯ →
   Ομάδες… and the "＋ ομάδα" chip) opens the groups manager: rename inline, palette recolour, delete, add.
