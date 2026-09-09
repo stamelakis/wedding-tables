@@ -156,7 +156,20 @@
   #fSeats{ flex:1; overflow-y:auto; padding:6px 10px 10px; min-height:0; overscroll-behavior:contain; }
   .frow{ display:flex; align-items:center; gap:6px; padding:3px 0; }
   .frow .fn{ width:22px; text-align:right; font-size:11px; color:var(--faint); font-weight:700; flex:none; }
-  .frow .fdot{ width:10px; height:10px; border-radius:50%; flex:none; background:#e2ddd5; box-shadow:inset 0 0 0 1px rgba(0,0,0,.12); }
+  .frow .fdot{ width:24px; height:24px; padding:4px; border:none; border-radius:50%; flex:none; background:#e2ddd5; background-clip:content-box; cursor:pointer; box-shadow:none; position:relative; }
+  .frow .fdot::after{ content:""; position:absolute; inset:4px; border-radius:50%; box-shadow:inset 0 0 0 1px rgba(0,0,0,.18); }
+  .frow .fdot.empty{ opacity:.45; }
+  .frow .fdot:hover{ transform:scale(1.1); }
+  /* groups manager */
+  .grow{ display:flex; align-items:center; gap:8px; padding:5px 0; }
+  .grow .sw{ width:32px; height:32px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 1px var(--line-2); cursor:pointer; flex:none; padding:0; }
+  .grow .gname{ flex:1; min-width:0; height:36px; padding:0 10px; border:1px solid var(--line); border-radius:9px; font-size:14px; }
+  .grow .n{ font-size:12px; color:var(--faint); min-width:26px; text-align:right; font-variant-numeric:tabular-nums; }
+  .grow.add{ border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
+  #palette{ width:auto; padding:6px; }
+  .pal{ display:grid; grid-template-columns:repeat(5,34px); gap:6px; padding:4px; }
+  .psw{ width:34px; height:34px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 1px var(--line-2); cursor:pointer; padding:0; }
+  .psw.on{ box-shadow:0 0 0 2px var(--accent); }
   .frow input{ flex:1; min-width:0; height:36px; padding:0 10px; border:1px solid var(--line); border-radius:9px; background:var(--paper); font-size:13.5px; }
   .frow input:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); background:#fff; }
   .frow.occ input{ background:#fff; font-weight:600; }
@@ -429,11 +442,11 @@
   <aside id="focus">
     <div class="fhandle" id="fHandle"></div>
     <div class="fhead">
-      <button class="ibtn" id="fPrev" data-t-title="prevTable">‹</button>
+      <button class="ibtn" id="fBack" data-t="backTables" data-t-title="close"></button>
       <div class="ftitle"><b id="fName"></b><span id="fCount"></span></div>
+      <button class="ibtn" id="fPrev" data-t-title="prevTable">‹</button>
       <button class="ibtn" id="fNext" data-t-title="nextTable">›</button>
       <button class="ibtn" id="fSettings" data-t-title="tableSettings">⚙</button>
-      <button class="ibtn" id="fClose" data-t-title="close">✕</button>
     </div>
     <div class="fhint" data-t="focusHint"></div>
     <div id="fSeats"></div>
@@ -473,6 +486,14 @@
 <div id="profilemenu" class="popover"></div>
 <div id="moremenu" class="popover"></div>
 <div id="viewmenu" class="popover"></div>
+<div id="palette" class="popover"></div>
+<div id="groupsModal" class="modal-back">
+  <div class="modal">
+    <div class="modal-head"><strong data-t="groupsTitle"></strong><button class="mx" id="groupsClose">✕</button></div>
+    <div class="mhint" data-t="groupsHint"></div>
+    <div class="mbody" id="groupsBody"></div>
+  </div>
+</div>
 <div id="fillmenu" class="popover"></div>
 
 <div id="decorModal" class="modal-back">
@@ -547,6 +568,7 @@ el:{
   switchPlan:"Αλλαγή ζευγαριού / εκδήλωσης", newPlan:"Νέο σχέδιο (ζευγάρι / εκδήλωση)", planMore:"Μετονομασία · αντιγραφή · διαγραφή",
   shareTitle:"Κοινή χρήση & συγχρονισμός", fontDown:"Μικρότερα ονόματα", fontUp:"Μεγαλύτερα ονόματα", fit:"Προσαρμογή", zoomIn:"Μεγέθυνση", zoomOut:"Σμίκρυνση", print:"Εκτύπωση", more:"Περισσότερα",
   tsTitle:"Τραπέζια", tsAll:"Όλα", tsToggle:"Εμφάνιση / απόκρυψη λίστας τραπεζιών",
+  backTables:"‹ Τραπέζια", rowGroup:"Ομάδα καλεσμένου", rowNewGroup:"Ομάδα για τα νέα ονόματα", gmManage:"⚙ Διαχείριση ομάδων…", mGroups:"👪 Ομάδες…", groupsTitle:"Ομάδες καλεσμένων", groupsHint:"Μετονομάστε, αλλάξτε χρώμα ή διαγράψτε ομάδες — οι καλεσμένοι κρατούν τις θέσεις τους. Ο αριθμός δείχνει πόσοι ανήκουν σε κάθε ομάδα.", groupsNewPh:"Νέα ομάδα…", groupsAdd:"Προσθήκη", customColor:"Άλλο χρώμα…", tGroupAdded:"Προστέθηκε η ομάδα «{n}»",
   mHistory:"🕘 Ιστορικό εκδόσεων", histTitle:"Ιστορικό εκδόσεων", histHint:"Κάθε αποθήκευση κρατά την προηγούμενη έκδοση στον διακομιστή. Επαναφέρετε όποια θέλετε — η τωρινή έκδοση κρατιέται κι αυτή.", histRow:"{g} καλεσμένοι · {s} με θέση · {n} τραπέζια", histRestore:"Επαναφορά", histConfirm:"Επαναφορά της έκδοσης «{t}»; Η τωρινή έκδοση μένει στο ιστορικό.", histRestored:"Επαναφέρθηκε η έκδοση «{t}»", histEmpty:"Δεν υπάρχουν προηγούμενες εκδόσεις ακόμη.", histFail:"Δεν ήταν δυνατή η ανάκτηση του ιστορικού", histNoCloud:"Το ιστορικό υπάρχει μόνο για σχέδια που είναι online.",
   resetWarn2:"ΠΡΟΣΟΧΗ: το σχέδιο έχει {g} καλεσμένους ({s} με θέση). Να σβηστούν ΟΛΑ;", tResetHist:"Έγινε επαναφορά — η προηγούμενη έκδοση υπάρχει στο ⋯ → Ιστορικό εκδόσεων",
   cWipeBlocked:"Δεν αποθηκεύτηκε: το online σχέδιο έχει {n} καλεσμένους ενώ αυτό εδώ είναι άδειο. Φορτώνω ξανά το online σχέδιο.", cLocalErr:"Το τοπικό αντίγραφο δεν φορτώθηκε ({e}) — φόρτωση από το cloud.", cLoadErr:"Σφάλμα φόρτωσης από το cloud: {e}",
@@ -602,6 +624,7 @@ en:{
   switchPlan:"Switch couple / event", newPlan:"New plan (couple / event)", planMore:"Rename · duplicate · delete",
   shareTitle:"Share & sync", fontDown:"Smaller names", fontUp:"Larger names", fit:"Fit", zoomIn:"Zoom in", zoomOut:"Zoom out", print:"Print", more:"More",
   tsTitle:"Tables", tsAll:"All", tsToggle:"Show / hide the table list",
+  backTables:"‹ Tables", rowGroup:"Guest's group", rowNewGroup:"Group for new names", gmManage:"⚙ Manage groups…", mGroups:"👪 Groups…", groupsTitle:"Guest groups", groupsHint:"Rename, recolour or delete groups — guests keep their seats. The number shows how many belong to each group.", groupsNewPh:"New group…", groupsAdd:"Add", customColor:"Other colour…", tGroupAdded:"Added the group “{n}”",
   mHistory:"🕘 Version history", histTitle:"Version history", histHint:"Every save keeps the previous version on the server. Restore any of them — the current version is kept too.", histRow:"{g} guests · {s} seated · {n} tables", histRestore:"Restore", histConfirm:"Restore the version from “{t}”? The current version stays in the history.", histRestored:"Restored the version from “{t}”", histEmpty:"No previous versions yet.", histFail:"Couldn't load the history", histNoCloud:"History exists only for plans that are online.",
   resetWarn2:"WARNING: this plan has {g} guests ({s} seated). Delete ALL of them?", tResetHist:"Reset done — the previous version is under ⋯ → Version history",
   cWipeBlocked:"Not saved: the online plan has {n} guests while this copy is empty. Reloading the online plan.", cLocalErr:"The local copy could not be loaded ({e}) — loading from the cloud.", cLoadErr:"Error loading from the cloud: {e}",
@@ -657,6 +680,7 @@ de:{
   switchPlan:"Paar / Veranstaltung wechseln", newPlan:"Neuer Plan (Paar / Veranstaltung)", planMore:"Umbenennen · duplizieren · löschen",
   shareTitle:"Teilen & synchronisieren", fontDown:"Kleinere Namen", fontUp:"Größere Namen", fit:"Einpassen", zoomIn:"Vergrößern", zoomOut:"Verkleinern", print:"Drucken", more:"Mehr",
   tsTitle:"Tische", tsAll:"Alle", tsToggle:"Tischliste ein-/ausblenden",
+  backTables:"‹ Tische", rowGroup:"Gruppe des Gastes", rowNewGroup:"Gruppe für neue Namen", gmManage:"⚙ Gruppen verwalten…", mGroups:"👪 Gruppen…", groupsTitle:"Gästegruppen", groupsHint:"Gruppen umbenennen, umfärben oder löschen — die Gäste behalten ihre Plätze. Die Zahl zeigt, wie viele zu jeder Gruppe gehören.", groupsNewPh:"Neue Gruppe…", groupsAdd:"Hinzufügen", customColor:"Andere Farbe…", tGroupAdded:"Gruppe „{n}“ hinzugefügt",
   mHistory:"🕘 Versionsverlauf", histTitle:"Versionsverlauf", histHint:"Jedes Speichern behält die vorherige Version auf dem Server. Stellen Sie jede beliebige wieder her — die aktuelle bleibt ebenfalls erhalten.", histRow:"{g} Gäste · {s} platziert · {n} Tische", histRestore:"Wiederherstellen", histConfirm:"Version vom „{t}“ wiederherstellen? Die aktuelle Version bleibt im Verlauf.", histRestored:"Version vom „{t}“ wiederhergestellt", histEmpty:"Noch keine früheren Versionen.", histFail:"Verlauf konnte nicht geladen werden", histNoCloud:"Einen Verlauf gibt es nur für Pläne, die online sind.",
   resetWarn2:"ACHTUNG: Dieser Plan hat {g} Gäste ({s} platziert). Wirklich ALLE löschen?", tResetHist:"Zurückgesetzt — die vorherige Version steht unter ⋯ → Versionsverlauf",
   cWipeBlocked:"Nicht gespeichert: Der Online-Plan hat {n} Gäste, diese Kopie ist leer. Der Online-Plan wird neu geladen.", cLocalErr:"Die lokale Kopie konnte nicht geladen werden ({e}) — Laden aus der Cloud.", cLoadErr:"Fehler beim Laden aus der Cloud: {e}",
@@ -1147,8 +1171,8 @@ function renderGroups(){
   const allChip=makeGroupChip({id:null,name:tr("all"),color:null}, Object.keys(state.guests).length, true); allChip.title=tr("noGroup"); box.appendChild(allChip);
   state.groups.forEach(g=> box.appendChild(makeGroupChip(g, counts[g.id]||0, false)) );
   const add=document.createElement("div");
-  add.className="chip add"; add.textContent=tr("addGroup"); add.title=tr("addGroupTitle");
-  add.addEventListener("click",addGroup); box.appendChild(add);
+  add.className="chip add"; add.textContent=tr("addGroup"); add.title=tr("groupsTitle");
+  add.addEventListener("click",openGroupsModal); box.appendChild(add);
   const ag=state.groups.find(g=>g.id===state.activeGroupId);   // say where new names will go
   const hint=$("namesHint"); if(hint) hint.textContent=tr("namesTo",{g:ag?ag.name:tr("noGroup")});
 }
@@ -1161,7 +1185,7 @@ function makeGroupChip(g, count, isAll){
     chip.title=tr("groupTip");
     chip.addEventListener("dblclick",e=>{ e.stopPropagation(); renameGroup(g.id); });
     chip.addEventListener("contextmenu",e=>{ e.preventDefault(); editGroup(g.id,e); });
-    chip.querySelector(".dot").addEventListener("click",e=>{ e.stopPropagation(); recolorGroup(g.id); });
+    chip.querySelector(".dot").addEventListener("click",e=>{ e.stopPropagation(); openPalette(g, e.currentTarget); });
     if(isTouch){ const more=document.createElement("span"); more.className="gmore"; more.textContent="⋯"; more.title=tr("groupMore");
       more.addEventListener("click",e=>{ e.stopPropagation(); editGroup(g.id,e); }); chip.appendChild(more); }
   }
@@ -1260,7 +1284,7 @@ function editGroup(id,evt){
     <div class="gm-sep"></div>
     <div class="gm-item danger" data-act="delete">${escapeHtml(tr("gmDelete"))}</div>`;
   menu.querySelector('[data-act="rename"]').onclick=()=>{ closeGroupMenu(); renameGroup(id); };
-  menu.querySelector('[data-act="recolor"]').onclick=()=>{ closeGroupMenu(); recolorGroup(id); };
+  menu.querySelector('[data-act="recolor"]').onclick=e=>{ closeGroupMenu(); openPalette(g, e.currentTarget); };
   menu.querySelector('[data-act="delete"]').onclick=()=>{
     closeGroupMenu();
     if(!confirm(tr("confirmDeleteGroup",{n:g.name})))return;
@@ -1279,6 +1303,60 @@ function showPopover(menu,evt){
 }
 function anchorOf(el){ const r=el.getBoundingClientRect(); return {clientX:r.left, clientY:r.bottom+4}; }
 function closeGroupMenu(){ $("groupmenu").style.display="none"; }
+function groupRowsHtml(selId){
+  return [`<div class="gm-item${selId==null?" on":""}" data-gid=""><span class="dot" style="background:#ccc"></span>${escapeHtml(tr("noGroup"))}</div>`]
+    .concat(state.groups.map(g=>`<div class="gm-item${selId===g.id?" on":""}" data-gid="${escapeHtml(g.id)}"><span class="dot" style="background:${safeColor(g.color)}"></span>${escapeHtml(g.name)}</div>`))
+    .concat([`<div class="gm-sep"></div><div class="gm-item" data-act="manage">${escapeHtml(tr("gmManage"))}</div>`]).join("");
+}
+// Change a guest's group (from a seat row's dot, a chip, the pick bar…)
+function openGroupMenu(guestId, evt){
+  const menu=$("groupmenu"); const g=state.guests[guestId]; if(!g) return;
+  menu.innerHTML=`<div class="gm-cap">${escapeHtml(tr("rowGroup"))}</div>`+groupRowsHtml(g.groupId||null);
+  menu.querySelectorAll(".gm-item[data-gid]").forEach(it=>{ it.onclick=()=>{ g.groupId=it.dataset.gid||null; save(); renderTables(); renderPool(); renderGroups(); closeGroupMenu(); }; });
+  menu.querySelector('[data-act="manage"]').onclick=()=>{ closeGroupMenu(); openGroupsModal(); };
+  showPopover(menu,evt);
+}
+// Choose the group that NEW names will join (an empty seat row's dot)
+function openActiveGroupMenu(evt){
+  const menu=$("groupmenu");
+  menu.innerHTML=`<div class="gm-cap">${escapeHtml(tr("rowNewGroup"))}</div>`+groupRowsHtml(state.activeGroupId||null);
+  menu.querySelectorAll(".gm-item[data-gid]").forEach(it=>{ it.onclick=()=>{ state.activeGroupId=it.dataset.gid||null; save(); renderGroups(); renderPool(); if(focusId!=null) renderFocus(); closeGroupMenu(); }; });
+  menu.querySelector('[data-act="manage"]').onclick=()=>{ closeGroupMenu(); openGroupsModal(); };
+  showPopover(menu,evt);
+}
+// ---- groups manager: rename · recolour (palette) · delete · add ----
+const EXTRA_PALETTE=["#d94f4f","#e8843a","#c9a227","#5aa64c","#2f8f8f","#3b6fd6","#7a5cd6","#c04f9a","#8b6a4e","#607080"];
+function renderGroupsModal(){
+  const body=$("groupsBody"); const counts={}; Object.values(state.guests).forEach(gu=>{ if(gu.groupId) counts[gu.groupId]=(counts[gu.groupId]||0)+1; });
+  body.innerHTML=state.groups.map(g=>`<div class="grow" data-id="${escapeHtml(g.id)}"><button class="sw" data-act="color" title="${escapeHtml(tr("gmRecolor"))}" style="background:${safeColor(g.color)}"></button><input class="gname" value="${escapeHtml(g.name)}" maxlength="40"><span class="n">${counts[g.id]||0}</span><button class="ibtn danger" data-act="del" title="${escapeHtml(tr("gmDelete"))}">🗑</button></div>`).join("")
+    +`<div class="grow add"><input class="gname" id="gNewName" placeholder="${escapeHtml(tr("groupsNewPh"))}" maxlength="40"><button class="ibtn primary" id="gAdd">${escapeHtml(tr("groupsAdd"))}</button></div>`;
+  body.querySelectorAll(".grow[data-id]").forEach(row=>{
+    const g=state.groups.find(x=>x.id===row.dataset.id); if(!g) return;
+    const inp=row.querySelector(".gname");
+    const commit=()=>{ const v=inp.value.trim(); if(v&&v!==g.name){ g.name=v; save(); renderGroups(); renderPool(); renderTables(); } };
+    inp.addEventListener("change",commit); inp.addEventListener("keydown",e=>{ e.stopPropagation(); if(e.key==="Enter"){ e.preventDefault(); commit(); inp.blur(); } });
+    row.querySelector('[data-act="color"]').onclick=e=>{ e.stopPropagation(); openPalette(g, e.currentTarget); };
+    row.querySelector('[data-act="del"]').onclick=()=>{ if(!confirm(tr("confirmDeleteGroup",{n:g.name}))) return;
+      Object.values(state.guests).forEach(gu=>{ if(gu.groupId===g.id) gu.groupId=null; }); state.groups=state.groups.filter(x=>x.id!==g.id); if(state.activeGroupId===g.id) state.activeGroupId=null;
+      save(); renderGroups(); renderTables(); renderPool(); renderGroupsModal(); };
+  });
+  const add=()=>{ const v=$("gNewName").value.trim(); if(!v) return;
+    const color=[...GROUP_PALETTE,...EXTRA_PALETTE].find(c=>!state.groups.some(g=>g.color===c))||GROUP_PALETTE[state.groups.length%GROUP_PALETTE.length];
+    const g={id:"grp"+nextId(), name:v, color}; state.groups.push(g); state.activeGroupId=g.id; save(); renderGroups(); renderPool(); renderGroupsModal(); toast(tr("tGroupAdded",{n:v}));
+    setTimeout(()=>{ const i=$("gNewName"); if(i) i.focus(); },0); };
+  $("gAdd").onclick=add; $("gNewName").addEventListener("keydown",e=>{ e.stopPropagation(); if(e.key==="Enter"){ e.preventDefault(); add(); } });
+}
+function openGroupsModal(){ setNav(false); renderGroupsModal(); $("groupsModal").classList.add("open"); }
+$("groupsClose").addEventListener("click",()=>$("groupsModal").classList.remove("open"));
+$("groupsModal").addEventListener("click",e=>{ if(e.target.id==="groupsModal") e.currentTarget.classList.remove("open"); });
+function openPalette(g, anchorEl){
+  const m=$("palette"); const cols=[...GROUP_PALETTE,...EXTRA_PALETTE];
+  m.innerHTML=`<div class="pal">${cols.map(c=>`<button class="psw${c===g.color?" on":""}" data-c="${c}" style="background:${c}"></button>`).join("")}</div><label class="gm-item"><input type="color" id="palCustom" value="${safeColor(g.color)}" style="width:28px;height:28px;border:none;padding:0;background:none">${escapeHtml(tr("customColor"))}</label>`;
+  const apply=c=>{ g.color=safeColor(c); save(); renderGroups(); renderTables(); renderPool(); if($("groupsModal").classList.contains("open")) renderGroupsModal(); };
+  m.querySelectorAll(".psw").forEach(b=>b.onclick=e=>{ e.stopPropagation(); apply(b.dataset.c); m.style.display="none"; });
+  const ci=m.querySelector("#palCustom"); ci.addEventListener("input",()=>apply(ci.value)); ci.addEventListener("click",e=>e.stopPropagation());
+  showPopover(m, anchorOf(anchorEl));
+}
 // Combined name + group editor (from a pool chip ✎ / right-click, a placed guest, or the pick bar).
 function openGuestEditor(guestId, evt){
   const g=state.guests[guestId]; if(!g) return;
@@ -1287,7 +1365,9 @@ function openGuestEditor(guestId, evt){
   const rows=opts.map(o=>{ const on=((g.groupId||"")===o.id);
     return `<div class="ge-type${on?' sel':''}" data-gid="${escapeHtml(o.id)}"><span class="dot" style="background:${safeColor(o.color)}"></span>${escapeHtml(o.name)}${on?'<span class="chk">✓</span>':''}</div>`; }).join("");
   menu.innerHTML=`<input id="geName" class="ge-name" type="text" maxlength="40" placeholder="${escapeHtml(tr("geName"))}">
-    <div class="ge-lab">${escapeHtml(tr("geType"))}</div><div class="ge-types">${rows}</div>`;
+    <div class="ge-lab">${escapeHtml(tr("geType"))}</div><div class="ge-types">${rows}</div>
+    <div class="gm-sep"></div><div class="gm-item" id="geManage">${escapeHtml(tr("gmManage"))}</div>`;
+  menu.querySelector("#geManage").onclick=()=>{ closeGuestEditor(); openGroupsModal(); };
   const nameInp=menu.querySelector("#geName"); nameInp.value=g.name||""; let cancelled=false;
   const commitName=()=>{ if(cancelled) return; const v=nameInp.value.trim(); if(v&&v!==g.name){ g.name=v; save(); renderTables(); renderPool(); } };
   nameInp.addEventListener("keydown",e=>{ e.stopPropagation(); if(e.key==="Enter"){ e.preventDefault(); commitName(); closeGuestEditor(); } else if(e.key==="Escape"){ cancelled=true; closeGuestEditor(); } });
@@ -1702,6 +1782,7 @@ document.addEventListener("click",e=>{
   const mm=$("moremenu"); if(mm.style.display==="block" && !mm.contains(e.target) && !e.target.closest("#moreBtn")) mm.style.display="none";
   const fm=$("fillmenu"); if(fm.style.display==="block" && !fm.contains(e.target) && !e.target.closest("#fFill")) fm.style.display="none";
   const vm=$("viewmenu"); if(vm.style.display==="block" && !vm.contains(e.target) && !e.target.closest("#viewBtn,#mbView")) vm.style.display="none";
+  const pl=$("palette"); if(pl.style.display==="block" && !pl.contains(e.target)) pl.style.display="none";
 });
 
 // ============================================================
@@ -1772,10 +1853,15 @@ function renderFocus(){
   const st=fSeats.scrollTop;
   fSeats.dataset.tid=t.id;
   fSeats.innerHTML="";
+  const ag=state.groups.find(g=>g.id===state.activeGroupId);   // the group new names will join (empty rows show it faintly)
   for(let i=0;i<t.capacity;i++){
     const gid=t.seats[i];
     const row=document.createElement("div"); row.className="frow"+(gid?" occ":""); row.dataset.i=i;
-    row.innerHTML=`<span class="fn">${i+1}</span><span class="fdot"${gid?` style="background:${guestColor(gid)}"`:""}></span><input type="text" maxlength="40" autocomplete="off" spellcheck="false" placeholder="${escapeHtml(tr("seatPh"))}" value="${gid?escapeHtml(guestName(gid)):""}"><button class="fx" title="${escapeHtml(tr("unseat"))}" tabindex="-1">✕</button>`;
+    const dotColor=gid?guestColor(gid):(ag?ag.color:"#cfc8bd");
+    row.innerHTML=`<span class="fn">${i+1}</span><button class="fdot${gid?"":" empty"}" tabindex="-1" title="${escapeHtml(gid?tr("rowGroup"):tr("rowNewGroup"))}" style="background-color:${safeColor(dotColor)}"></button><input type="text" maxlength="40" autocomplete="off" spellcheck="false" placeholder="${escapeHtml(tr("seatPh"))}" value="${gid?escapeHtml(guestName(gid)):""}"><button class="fx" title="${escapeHtml(tr("unseat"))}" tabindex="-1">✕</button>`;
+    const dot=row.querySelector(".fdot");
+    dot.addEventListener("pointerdown",e=>e.preventDefault());   // don't blur a row being typed in
+    dot.addEventListener("click",e=>{ e.stopPropagation(); const g2=t.seats[i]; if(g2) openGroupMenu(g2, anchorOf(dot)); else openActiveGroupMenu(anchorOf(dot)); });
     const inp=row.querySelector("input");
     inp.addEventListener("focus",()=>{ markSeat(i); showSug(i,inp.value); });
     inp.addEventListener("input",()=>showSug(i,inp.value));
@@ -1817,7 +1903,7 @@ function onRowKey(e,i,inp){
     else commitRow(tb,i,v,null);
     renderFocus();
     const next=e.shiftKey? i-1 : i+1;
-    if(next>=0 && next<tb.capacity) focusRow(next); else (e.shiftKey?$("fClose"):$("fFill")).focus();
+    if(next>=0 && next<tb.capacity) focusRow(next); else (e.shiftKey?$("fBack"):$("fFill")).focus();
   }
 }
 // Apply what was typed/chosen for seat i. Returns true if the plan changed.
@@ -1881,7 +1967,7 @@ function stepTable(dir){
 }
 $("fPrev").addEventListener("click",()=>stepTable(-1));
 $("fNext").addEventListener("click",()=>stepTable(1));
-$("fClose").addEventListener("click",()=>{ if(isNarrow()) overview(); else unfocusTable(); });   // phone: ✕ = back to the whole floor
+$("fBack").addEventListener("click",()=>{ if(isNarrow()) overview(); else unfocusTable(); });   // ‹ Τραπέζια: back to the list / the whole floor
 $("fSettings").addEventListener("click",e=>{ if(focusId!=null) openMenu(focusId, anchorOf(e.currentTarget)); });
 $("fHandle").addEventListener("click",()=>focusEl.classList.toggle("tall"));
 $("fName").addEventListener("click",()=>{ if(isNarrow()) focusEl.classList.toggle("tall"); });
@@ -2034,7 +2120,7 @@ function mergeGuestList(data){
 // ⋯ menu: everything that isn't needed every minute
 $("moreBtn").addEventListener("click",e=>{
   const m=$("moremenu");
-  const items=[]; if(!IS_LAB) items.push(["share",tr("mShare")]); items.push(["guests",tr("mImportGuests")]);
+  const items=[]; if(!IS_LAB) items.push(["share",tr("mShare")]); items.push(["groups",tr("mGroups")],["guests",tr("mImportGuests")]);
   if(isNarrow()) items.push(["sep"],["newplan","＋ "+tr("newPlan")],["planmore","✎ "+tr("planMore")],["sep"],["round",tr("mRound")],["head",tr("mHead")],["decor",tr("mDecor")],["auto",tr("mAuto")]);
   items.push(["sep"],["export",tr("mExport")],["import",tr("mImport")],["print",tr("mPrint")],["sep"]);
   if(!IS_LAB) items.push(["history",tr("mHistory")]);
@@ -2044,7 +2130,7 @@ $("moreBtn").addEventListener("click",e=>{
   m.querySelectorAll(".gm-item").forEach(it=>it.onclick=ev=>{ ev.stopPropagation(); m.style.display="none"; const a=it.dataset.act;
     if(a==="share") openCloud(); else if(a==="guests") importGuestList(); else if(a==="head") $("addHeadBtn").click(); else if(a==="decor") openDecor();
     else if(a==="newplan") newProfile(); else if(a==="planmore") openProfileMenu(anchorOf($("moreBtn")));
-    else if(a==="round") addRoundTable(); else if(a==="history") openHistory();
+    else if(a==="round") addRoundTable(); else if(a==="history") openHistory(); else if(a==="groups") openGroupsModal();
     else if(a==="auto") autoSeat(); else if(a==="export") openExport(); else if(a==="import") openImport(); else if(a==="print") buildAndPrint(); else if(a==="reset") resetPlan();
     else if(a.startsWith("lang-")){ const l=a.slice(5); location.href=({el:"seating-planner-el.html",en:"seating-planner.html",de:"seating-planner-de.html"})[l]; } });
   showPopover(m, anchorOf(e.currentTarget));
@@ -2073,7 +2159,7 @@ function interactionBusy(){
   const ae=document.activeElement;
   if(ae && (ae.tagName==="INPUT"||ae.tagName==="TEXTAREA"||ae.isContentEditable)) return true;
   if(document.querySelector(".modal-back.open")) return true;
-  for(const id of ["groupmenu","guesteditor","tablemenu","featuremenu","profilemenu","moremenu","fillmenu","viewmenu"]){ const el=$(id); if(el && el.style.display==="block") return true; }
+  for(const id of ["groupmenu","guesteditor","tablemenu","featuremenu","profilemenu","moremenu","fillmenu","viewmenu","palette"]){ const el=$(id); if(el && el.style.display==="block") return true; }
   return false;
 }
 async function cloudCreate(){
