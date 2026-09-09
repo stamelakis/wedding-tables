@@ -150,6 +150,11 @@ Protections now in place:
   `GET /plans/:id/history` and `POST /plans/:id/restore {updated}` (edit key or sync code). In the planner:
   ⋯ → "🕘 Ιστορικό εκδόσεων" → Επαναφορά.
 - A 409 conflict now adopts the whole server plan or retries later — never just its timestamp.
+- **The server refuses a save that wipes a plan** (≥5 guests → 0) with `422 wipe_refused` unless the body carries
+  `allowWipe:true` (the client sets it only for reset / undo / redo). The client has the same guard and, when it
+  fires, marks the profile `unsynced` and re-pulls the server copy.
+- A cloud-linked profile whose **local copy is missing or unreadable** (`loadError`, shown as a toast) is marked
+  `unsynced`: it force-pulls the server plan and cannot push anything until that pull succeeded.
 - Resetting a plan that has guests asks twice, the second time with the guest count.
 - To restore from a backup by hand: `age -d -i <key-from-stdin> ... | gunzip | sqlite3 → select value from kv
   where key='plan:<id>'` then `PUT /plans/<id>` with `X-Edit-Key` and `baseUpdated` = current `updated`.
