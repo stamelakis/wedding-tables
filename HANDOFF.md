@@ -202,6 +202,9 @@ cascade-purges its plans; venues can rotate their own key; backups encrypted at 
   the rest; tapping a chip glides onto that table and opens the seat sheet; ✕ on the sheet, "⤢ Όλα", or zooming
   all the way out return to the overview. Zooming in (>1.25× fit) grows the canvas and shrinks the list; ⌄/⌃
   collapses it (remembered per device).
+- **Seat sheet**: "‹ Τραπέζια" (back) replaces ✕; each row has a colour dot — on an occupied row it changes that
+  guest's group, on an empty row it picks the group new names will join. "⚙ Διαχείριση ομάδων…" (also ⋯ →
+  Ομάδες… and the "＋ ομάδα" chip) opens the groups manager: rename inline, palette recolour, delete, add.
 - **Touch moving**: on phones a finger on a table or decor PANS the floor; holding still ~⅓ s lifts it (haptic tick +
   glow) and only then does dragging move it. Mouse drags immediately. One-time hint toast explains it.
 - **Performance**: textures are rasterised to JPEG bitmaps at load (the SVG noise filters were re-rendered on every
