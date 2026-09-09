@@ -139,6 +139,21 @@ container and emails an alert via the edu-admin app's SMTP (so alerts reach the 
 sidecar until checkpoint — that's normal; reads through sqlite3 or the app see current data. `PRAGMA
 integrity_check` should say `ok`. Not exposed to the internet (only the container reaches it).
 
+## 6b. Data-loss incident 2026-09-09 and the protections that followed
+
+At 09:56 (Athens) the live "Andreas & Lina" plan was overwritten with an untouched default plan pushed by an
+in-sync Greek-build device (either the ⋯ → "Επαναφορά σχεδίου" confirm, or the old conflict handler that
+adopted the server's timestamp without its plan and then overwrote it). Restored at 10:02 from the 03:10
+age-encrypted backup (decrypted on the box with the private key fed via stdin and shredded — never on disk).
+Protections now in place:
+- **Server keeps the last 30 versions of every plan** (`hist:<planId>`, capped at 3 MB) on every PUT;
+  `GET /plans/:id/history` and `POST /plans/:id/restore {updated}` (edit key or sync code). In the planner:
+  ⋯ → "🕘 Ιστορικό εκδόσεων" → Επαναφορά.
+- A 409 conflict now adopts the whole server plan or retries later — never just its timestamp.
+- Resetting a plan that has guests asks twice, the second time with the guest count.
+- To restore from a backup by hand: `age -d -i <key-from-stdin> ... | gunzip | sqlite3 → select value from kv
+  where key='plan:<id>'` then `PUT /plans/<id>` with `X-Edit-Key` and `baseUpdated` = current `updated`.
+
 ## 7. Security posture (done)
 
 CORS locked to `https://takeaseat.gr`; per-IP rate limiting + disk-full guard on writes; strict
