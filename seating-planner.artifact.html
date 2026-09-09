@@ -282,6 +282,19 @@
   .decor-item{ display:flex; flex-direction:column; align-items:center; gap:6px; padding:12px 8px; border:1px solid var(--line); border-radius:12px; cursor:pointer; text-align:center; font-size:12px; background:var(--card); transition:.1s; }
   .decor-item:hover{ background:var(--paper); border-color:var(--accent); transform:translateY(-1px); box-shadow:var(--shadow-1); }
   .decor-item .di{ font-size:28px; line-height:1; }
+  /* ---------- Guided tour ---------- */
+  #tour{ position:fixed; inset:0; z-index:500; }
+  #tour[hidden]{ display:none; }
+  #tourBack{ position:absolute; inset:0; }
+  #tourSpot{ position:fixed; border-radius:12px; box-shadow:0 0 0 9999px rgba(20,14,10,.62); outline:2px solid rgba(255,255,255,.95); pointer-events:none; transition:left .25s ease,top .25s ease,width .25s ease,height .25s ease; z-index:1; }
+  #tourCard{ position:fixed; z-index:2; background:var(--card); border-radius:16px; padding:16px 18px 14px; box-shadow:0 20px 60px rgba(0,0,0,.45); max-width:400px; }
+  #tourCard .tour-step{ font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); font-weight:700; }
+  #tourCard h3{ font-family:var(--serif); font-size:20px; margin:4px 0 8px; line-height:1.2; }
+  #tourCard p{ font-size:14px; line-height:1.5; color:var(--soft); margin:0 0 14px; }
+  #tourCard p b{ color:var(--ink); }
+  .tour-btns{ display:flex; gap:8px; align-items:center; }
+  .tour-btns .ibtn{ height:38px; }
+  .tour-btns .spacer{ flex:1; }
   .toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#2a2622; color:#fff; padding:9px 16px; border-radius:10px; font-size:13px; opacity:0; transition:.3s; z-index:400; pointer-events:none; max-width:92vw; text-align:center; }
   .toast.show{ opacity:.96; }
 
@@ -358,7 +371,7 @@
     body.zoomed #stagewrap{ flex:1 1 auto; }
     body.picking #tablestrip{ display:none; }
     #stagewrap{ padding-bottom:0; }
-    #appbar #viewBtn, #appbar #undoBtn, #appbar #redoBtn{ display:none; }   /* they live in the bottom bar on phones */
+    #appbar #viewBtn, #appbar #undoBtn, #appbar #redoBtn, #appbar #helpBtn{ display:none; }   /* they live in the bottom bar / ⋯ on phones */
   }
 
   /* ---------- Print ---------- */
@@ -402,6 +415,7 @@
   <button class="ibtn" id="viewBtn" data-t-title="view">Aa</button>
   <span class="ctl zoom"><button class="ibtn" id="zoomOut" data-t-title="zoomOut">−</button><span class="lbl" id="zoomLabel">100%</span><button class="ibtn" id="zoomIn" data-t-title="zoomIn">＋</button><button class="ibtn" id="zoomFit" data-t="fit"></button></span>
   <button class="ibtn" id="printBtn" data-t-title="print">🖨</button>
+  <button class="ibtn" id="helpBtn" data-t-title="helpTitle">?</button>
   <button class="ibtn" id="moreBtn" data-t-title="more">⋯</button>
 </header>
 
@@ -536,6 +550,11 @@
     <div id="histBody"></div>
   </div>
 </div>
+<div id="tour" hidden>
+  <div id="tourBack"></div>
+  <div id="tourSpot"></div>
+  <div id="tourCard"></div>
+</div>
 <div class="toast" id="toast"></div>
 <div id="navScrim"></div>
 <div id="pickbar"></div>
@@ -569,6 +588,25 @@ el:{
   switchPlan:"Αλλαγή ζευγαριού / εκδήλωσης", newPlan:"Νέο σχέδιο (ζευγάρι / εκδήλωση)", planMore:"Μετονομασία · αντιγραφή · διαγραφή",
   shareTitle:"Κοινή χρήση & συγχρονισμός", fontDown:"Μικρότερα ονόματα", fontUp:"Μεγαλύτερα ονόματα", fit:"Προσαρμογή", zoomIn:"Μεγέθυνση", zoomOut:"Σμίκρυνση", print:"Εκτύπωση", more:"Περισσότερα",
   tsTitle:"Τραπέζια", tsAll:"Όλα", tsToggle:"Εμφάνιση / απόκρυψη λίστας τραπεζιών",
+  helpTitle:"Οδηγός χρήσης", mTour:"❓ Οδηγός χρήσης", tourSkip:"Παράλειψη", tourBack:"Πίσω", tourNext:"Επόμενο", tourDone:"Τέλος",
+  tour:{
+    welcome:["Καλώς ήρθατε στο TakeaSeat","Εδώ τοποθετείτε τους καλεσμένους στα τραπέζια. Ό,τι αλλάζετε <b>αποθηκεύεται αυτόματα</b> και το βλέπουν όλοι όσοι έχουν τον σύνδεσμο. Ένας γρήγορος οδηγός σε λίγα βήματα."],
+    dGuests:["Καλεσμένοι","Γράψτε ονόματα (ένα ανά γραμμή) στο <b>Προσθήκη ονομάτων</b>. Οι <b>ομάδες</b> (νύφη, γαμπρός, φίλοι…) δίνουν χρώμα σε κάθε καλεσμένο — πατήστε μία για να την επιλέξετε, ή «＋ ομάδα» για να τις διαχειριστείτε. Η αναζήτηση βρίσκει όποιον δεν έχει θέση ακόμη."],
+    dTables:["Λίστα τραπεζιών","Κάθε κάρτα δείχνει πόσες θέσεις είναι γεμάτες. <b>Πατήστε ένα τραπέζι</b> εδώ — ή πάνω στην κάτοψη — για να ανοίξει η λίστα θέσεών του."],
+    dSheet:["Ονόματα σε ένα τραπέζι","Γράψτε ένα όνομα και πατήστε <b>Enter</b>: περνάτε στην επόμενη θέση. Καθώς γράφετε, προτείνονται καλεσμένοι χωρίς θέση. Η χρωματιστή <b>κουκκίδα</b> αλλάζει την ομάδα. Με ‹ › πάτε στο προηγούμενο/επόμενο τραπέζι, με ⚙ αλλάζετε όνομα και αριθμό θέσεων."],
+    dFloor:["Η κάτοψη","<b>Σύρετε</b> τραπέζια και διακόσμηση για να τα μετακινήσετε. Μπορείτε και να σύρετε έναν καλεσμένο από τη λίστα πάνω σε μια καρέκλα. Δεξί κλικ στο δάπεδο αλλάζει το υλικό του. Ctrl + ροδέλα για ζουμ, <b>Ctrl+Z</b> για αναίρεση."],
+    dTools:["Τραπέζια & χώρος","Προσθέστε στρογγυλά τραπέζια ή νυφικό τραπέζι, διακόσμηση (μπαρ, πίστα, μπουφές…) και αλλάξτε το δάπεδο. Η <b>Αυτόματη</b> τοποθέτηση βάζει όλους τους καλεσμένους χωρίς θέση στις κενές θέσεις."],
+    dView:["Προβολή","Από το <b>Aa</b> επιλέγετε πώς φαίνονται τα ονόματα (πλήρη, σύντομα ή αρχικά), το μέγεθος ονομάτων και αριθμών τραπεζιών, και το ζουμ."],
+    dSync:["Αποθήκευση & κοινή χρήση","Το ☁ δείχνει ότι όλα είναι συγχρονισμένα. <b>Ο σύνδεσμος που ανοίξατε είναι το κλειδί σας</b> — μοιραστείτε τον με τον/τη σύντροφό σας για να δουλεύετε μαζί. Από εδώ παίρνετε και σύνδεσμο μόνο για προβολή."],
+    dMore:["Το μενού ⋯","Εκτύπωση λίστας τραπεζιών, εξαγωγή/εισαγωγή, <b>ιστορικό εκδόσεων</b> (επαναφορά οποιασδήποτε προηγούμενης έκδοσης), αλλαγή γλώσσας — και αυτός ο οδηγός, όποτε τον χρειαστείτε."],
+    mList:["Λίστα τραπεζιών","Κάτω από την κάτοψη βλέπετε όλα τα τραπέζια με τις γεμάτες θέσεις τους. <b>Πατήστε ένα</b> για να ζουμάρει και να ανοίξει η λίστα θέσεών του. Το «⤢ Όλα» σας γυρίζει στην κάτοψη."],
+    mSheet:["Ονόματα σε ένα τραπέζι","Γράψτε ένα όνομα και πατήστε <b>Enter</b> για την επόμενη θέση — καθώς γράφετε προτείνονται καλεσμένοι χωρίς θέση. Η <b>κουκκίδα</b> αλλάζει την ομάδα (χρώμα). Με ‹ › αλλάζετε τραπέζι, με «‹ Τραπέζια» επιστρέφετε."],
+    mGuests:["Καλεσμένοι","Από το 👥 ανοίγει η λίστα: προσθέστε ονόματα, επιλέξτε ομάδα, αναζητήστε. <b>Πατήστε ένα όνομα και μετά μια καρέκλα</b> στην κάτοψη για να τον καθίσετε. Το «＋ ομάδα» ανοίγει τη διαχείριση ομάδων."],
+    mMove:["Μετακίνηση στον χώρο","Σύρετε με το δάχτυλο για να κινηθείτε, τσίμπημα για ζουμ. Για να μετακινήσετε ένα τραπέζι ή αντικείμενο, <b>κρατήστε το πατημένο μισό δευτερόλεπτο</b> μέχρι να φωτιστεί και μετά σύρετέ το."],
+    mBar:["Η κάτω μπάρα","👥 καλεσμένοι · ↶ ↷ αναίρεση/επανάληψη · − ＋ ζουμ · <b>Aa</b> ονόματα πλήρη/σύντομα/αρχικά και μεγέθη."],
+    mMore:["Το μενού ⋯","Νέο τραπέζι, νυφικό τραπέζι, διακόσμηση, αυτόματη τοποθέτηση, ομάδες, κοινή χρήση, <b>ιστορικό εκδόσεων</b>, εκτύπωση — και αυτός ο οδηγός."],
+    done:["Έτοιμοι!","Ό,τι αλλάζετε αποθηκεύεται μόνο του. Αν κάτι πάει στραβά, το <b>Ιστορικό εκδόσεων</b> επαναφέρει οποιαδήποτε προηγούμενη έκδοση. Ο οδηγός είναι πάντα στο ⋯ → Οδηγός χρήσης."]
+  },
   backTables:"‹ Τραπέζια", rowGroup:"Ομάδα καλεσμένου", rowNewGroup:"Ομάδα για τα νέα ονόματα", gmManage:"⚙ Διαχείριση ομάδων…", mGroups:"👪 Ομάδες…", groupsTitle:"Ομάδες καλεσμένων", groupsHint:"Μετονομάστε, αλλάξτε χρώμα ή διαγράψτε ομάδες — οι καλεσμένοι κρατούν τις θέσεις τους. Ο αριθμός δείχνει πόσοι ανήκουν σε κάθε ομάδα.", groupsNewPh:"Νέα ομάδα…", groupsAdd:"Προσθήκη", customColor:"Άλλο χρώμα…", tGroupAdded:"Προστέθηκε η ομάδα «{n}»",
   mHistory:"🕘 Ιστορικό εκδόσεων", histTitle:"Ιστορικό εκδόσεων", histHint:"Κάθε αποθήκευση κρατά την προηγούμενη έκδοση στον διακομιστή. Επαναφέρετε όποια θέλετε — η τωρινή έκδοση κρατιέται κι αυτή.", histRow:"{g} καλεσμένοι · {s} με θέση · {n} τραπέζια", histRestore:"Επαναφορά", histConfirm:"Επαναφορά της έκδοσης «{t}»; Η τωρινή έκδοση μένει στο ιστορικό.", histRestored:"Επαναφέρθηκε η έκδοση «{t}»", histEmpty:"Δεν υπάρχουν προηγούμενες εκδόσεις ακόμη.", histFail:"Δεν ήταν δυνατή η ανάκτηση του ιστορικού", histNoCloud:"Το ιστορικό υπάρχει μόνο για σχέδια που είναι online.",
   resetWarn2:"ΠΡΟΣΟΧΗ: το σχέδιο έχει {g} καλεσμένους ({s} με θέση). Να σβηστούν ΟΛΑ;", tResetHist:"Έγινε επαναφορά — η προηγούμενη έκδοση υπάρχει στο ⋯ → Ιστορικό εκδόσεων",
@@ -625,6 +663,25 @@ en:{
   switchPlan:"Switch couple / event", newPlan:"New plan (couple / event)", planMore:"Rename · duplicate · delete",
   shareTitle:"Share & sync", fontDown:"Smaller names", fontUp:"Larger names", fit:"Fit", zoomIn:"Zoom in", zoomOut:"Zoom out", print:"Print", more:"More",
   tsTitle:"Tables", tsAll:"All", tsToggle:"Show / hide the table list",
+  helpTitle:"Guide", mTour:"❓ How to use", tourSkip:"Skip", tourBack:"Back", tourNext:"Next", tourDone:"Done",
+  tour:{
+    welcome:["Welcome to TakeaSeat","This is where you seat your guests. Everything you change is <b>saved automatically</b> and everyone with the link sees it. A quick guide in a few steps."],
+    dGuests:["Guests","Type names (one per line) under <b>Add names</b>. <b>Groups</b> (bride, groom, friends…) give each guest a colour — click one to select it, or “＋ group” to manage them. The search finds anyone not seated yet."],
+    dTables:["Table list","Each card shows how many seats are taken. <b>Click a table</b> here — or on the floor — to open its seat list."],
+    dSheet:["Names at a table","Type a name and press <b>Enter</b>: you move to the next seat. As you type, unseated guests are suggested. The coloured <b>dot</b> changes the group. ‹ › steps to the previous/next table, ⚙ changes the table's name and number of seats."],
+    dFloor:["The floor","<b>Drag</b> tables and decor to move them. You can also drag a guest from the list onto a chair. Right-click the floor to change its material. Ctrl + wheel to zoom, <b>Ctrl+Z</b> to undo."],
+    dTools:["Tables & space","Add round tables or a head table, decor (bar, dance floor, buffet…) and change the floor. <b>Auto-seat</b> puts every unseated guest into the free seats."],
+    dView:["View","Under <b>Aa</b> choose how names appear (full, short or initials), the size of names and table numbers, and the zoom."],
+    dSync:["Saving & sharing","☁ shows everything is in sync. <b>The link you opened is your key</b> — share it with your partner to work together. You can also get a view-only link here."],
+    dMore:["The ⋯ menu","Print the table lists, export/import, <b>version history</b> (restore any earlier version), change language — and this guide, whenever you need it."],
+    mList:["Table list","Below the floor you see every table with its taken seats. <b>Tap one</b> to zoom in and open its seat list. “⤢ All” brings you back to the floor."],
+    mSheet:["Names at a table","Type a name and press <b>Enter</b> for the next seat — as you type, unseated guests are suggested. The <b>dot</b> changes the group (colour). ‹ › switches table, “‹ Tables” goes back."],
+    mGuests:["Guests","👥 opens the list: add names, choose a group, search. <b>Tap a name, then a chair</b> on the floor to seat them. “＋ group” opens the groups manager."],
+    mMove:["Moving around","Drag with a finger to pan, pinch to zoom. To move a table or item, <b>hold it for half a second</b> until it lights up, then drag."],
+    mBar:["The bottom bar","👥 guests · ↶ ↷ undo/redo · − ＋ zoom · <b>Aa</b> full/short/initial names and sizes."],
+    mMore:["The ⋯ menu","New table, head table, decor, auto-seat, groups, sharing, <b>version history</b>, print — and this guide."],
+    done:["Ready!","Everything you change saves by itself. If anything goes wrong, <b>Version history</b> restores any earlier version. The guide is always under ⋯ → How to use."]
+  },
   backTables:"‹ Tables", rowGroup:"Guest's group", rowNewGroup:"Group for new names", gmManage:"⚙ Manage groups…", mGroups:"👪 Groups…", groupsTitle:"Guest groups", groupsHint:"Rename, recolour or delete groups — guests keep their seats. The number shows how many belong to each group.", groupsNewPh:"New group…", groupsAdd:"Add", customColor:"Other colour…", tGroupAdded:"Added the group “{n}”",
   mHistory:"🕘 Version history", histTitle:"Version history", histHint:"Every save keeps the previous version on the server. Restore any of them — the current version is kept too.", histRow:"{g} guests · {s} seated · {n} tables", histRestore:"Restore", histConfirm:"Restore the version from “{t}”? The current version stays in the history.", histRestored:"Restored the version from “{t}”", histEmpty:"No previous versions yet.", histFail:"Couldn't load the history", histNoCloud:"History exists only for plans that are online.",
   resetWarn2:"WARNING: this plan has {g} guests ({s} seated). Delete ALL of them?", tResetHist:"Reset done — the previous version is under ⋯ → Version history",
@@ -681,6 +738,25 @@ de:{
   switchPlan:"Paar / Veranstaltung wechseln", newPlan:"Neuer Plan (Paar / Veranstaltung)", planMore:"Umbenennen · duplizieren · löschen",
   shareTitle:"Teilen & synchronisieren", fontDown:"Kleinere Namen", fontUp:"Größere Namen", fit:"Einpassen", zoomIn:"Vergrößern", zoomOut:"Verkleinern", print:"Drucken", more:"Mehr",
   tsTitle:"Tische", tsAll:"Alle", tsToggle:"Tischliste ein-/ausblenden",
+  helpTitle:"Anleitung", mTour:"❓ Anleitung", tourSkip:"Überspringen", tourBack:"Zurück", tourNext:"Weiter", tourDone:"Fertig",
+  tour:{
+    welcome:["Willkommen bei TakeaSeat","Hier setzen Sie Ihre Gäste an die Tische. Alles wird <b>automatisch gespeichert</b>, und jeder mit dem Link sieht es. Eine kurze Anleitung in wenigen Schritten."],
+    dGuests:["Gäste","Namen (einen pro Zeile) unter <b>Namen hinzufügen</b> eingeben. <b>Gruppen</b> (Braut, Bräutigam, Freunde…) geben jedem Gast eine Farbe — eine anklicken, um sie auszuwählen, oder „＋ Gruppe“ zum Verwalten. Die Suche findet jeden, der noch keinen Platz hat."],
+    dTables:["Tischliste","Jede Karte zeigt, wie viele Plätze belegt sind. <b>Einen Tisch anklicken</b> — hier oder auf der Fläche — öffnet seine Platzliste."],
+    dSheet:["Namen an einem Tisch","Namen eingeben und <b>Enter</b> drücken: Sie springen zum nächsten Platz. Beim Tippen werden Gäste ohne Platz vorgeschlagen. Der farbige <b>Punkt</b> ändert die Gruppe. ‹ › wechselt zum vorherigen/nächsten Tisch, ⚙ ändert Name und Platzzahl."],
+    dFloor:["Die Fläche","Tische und Deko <b>ziehen</b>, um sie zu verschieben. Sie können auch einen Gast aus der Liste auf einen Stuhl ziehen. Rechtsklick auf den Boden ändert das Material. Strg + Mausrad zoomt, <b>Strg+Z</b> macht rückgängig."],
+    dTools:["Tische & Fläche","Runde Tische oder einen Brauttisch, Deko (Bar, Tanzfläche, Buffet…) hinzufügen und den Boden ändern. <b>Auto-Füllen</b> setzt alle Gäste ohne Platz auf die freien Plätze."],
+    dView:["Ansicht","Unter <b>Aa</b> wählen Sie, wie Namen erscheinen (voll, kurz oder Initialen), die Größe von Namen und Tischnummern und den Zoom."],
+    dSync:["Speichern & Teilen","☁ zeigt, dass alles synchron ist. <b>Der geöffnete Link ist Ihr Schlüssel</b> — teilen Sie ihn mit Ihrem Partner, um gemeinsam zu arbeiten. Hier gibt es auch einen Nur-Lesen-Link."],
+    dMore:["Das ⋯-Menü","Tischlisten drucken, Export/Import, <b>Versionsverlauf</b> (jede frühere Version wiederherstellen), Sprache wechseln — und diese Anleitung, wann immer Sie sie brauchen."],
+    mList:["Tischliste","Unter der Fläche sehen Sie alle Tische mit ihren belegten Plätzen. <b>Einen antippen</b>, um heranzuzoomen und die Platzliste zu öffnen. „⤢ Alle“ bringt Sie zurück zur Fläche."],
+    mSheet:["Namen an einem Tisch","Namen eingeben und <b>Enter</b> für den nächsten Platz — beim Tippen werden Gäste ohne Platz vorgeschlagen. Der <b>Punkt</b> ändert die Gruppe (Farbe). ‹ › wechselt den Tisch, „‹ Tische“ geht zurück."],
+    mGuests:["Gäste","👥 öffnet die Liste: Namen hinzufügen, Gruppe wählen, suchen. <b>Einen Namen antippen, dann einen Stuhl</b> auf der Fläche, um ihn zu platzieren. „＋ Gruppe“ öffnet die Gruppenverwaltung."],
+    mMove:["Bewegen im Raum","Mit dem Finger ziehen, um zu schwenken, Zwei-Finger-Zoom. Um einen Tisch oder ein Objekt zu verschieben, <b>eine halbe Sekunde gedrückt halten</b>, bis es aufleuchtet, dann ziehen."],
+    mBar:["Die untere Leiste","👥 Gäste · ↶ ↷ Rückgängig/Wiederholen · − ＋ Zoom · <b>Aa</b> Namen voll/kurz/Initialen und Größen."],
+    mMore:["Das ⋯-Menü","Neuer Tisch, Brauttisch, Deko, Auto-Füllen, Gruppen, Teilen, <b>Versionsverlauf</b>, Drucken — und diese Anleitung."],
+    done:["Fertig!","Alles, was Sie ändern, speichert sich von selbst. Wenn etwas schiefgeht, stellt der <b>Versionsverlauf</b> jede frühere Version wieder her. Die Anleitung finden Sie immer unter ⋯ → Anleitung."]
+  },
   backTables:"‹ Tische", rowGroup:"Gruppe des Gastes", rowNewGroup:"Gruppe für neue Namen", gmManage:"⚙ Gruppen verwalten…", mGroups:"👪 Gruppen…", groupsTitle:"Gästegruppen", groupsHint:"Gruppen umbenennen, umfärben oder löschen — die Gäste behalten ihre Plätze. Die Zahl zeigt, wie viele zu jeder Gruppe gehören.", groupsNewPh:"Neue Gruppe…", groupsAdd:"Hinzufügen", customColor:"Andere Farbe…", tGroupAdded:"Gruppe „{n}“ hinzugefügt",
   mHistory:"🕘 Versionsverlauf", histTitle:"Versionsverlauf", histHint:"Jedes Speichern behält die vorherige Version auf dem Server. Stellen Sie jede beliebige wieder her — die aktuelle bleibt ebenfalls erhalten.", histRow:"{g} Gäste · {s} platziert · {n} Tische", histRestore:"Wiederherstellen", histConfirm:"Version vom „{t}“ wiederherstellen? Die aktuelle Version bleibt im Verlauf.", histRestored:"Version vom „{t}“ wiederhergestellt", histEmpty:"Noch keine früheren Versionen.", histFail:"Verlauf konnte nicht geladen werden", histNoCloud:"Einen Verlauf gibt es nur für Pläne, die online sind.",
   resetWarn2:"ACHTUNG: Dieser Plan hat {g} Gäste ({s} platziert). Wirklich ALLE löschen?", tResetHist:"Zurückgesetzt — die vorherige Version steht unter ⋯ → Versionsverlauf",
@@ -2001,11 +2077,82 @@ document.addEventListener("keydown",e=>{
   const tag=(e.target&&e.target.tagName)||""; const typing=tag==="INPUT"||tag==="TEXTAREA"||tag==="SELECT"||(e.target&&e.target.isContentEditable);
   if((e.ctrlKey||e.metaKey)&&!typing){ const k=e.key.toLowerCase(); if(k==="z"&&!e.shiftKey){ e.preventDefault(); undo(); return; } if(k==="y"||(k==="z"&&e.shiftKey)){ e.preventDefault(); redo(); return; } }
   if(e.key!=="Escape") return;
+  if(tour){ endTour(); return; }
   if(document.querySelector(".modal-back.open")){ document.querySelectorAll(".modal-back.open").forEach(m=>m.classList.remove("open")); return; }
   if(pick){ setPick(null); return; }
   if(document.body.classList.contains("nav-open")){ setNav(false); return; }
   if(focusId!=null) unfocusTable();
 });
+
+// ============================================================
+//  GUIDED TOUR — first visit (per device) and ⋯ → Οδηγός χρήσης / "?" · one flow for phones, one for PCs
+// ============================================================
+const TOUR_KEY="weddingSeatingPlanner.tour.v1";
+let tour=null;
+function tourSteps(){
+  const S=(key,target,opts)=>({key,target,...(opts||{})});
+  const first=()=>state.tables[0]&&state.tables[0].id;
+  if(isNarrow()) return [
+    S("welcome",null),
+    S("mList","#tablestrip",{prep:()=>overview()}),
+    S("mSheet","#focus",{prep:()=>{ if(first()!=null) focusTable(first()); }, after:()=>overview()}),
+    S("mGuests","#sidebar",{prep:()=>setNav(true), after:()=>setNav(false)}),
+    S("mMove","#stagewrap"),
+    S("mBar","#mobilebar"),
+    S("mMore","#moreBtn"),
+    S("done",null),
+  ];
+  return [
+    S("welcome",null),
+    S("dGuests","#sidebar .sec:nth-child(2)"),
+    S("dTables","#tablestrip"),
+    S("dSheet","#focus",{prep:()=>{ if(first()!=null) focusTable(first()); }, after:()=>unfocusTable()}),
+    S("dFloor","#stagewrap"),
+    S("dTools","#sidebar .sec:first-child"),
+    S("dView","#viewBtn"),
+    S("dSync","#cloudBtn"),
+    S("dMore","#moreBtn"),
+    S("done",null),
+  ].filter(s=>!(IS_LAB && s.key==="dSync"));   // the sandbox has no cloud
+}
+function startTour(){
+  if(tour) return;
+  setPick(null); hideSug(); document.querySelectorAll(".modal-back.open").forEach(m=>m.classList.remove("open"));
+  tour={ steps:tourSteps(), i:0 }; $("tour").hidden=false; document.body.classList.add("touring");
+  try{ localStorage.setItem(TOUR_KEY,"1"); }catch(e){}
+  showTourStep();
+}
+function endTour(){
+  if(!tour) return; const st=tour.steps[tour.i]; if(st&&st.after) st.after();
+  tour=null; $("tour").hidden=true; document.body.classList.remove("touring");
+}
+function showTourStep(){
+  const st=tour.steps[tour.i]; if(st.prep) st.prep();
+  requestAnimationFrame(()=>requestAnimationFrame(()=>placeTour()));
+}
+function placeTour(){
+  if(!tour) return; const st=tour.steps[tour.i];
+  const spot=$("tourSpot"), card=$("tourCard"); const vh=window.innerHeight, vw=window.innerWidth;
+  const tgt=st.target?document.querySelector(st.target):null; const r=tgt?tgt.getBoundingClientRect():null;
+  const visible=!!(r&&r.width>0&&r.height>0);
+  if(visible){ spot.style.left=(r.left-6)+"px"; spot.style.top=(r.top-6)+"px"; spot.style.width=(r.width+12)+"px"; spot.style.height=(r.height+12)+"px"; spot.style.outlineWidth="2px"; }
+  else { spot.style.left=(vw/2)+"px"; spot.style.top=(vh/2)+"px"; spot.style.width="0px"; spot.style.height="0px"; spot.style.outlineWidth="0"; }
+  const tx=(T.tour&&T.tour[st.key])||T_ALL.el.tour[st.key];
+  const last=tour.i===tour.steps.length-1;
+  card.innerHTML=`<div class="tour-step">${tour.i+1} / ${tour.steps.length}</div><h3>${escapeHtml(tx[0])}</h3><p>${tx[1]}</p>
+    <div class="tour-btns"><button class="ibtn" data-a="skip">${escapeHtml(tr("tourSkip"))}</button><span class="spacer"></span>${tour.i>0?`<button class="ibtn" data-a="back">${escapeHtml(tr("tourBack"))}</button>`:""}<button class="ibtn primary" data-a="next">${escapeHtml(last?tr("tourDone"):tr("tourNext"))}</button></div>`;
+  card.style.maxWidth=Math.min(400, vw-24)+"px";
+  const atTop = visible && (r.top+r.height/2 > vh*0.55);
+  card.style.top=atTop?"16px":""; card.style.bottom=atTop?"":"16px";
+  if(!isNarrow() && visible){ const w=card.offsetWidth||380; card.style.left=clamp(r.left, 12, vw-w-12)+"px"; card.style.right=""; }
+  else { card.style.left="12px"; card.style.right="12px"; }
+  card.querySelector('[data-a="skip"]').onclick=()=>endTour();
+  const bk=card.querySelector('[data-a="back"]'); if(bk) bk.onclick=()=>{ if(st.after) st.after(); tour.i--; showTourStep(); };
+  card.querySelector('[data-a="next"]').onclick=()=>{ if(last){ endTour(); return; } if(st.after) st.after(); tour.i++; showTourStep(); };
+}
+window.addEventListener("resize",()=>{ if(tour) placeTour(); });
+$("helpBtn").addEventListener("click",startTour);
+function maybeStartTour(){ try{ if(localStorage.getItem(TOUR_KEY)) return; }catch(e){ return; } setTimeout(startTour, 900); }
 
 // ============================================================
 //  GUEST SEARCH (sidebar) — filters the unseated list; Enter picks the first match
@@ -2123,7 +2270,7 @@ $("moreBtn").addEventListener("click",e=>{
   const m=$("moremenu");
   const items=[]; if(!IS_LAB) items.push(["share",tr("mShare")]); items.push(["groups",tr("mGroups")],["guests",tr("mImportGuests")]);
   if(isNarrow()) items.push(["sep"],["newplan","＋ "+tr("newPlan")],["planmore","✎ "+tr("planMore")],["sep"],["round",tr("mRound")],["head",tr("mHead")],["decor",tr("mDecor")],["auto",tr("mAuto")]);
-  items.push(["sep"],["export",tr("mExport")],["import",tr("mImport")],["print",tr("mPrint")],["sep"]);
+  items.push(["sep"],["export",tr("mExport")],["import",tr("mImport")],["print",tr("mPrint")],["sep"],["tour",tr("mTour")]);
   if(!IS_LAB) items.push(["history",tr("mHistory")]);
   items.push(["reset",tr("mReset")]);
   if(!IS_LAB) items.push(["sep"],["lang-el","ΕΛ · Ελληνικά"],["lang-en","EN · English"],["lang-de","DE · Deutsch"]);
@@ -2131,7 +2278,7 @@ $("moreBtn").addEventListener("click",e=>{
   m.querySelectorAll(".gm-item").forEach(it=>it.onclick=ev=>{ ev.stopPropagation(); m.style.display="none"; const a=it.dataset.act;
     if(a==="share") openCloud(); else if(a==="guests") importGuestList(); else if(a==="head") $("addHeadBtn").click(); else if(a==="decor") openDecor();
     else if(a==="newplan") newProfile(); else if(a==="planmore") openProfileMenu(anchorOf($("moreBtn")));
-    else if(a==="round") addRoundTable(); else if(a==="history") openHistory(); else if(a==="groups") openGroupsModal();
+    else if(a==="round") addRoundTable(); else if(a==="history") openHistory(); else if(a==="groups") openGroupsModal(); else if(a==="tour") startTour();
     else if(a==="auto") autoSeat(); else if(a==="export") openExport(); else if(a==="import") openImport(); else if(a==="print") buildAndPrint(); else if(a==="reset") resetPlan();
     else if(a.startsWith("lang-")){ const l=a.slice(5); location.href=({el:"seating-planner-el.html",en:"seating-planner.html",de:"seating-planner-de.html"})[l]; } });
   showPopover(m, anchorOf(e.currentTarget));
@@ -2156,7 +2303,7 @@ function authHeaders(prof){ const h={"Content-Type":"application/json"};
   if(prof.editKey) h["X-Edit-Key"]=prof.editKey; else if(getSyncCode()) h["X-Sync-Code"]=getSyncCode(); return h; }
 // True while the user is mid-interaction — used to defer a cloud pull so it can't clobber live edits.
 function interactionBusy(){
-  if(dragData||pick||pointerGesture||viewAnim) return true;
+  if(dragData||pick||pointerGesture||viewAnim||tour) return true;
   const ae=document.activeElement;
   if(ae && (ae.tagName==="INPUT"||ae.tagName==="TEXTAREA"||ae.isContentEditable)) return true;
   if(document.querySelector(".modal-back.open")) return true;
@@ -2474,5 +2621,6 @@ function rasterizeMaterials(){
 setTimeout(rasterizeMaterials, 0);
 // ☁ open a shared link if present, otherwise refresh the active profile from the cloud (the lab never talks to the cloud)
 if(!IS_LAB){ const p0=currentProfile(); if(loadError && p0 && p0.cloudId) toast(tr("cLocalErr",{e:loadError}),7000); }
-if(!IS_LAB) (async()=>{ if(!(await openSharedFromURL())) await pullIfNewer(); if(getSyncCode()) await syncFromCode(); startCloudPoll(); })();
+if(!IS_LAB) (async()=>{ if(!(await openSharedFromURL())) await pullIfNewer(); if(getSyncCode()) await syncFromCode(); startCloudPoll(); maybeStartTour(); })();
+else maybeStartTour();
 </script>
