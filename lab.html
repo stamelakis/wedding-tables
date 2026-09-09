@@ -337,6 +337,32 @@
   }
   @media (max-width:420px){ #zoomFit{ padding:0 7px; font-size:12px; } }
 
+  /* ---------- Phone: table chooser under the canvas (overview ⇄ one table) ---------- */
+  #tablestrip{ display:none; }
+  @media (max-width:900px){
+    #main{ flex-direction:column; }
+    /* overview: the canvas is sized to the fitted floor (layoutCanvas) and the list takes the rest;
+       zoomed in: the canvas grows and the list shrinks to a strip */
+    #tablestrip{ display:flex; flex-direction:column; flex:1 1 auto; min-height:0; background:var(--card); border-top:1px solid var(--line); padding-bottom:calc(58px + env(safe-area-inset-bottom)); }
+    body.zoomed #tablestrip{ flex:0 1 auto; max-height:26vh; }
+    body.zoomed #stagewrap{ flex:1 1 auto; }
+    body.focused #tablestrip, body.picking #tablestrip{ display:none; }
+    #stagewrap{ padding-bottom:0; }
+    #appbar #viewBtn, #appbar #undoBtn, #appbar #redoBtn{ display:none; }   /* they live in the bottom bar on phones */
+    body.strip-collapsed .ts-grid{ display:none; }
+    .ts-head{ display:flex; align-items:center; gap:8px; padding:6px 10px; flex:none; }
+    .ts-head .ts-title{ font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); }
+    .ts-head .ts-cnt{ font-size:12px; color:var(--soft); margin-right:auto; font-variant-numeric:tabular-nums; }
+    .ts-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(62px,1fr)); gap:6px; padding:0 10px 10px; overflow-y:auto; overscroll-behavior:contain; }
+    .ts-chip{ border:1px solid var(--line); border-radius:10px; padding:6px 4px 5px; text-align:center; background:var(--paper); cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+    .ts-chip:active{ background:var(--accent-soft); }
+    .ts-chip .lbl{ font-family:var(--serif); font-weight:700; font-size:16px; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .ts-chip .occ{ font-size:10.5px; color:var(--faint); margin-top:1px; font-variant-numeric:tabular-nums; }
+    .ts-chip .bar{ height:3px; border-radius:2px; background:var(--line); margin-top:4px; overflow:hidden; }
+    .ts-chip .bar i{ display:block; height:100%; background:var(--accent); }
+    .ts-chip.full .bar i{ background:var(--good); }
+  }
+
   /* ---------- Print ---------- */
   #printarea{ display:none; }
   @media print{
@@ -412,6 +438,11 @@
   </aside>
 
   <div id="stagewrap"><div id="stage"></div></div>
+
+  <div id="tablestrip">
+    <div class="ts-head"><span class="ts-title" data-t="tsTitle"></span><span class="ts-cnt" id="tsCount"></span><button class="ibtn" id="tsAll" data-t-title="fit">⤢ <span data-t="tsAll"></span></button><button class="ibtn sq" id="tsToggle" data-t-title="tsToggle">⌄</button></div>
+    <div class="ts-grid" id="tsGrid"></div>
+  </div>
 
   <aside id="focus">
     <div class="fhandle" id="fHandle"></div>
@@ -527,6 +558,7 @@ el:{
   labBadge:"🧪 Εργαστήριο", labHint:"Δοκιμαστικός χώρος — ό,τι αλλάζετε εδώ μένει μόνο σε αυτή τη συσκευή.",
   switchPlan:"Αλλαγή ζευγαριού / εκδήλωσης", newPlan:"Νέο σχέδιο (ζευγάρι / εκδήλωση)", planMore:"Μετονομασία · αντιγραφή · διαγραφή",
   shareTitle:"Κοινή χρήση & συγχρονισμός", fontDown:"Μικρότερα ονόματα", fontUp:"Μεγαλύτερα ονόματα", fit:"Προσαρμογή", zoomIn:"Μεγέθυνση", zoomOut:"Σμίκρυνση", print:"Εκτύπωση", more:"Περισσότερα",
+  tsTitle:"Τραπέζια", tsAll:"Όλα", tsToggle:"Εμφάνιση / απόκρυψη λίστας τραπεζιών",
   view:"Προβολή", names:"Ονόματα καλεσμένων", nm_full:"Πλήρη", nm_short:"Σύντομα", nm_initials:"Αρχικά", nameSize:"Μέγεθος ονομάτων", numSize:"Μέγεθος αριθμών τραπεζιών", zoomLbl:"Ζουμ", undo:"Αναίρεση", redo:"Επανάληψη", tUndo:"Αναιρέθηκε", tRedo:"Επαναλήφθηκε", tNumSize:"Μέγεθος αριθμών {n}%", mRound:"＋ Στρογγυλό τραπέζι", holdToMove:"Για να μετακινήσετε τραπέζι ή αντικείμενο, κρατήστε το πατημένο μισό δευτερόλεπτο και σύρετε. Αλλιώς σύρετε ελεύθερα για να μετακινηθείτε στον χώρο.",
   tools:"Τραπέζια & χώρος", addRound:"＋ Στρογγυλό", addHead:"＋ Νυφικό", decor:"🛋 Διακόσμηση", autoSeat:"✨ Αυτόματα", floor:"Δάπεδο",
   guests:"Καλεσμένοι", unseatedN:"{n} χωρίς θέση", searchPh:"Αναζήτηση ονόματος…", all:"Όλοι", addGroup:"＋ ομάδα", addGroupTitle:"Νέα ομάδα",
@@ -578,6 +610,7 @@ en:{
   labBadge:"🧪 Lab", labHint:"Sandbox — whatever you change here stays on this device only.",
   switchPlan:"Switch couple / event", newPlan:"New plan (couple / event)", planMore:"Rename · duplicate · delete",
   shareTitle:"Share & sync", fontDown:"Smaller names", fontUp:"Larger names", fit:"Fit", zoomIn:"Zoom in", zoomOut:"Zoom out", print:"Print", more:"More",
+  tsTitle:"Tables", tsAll:"All", tsToggle:"Show / hide the table list",
   view:"View", names:"Guest names", nm_full:"Full", nm_short:"Short", nm_initials:"Initials", nameSize:"Name size", numSize:"Table number size", zoomLbl:"Zoom", undo:"Undo", redo:"Redo", tUndo:"Undone", tRedo:"Redone", tNumSize:"Table numbers {n}%", mRound:"＋ Round table", holdToMove:"To move a table or item, hold it for half a second, then drag. Otherwise drag freely to pan around the venue.",
   tools:"Tables & space", addRound:"＋ Round table", addHead:"＋ Head table", decor:"🛋 Decor", autoSeat:"✨ Auto-seat", floor:"Floor",
   guests:"Guests", unseatedN:"{n} unseated", searchPh:"Search a name…", all:"All", addGroup:"＋ group", addGroupTitle:"New group",
@@ -629,6 +662,7 @@ de:{
   labBadge:"🧪 Labor", labHint:"Sandbox — alles, was Sie hier ändern, bleibt nur auf diesem Gerät.",
   switchPlan:"Paar / Veranstaltung wechseln", newPlan:"Neuer Plan (Paar / Veranstaltung)", planMore:"Umbenennen · duplizieren · löschen",
   shareTitle:"Teilen & synchronisieren", fontDown:"Kleinere Namen", fontUp:"Größere Namen", fit:"Einpassen", zoomIn:"Vergrößern", zoomOut:"Verkleinern", print:"Drucken", more:"Mehr",
+  tsTitle:"Tische", tsAll:"Alle", tsToggle:"Tischliste ein-/ausblenden",
   view:"Ansicht", names:"Gästenamen", nm_full:"Voll", nm_short:"Kurz", nm_initials:"Initialen", nameSize:"Namensgröße", numSize:"Größe der Tischnummern", zoomLbl:"Zoom", undo:"Rückgängig", redo:"Wiederholen", tUndo:"Rückgängig gemacht", tRedo:"Wiederholt", tNumSize:"Tischnummern {n}%", mRound:"＋ Runder Tisch", holdToMove:"Um einen Tisch oder ein Objekt zu verschieben, eine halbe Sekunde gedrückt halten und dann ziehen. Sonst frei ziehen, um sich im Raum zu bewegen.",
   tools:"Tische & Fläche", addRound:"＋ Runder Tisch", addHead:"＋ Brauttisch", decor:"🛋 Deko", autoSeat:"✨ Auto-Füllen", floor:"Boden",
   guests:"Gäste", unseatedN:"{n} ohne Platz", searchPh:"Namen suchen…", all:"Alle", addGroup:"＋ Gruppe", addGroupTitle:"Neue Gruppe",
@@ -1175,6 +1209,26 @@ function updateStats(){
   const totalSeats=state.tables.reduce((s,t)=>s+t.capacity,0);
   const seated=assignedGuestIds().size, total=Object.keys(state.guests).length;
   $("statLine").textContent=tr("stats",{t:state.tables.length, s:seated, g:total, c:totalSeats});
+  renderStrip(seated,total);
+}
+// Phone: the table chooser under the canvas — tap a chip to glide onto that table; "⤢ Όλα" comes back to the overview.
+function renderStrip(seated,total){
+  const grid=$("tsGrid"); if(!grid) return;
+  $("tsCount").textContent=`${state.tables.length} · ${seated}/${total}`;
+  grid.innerHTML=state.tables.map(t=>{ const occ=t.seats.filter(Boolean).length, full=occ>=t.capacity;
+    return `<div class="ts-chip${full?" full":""}" data-id="${t.id}"><div class="lbl">${t.shape==="head"?"💑":escapeHtml(t.label)}</div><div class="occ">${occ}/${t.capacity}</div><div class="bar"><i style="width:${Math.round(100*occ/Math.max(1,t.capacity))}%"></i></div></div>`; }).join("");
+}
+function overview(){ unfocusTable(); setPick(null); requestAnimationFrame(()=>{ layoutCanvas(true); zoom=clamp(fitZoom(),0.1,2.5); applyZoom(); stagewrap.scrollTop=0; stagewrap.scrollLeft=0; }); }
+// Phone overview: make the canvas exactly as tall as the floor fitted to the screen width, so the table list
+// gets the rest instead of dead space. Once the user zooms in (>1.25× fit) the canvas takes over and the list shrinks.
+function layoutCanvas(forceOverview){
+  if(!isNarrow() || document.body.classList.contains("focused")){ stagewrap.style.height=""; stagewrap.style.flex=""; document.body.classList.remove("zoomed"); return; }
+  const m=12, zf=Math.max(0.1,(stagewrap.clientWidth-2*m)/state.stage.w);
+  const zoomedIn=!forceOverview && zoom>zf*1.25;
+  document.body.classList.toggle("zoomed", zoomedIn);
+  if(zoomedIn){ stagewrap.style.height=""; stagewrap.style.flex=""; return; }
+  const avail=window.innerHeight-52;
+  stagewrap.style.flex="none"; stagewrap.style.height=clamp(Math.round(state.stage.h*zf+2*m+10), 200, Math.round(avail*0.62))+"px";
 }
 
 // ============================================================
@@ -1384,8 +1438,14 @@ $("navScrim").addEventListener("click",()=>setNav(false));
 $("mbGuests").addEventListener("click",()=>setNav(true));
 $("mbUndo").addEventListener("click",undo); $("mbRedo").addEventListener("click",redo);
 $("undoBtn").addEventListener("click",undo); $("redoBtn").addEventListener("click",redo);
-$("mbZoomOut").addEventListener("click",()=>zoomBy(1/1.2)); $("mbZoomIn").addEventListener("click",()=>zoomBy(1.2));
+$("mbZoomOut").addEventListener("click",()=>{ if(isNarrow() && zoom/1.2<=Math.max(0.1,fitZoom())*1.01) overview(); else zoomBy(1/1.2); });   // zooming all the way out = back to the overview
+$("mbZoomIn").addEventListener("click",()=>zoomBy(1.2));
 $("mbView").addEventListener("click",e=>{ e.stopPropagation(); openViewMenu(e.currentTarget); });
+$("tsGrid").addEventListener("click",e=>{ const c=e.target.closest(".ts-chip"); if(c) focusTable(+c.dataset.id); });
+$("tsAll").addEventListener("click",overview);
+$("tsToggle").addEventListener("click",()=>{ const on=document.body.classList.toggle("strip-collapsed"); $("tsToggle").textContent=on?"⌃":"⌄";
+  try{ localStorage.setItem("weddingSeatingPlanner.strip", on?"1":""); }catch(e){} requestAnimationFrame(()=>{ zoom=clamp(fitZoom(),0.2,2.5); applyZoom(); }); });
+try{ if(localStorage.getItem("weddingSeatingPlanner.strip")==="1"){ document.body.classList.add("strip-collapsed"); $("tsToggle").textContent="⌃"; } }catch(e){}
 $("viewBtn").addEventListener("click",e=>{ e.stopPropagation(); openViewMenu(e.currentTarget); });
 // One-time hint the first time a touch user taps a table: hold to move, drag elsewhere to pan.
 function hintHold(){ if(!isTouch) return; try{ if(localStorage.getItem("weddingSeatingPlanner.hint.hold")) return; localStorage.setItem("weddingSeatingPlanner.hint.hold","1"); }catch(e){} toast(tr("holdToMove"),5000); }
@@ -1697,6 +1757,7 @@ function unfocusTable(){
   flushLiveRow();
   focusId=null; hideSug(); document.body.classList.remove("focused"); focusEl.classList.remove("tall");
   stage.querySelectorAll(".table.focused").forEach(w=>w.classList.remove("focused"));
+  layoutCanvas();
 }
 function renderFocus(){
   const t=focusedTable(); if(!t){ unfocusTable(); return; }
@@ -1817,7 +1878,7 @@ function stepTable(dir){
 }
 $("fPrev").addEventListener("click",()=>stepTable(-1));
 $("fNext").addEventListener("click",()=>stepTable(1));
-$("fClose").addEventListener("click",()=>unfocusTable());
+$("fClose").addEventListener("click",()=>{ if(isNarrow()) overview(); else unfocusTable(); });   // phone: ✕ = back to the whole floor
 $("fSettings").addEventListener("click",e=>{ if(focusId!=null) openMenu(focusId, anchorOf(e.currentTarget)); });
 $("fHandle").addEventListener("click",()=>focusEl.classList.toggle("tall"));
 $("fName").addEventListener("click",()=>{ if(isNarrow()) focusEl.classList.toggle("tall"); });
@@ -2242,10 +2303,11 @@ function renderViewMenu(){
     renderViewMenu(); });
 }
 function openViewMenu(anchorEl){ const m=$("viewmenu"); if(m.style.display==="block"){ m.style.display="none"; return; } renderViewMenu(); showPopover(m, anchorOf(anchorEl)); }
-function fitZoom(){ const b=visibleBox(); return Math.min(1,(b.w-60)/state.stage.w,(b.h-80)/state.stage.h); }
+function fitZoom(){ const b=visibleBox(), n=isNarrow(); return Math.min(1,(b.w-(n?24:60))/state.stage.w,(b.h-(n?34:80))/state.stage.h); }
 // Opening view: the 0.5 floor keeps names readable on a desktop; a phone fits the whole space instead.
-function initialZoom(){ return Math.min(1, Math.max(fitZoom(), isNarrow()?0.2:0.5)); }
+function initialZoom(){ if(isNarrow()) layoutCanvas(true); return Math.min(1, Math.max(fitZoom(), isNarrow()?0.1:0.5)); }
 function applyZoom(){
+  layoutCanvas();
   stage.style.transform=`scale(${zoom})`;
   const m=isNarrow()?12:24, w=(state.stage&&state.stage.w)||1700, h=(state.stage&&state.stage.h)||1360;
   stage.style.margin=`${m}px ${Math.round(m+w*(zoom-1))}px ${Math.round(m+h*(zoom-1))}px ${m}px`;
