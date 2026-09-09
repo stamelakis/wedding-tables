@@ -17,7 +17,7 @@
   input,textarea,select{ background:var(--card); }
 
   /* ---------- App bar ---------- */
-  #appbar{ height:var(--appbar-h); flex:none; display:flex; align-items:center; gap:8px; padding:0 12px; background:rgba(255,253,250,.94); backdrop-filter:blur(8px); border-bottom:1px solid var(--line); z-index:30; position:relative; }
+  #appbar{ height:var(--appbar-h); flex:none; display:flex; align-items:center; gap:8px; padding:0 12px; background:rgba(255,253,250,.97); border-bottom:1px solid var(--line); z-index:30; position:relative; }
   .brand{ font-family:var(--serif); font-weight:700; font-size:19px; letter-spacing:-.01em; white-space:nowrap; }
   .brand em{ color:var(--accent); font-style:normal; }
   .planpick{ display:flex; gap:4px; align-items:center; min-width:0; }
@@ -173,10 +173,11 @@
   .ffoot .ibtn{ flex:1; height:36px; font-size:12.5px; }
 
   /* ---------- Mobile bar · pick bar · drawer ---------- */
-  #mobilebar{ display:none; position:fixed; left:10px; right:10px; bottom:calc(10px + env(safe-area-inset-bottom)); z-index:120; gap:6px; }
+  #mobilebar{ display:none; position:fixed; left:8px; right:8px; bottom:calc(8px + env(safe-area-inset-bottom)); z-index:120; gap:5px; }
   #mobilebar .ibtn{ height:46px; flex:1; background:rgba(255,253,250,.97); box-shadow:var(--shadow-2); font-size:13.5px; font-weight:600; border-radius:14px; }
-  #mobilebar .ibtn.sq{ flex:0 0 48px; font-size:18px; }
+  #mobilebar .ibtn.sq{ flex:0 0 44px; font-size:18px; padding:0; }
   #mobilebar .ibtn b{ background:var(--accent); color:#fff; border-radius:20px; padding:2px 8px; font-size:11px; }
+  @media (max-width:430px){ #mobilebar #mbGuests span{ display:none; } }
   #navScrim{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:140; }
   #pickbar{ display:none; position:fixed; left:50%; bottom:16px; transform:translateX(-50%); z-index:210; background:#2a2622; color:#fff; border-radius:999px; padding:6px 7px 6px 16px; font-size:13px; align-items:center; gap:8px; box-shadow:0 8px 26px rgba(0,0,0,.35); max-width:95vw; }
   body.picking #pickbar{ display:flex; }
@@ -187,6 +188,16 @@
   #pickbar button:hover{ background:rgba(255,255,255,.28); }
   .gchip, .seat, .chip, button, .fsug div, .frow, .gm-item, #pickbar, #focus, .fhead{ touch-action:manipulation; }
   .table-disc, .feature, .rz, .rot-h, #stageResize{ touch-action:none; }
+  /* touch: a finger on a table or decor PANS the floor; a HELD finger (long-press) lifts it to move — see makeDraggable */
+  body.touch .table-disc, body.touch .feature{ touch-action:pan-x pan-y; }
+  /* touch: cheaper paint — no soft shadows on 300 pills, no drape ring, no dotted paper */
+  body.touch .seat.occupied{ box-shadow:0 1px 3px rgba(0,0,0,.28); text-shadow:none; }
+  body.touch .table-disc{ box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 3px 8px rgba(30,20,10,.22); }
+  body.touch .table-disc::before{ display:none; }
+  body.touch #stage{ box-shadow:inset 0 0 0 1px rgba(0,0,0,.14),0 8px 24px rgba(40,30,20,.2); }
+  body.touch #stagewrap{ background-image:none; }
+  .table-disc .tnum{ font-size:calc(17px * var(--tfs,1)); }
+  .table-disc.head .tnum{ font-size:calc(14px * var(--tfs,1)); }
 
   /* ---------- Popovers & modals ---------- */
   .popover{ position:fixed; z-index:250; background:var(--card); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow-2); padding:8px; font-size:13px; display:none; }
@@ -195,6 +206,19 @@
   .gm-item .dot{ width:12px; height:12px; border-radius:50%; box-shadow:inset 0 0 0 1px rgba(0,0,0,.12); flex:none; }
   .gm-item.danger{ color:var(--danger); }
   .gm-item.on{ background:var(--accent-soft); color:var(--accent-ink); font-weight:600; }
+  /* view menu (names · sizes · zoom) */
+  #viewmenu{ width:256px; padding:8px; }
+  .seg{ display:inline-flex; border:1px solid var(--line); border-radius:9px; overflow:hidden; }
+  .seg button{ height:32px; padding:0 11px; border:none; background:var(--card); cursor:pointer; font-size:12.5px; border-left:1px solid var(--line); }
+  .seg button:first-child{ border-left:none; }
+  .seg button.on{ background:var(--accent); color:#fff; }
+  .vrow{ display:flex; align-items:center; gap:6px; padding:2px 6px 8px; }
+  .vrow .pct{ min-width:44px; text-align:center; font-size:12px; color:var(--soft); font-variant-numeric:tabular-nums; }
+  /* an object lifted by a long-press (touch) or grabbed with the mouse */
+  .lifted{ z-index:9 !important; }
+  .table.lifted .table-disc{ box-shadow:0 0 0 3px var(--accent-soft),0 0 0 5px var(--accent),0 18px 40px rgba(30,20,10,.38); }
+  .feature.lifted{ outline:3px solid var(--accent); box-shadow:0 18px 40px rgba(30,20,10,.38); }
+  body.zooming #stage{ will-change:transform; }
   .gm-item .n{ margin-left:auto; color:var(--faint); font-size:11.5px; padding-left:10px; }
   .gm-sep{ height:1px; background:var(--line); margin:4px 2px; }
   .gm-cap{ font-size:11px; color:var(--faint); padding:4px 9px 6px; letter-spacing:.04em; text-transform:uppercase; font-weight:700; }
@@ -318,13 +342,15 @@
     <button class="ibtn" id="profNew" data-t-title="newPlan">＋</button>
     <button class="ibtn" id="profMore" data-t-title="planMore">⋯</button>
   </div>
+  <button class="ibtn" id="undoBtn" data-t-title="undo" disabled>↶</button>
+  <button class="ibtn" id="redoBtn" data-t-title="redo" disabled>↷</button>
   <span id="statLine" class="stat"></span>
   <span class="spacer"></span>
   <button class="ibtn" id="cloudBtn" data-t-title="shareTitle">☁</button>
   <span class="langsel" id="langsel">
     <a href="seating-planner-el.html" data-lang="el" lang="el">ΕΛ</a><a href="seating-planner.html" data-lang="en">EN</a><a href="seating-planner-de.html" data-lang="de" lang="de">DE</a>
   </span>
-  <span class="ctl font"><button class="ibtn" id="fontDown" data-t-title="fontDown">A−</button><button class="ibtn" id="fontUp" data-t-title="fontUp">A＋</button></span>
+  <button class="ibtn" id="viewBtn" data-t-title="view">Aa</button>
   <span class="ctl zoom"><button class="ibtn" id="zoomOut" data-t-title="zoomOut">−</button><span class="lbl" id="zoomLabel">100%</span><button class="ibtn" id="zoomIn" data-t-title="zoomIn">＋</button><button class="ibtn" id="zoomFit" data-t="fit"></button></span>
   <button class="ibtn" id="printBtn" data-t-title="print">🖨</button>
   <button class="ibtn" id="moreBtn" data-t-title="more">⋯</button>
@@ -377,8 +403,11 @@
 
 <div id="mobilebar">
   <button class="ibtn" id="mbGuests">👥 <span data-t="guests"></span> <b id="mbCount">0</b></button>
-  <button class="ibtn sq" id="mbAddTable" data-t-title="addRound">＋</button>
-  <button class="ibtn sq" id="mbFit" data-t-title="fit">⤢</button>
+  <button class="ibtn sq" id="mbUndo" data-t-title="undo" disabled>↶</button>
+  <button class="ibtn sq" id="mbRedo" data-t-title="redo" disabled>↷</button>
+  <button class="ibtn sq" id="mbZoomOut" data-t-title="zoomOut">−</button>
+  <button class="ibtn sq" id="mbZoomIn" data-t-title="zoomIn">＋</button>
+  <button class="ibtn sq" id="mbView" data-t-title="view">Aa</button>
 </div>
 
 <div id="tablemenu" class="popover">
@@ -403,6 +432,7 @@
 <div id="featuremenu" class="popover"></div>
 <div id="profilemenu" class="popover"></div>
 <div id="moremenu" class="popover"></div>
+<div id="viewmenu" class="popover"></div>
 <div id="fillmenu" class="popover"></div>
 
 <div id="decorModal" class="modal-back">
@@ -470,6 +500,7 @@ el:{
   labBadge:"🧪 Εργαστήριο", labHint:"Δοκιμαστικός χώρος — ό,τι αλλάζετε εδώ μένει μόνο σε αυτή τη συσκευή.",
   switchPlan:"Αλλαγή ζευγαριού / εκδήλωσης", newPlan:"Νέο σχέδιο (ζευγάρι / εκδήλωση)", planMore:"Μετονομασία · αντιγραφή · διαγραφή",
   shareTitle:"Κοινή χρήση & συγχρονισμός", fontDown:"Μικρότερα ονόματα", fontUp:"Μεγαλύτερα ονόματα", fit:"Προσαρμογή", zoomIn:"Μεγέθυνση", zoomOut:"Σμίκρυνση", print:"Εκτύπωση", more:"Περισσότερα",
+  view:"Προβολή", names:"Ονόματα καλεσμένων", nm_full:"Πλήρη", nm_short:"Σύντομα", nm_initials:"Αρχικά", nameSize:"Μέγεθος ονομάτων", numSize:"Μέγεθος αριθμών τραπεζιών", zoomLbl:"Ζουμ", undo:"Αναίρεση", redo:"Επανάληψη", tUndo:"Αναιρέθηκε", tRedo:"Επαναλήφθηκε", tNumSize:"Μέγεθος αριθμών {n}%", mRound:"＋ Στρογγυλό τραπέζι", holdToMove:"Για να μετακινήσετε τραπέζι ή αντικείμενο, κρατήστε το πατημένο μισό δευτερόλεπτο και σύρετε. Αλλιώς σύρετε ελεύθερα για να μετακινηθείτε στον χώρο.",
   tools:"Τραπέζια & χώρος", addRound:"＋ Στρογγυλό", addHead:"＋ Νυφικό", decor:"🛋 Διακόσμηση", autoSeat:"✨ Αυτόματα", floor:"Δάπεδο",
   guests:"Καλεσμένοι", unseatedN:"{n} χωρίς θέση", searchPh:"Αναζήτηση ονόματος…", all:"Όλοι", addGroup:"＋ ομάδα", addGroupTitle:"Νέα ομάδα",
   addNames:"Προσθήκη ονομάτων", namesPh:"Ένα όνομα ανά γραμμή…", namesHint:"Μπαίνουν στην επιλεγμένη ομάδα · Ctrl+Enter για προσθήκη", namesTo:"Τα νέα ονόματα μπαίνουν σε: {g} · Ctrl+Enter", addToList:"Προσθήκη στη λίστα",
@@ -520,6 +551,7 @@ en:{
   labBadge:"🧪 Lab", labHint:"Sandbox — whatever you change here stays on this device only.",
   switchPlan:"Switch couple / event", newPlan:"New plan (couple / event)", planMore:"Rename · duplicate · delete",
   shareTitle:"Share & sync", fontDown:"Smaller names", fontUp:"Larger names", fit:"Fit", zoomIn:"Zoom in", zoomOut:"Zoom out", print:"Print", more:"More",
+  view:"View", names:"Guest names", nm_full:"Full", nm_short:"Short", nm_initials:"Initials", nameSize:"Name size", numSize:"Table number size", zoomLbl:"Zoom", undo:"Undo", redo:"Redo", tUndo:"Undone", tRedo:"Redone", tNumSize:"Table numbers {n}%", mRound:"＋ Round table", holdToMove:"To move a table or item, hold it for half a second, then drag. Otherwise drag freely to pan around the venue.",
   tools:"Tables & space", addRound:"＋ Round table", addHead:"＋ Head table", decor:"🛋 Decor", autoSeat:"✨ Auto-seat", floor:"Floor",
   guests:"Guests", unseatedN:"{n} unseated", searchPh:"Search a name…", all:"All", addGroup:"＋ group", addGroupTitle:"New group",
   addNames:"Add names", namesPh:"One name per line…", namesHint:"They join the selected group · Ctrl+Enter to add", namesTo:"New names go to: {g} · Ctrl+Enter", addToList:"Add to list",
@@ -570,6 +602,7 @@ de:{
   labBadge:"🧪 Labor", labHint:"Sandbox — alles, was Sie hier ändern, bleibt nur auf diesem Gerät.",
   switchPlan:"Paar / Veranstaltung wechseln", newPlan:"Neuer Plan (Paar / Veranstaltung)", planMore:"Umbenennen · duplizieren · löschen",
   shareTitle:"Teilen & synchronisieren", fontDown:"Kleinere Namen", fontUp:"Größere Namen", fit:"Einpassen", zoomIn:"Vergrößern", zoomOut:"Verkleinern", print:"Drucken", more:"Mehr",
+  view:"Ansicht", names:"Gästenamen", nm_full:"Voll", nm_short:"Kurz", nm_initials:"Initialen", nameSize:"Namensgröße", numSize:"Größe der Tischnummern", zoomLbl:"Zoom", undo:"Rückgängig", redo:"Wiederholen", tUndo:"Rückgängig gemacht", tRedo:"Wiederholt", tNumSize:"Tischnummern {n}%", mRound:"＋ Runder Tisch", holdToMove:"Um einen Tisch oder ein Objekt zu verschieben, eine halbe Sekunde gedrückt halten und dann ziehen. Sonst frei ziehen, um sich im Raum zu bewegen.",
   tools:"Tische & Fläche", addRound:"＋ Runder Tisch", addHead:"＋ Brauttisch", decor:"🛋 Deko", autoSeat:"✨ Auto-Füllen", floor:"Boden",
   guests:"Gäste", unseatedN:"{n} ohne Platz", searchPh:"Namen suchen…", all:"Alle", addGroup:"＋ Gruppe", addGroupTitle:"Neue Gruppe",
   addNames:"Namen hinzufügen", namesPh:"Ein Name pro Zeile…", namesHint:"Kommen in die gewählte Gruppe · Strg+Enter zum Hinzufügen", namesTo:"Neue Namen kommen in: {g} · Strg+Enter", addToList:"Zur Liste hinzufügen",
@@ -747,7 +780,7 @@ function defaultState(){
   const names=T.groupsDefault||T_ALL.el.groupsDefault;
   const groups = names.map((n,i)=>({id:"grp"+(i+1), name:n, color:GROUP_PALETTE[i]}));
   return { _uid:2001, tables, guests:{}, groups, activeGroupId:null, features:defaultFeatures(),
-           seatFontScale:1, stage:{w:2100,h:1400}, stageMaterial:"grass", layoutVersion:LAYOUT_VERSION };
+           seatFontScale:1, tableFontScale:1, nameMode:"full", stage:{w:2100,h:1400}, stageMaterial:"grass", layoutVersion:LAYOUT_VERSION };
 }
 // The lab starts with a realistic demo wedding so there's something to play with immediately.
 function labState(){
@@ -783,7 +816,30 @@ function ensureProfiles(){
   try{ localStorage.setItem(PROFILES_KEY, JSON.stringify(p)); }catch(e){}  // persist so we don't re-migrate on next load
   return p;
 }
-function save(){ try{ localStorage.setItem(planKey(profiles.activeId), JSON.stringify(state)); }catch(e){} scheduleCloudPush(); }
+// ---------- save + undo / redo (one snapshot per saved change; the stacks reset when another plan is loaded) ----------
+let undoStack=[], redoStack=[], lastJSON=null;
+function save(opts){
+  const now=JSON.stringify(state);
+  if(lastJSON!==null && now!==lastJSON && !(opts&&opts.noHistory)){ undoStack.push(lastJSON); if(undoStack.length>60) undoStack.shift(); redoStack.length=0; }
+  lastJSON=now;
+  try{ localStorage.setItem(planKey(profiles.activeId), now); }catch(e){}
+  scheduleCloudPush(); updateUndoButtons();
+}
+function resetHistory(){ undoStack=[]; redoStack=[]; lastJSON=JSON.stringify(state); updateUndoButtons(); }
+function updateUndoButtons(){
+  ["undoBtn","mbUndo"].forEach(id=>{ const b=$(id); if(b) b.disabled=!undoStack.length; });
+  ["redoBtn","mbRedo"].forEach(id=>{ const b=$(id); if(b) b.disabled=!redoStack.length; });
+}
+function restoreSnapshot(json){
+  const s=sanitizePlan(JSON.parse(json)); if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s);
+  setPick(null); dragData=null; hideSug();
+  state=s; uid=Math.max(uid, state._uid||0); fontScale=state.seatFontScale||1;
+  applyStage(); $("stageFloor").value=state.stageMaterial||"grass";
+  if(focusId!=null && !state.tables.some(t=>t.id===focusId)) unfocusTable();
+  renderAll();
+}
+function undo(){ if(!undoStack.length) return; const cur=JSON.stringify(state); const j=undoStack.pop(); redoStack.push(cur); restoreSnapshot(j); lastJSON=j; save({noHistory:true}); toast(tr("tUndo")); }
+function redo(){ if(!redoStack.length) return; const cur=JSON.stringify(state); const j=redoStack.pop(); undoStack.push(cur); restoreSnapshot(j); lastJSON=j; save({noHistory:true}); toast(tr("tRedo")); }
 // Version-aware migration — keeps guests / groups / seat assignments (and, from v4 on, table positions).
 function migrateLayout(s){
   const from=s.layoutVersion||0;
@@ -807,8 +863,15 @@ function assignedGuestIds(){ const set=new Set(); state.tables.forEach(t=>t.seat
 function guestName(id){ return state.guests[id]?.name ?? "?"; }
 function guestGroup(id){ const gid=state.guests[id]?.groupId; return gid? state.groups.find(g=>g.id===gid) : null; }
 function guestColor(id){ const g=guestGroup(id); return g? g.color : "#7e6d5f"; }
+// How a name shows on the seat pill: full «Ανδρέας Σταμελάκης», short «Ανδρέας Σ.», initials «Α.Σ.» (colours stay).
+function initialOf(w){ const c=[...w][0]; return c? c.toUpperCase()+"." : ""; }
+function displayName(id){
+  const n=guestName(id), mode=state.nameMode||"full"; if(mode==="full") return n;
+  const parts=n.trim().split(/\s+/).filter(Boolean); if(parts.length<2) return n;
+  return mode==="short" ? parts[0]+" "+initialOf(parts[1]) : parts.map(initialOf).join("");
+}
 function hexTint(hex){ return hex+"1f"; }
-function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._to); t._to=setTimeout(()=>t.classList.remove("show"),1700); }
+function toast(msg,ms){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._to); t._to=setTimeout(()=>t.classList.remove("show"),ms||1700); }
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function norm(s){ return String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim(); }
 // Colours and icons from cloud/imported plans are interpolated into HTML, so clamp them to safe shapes
@@ -848,6 +911,8 @@ function sanitizePlan(s){ if(!s||typeof s!=="object") return s;
     s.stage.w=clamp(Math.round(s.stage.w),700,20000); s.stage.h=clamp(Math.round(s.stage.h),600,20000);
     if(!isMaterial(s.stageMaterial)) s.stageMaterial="grass";
     if(!(s.seatFontScale>=0.6&&s.seatFontScale<=2)) s.seatFontScale=1;
+    if(!(s.tableFontScale>=0.6&&s.tableFontScale<=2.4)) s.tableFontScale=1;
+    if(!["full","short","initials"].includes(s.nameMode)) s.nameMode="full";
     if(s.activeGroupId!=null && !s.groups.some(g=>g.id===s.activeGroupId)) s.activeGroupId=null;
   return s; }
 function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
@@ -921,9 +986,10 @@ function buildSeat(t,i,relx,rely,fs,seatH){
   seat.dataset.tableId=t.id; seat.dataset.seatIndex=i;
   if(gid){
     const col=guestColor(gid);
-    seat.style.background=col; seat.style.width=seatWidthFor(guestName(gid),fs)+"px";
+    const shown=displayName(gid);
+    seat.style.background=col; seat.style.width=seatWidthFor(shown,fs)+"px";
     if(gStatus(gid)!=="confirmed"){ seat.style.borderStyle="dashed"; seat.style.borderColor="rgba(255,255,255,.9)"; seat.style.backgroundClip="padding-box"; }   // not-yet-confirmed: white dashes inside the pill, visible on any floor
-    seat.innerHTML=`<span class="nm">${escapeHtml(guestName(gid))}</span>`;
+    seat.innerHTML=`<span class="nm">${escapeHtml(shown)}</span>`;
     seat.title=guestName(gid)+(guestGroup(gid)?` · ${guestGroup(gid).name}`:"")+statusTitle(gid);
     seat.draggable=true; seat.dataset.guestId=gid;
   }else{
@@ -947,7 +1013,7 @@ function renderRoundTable(t, wrap){
   disc.title=tr("tableTip");
   disc.querySelector(".tgear").addEventListener("click",e=>{ e.stopPropagation(); openMenu(t.id,e); });
   disc.addEventListener("contextmenu",e=>{ e.preventDefault(); openMenu(t.id,e); });
-  makeDraggable(disc, wrap, t, ()=>renderTables(), ()=>focusTable(t.id));
+  makeDraggable(disc, wrap, t, ()=>renderTables([t.id]), ()=>{ focusTable(t.id); hintHold(); });
   wrap.appendChild(disc);
   for(let i=0;i<t.capacity;i++){
     const a=(i/t.capacity)*2*Math.PI - Math.PI/2;
@@ -976,7 +1042,7 @@ function renderHeadTable(t, wrap){
   disc.title=tr("tableTip");
   disc.querySelector(".tgear").addEventListener("click",e=>{ e.stopPropagation(); openMenu(t.id,e); });
   disc.addEventListener("contextmenu",e=>{ e.preventDefault(); openMenu(t.id,e); });
-  makeDraggable(disc, wrap, t, ()=>renderTables(), ()=>focusTable(t.id));
+  makeDraggable(disc, wrap, t, ()=>renderTables([t.id]), ()=>{ focusTable(t.id); hintHold(); });
   wrap.appendChild(disc);
   // main row on the FAR side of the table, so the couple sits behind the table facing the dance floor
   for(let i=0;i<g.top;i++){
@@ -989,15 +1055,23 @@ function renderHeadTable(t, wrap){
   if(ri<t.capacity) wrap.appendChild(buildSeat(t,ri,  (g.tableW/2)+endGap, 0, g.fs, g.seatH));
   addTableRotateHandle(wrap, t, g.tableH/2 + g.seatH + 30);
 }
-function renderTables(){
-  stage.querySelectorAll(".table").forEach(e=>e.remove());
-  state.tables.forEach(t=>{
-    const wrap=document.createElement("div");
-    wrap.className="table"+(t.id===focusId?" focused":""); wrap.style.left=t.x+"px"; wrap.style.top=t.y+"px"; wrap.dataset.tableId=t.id;
-    if(t.shape==="head") renderHeadTable(t,wrap); else renderRoundTable(t,wrap);
-    const ext=tableExtent(t); wrap.style.setProperty("--frx", Math.round(ext.rx+4)+"px"); wrap.style.setProperty("--fry", Math.round(ext.ry+4)+"px");
-    stage.appendChild(wrap);
-  });
+function buildTableWrap(t){
+  const wrap=document.createElement("div");
+  wrap.className="table"+(t.id===focusId?" focused":""); wrap.style.left=t.x+"px"; wrap.style.top=t.y+"px"; wrap.dataset.tableId=t.id;
+  wrap.style.setProperty("--tfs", String(state.tableFontScale||1));
+  if(t.shape==="head") renderHeadTable(t,wrap); else renderRoundTable(t,wrap);
+  const ext=tableExtent(t); wrap.style.setProperty("--frx", Math.round(ext.rx+4)+"px"); wrap.style.setProperty("--fry", Math.round(ext.ry+4)+"px");
+  return wrap;
+}
+// Re-render every table, or only the ids in `only` (a seat change touches one or two tables — not 300 pills).
+function renderTables(only){
+  if(only){
+    only.forEach(id=>{ const t=state.tables.find(x=>x.id===id); const old=stage.querySelector(`.table[data-table-id="${id}"]`);
+      if(!t){ if(old) old.remove(); return; } const wrap=buildTableWrap(t); if(old) old.replaceWith(wrap); else stage.appendChild(wrap); });
+  } else {
+    stage.querySelectorAll(".table").forEach(e=>e.remove());
+    state.tables.forEach(t=>stage.appendChild(buildTableWrap(t)));
+  }
   updateStats();
   if(focusId!=null) renderFocus();
 }
@@ -1218,7 +1292,7 @@ function loadActive(){
   unfocusTable();
   state=loadPlan(profiles.activeId)||defaultState(); uid=state._uid||2001; fontScale=state.seatFontScale||1;
   applyStage(); $("stageFloor").value=state.stageMaterial||"grass";
-  renderProfiles(); renderAll();
+  renderProfiles(); renderAll(); resetHistory();
   setTimeout(()=>{ zoom=initialZoom(); applyZoom(); },30);
 }
 function switchProfile(id){ save();
@@ -1281,8 +1355,13 @@ function setNav(open){ document.body.classList.toggle("nav-open", !!open); if(op
 $("navBtn").addEventListener("click",e=>{ e.stopPropagation(); setNav(!document.body.classList.contains("nav-open")); });
 $("navScrim").addEventListener("click",()=>setNav(false));
 $("mbGuests").addEventListener("click",()=>setNav(true));
-$("mbAddTable").addEventListener("click",()=>addRoundTable());
-$("mbFit").addEventListener("click",()=>{ zoom=clamp(fitZoom(),0.2,2.5); applyZoom(); });
+$("mbUndo").addEventListener("click",undo); $("mbRedo").addEventListener("click",redo);
+$("undoBtn").addEventListener("click",undo); $("redoBtn").addEventListener("click",redo);
+$("mbZoomOut").addEventListener("click",()=>zoomBy(1/1.2)); $("mbZoomIn").addEventListener("click",()=>zoomBy(1.2));
+$("mbView").addEventListener("click",e=>{ e.stopPropagation(); openViewMenu(e.currentTarget); });
+$("viewBtn").addEventListener("click",e=>{ e.stopPropagation(); openViewMenu(e.currentTarget); });
+// One-time hint the first time a touch user taps a table: hold to move, drag elsewhere to pan.
+function hintHold(){ if(!isTouch) return; try{ if(localStorage.getItem("weddingSeatingPlanner.hint.hold")) return; localStorage.setItem("weddingSeatingPlanner.hint.hold","1"); }catch(e){} toast(tr("holdToMove"),5000); }
 
 // ---- tap to place: HTML5 drag & drop never fires on touch, so this is the phone's way to seat anyone ----
 let pick=null;   // {type,guestId,from,tableId,seatIndex}
@@ -1308,25 +1387,30 @@ function renderPickBar(){
 function placePick(tableId,seatIndex){ const p=pick; setPick(null); placeGuestInSeat(p,tableId,seatIndex); }
 
 // ---- pinch to zoom on the canvas (two fingers) ----
+// While a zoom gesture runs, the stage gets will-change:transform so the compositor scales a cached layer
+// instead of re-painting 2100×1400 px of floor on every frame.
+let zoomingTimer=null;
+function markZooming(){ document.body.classList.add("zooming"); clearTimeout(zoomingTimer); zoomingTimer=setTimeout(()=>document.body.classList.remove("zooming"),450); }
 (function(){
   const wrap=stagewrap;
   const dist=t=>Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY);
   const mid =t=>({ x:(t[0].clientX+t[1].clientX)/2, y:(t[0].clientY+t[1].clientY)/2 });
-  let base=null;
+  let base=null, pending=null, raf=null;
   wrap.addEventListener("touchstart",e=>{
     if(e.touches.length!==2){ base=null; return; }
+    if(activeDragCancel && !pointerGesture) activeDragCancel();   // a second finger cancels a pending long-press
     if(pointerGesture){ base=null; return; }
     const m=mid(e.touches), r=wrap.getBoundingClientRect();
     base={ d:dist(e.touches)||1, z:zoom, cx:(wrap.scrollLeft+m.x-r.left)/zoom, cy:(wrap.scrollTop+m.y-r.top)/zoom };
+    markZooming();
   },{passive:true});
   wrap.addEventListener("touchmove",e=>{
     if(!base||e.touches.length!==2) return;
     e.preventDefault();
-    zoom=clamp(base.z*dist(e.touches)/base.d, 0.2, 2.5);
-    applyZoom();
     const m=mid(e.touches), r=wrap.getBoundingClientRect();
-    wrap.scrollLeft=base.cx*zoom-(m.x-r.left);
-    wrap.scrollTop =base.cy*zoom-(m.y-r.top);
+    pending={ z:clamp(base.z*dist(e.touches)/base.d, 0.2, 2.5), mx:m.x-r.left, my:m.y-r.top };
+    if(!raf) raf=requestAnimationFrame(()=>{ raf=null; const p=pending; if(!p||!base) return; markZooming();   // one layout per frame, not per touch event
+      zoom=p.z; applyZoom(); wrap.scrollLeft=base.cx*zoom-p.mx; wrap.scrollTop=base.cy*zoom-p.my; });
   },{passive:false});
   const end=e=>{ if(e.touches.length<2) base=null; };
   wrap.addEventListener("touchend",end,{passive:true});
@@ -1335,12 +1419,14 @@ function placePick(tableId,seatIndex){ const p=pick; setPick(null); placeGuestIn
 // ---- ctrl/⌘ + wheel zooms around the cursor (desktop) ----
 stagewrap.addEventListener("wheel",e=>{
   if(!(e.ctrlKey||e.metaKey)) return;
-  e.preventDefault();
+  e.preventDefault(); markZooming();
   const r=stagewrap.getBoundingClientRect(), m=isNarrow()?12:24;
   const cx=(stagewrap.scrollLeft+e.clientX-r.left-m)/zoom, cy=(stagewrap.scrollTop+e.clientY-r.top-m)/zoom;
   zoom=clamp(zoom*(e.deltaY<0?1.1:0.9), 0.2, 2.5); applyZoom();
   stagewrap.scrollLeft=m+cx*zoom-(e.clientX-r.left); stagewrap.scrollTop=m+cy*zoom-(e.clientY-r.top);
 },{passive:false});
+// Zoom buttons keep the centre of the visible floor where it is.
+function zoomBy(f){ const c=visibleCenter(); markZooming(); viewTo(c.x, c.y, clamp(zoom*f, 0.2, 2.5), false); }
 window.addEventListener("resize",()=>applyZoom());
 
 // ============================================================
@@ -1373,7 +1459,7 @@ function placeGuestInSeat(drag, tableId, seatIndex){
   }else{
     table.seats[seatIndex]=drag.guestId;
   }
-  save(); renderTables(); renderPool();
+  save(); renderTables([tableId, drag.tableId].filter(x=>x!=null)); renderPool();
 }
 const poolEl=$("pool");
 poolEl.addEventListener("dragover",e=>{ if(dragData&&dragData.type==="guest"){ e.preventDefault(); poolEl.classList.add("dragover"); }});
@@ -1383,25 +1469,42 @@ poolEl.addEventListener("drop",e=>{ e.preventDefault(); poolEl.classList.remove(
 // ============================================================
 //  MOVE (smooth pointer dragging — moves the element, no rebuild until done)
 // ============================================================
+// Mouse: grab and drag at once. Touch: a finger on an object PANS the floor (touch-action pan-x pan-y);
+// holding still for ~⅓ s "lifts" the object (haptic tick + glow) and only then does the finger move it.
+let activeDragCancel=null;   // cancels a pending hold / active drag (a second finger = pinch)
 function makeDraggable(handleEl, moveEl, obj, onEnd, onTap){
   handleEl.addEventListener("pointerdown",e=>{
     if(e.target.closest(".tgear")||e.target.closest(".rz")||e.target.closest(".rot-h")) return;
     if(e.button!==0) return;
-    e.preventDefault(); e.stopPropagation();
-    handleEl.setPointerCapture(e.pointerId); pointerGesture=true;
-    const sx=e.clientX, sy=e.clientY, ox=obj.x, oy=obj.y; let moved=false;
-    const slop=e.pointerType==="touch"?10:4;   // a thumb rolls a few px during a tap — don't turn that into a drag
+    const touch=e.pointerType==="touch";
+    e.stopPropagation(); if(!touch) e.preventDefault();
+    const sx=e.clientX, sy=e.clientY, ox=obj.x, oy=obj.y, t0=performance.now();
+    let moved=false, lifted=false, done=false, holdTimer=null;
+    const slop=touch?10:4;
     const maxX=(state.stage?state.stage.w:1700)-20, maxY=(state.stage?state.stage.h:1360)-20;
+    function lift(){ if(done||lifted) return; lifted=true; pointerGesture=true; try{ handleEl.setPointerCapture(e.pointerId); }catch(x){} moveEl.classList.add("lifted");
+      if(touch&&navigator.vibrate){ try{ navigator.vibrate(12); }catch(x){} } }
     function mv(ev){
-      const dx=(ev.clientX-sx)/zoom, dy=(ev.clientY-sy)/zoom;
-      if(Math.abs(ev.clientX-sx)>slop||Math.abs(ev.clientY-sy)>slop) moved=true;
+      const ddx=ev.clientX-sx, ddy=ev.clientY-sy;
+      if(!lifted){ if(Math.abs(ddx)>slop||Math.abs(ddy)>slop){ moved=true; clearTimeout(holdTimer); } return; }   // not lifted: the finger is panning the floor, not us
+      if(Math.abs(ddx)>slop||Math.abs(ddy)>slop) moved=true;
       if(!moved) return;
-      obj.x=clamp(ox+dx, 20, maxX); obj.y=clamp(oy+dy, 20, maxY);
+      obj.x=clamp(ox+ddx/zoom, 20, maxX); obj.y=clamp(oy+ddy/zoom, 20, maxY);
       moveEl.style.left=obj.x+"px"; moveEl.style.top=obj.y+"px";
     }
-    function up(ev){ pointerGesture=false; try{ handleEl.releasePointerCapture(e.pointerId); }catch(x){} handleEl.removeEventListener("pointermove",mv); handleEl.removeEventListener("pointerup",up); handleEl.removeEventListener("pointercancel",up);
-      if(moved){ save(); if(onEnd)onEnd(); } else if(onTap && ev.type!=="pointercancel") onTap(); }
-    handleEl.addEventListener("pointermove",mv); handleEl.addEventListener("pointerup",up); handleEl.addEventListener("pointercancel",up);
+    function tm(ev){ if(lifted) ev.preventDefault(); }   // once lifted, the finger must not scroll the floor
+    function finish(ev, cancelled){
+      if(done) return; done=true; clearTimeout(holdTimer); pointerGesture=false; activeDragCancel=null; moveEl.classList.remove("lifted");
+      try{ handleEl.releasePointerCapture(e.pointerId); }catch(x){}
+      handleEl.removeEventListener("pointermove",mv); handleEl.removeEventListener("pointerup",up); handleEl.removeEventListener("pointercancel",up); handleEl.removeEventListener("touchmove",tm);
+      if(cancelled){ if(lifted&&moved){ obj.x=ox; obj.y=oy; moveEl.style.left=ox+"px"; moveEl.style.top=oy+"px"; } return; }
+      if(lifted&&moved){ save(); if(onEnd)onEnd(); }
+      else if(!moved && onTap && ev && ev.type!=="pointercancel") onTap();
+    }
+    function up(ev){ finish(ev,false); }
+    activeDragCancel=()=>finish(null,true);
+    handleEl.addEventListener("pointermove",mv); handleEl.addEventListener("pointerup",up); handleEl.addEventListener("pointercancel",up); handleEl.addEventListener("touchmove",tm,{passive:false});
+    if(touch) holdTimer=setTimeout(lift, 320); else lift();
   });
 }
 // Resize a feature from its bottom-right corner, keeping the top-left corner fixed (x/y are the centre).
@@ -1480,7 +1583,7 @@ function openMenu(tableId, evt){
   showPopover(menu,evt);
 }
 function closeMenu(){ menu.style.display="none"; activeMenuTableId=null; }
-$("menuLabel").addEventListener("input",e=>{ const t=state.tables.find(x=>x.id===activeMenuTableId); if(!t)return; t.label=e.target.value; save(); renderTables(); });
+$("menuLabel").addEventListener("input",e=>{ const t=state.tables.find(x=>x.id===activeMenuTableId); if(!t)return; t.label=e.target.value; save(); renderTables([t.id]); });
 $("menuLabel").addEventListener("keydown",e=>{ e.stopPropagation(); if(e.key==="Enter"||e.key==="Escape") closeMenu(); });
 menu.querySelectorAll(".caps button").forEach(b=>b.addEventListener("click",()=>setCapacity(+b.dataset.cap)));
 $("menuCapCustom").addEventListener("change",e=>{ const v=parseInt(e.target.value,10); if(v>=1&&v<=30) setCapacity(v); });
@@ -1489,7 +1592,7 @@ function setCapacity(n){
   if(t.shape==="head") n=Math.max(3,n);
   const old=t.seats, newSeats=Array(n).fill(null); let bumped=0;
   for(let i=0;i<old.length;i++){ if(old[i]!=null){ if(i<n)newSeats[i]=old[i]; else{ const free=newSeats.indexOf(null); if(free>=0)newSeats[free]=old[i]; else bumped++; } } }
-  t.capacity=n; t.seats=newSeats; save(); renderTables();
+  t.capacity=n; t.seats=newSeats; save(); renderTables([t.id]);
   menu.querySelectorAll(".caps button").forEach(bt=>bt.classList.toggle("active",+bt.dataset.cap===n));
   if(bumped) toast(tr("tBumped",{n:bumped}));
   renderPool();
@@ -1508,6 +1611,7 @@ document.addEventListener("click",e=>{
   const pm=$("profilemenu"); if(pm.style.display==="block" && !pm.contains(e.target) && e.target.id!=="profMore") closeProfileMenu();
   const mm=$("moremenu"); if(mm.style.display==="block" && !mm.contains(e.target) && !e.target.closest("#moreBtn")) mm.style.display="none";
   const fm=$("fillmenu"); if(fm.style.display==="block" && !fm.contains(e.target) && !e.target.closest("#fFill")) fm.style.display="none";
+  const vm=$("viewmenu"); if(vm.style.display==="block" && !vm.contains(e.target) && !e.target.closest("#viewBtn,#mbView")) vm.style.display="none";
 });
 
 // ============================================================
@@ -1595,7 +1699,7 @@ function renderFocus(){
         commitRow(tb,i,v,null);
       },120);
     });
-    row.querySelector(".fx").addEventListener("click",()=>{ const tb=focusedTable(); if(tb&&tb.seats[i]){ tb.seats[i]=null; save(); renderTables(); renderPool(); } });
+    row.querySelector(".fx").addEventListener("click",()=>{ const tb=focusedTable(); if(tb&&tb.seats[i]){ tb.seats[i]=null; save(); renderTables([tb.id]); renderPool(); } });
     fSeats.appendChild(row);
   }
   fSeats.scrollTop=st;
@@ -1617,7 +1721,7 @@ function onRowKey(e,i,inp){
     const v=inp.value.trim();
     // a suggestion is only taken when the user typed something or arrowed onto it — never on an untouched row
     const choice=(sug&&sug.i===i&&sug.items.length&&(v||sug.nav))?sug.items[sug.sel]:null; hideSug();
-    if(!v && tb.seats[i]){ tb.seats[i]=null; save(); renderTables(); renderPool(); }   // Enter on an emptied seat = unseat
+    if(!v && tb.seats[i]){ tb.seats[i]=null; save(); renderTables([tb.id]); renderPool(); }   // Enter on an emptied seat = unseat
     else if(choice&&choice.id!=="__new") commitRow(tb,i,"",choice.id);
     else commitRow(tb,i,v,null);
     renderFocus();
@@ -1638,7 +1742,7 @@ function commitRow(tb,i,text,chosenId){
       changed=true;
     }
   }
-  if(changed){ save(); renderTables(); renderPool(); renderGroups(); }
+  if(changed){ save(); renderTables([tb.id]); renderPool(); renderGroups(); }
   return changed;
 }
 // Suggestions under the active row: unseated guests matching the text (active group first when empty).
@@ -1691,7 +1795,7 @@ $("fSettings").addEventListener("click",e=>{ if(focusId!=null) openMenu(focusId,
 $("fHandle").addEventListener("click",()=>focusEl.classList.toggle("tall"));
 $("fName").addEventListener("click",()=>{ if(isNarrow()) focusEl.classList.toggle("tall"); });
 $("fClear").addEventListener("click",()=>{ const t=focusedTable(); if(!t) return; if(!t.seats.some(Boolean)) return;
-  if(!confirm(tr("clearConfirm",{n:t.label}))) return; t.seats=t.seats.map(()=>null); save(); renderTables(); renderPool(); toast(tr("tCleared")); });
+  if(!confirm(tr("clearConfirm",{n:t.label}))) return; t.seats=t.seats.map(()=>null); save(); renderTables([t.id]); renderPool(); toast(tr("tCleared")); });
 $("fFill").addEventListener("click",e=>{
   const t=focusedTable(); if(!t) return;
   const un=unseatedIds(); const per={}; un.forEach(id=>{ const g=state.guests[id].groupId||""; per[g]=(per[g]||0)+1; });
@@ -1705,7 +1809,7 @@ function fillFrom(t, gid){
   let ids=unseatedIds(); if(gid) ids=ids.filter(id=>state.guests[id].groupId===gid);
   if(!ids.length){ toast(tr("fillNone")); return; }
   let k=0; for(let i=0;i<t.capacity&&k<ids.length;i++){ if(!t.seats[i]) t.seats[i]=ids[k++]; }
-  save(); renderTables(); renderPool(); renderGroups(); toast(tr("filled",{n:k}));
+  save(); renderTables([t.id]); renderPool(); renderGroups(); toast(tr("filled",{n:k}));
 }
 // Clicking bare floor / canvas background closes the names panel (and, with a mouse, drops a picked guest —
 // a finger that misses a small seat must not lose the pick). A tap that merely dismisses a popover does nothing else.
@@ -1716,6 +1820,8 @@ stagewrap.addEventListener("click",e=>{
   unfocusTable();
 });
 document.addEventListener("keydown",e=>{
+  const tag=(e.target&&e.target.tagName)||""; const typing=tag==="INPUT"||tag==="TEXTAREA"||tag==="SELECT"||(e.target&&e.target.isContentEditable);
+  if((e.ctrlKey||e.metaKey)&&!typing){ const k=e.key.toLowerCase(); if(k==="z"&&!e.shiftKey){ e.preventDefault(); undo(); return; } if(k==="y"||(k==="z"&&e.shiftKey)){ e.preventDefault(); redo(); return; } }
   if(e.key!=="Escape") return;
   if(document.querySelector(".modal-back.open")){ document.querySelectorAll(".modal-back.open").forEach(m=>m.classList.remove("open")); return; }
   if(pick){ setPick(null); return; }
@@ -1834,14 +1940,14 @@ function mergeGuestList(data){
 $("moreBtn").addEventListener("click",e=>{
   const m=$("moremenu");
   const items=[]; if(!IS_LAB) items.push(["share",tr("mShare")]); items.push(["guests",tr("mImportGuests")]);
-  if(isNarrow()) items.push(["sep"],["newplan","＋ "+tr("newPlan")],["planmore","✎ "+tr("planMore")],["sep"],["head",tr("mHead")],["decor",tr("mDecor")],["auto",tr("mAuto")],["sep"],["fontup","A＋ "+tr("fontUp")],["fontdown","A− "+tr("fontDown")]);
+  if(isNarrow()) items.push(["sep"],["newplan","＋ "+tr("newPlan")],["planmore","✎ "+tr("planMore")],["sep"],["round",tr("mRound")],["head",tr("mHead")],["decor",tr("mDecor")],["auto",tr("mAuto")]);
   items.push(["sep"],["export",tr("mExport")],["import",tr("mImport")],["print",tr("mPrint")],["sep"],["reset",tr("mReset")]);
   if(!IS_LAB) items.push(["sep"],["lang-el","ΕΛ · Ελληνικά"],["lang-en","EN · English"],["lang-de","DE · Deutsch"]);
   m.innerHTML=items.map(([a,l])=>a==="sep"?`<div class="gm-sep"></div>`:`<div class="gm-item${a==="reset"?" danger":""}${a==="lang-"+LANG?" on":""}" data-act="${a}">${escapeHtml(l)}</div>`).join("");
   m.querySelectorAll(".gm-item").forEach(it=>it.onclick=ev=>{ ev.stopPropagation(); m.style.display="none"; const a=it.dataset.act;
     if(a==="share") openCloud(); else if(a==="guests") importGuestList(); else if(a==="head") $("addHeadBtn").click(); else if(a==="decor") openDecor();
     else if(a==="newplan") newProfile(); else if(a==="planmore") openProfileMenu(anchorOf($("moreBtn")));
-    else if(a==="fontup") setFontScale(fontScale+0.15); else if(a==="fontdown") setFontScale(fontScale-0.15);
+    else if(a==="round") addRoundTable();
     else if(a==="auto") autoSeat(); else if(a==="export") openExport(); else if(a==="import") openImport(); else if(a==="print") buildAndPrint(); else if(a==="reset") resetPlan();
     else if(a.startsWith("lang-")){ const l=a.slice(5); location.href=({el:"seating-planner-el.html",en:"seating-planner.html",de:"seating-planner-de.html"})[l]; } });
   showPopover(m, anchorOf(e.currentTarget));
@@ -1869,7 +1975,7 @@ function interactionBusy(){
   const ae=document.activeElement;
   if(ae && (ae.tagName==="INPUT"||ae.tagName==="TEXTAREA"||ae.isContentEditable)) return true;
   if(document.querySelector(".modal-back.open")) return true;
-  for(const id of ["groupmenu","guesteditor","tablemenu","featuremenu","profilemenu","moremenu","fillmenu"]){ const el=$(id); if(el && el.style.display==="block") return true; }
+  for(const id of ["groupmenu","guesteditor","tablemenu","featuremenu","profilemenu","moremenu","fillmenu","viewmenu"]){ const el=$(id); if(el && el.style.display==="block") return true; }
   return false;
 }
 async function cloudCreate(){
@@ -1975,7 +2081,7 @@ function applyPulledPlan(cur, d){
   if(d.name) cur.name=d.name; cur.cloudUpdated=d.updated; saveProfilesIdx();
   try{ localStorage.setItem(planKey(cur.id), JSON.stringify(state)); }catch(e){}
   applyStage(); $("stageFloor").value=state.stageMaterial||"grass";
-  renderProfiles(); renderAll();
+  renderProfiles(); renderAll(); resetHistory();
   if(focusId!=null && focusedTable()) requestAnimationFrame(()=>focusTable(focusId));   // keep the open table in view
   else setTimeout(()=>{ zoom=initialZoom(); applyZoom(); },30);
 }
@@ -2088,8 +2194,27 @@ function buildAndPrint(){
 //  TEXT SIZE + ZOOM
 // ============================================================
 function setFontScale(v){ fontScale=clamp(v,0.6,2.0); state.seatFontScale=fontScale; save(); renderTables(); toast(tr("tFont",{n:Math.round(fontScale*100)})); }
-$("fontUp").addEventListener("click",()=>setFontScale(fontScale+0.15));
-$("fontDown").addEventListener("click",()=>setFontScale(fontScale-0.15));
+function setTableFontScale(v){ state.tableFontScale=clamp(v,0.6,2.4); save(); renderTables(); toast(tr("tNumSize",{n:Math.round(state.tableFontScale*100)})); }
+function setNameMode(m){ if(!["full","short","initials"].includes(m)) return; state.nameMode=m; save(); renderTables(); }
+// The "Aa" view menu: name display · name size · table-number size · zoom — same on PC and phone.
+function renderViewMenu(){
+  const m=$("viewmenu"); const mode=state.nameMode||"full"; const tfs=state.tableFontScale||1;
+  m.innerHTML=`<div class="gm-cap">${escapeHtml(tr("names"))}</div>
+    <div class="vrow"><div class="seg" id="vmNames">${["full","short","initials"].map(k=>`<button data-m="${k}" class="${mode===k?"on":""}">${escapeHtml(tr({full:"nm_full",short:"nm_short",initials:"nm_initials"}[k]))}</button>`).join("")}</div></div>
+    <div class="gm-cap">${escapeHtml(tr("nameSize"))}</div>
+    <div class="vrow"><button class="ibtn" data-a="fdown">A−</button><span class="pct">${Math.round(fontScale*100)}%</span><button class="ibtn" data-a="fup">A＋</button></div>
+    <div class="gm-cap">${escapeHtml(tr("numSize"))}</div>
+    <div class="vrow"><button class="ibtn" data-a="ndown">1−</button><span class="pct">${Math.round(tfs*100)}%</span><button class="ibtn" data-a="nup">1＋</button></div>
+    <div class="gm-cap">${escapeHtml(tr("zoomLbl"))}</div>
+    <div class="vrow"><button class="ibtn" data-a="zout">−</button><span class="pct">${Math.round(zoom*100)}%</span><button class="ibtn" data-a="zin">＋</button><button class="ibtn" data-a="fit">${escapeHtml(tr("fit"))}</button></div>`;
+  m.querySelectorAll("#vmNames button").forEach(b=>b.onclick=ev=>{ ev.stopPropagation(); setNameMode(b.dataset.m); renderViewMenu(); });
+  m.querySelectorAll("[data-a]").forEach(b=>b.onclick=ev=>{ ev.stopPropagation(); const a=b.dataset.a;
+    if(a==="fdown") setFontScale(fontScale-0.15); else if(a==="fup") setFontScale(fontScale+0.15);
+    else if(a==="ndown") setTableFontScale((state.tableFontScale||1)-0.2); else if(a==="nup") setTableFontScale((state.tableFontScale||1)+0.2);
+    else if(a==="zout") zoomBy(1/1.2); else if(a==="zin") zoomBy(1.2); else if(a==="fit"){ zoom=clamp(fitZoom(),0.2,2.5); applyZoom(); }
+    renderViewMenu(); });
+}
+function openViewMenu(anchorEl){ const m=$("viewmenu"); if(m.style.display==="block"){ m.style.display="none"; return; } renderViewMenu(); showPopover(m, anchorOf(anchorEl)); }
 function fitZoom(){ const b=visibleBox(); return Math.min(1,(b.w-60)/state.stage.w,(b.h-80)/state.stage.h); }
 // Opening view: the 0.5 floor keeps names readable on a desktop; a phone fits the whole space instead.
 function initialZoom(){ return Math.min(1, Math.max(fitZoom(), isNarrow()?0.2:0.5)); }
@@ -2099,8 +2224,8 @@ function applyZoom(){
   stage.style.margin=`${m}px ${Math.round(m+w*(zoom-1))}px ${Math.round(m+h*(zoom-1))}px ${m}px`;
   $("zoomLabel").textContent=Math.round(zoom*100)+"%";
 }
-$("zoomIn").addEventListener("click",()=>{ zoom=Math.min(2.5,zoom+0.1); applyZoom(); });
-$("zoomOut").addEventListener("click",()=>{ zoom=Math.max(0.2,zoom-0.05); applyZoom(); });
+$("zoomIn").addEventListener("click",()=>zoomBy(1.15));
+$("zoomOut").addEventListener("click",()=>zoomBy(1/1.15));
 $("zoomFit").addEventListener("click",()=>{ zoom=clamp(fitZoom(),0.2,2.5); applyZoom(); });
 
 // ============================================================
@@ -2113,8 +2238,22 @@ applyStage();
 const _stageResize=document.createElement("div"); _stageResize.id="stageResize"; _stageResize.title=tr("stageResizeTip");
 stage.appendChild(_stageResize); makeStageResizable(_stageResize);
 initFloorSelect(); initDecor(); renderProfiles();
-renderAll();
+renderAll(); resetHistory();
 setTimeout(()=>{ zoom=initialZoom(); applyZoom(); },50);
+// Turn each SVG texture into a plain bitmap once (canvas → JPEG data URI). Browsers re-render the SVG noise
+// filters at every zoom step, which is what made pinch-zoom crawl on phones; a bitmap just gets resampled.
+function rasterizeMaterials(){
+  const dpr=Math.min(2, window.devicePixelRatio||1); let pending=0;
+  const done=()=>{ if(--pending===0){ applyStage(); renderFeatures(); } };
+  Object.keys(MATERIALS).forEach(k=>{
+    const m=MATERIALS[k]; const uri=m.img.slice(5,-2); const [w,h]=m.size.split(" ").map(parseFloat);
+    const img=new Image(); pending++;
+    img.onload=()=>{ try{ const c=document.createElement("canvas"); c.width=Math.round(w*dpr); c.height=Math.round(h*dpr);
+        c.getContext("2d").drawImage(img,0,0,c.width,c.height); m.img='url("'+c.toDataURL("image/jpeg",0.86)+'")'; }catch(e){} done(); };
+    img.onerror=done; img.src=uri;
+  });
+}
+setTimeout(rasterizeMaterials, 0);
 // ☁ open a shared link if present, otherwise refresh the active profile from the cloud (the lab never talks to the cloud)
 if(!IS_LAB) (async()=>{ if(!(await openSharedFromURL())) await pullIfNewer(); if(getSyncCode()) await syncFromCode(); startCloudPoll(); })();
 </script>
