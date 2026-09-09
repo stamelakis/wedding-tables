@@ -13,6 +13,22 @@ Two lines in your program and Hermes can run anything it can do:
 Each value is (function, description). The description is what Hermes matches
 your speech against, so write it the way you'd say it out loud.
 
+YOUR ACTION CAN TAKE ARGUMENTS, or none at all — declare what you want and the
+rest is dropped for you:
+
+    def efka_debt():                        # takes nothing, gets nothing
+        ...
+
+    def phone_student(value: str = ""):     # "πάρε τηλέφωνο τον Γιώργο"
+        ...                                 # value = "Γιώργο"
+
+    def create_wedding(value: str = "", task: str = ""):
+        ...                                 # task = his whole sentence, if you
+                                            # need more than one word out of it
+
+`value` is the one thing he named; `task` is everything he said. Ask for
+neither, either, or both. Nothing you don't declare will ever be passed.
+
 Return a string and Hermes reads it back to you; return None and it just says
 the action is done. Raise, and it reports the error instead of pretending.
 
@@ -35,7 +51,14 @@ eventually crash:
 
 from __future__ import annotations
 
+# Bump when this file changes. Agents copy it into their own repos, and a copy
+# ten minutes stale carried two bugs the owner had already fixed — with no way
+# to tell. Hermes reports this back, so a stale copy is visible rather than
+# mysterious.
+VERSION = "2026-09-10"
+
 import atexit
+import inspect
 import json
 import os
 import queue
@@ -71,7 +94,28 @@ class Control:
         self._file = APPS_DIR / f"{_safe_name(name)}.json"
 
     # -- running a callback on the right thread --------------------------
+    @staticmethod
+    def _accepted(fn: Callable, params: dict) -> dict:
+        """Only the arguments this callback actually takes.
+
+        Hermes sends `value` (a spoken argument) and `task` (the whole
+        sentence) on every call. Passing them blindly broke every
+        zero-argument action at once — `efka_debt() got an unexpected keyword
+        argument 'value'`. Filtering here means an action declares what it
+        wants and ignores the rest, and no app has to defend itself.
+        """
+        if not params:
+            return {}
+        try:
+            signature = inspect.signature(fn)
+        except (TypeError, ValueError):
+            return {}
+        if any(p.kind is p.VAR_KEYWORD for p in signature.parameters.values()):
+            return dict(params)
+        return {k: v for k, v in params.items() if k in signature.parameters}
+
     def _invoke(self, fn: Callable, params: dict):
+        params = self._accepted(fn, params)
         if self.tk_root is None:
             return fn(**params) if params else fn()
 
@@ -156,6 +200,7 @@ class Control:
                     "port": port,
                     "token": self.token,
                     "pid": os.getpid(),
+                    "control_version": VERSION,
                     "actions": [
                         {"name": k, "describe": d}
                         for k, (_fn, d) in self.actions.items()

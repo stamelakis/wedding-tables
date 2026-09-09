@@ -285,10 +285,11 @@ def takeaseat_open_lab(**_):
 
 
 # ── Creation (only ever in OUR venues; onboarding a venue is allowed) ──────────
-def takeaseat_new_wedding(task: str = "", **_):
+def takeaseat_new_wedding(value: str = "", task: str = "", **_):
+    """`value` = the thing he named (Hermes ≥ 2026-09-10), `task` = his whole sentence; either gives the couple's name."""
     if not OWN_VENUE or OWN_VENUE not in OWN_VENUES:
         raise RuntimeError("Δεν έχει οριστεί δικό μας κτήμα για νέους γάμους — δεν γράφω σε κτήμα πελάτη.")
-    name = _name_from(task) or ("Νέος γάμος " + _dt.datetime.now().strftime("%d/%m %H:%M"))
+    name = (value or "").strip()[:80] or _name_from(task) or ("Νέος γάμος " + _dt.datetime.now().strftime("%d/%m %H:%M"))
 
     def make():
         key = _venue_key(OWN_VENUE)
@@ -304,8 +305,8 @@ def takeaseat_new_wedding(task: str = "", **_):
     return _dedupe("wedding:" + name.lower(), make)
 
 
-def takeaseat_new_venue(task: str = "", **_):
-    name = _name_from(task) or ("Νέο κτήμα " + _dt.datetime.now().strftime("%d/%m %H:%M"))
+def takeaseat_new_venue(value: str = "", task: str = "", **_):
+    name = (value or "").strip()[:80] or _name_from(task) or ("Νέο κτήμα " + _dt.datetime.now().strftime("%d/%m %H:%M"))
 
     def make():
         today = _dt.date.today()
@@ -333,7 +334,24 @@ ACTIONS = {
 }
 
 
+def _already_running(name: str) -> bool:
+    """True if another instance of this app already answers its registered port.
+    Two processes of one app share one registration file and clobber each other (logbook, 2026-09-08)."""
+    try:
+        safe = "".join(c if c.isalnum() or c in "-_" else "-" for c in name).strip("-")
+        p = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local")) / "Hermes" / "apps" / f"{safe}.json"
+        reg = json.loads(p.read_text(encoding="utf-8"))
+        if int(reg.get("pid", 0)) == os.getpid():
+            return False
+        with urllib.request.urlopen(f"http://127.0.0.1:{int(reg['port'])}/actions", timeout=2) as r:
+            return json.loads(r.read().decode("utf-8")).get("name") == name
+    except Exception:
+        return False
+
+
 if __name__ == "__main__":
+    if _already_running("TakeaSeat τραπεζολόγιο"):
+        sys.exit(0)   # the Startup shortcut and a manual launch must not both register
     expose("TakeaSeat τραπεζολόγιο", ACTIONS)
     # The console may be cp1252 (or absent under pythonw) — a print must never take the registration down.
     try:
