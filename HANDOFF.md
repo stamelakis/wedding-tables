@@ -195,7 +195,9 @@ cascade-purges its plans; venues can rotate their own key; backups encrypted at 
 - **Controls (2026-09-09)**: undo/redo (↶ ↷ in the app bar and the phone bar; Ctrl+Z / Ctrl+Y) — one snapshot per
   saved change, per plan; "Aa" view menu on both PC and phone: guest names full / short («Ανδρέας Σ.») / initials
   («Α.Σ.»), name size, table-number size, zoom. `state.nameMode` / `state.tableFontScale` are saved with the plan.
-- **Phone overview ⇄ table**: under the canvas sits a table chooser (`#tablestrip`, chips with occupancy bars).
+- **Table chooser** (`#tablestrip`, chips with occupancy bars): on PC a 176 px column right of the floor, which the
+  seat panel replaces when a table is selected (the right side is always "tables"); on phones it sits under the canvas.
+- **Phone overview ⇄ table**: under the canvas sits the table chooser.
   In the overview the canvas is sized to the floor fitted to the screen width (`layoutCanvas`) and the list takes
   the rest; tapping a chip glides onto that table and opens the seat sheet; ✕ on the sheet, "⤢ Όλα", or zooming
   all the way out return to the overview. Zooming in (>1.25× fit) grows the canvas and shrinks the list; ⌄/⌃
