@@ -1165,7 +1165,7 @@ function sanitizePlan(s){ if(!s||typeof s!=="object") return s;
     s.tables.forEach(t=>{
       t.capacity=clamp(Math.floor(+t.capacity)||10,1,30);
       t.label=String(t.label??"").slice(0,60); t.shape=(t.shape==="head")?"head":"round";
-      if(t.shape==="head" && /^💑\s/.test(t.label)){ const bare=t.label.replace(/^💑\s*/,""); if(["Νυφικό τραπέζι","Head table","Brauttisch"].includes(bare)) t.label=bare; }   // default labels stored before the emoji-free chrome (2026-09-10); self-contained: sanitizePlan runs during top-level load
+      if(t.shape==="head" && /^💑\s/.test(t.label)){ const bare=t.label.replace(/^💑\s*/,""); if(["νυφικό τραπέζι","head table","brauttisch"].includes(bare.toLowerCase())) t.label=bare; }   // default labels stored before the emoji-free chrome (2026-09-10); self-contained: sanitizePlan runs during top-level load
       if(!isNum(t.x)) t.x=200; if(!isNum(t.y)) t.y=200; if(t.rot!=null&&!isNum(t.rot)) t.rot=0;
       if(!Array.isArray(t.seats)) t.seats=[];
       t.seats=t.seats.slice(0,t.capacity).map(x=>(typeof x==="string"&&s.guests[x])?x:null);   // drop dangling guest ids
