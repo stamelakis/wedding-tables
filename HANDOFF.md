@@ -223,6 +223,30 @@ cascade-purges its plans; venues can rotate their own key; backups encrypted at 
   hidden until 8+ unseated; `body.far` (zoom < 0.4, hysteresis 0.5) shows one big number per table at overview zoom;
   empty seats drawn as small chairs; pill bottom bar, borderless app bar. Andreas explicitly wants Aa/undo/zoom in the
   bottom bar — keep them.
+- **Icons (2026-09-10)**: one monochrome stroke set lives in an inline SVG sprite at the top of `<body>` (`<symbol id="i-…">`),
+  used as `<svg class="ic"><use href="#i-name"/></svg>` in markup or `ICON("name")` in JS. `.ic{pointer-events:none}` keeps every
+  click on the button (the popover closers compare `e.target`). Dictionary labels carry NO emoji prefixes any more — a button
+  that needs an icon holds `<svg>` + `<span data-t="…">`. Text glyphs that stay: ⋯ Aa − ＋ ? ✕ and the arrows in the layer menu.
+  Cloud state: `setCloudDot` writes into `#cloudTxt` (hidden on phones) and toggles `on/err/pending` on `#cloudBtn`.
+- **Plan name on phones**: `.planname` (ellipsis) with the native `<select>` laid invisibly on top — a tap still opens the
+  phone's picker; `#appbar .spacer` is hidden ≤900px so the name gets the whole middle of the bar.
+- **Starter plan**: 1800×1400 stage, 4×3 grid centred (DEFAULT_POSITIONS), dance floor at y 1040 under row 3, head table at
+  (900,1290); grass retuned to soft sage (`texGrass`, base #8aa970). Existing plans keep their own geometry.
+- **Load-order rule (bug found 2026-09-10)**: `let state = loadPlan(...)` runs at the TOP LEVEL of the script, so every
+  `const`/`let` that sanitizePlan / migrateLayout / ensureProfiles touch must be declared ABOVE it (function declarations are
+  hoisted, consts are not — a TDZ ReferenceError is swallowed by loadPlan's try/catch and the plan silently becomes the
+  default). `isNum` and `FEATURE_KINDS` sat below it since the 2026-09-09 review pass: every LOCAL-ONLY plan (the lab, any
+  profile without a cloud id) reloaded blank; cloud-linked profiles survived only through the unsynced → force-pull path.
+  Smoke test after touching that area: save a plan, reload, check `loadError===""` in the console.
+- **Touch: one gesture per thing** (2026-09-10, Andreas: holding a name opened an edit menu on top of the move). On phones a seated
+  name is moved by HOLDING it ~⅓ s and dragging (`seatHold`, same feel as tables: lift, glow, drop on another chair = move/swap);
+  a TAP picks it (pick bar: tap a chair · edit · unseat); a long press never opens the guest editor on touch (right-click still
+  does with a mouse). Seats are `draggable` only with a mouse (iOS would start a native drag session otherwise).
+- **One-time tips** (`showTip`/`checkTips`, `weddingSeatingPlanner.tips`): a small dark card (top-right on phones, over the floor
+  on PC) shown once per device at the moment the action becomes useful: first seated name → "hold/drag a name to another chair";
+  names added to the list → "tap a name then a chair" / "drag or Auto-seat"; ≥6 guests none grouped → the dot changes the group;
+  a table becomes full → the gear changes its seats; ≥20 guests and ≥80 % seated → ⋯ → Print. Never while the tour, a modal or
+  another tip is up. Add a tip only when it answers a moment, not as a feature list.
 - **Seat sheet**: "‹ Τραπέζια" (back) replaces ✕; each row has a colour dot — on an occupied row it changes that
   guest's group, on an empty row it picks the group new names will join. "⚙ Διαχείριση ομάδων…" (also ⋯ →
   Ομάδες… and the "＋ ομάδα" chip) opens the groups manager: rename inline, palette recolour, delete, add.
