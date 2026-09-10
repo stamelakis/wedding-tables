@@ -204,12 +204,25 @@ cascade-purges its plans; venues can rotate their own key; backups encrypted at 
   collapses it (remembered per device).
 - **Guided tour**: starts automatically on a device's first visit (flag `weddingSeatingPlanner.tour.v1` in
   localStorage) and again from ⋯ → "❓ Οδηγός χρήσης" or the "?" button (PC). Two flows chosen by screen width
-  (`tourSteps()`), deliberately short after a tester found the first version exhausting (2026-09-09):
-  phone = welcome → tables list → names sheet → 👥 + hold-to-move → ⋯/done (5 cards);
-  PC = welcome → guests → seat panel → floor → ☁ + Aa → ⋯/done (6 cards; lab spotlights Aa instead of ☁).
-  Every card has a ✕ and a "Παράλειψη οδηγού" button; the welcome card's primary button is "Ξεκινάμε".
-  One or two sentences per card — if you add a step, keep it that short. Texts live in `T_ALL.<lang>.tour`.
-  Spotlight = `#tourSpot` box-shadow.
+  (`tourSteps()`). Since 2026-09-10 the tour is OPT-IN: a first visit shows one centred **welcome card**
+  (`startWelcome`/`maybeWelcome`, flag `weddingSeatingPlanner.welcome.v1`; texts `welcomeTitle`, `welcome1..3`, the link
+  line only when the profile has a cloudId) with "Ξεκινάω" and "Δείξτε μου τα βήματα" (= the spotlight tour).
+  Tour cards: phone = tables list → names sheet → 👥/hold → ⋯ (4); PC = guests → seat panel → floor → ☁ → ⋯ (5).
+  One sentence per card, every card has ✕ and "Παράλειψη οδηγού". Two testers found longer versions exhausting —
+  do not add cards or sentences. Texts live in `T_ALL.<lang>.tour`. Spotlight = `#tourSpot` box-shadow.
+- **Contextual hints** (`HINT_ENTER`, `HINT_HOLD` in localStorage): one line inside the seat sheet ("Γράψτε όνομα,
+  Enter → επόμενη θέση.") until the first new name is seated; the hold-to-move toast only fires when a finger tried to
+  drag a table and the floor panned instead (never on a tap).
+- **Phone keyboard** (`syncKeyboard`/`revealField`, CSS `--kb` + `body.kb`): iOS/Android keep the layout viewport
+  full-height under the keyboard, so the fixed bottom sheet used to be painted behind it. We measure the hidden strip
+  with `visualViewport`, lift `#focus`/the drawer above it and scroll the active row (and its suggestions) into the
+  visible part. Cannot be emulated in DevTools — test on a real phone via lab.html.
+- **Less at once (tester feedback 2026-09-10)**: ⋯ menu = 4 rows (share, groups, print, guide) + «Περισσότερα…» with
+  captions; phone drawer shows guests first with «Τραπέζια & χώρος» folded (`#toolsSec`, remembered per device);
+  seat-sheet footer hidden on phones (Γέμισμα/Άδειασμα live under ⚙ via `openFillMenu`/`clearTableSeats`); search box
+  hidden until 8+ unseated; `body.far` (zoom < 0.4, hysteresis 0.5) shows one big number per table at overview zoom;
+  empty seats drawn as small chairs; pill bottom bar, borderless app bar. Andreas explicitly wants Aa/undo/zoom in the
+  bottom bar — keep them.
 - **Seat sheet**: "‹ Τραπέζια" (back) replaces ✕; each row has a colour dot — on an occupied row it changes that
   guest's group, on an empty row it picks the group new names will join. "⚙ Διαχείριση ομάδων…" (also ⋯ →
   Ομάδες… and the "＋ ομάδα" chip) opens the groups manager: rename inline, palette recolour, delete, add.

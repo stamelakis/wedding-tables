@@ -46,15 +46,20 @@
   .brand{ font-family:var(--serif); font-weight:700; font-size:19px; letter-spacing:-.01em; white-space:nowrap; }
   .brand em{ color:var(--accent); font-style:normal; }
   .planpick{ display:flex; gap:4px; align-items:center; min-width:0; }
-  .planpick select{ max-width:220px; min-width:110px; height:32px; padding:0 8px; border:1px solid var(--line); border-radius:9px; font-weight:600; font-size:13px; }
+  .planpick select{ max-width:220px; min-width:110px; height:32px; padding:0 22px 0 8px; border:1px solid transparent; border-radius:9px; background:transparent; font-family:var(--serif); font-weight:700; font-size:15px; }
+  .planpick select:focus{ outline:none; border-color:var(--line); background:var(--card); }
   body.mode-lab #cloudBtn{ display:none; }   /* the lab is local-only: no cloud, no share links */
-  .ibtn{ height:32px; min-width:32px; padding:0 9px; border:1px solid var(--line); background:var(--card); border-radius:9px; cursor:pointer; font-size:14px; line-height:1; display:inline-flex; align-items:center; justify-content:center; gap:6px; white-space:nowrap; transition:background .12s,border-color .12s,color .12s; }
+  .ibtn{ height:32px; min-width:32px; padding:0 9px; border:1px solid var(--line); background:var(--card); border-radius:10px; cursor:pointer; font-size:14px; line-height:1; display:inline-flex; align-items:center; justify-content:center; gap:6px; white-space:nowrap; transition:background .12s,border-color .12s,color .12s; }
   .ibtn:hover{ background:var(--paper); border-color:var(--line-2); }
   .ibtn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
   .ibtn.primary:hover{ background:var(--accent-ink); border-color:var(--accent-ink); }
   .ibtn.on{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent-ink); }
   .ibtn.danger{ color:var(--danger); }
   .ibtn:disabled{ opacity:.5; cursor:default; }
+  #appbar .ibtn:not(.primary){ border-color:transparent; background:transparent; min-width:36px; }
+  #appbar .ibtn:not(.primary):hover, #appbar .ibtn:not(.primary):active{ background:var(--paper); }
+  #appbar .ibtn.on{ background:var(--accent-soft); }
+  #appbar .ibtn:disabled{ opacity:.35; }
   .stat{ font-size:12.5px; color:var(--faint); white-space:nowrap; min-width:0; overflow:hidden; text-overflow:ellipsis; }
   .spacer{ flex:1; }
   .ctl{ display:inline-flex; align-items:center; gap:3px; }
@@ -76,6 +81,11 @@
   .sec:last-child{ border-bottom:none; }
   .sec-title{ font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); margin-bottom:8px; display:flex; align-items:center; gap:6px; }
   .sec-title .cnt{ font-weight:600; color:var(--soft); text-transform:none; letter-spacing:0; margin-left:auto; }
+  details.sec>summary{ list-style:none; cursor:pointer; user-select:none; }
+  details.sec>summary::-webkit-details-marker{ display:none; }
+  details.sec>summary::after{ content:"▸"; margin-left:auto; font-size:11px; transition:transform .15s; }
+  details.sec[open]>summary::after{ transform:rotate(90deg); }
+  details.sec:not([open])>summary{ margin-bottom:0; }
   .tools{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
   .tools .ibtn{ height:36px; font-size:12.5px; justify-content:flex-start; padding:0 10px; }
   .floorrow{ display:flex; align-items:center; gap:8px; margin-top:8px; font-size:12px; color:var(--soft); }
@@ -94,6 +104,7 @@
   .chip .n{ color:var(--faint); font-size:11px; }
   .chip.add{ border-style:dashed; color:var(--soft); }
   .chip .gmore{ margin-left:2px; color:var(--faint); font-weight:700; padding:0 2px; }
+  body.touch .chip .gmore{ opacity:.45; }
   #pool{ display:flex; flex-direction:column; gap:5px; min-height:44px; }
   #pool.dragover{ outline:2px dashed var(--accent); outline-offset:-4px; border-radius:10px; background:var(--accent-soft); }
   .gchip{ display:flex; align-items:center; gap:8px; padding:7px 6px 7px 10px; border-radius:10px; background:var(--paper); border:1px solid var(--line); border-left:5px solid #ccc; cursor:grab; user-select:none; font-size:13px; transition:box-shadow .12s,background .12s; }
@@ -101,7 +112,8 @@
   .gchip:active{ cursor:grabbing; }
   .gchip .nm{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .gchip .acts{ display:flex; gap:0; opacity:0; transition:opacity .12s; }
-  .gchip:hover .acts, .gchip.picked .acts, body.touch .gchip .acts{ opacity:1; }
+  .gchip:hover .acts, .gchip.picked .acts{ opacity:1; }
+  body.touch .gchip .acts{ opacity:.45; }   /* still tappable, just quieter */
   .gchip .acts button{ border:none; background:none; color:var(--faint); cursor:pointer; font-size:13px; padding:4px 6px; border-radius:6px; line-height:1; }
   .gchip .acts button:hover{ background:var(--card); color:var(--ink); }
   .gchip .acts .x:hover{ color:var(--danger); }
@@ -156,9 +168,13 @@
   .table-disc .tcount{ font-size:10px; color:var(--faint); margin-top:2px; font-weight:600; letter-spacing:.02em; }
   .table-disc .tgear{ position:absolute; top:2px; right:6px; font-size:12px; color:var(--faint); cursor:pointer; display:none; padding:2px; }
   .table:hover .tgear, .table.focused .tgear{ display:block; }
-  .seat{ position:absolute; transform:translate(-50%,-50%); border:1.5px dashed rgba(90,70,50,.5); background:rgba(255,255,255,.55); display:flex; align-items:center; justify-content:center; color:rgba(90,70,50,.75); text-align:center; overflow:hidden; cursor:pointer; user-select:none; transition:background .1s,border-color .1s; box-shadow:0 1px 2px rgba(0,0,0,.1); }
-  .seat:hover{ background:rgba(255,255,255,.95); border-color:var(--accent); }
-  .seat.occupied{ border-style:solid; border-color:transparent; color:#fff; font-weight:700; cursor:grab; box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -1px 0 rgba(0,0,0,.12),0 3px 7px rgba(0,0,0,.25); text-shadow:0 1px 1px rgba(0,0,0,.25); }
+  /* empty seat = a small linen chair (solid, with a chair back); occupied = the guest's pill in the group colour */
+  .seat{ position:absolute; transform:translate(-50%,-50%); border:1px solid rgba(90,70,50,.32); background:linear-gradient(180deg,#fffdf9 0%,#efe8dd 100%); display:flex; align-items:center; justify-content:center; color:rgba(90,70,50,.75); text-align:center; overflow:hidden; cursor:pointer; user-select:none; transition:background .1s,border-color .1s; box-shadow:0 1px 1px rgba(0,0,0,.12); }
+  .seat:not(.occupied):hover{ background:rgba(255,255,255,.95); border-color:var(--accent); }
+  .seat:not(.occupied)::after{ content:""; position:absolute; left:22%; right:22%; top:3px; height:2px; border-radius:2px; background:rgba(90,70,50,.22); }
+  .seat:not(.occupied) .nm{ display:none; }
+  body.picking .seat:not(.occupied) .nm{ display:block; }   /* the '+' only when it means something */
+  .seat.occupied{ border-color:transparent; color:#fff; font-weight:700; cursor:grab; background-image:linear-gradient(180deg,rgba(255,255,255,.2),rgba(0,0,0,.06)); box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 2px 5px rgba(0,0,0,.22); text-shadow:0 1px 1px rgba(0,0,0,.25); }
   .seat.occupied:active{ cursor:grabbing; }
   .seat.dragover{ background:#fff !important; border-color:var(--accent) !important; border-style:solid !important; color:var(--accent-ink) !important; }
   .seat .nm{ padding:0 5px; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
@@ -178,6 +194,7 @@
   .fhead .ftitle b{ font-family:var(--serif); font-size:18px; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.35; cursor:pointer; }
   .fhead .ftitle span{ font-size:12px; color:var(--faint); }
   .fhint{ font-size:12px; color:var(--faint); padding:8px 14px 4px; line-height:1.4; flex:none; }
+  .fhint[hidden]{ display:none; }
   #fSeats{ flex:1; overflow-y:auto; padding:6px 10px 10px; min-height:0; overscroll-behavior:contain; }
   .frow{ display:flex; align-items:center; gap:6px; padding:3px 0; }
   .frow .fn{ width:22px; text-align:right; font-size:11px; color:var(--faint); font-weight:700; flex:none; }
@@ -212,9 +229,11 @@
   .ffoot .ibtn{ flex:1; height:36px; font-size:12.5px; }
 
   /* ---------- Mobile bar · pick bar · drawer ---------- */
-  #mobilebar{ display:none; position:fixed; left:8px; right:8px; bottom:calc(8px + env(safe-area-inset-bottom)); z-index:120; gap:5px; }
-  #mobilebar .ibtn{ height:46px; flex:1; background:rgba(255,253,250,.97); box-shadow:var(--shadow-2); font-size:13.5px; font-weight:600; border-radius:14px; }
+  #mobilebar{ display:none; position:fixed; left:10px; right:10px; bottom:calc(10px + env(safe-area-inset-bottom)); z-index:120; gap:2px; padding:4px; background:rgba(255,253,250,.96); border:1px solid var(--line); border-radius:18px; box-shadow:0 6px 22px rgba(40,30,20,.16); }
+  #mobilebar .ibtn{ height:42px; flex:1; background:transparent; border:none; box-shadow:none; font-size:13.5px; font-weight:600; border-radius:13px; }
+  #mobilebar .ibtn:active{ background:var(--paper); }
   #mobilebar .ibtn.sq{ flex:0 0 44px; font-size:18px; padding:0; }
+  #mobilebar .ibtn:disabled{ opacity:.35; }
   #mobilebar .ibtn b{ background:var(--accent); color:#fff; border-radius:20px; padding:2px 8px; font-size:11px; }
   @media (max-width:430px){ #mobilebar #mbGuests span{ display:none; } }
   #navScrim{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:140; }
@@ -237,6 +256,11 @@
   body.touch #stagewrap{ background-image:none; }
   .table-disc .tnum{ font-size:calc(17px * var(--tfs,1)); }
   .table-disc.head .tnum{ font-size:calc(14px * var(--tfs,1)); }
+  /* far view (phones only, zoom < 0.4): only a big number per table — set/cleared in applyZoom */
+  body.far .table-disc .tcount, body.far .seat .nm, body.far .tgear{ display:none !important; }
+  body.far .table-disc .tnum{ font-size:min(calc(var(--dd,112px) * .5), calc(56px * var(--tfs,1))); line-height:1; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transition:font-size .15s; }
+  body.far .table-disc.head .tnum{ font-size:calc(30px * var(--tfs,1)); }
+  body.far .seat:not(.occupied)::after{ display:none; }
 
   /* ---------- Popovers & modals ---------- */
   .popover{ position:fixed; z-index:250; background:var(--card); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow-2); padding:8px; font-size:13px; display:none; }
@@ -270,9 +294,14 @@
   #tablemenu .caps button{ height:30px; padding:0 10px; border:1px solid var(--line); background:var(--card); border-radius:7px; cursor:pointer; font-size:12.5px; }
   #tablemenu .caps button.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
   #tablemenu input[type=number]{ width:58px; height:30px; padding:0 6px; border:1px solid var(--line); border-radius:7px; }
-  #tablemenu .menu-actions{ display:flex; gap:6px; margin-top:6px; }
-  #tablemenu .menu-actions .ibtn{ flex:1; height:34px; font-size:12.5px; }
+  #tablemenu .menu-actions{ display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px; }
+  #tablemenu .menu-actions .ibtn{ height:34px; font-size:12px; padding:0 6px; justify-content:flex-start; }
   #groupmenu, #profilemenu, #moremenu, #fillmenu{ min-width:190px; padding:6px; }
+  #moremenu{ max-height:calc(100vh - 70px); max-height:calc(100dvh - 70px); overflow-y:auto; }
+  #moremenu .gm-more{ display:none; }
+  #moremenu.expanded .gm-more{ display:block; }
+  #moremenu.expanded .gm-item.more{ display:none; }
+  #moremenu .gm-item.more{ color:var(--accent-ink); font-weight:600; }
   #guesteditor{ width:236px; padding:10px; }
   #guesteditor .ge-name{ width:100%; height:36px; padding:0 10px; border:1px solid var(--line); border-radius:8px; margin-bottom:8px; font-size:14px; }
   #guesteditor .ge-lab{ font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--faint); margin:0 2px 5px; font-weight:700; }
@@ -319,6 +348,10 @@
   #tourCard h3{ font-family:var(--serif); font-size:20px; margin:4px 0 8px; line-height:1.2; }
   #tourCard p{ font-size:14px; line-height:1.5; color:var(--soft); margin:0 0 14px; }
   #tourCard p b{ color:var(--ink); }
+  #tourCard h3.tour-welcome{ font-size:24px; margin:0 0 10px; text-align:center; }
+  .tour-lines{ list-style:none; margin:0 0 16px; padding:0; counter-reset:w; }
+  .tour-lines li{ counter-increment:w; position:relative; padding:5px 0 5px 32px; font-size:15px; line-height:1.45; color:var(--ink); }
+  .tour-lines li::before{ content:counter(w); position:absolute; left:0; top:5px; width:22px; height:22px; border-radius:50%; background:var(--accent-soft); color:var(--accent-ink); font-size:12px; font-weight:700; text-align:center; line-height:22px; }
   .tour-btns{ display:flex; gap:8px; align-items:center; }
   .tour-btns .ibtn{ height:38px; }
   .tour-btns .spacer{ flex:1; }
@@ -345,7 +378,10 @@
     #navScrim{ z-index:170; }
     body.nav-open #sidebar{ transform:none; }
     body.nav-open #navScrim{ display:block; }
-    .side-scroll{ padding-bottom:env(safe-area-inset-bottom); }
+    .side-scroll{ padding-bottom:env(safe-area-inset-bottom); display:flex; flex-direction:column; }
+    .side-scroll>.sec{ flex:none; }
+    #toolsSec{ order:2; border-bottom:none; border-top:1px solid var(--line); }   /* phone: guests first, tools folded below (couples mostly get the venue's layout) */
+    #addTableBtn.primary{ background:var(--card); color:var(--ink); border-color:var(--line); }   /* the drawer's one primary button is «Προσθήκη στη λίστα» */
     #stagewrap{ padding-bottom:calc(90px + env(safe-area-inset-bottom)); }
     body.focused #stagewrap{ padding-bottom:calc(var(--sheet-h) + 60px); }   /* room to scroll a low table above the sheet */
     #stage{ margin:12px; }
@@ -354,7 +390,8 @@
     #focus{ position:fixed; left:0; right:0; bottom:0; height:var(--sheet-h); width:auto; border-left:none; border-top:1px solid var(--line); border-radius:18px 18px 0 0; box-shadow:0 -10px 40px rgba(0,0,0,.25); z-index:160; transition:height .2s; padding-bottom:env(safe-area-inset-bottom); }
     #focus.tall{ height:88vh; height:min(88dvh, calc(100dvh - var(--appbar-h))); }
     .fhandle{ display:block; }
-    .fhint{ display:none; }
+    .ffoot{ display:none; }   /* phone: fill/clear live under ⚙ — the rows get the space */
+    .fhint{ padding:6px 14px 2px; font-size:13px; color:var(--soft); }
     .modal{ width:96vw; max-height:88vh; }
     .decor-grid{ grid-template-columns:repeat(auto-fill,minmax(92px,1fr)); gap:8px; padding:12px; }
     #pickbar{ bottom:calc(14px + env(safe-area-inset-bottom)); }
@@ -363,6 +400,13 @@
     body.focused #pickbar{ bottom:calc(var(--sheet-h) + 10px); }
     .toast{ bottom:calc(70px + env(safe-area-inset-bottom)); }
     body.focused .toast, body.picking .toast{ bottom:calc(var(--sheet-h) + 12px); }
+    /* on-screen keyboard: --kb = its height (syncKeyboard). The sheet sits on top of the
+       keyboard and, while typing, owns everything above it; the drawer gets bottom padding so its fields can scroll up. */
+    :root{ --kb:0px; }
+    #focus{ bottom:var(--kb); }
+    body.kb #focus{ height:calc(100dvh - var(--kb) - var(--appbar-h)); transition:none; }
+    body.kb .side-scroll{ padding-bottom:calc(var(--kb) + env(safe-area-inset-bottom)); }
+    body.kb .toast{ bottom:calc(var(--kb) + 12px); }
     body.touch .feature .rz, body.touch .feature .rot-h{ display:block; }   /* no hover on touch — show decor handles */
     .ibtn{ height:36px; min-width:36px; }
     .tools .ibtn{ height:40px; }
@@ -377,13 +421,16 @@
   body.strip-collapsed .ts-grid{ display:none; }
   body.strip-collapsed #tablestrip{ width:auto; }
   .ts-head{ display:flex; align-items:center; gap:6px; padding:8px 10px; flex:none; flex-wrap:wrap; }
-  .ts-head .ts-title{ font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); }
+  .ts-head .ts-title{ font-family:var(--serif); font-size:15px; font-weight:700; color:var(--ink); }
+  #tsAll{ border-color:transparent; background:transparent; color:var(--accent-ink); font-weight:600; }
+  #tsToggle{ border-color:transparent; background:transparent; }
   .ts-head .ts-cnt{ font-size:12px; color:var(--soft); margin-right:auto; font-variant-numeric:tabular-nums; }
   .ts-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(62px,1fr)); gap:6px; padding:0 10px 10px; overflow-y:auto; overscroll-behavior:contain; }
-  .ts-chip{ border:1px solid var(--line); border-radius:10px; padding:6px 4px 5px; text-align:center; background:var(--paper); cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation; transition:background .1s,border-color .1s; }
-  .ts-chip:hover{ border-color:var(--accent); background:#fff; }
+  .ts-chip{ border:none; border-radius:12px; padding:8px 4px 6px; text-align:center; background:var(--paper); cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation; transition:background .1s,box-shadow .1s; }
+  .ts-chip:hover{ background:#fff; box-shadow:0 0 0 1.5px var(--accent) inset; }
+  .ts-chip.full{ background:#e9f2ea; }
   .ts-chip:active{ background:var(--accent-soft); }
-  .ts-chip .lbl{ font-family:var(--serif); font-weight:700; font-size:16px; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ts-chip .lbl{ font-family:var(--serif); font-weight:700; font-size:18px; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .ts-chip .occ{ font-size:10.5px; color:var(--faint); margin-top:1px; font-variant-numeric:tabular-nums; }
   .ts-chip .bar{ height:3px; border-radius:2px; background:var(--line); margin-top:4px; overflow:hidden; }
   .ts-chip .bar i{ display:block; height:100%; background:var(--accent); }
@@ -451,8 +498,8 @@
 <div id="main">
   <aside id="sidebar">
     <div class="side-scroll">
-      <div class="sec">
-        <div class="sec-title" data-t="tools"></div>
+      <details class="sec" id="toolsSec" open>
+        <summary class="sec-title" data-t="tools"></summary>
         <div class="tools">
           <button class="ibtn primary" id="addTableBtn" data-t="addRound"></button>
           <button class="ibtn" id="addHeadBtn" data-t="addHead"></button>
@@ -460,15 +507,15 @@
           <button class="ibtn" id="autoSeatBtn" data-t="autoSeat"></button>
         </div>
         <div class="floorrow"><span data-t="floor"></span><select id="stageFloor"></select></div>
-      </div>
+      </details>
       <div class="sec">
         <div class="sec-title"><span data-t="guests"></span><span class="cnt" id="poolCount"></span></div>
-        <div class="search" id="searchWrap"><span class="ico">🔍</span><input id="guestSearch" data-t-ph="searchPh" autocomplete="off" spellcheck="false"><button class="clr" id="searchClear" type="button">✕</button></div>
+        <div class="search" id="searchWrap"><span class="ico">🔍</span><input id="guestSearch" data-t-ph="searchPh" autocomplete="off" spellcheck="false" enterkeyhint="search" inputmode="search"><button class="clr" id="searchClear" type="button">✕</button></div>
         <div class="chips" id="groupList"></div>
         <div id="pool"></div>
         <details class="addnames" id="addNames">
           <summary data-t="addNames"></summary>
-          <textarea id="guestInput" data-t-ph="namesPh"></textarea>
+          <textarea id="guestInput" data-t-ph="namesPh" autocapitalize="words" autocorrect="off" spellcheck="false"></textarea>
           <div class="hint" id="namesHint" data-t="namesHint"></div>
           <button class="ibtn primary" id="addGuestBtn" style="width:100%;height:36px" data-t="addToList"></button>
         </details>
@@ -492,7 +539,7 @@
       <button class="ibtn" id="fNext" data-t-title="nextTable">›</button>
       <button class="ibtn" id="fSettings" data-t-title="tableSettings">⚙</button>
     </div>
-    <div class="fhint" data-t="focusHint"></div>
+    <div class="fhint" id="fHint" hidden></div>
     <div id="fSeats"></div>
     <div class="ffoot"><button class="ibtn" id="fFill" data-t="fill"></button><button class="ibtn" id="fClear" data-t="clearTable"></button></div>
   </aside>
@@ -521,6 +568,8 @@
   </div>
   <div class="menu-actions">
     <button class="ibtn" id="menuNames" data-t="focusSeats"></button>
+    <button class="ibtn" id="menuFill" data-t="fill"></button>
+    <button class="ibtn" id="menuClear" data-t="clearTable"></button>
     <button class="ibtn danger" id="menuDelete" data-t="deleteTable"></button>
   </div>
 </div>
@@ -617,35 +666,35 @@ el:{
   switchPlan:"Αλλαγή ζευγαριού / εκδήλωσης", newPlan:"Νέο σχέδιο (ζευγάρι / εκδήλωση)", planMore:"Μετονομασία · αντιγραφή · διαγραφή",
   shareTitle:"Κοινή χρήση & συγχρονισμός", fontDown:"Μικρότερα ονόματα", fontUp:"Μεγαλύτερα ονόματα", fit:"Προσαρμογή", zoomIn:"Μεγέθυνση", zoomOut:"Σμίκρυνση", print:"Εκτύπωση", more:"Περισσότερα",
   tsTitle:"Τραπέζια", tsAll:"Όλα", tsToggle:"Εμφάνιση / απόκρυψη λίστας τραπεζιών",
-  helpTitle:"Οδηγός χρήσης", mTour:"❓ Οδηγός χρήσης", tourSkip:"Παράλειψη οδηγού", tourStart:"Ξεκινάμε", tourBack:"Πίσω", tourNext:"Επόμενο", tourDone:"Τέλος",
+  helpTitle:"Οδηγός χρήσης", mTour:"❓ Οδηγός χρήσης", tourSkip:"Παράλειψη οδηγού", tourBack:"Πίσω", tourNext:"Επόμενο", tourDone:"Τέλος",
+  welcomeTitle:"Καλώς ήρθατε!", welcome1:"Πατήστε ένα τραπέζι.", welcome2:"Γράψτε όνομα και πατήστε Enter.", welcome3:"Ο σύνδεσμός σας είναι το κλειδί — φυλάξτε τον.", welcomeGo:"Ξεκινάω", welcomeSteps:"Δείξτε μου τα βήματα",
+  hintEnter:"Γράψτε όνομα, Enter → επόμενη θέση.",
   tour:{
-    welcome:["Καλώς ήρθατε","Εδώ βάζετε τους καλεσμένους στα τραπέζια. Όλα <b>αποθηκεύονται μόνα τους</b>. Λίγα γρήγορα βήματα — ή παραλείψτε τα."],
-    dGuests:["Καλεσμένοι","Γράψτε ονόματα στο <b>Προσθήκη ονομάτων</b>, ένα ανά γραμμή. Οι ομάδες (νύφη, γαμπρός, φίλοι…) δίνουν χρώμα."],
-    dTables:["Ονόματα στα τραπέζια","<b>Πατήστε ένα τραπέζι</b> (στη λίστα δεξιά ή στην κάτοψη), γράψτε όνομα, <b>Enter</b> → επόμενη θέση. Η κουκκίδα αλλάζει την ομάδα."],
-    dFloor:["Η κάτοψη","<b>Σύρετε</b> τραπέζια και διακόσμηση για να τα μετακινήσετε — ή έναν καλεσμένο πάνω σε καρέκλα. Ctrl + ροδέλα για ζουμ, Ctrl+Z για αναίρεση."],
-    dSave:["Αποθήκευση & κοινή χρήση","Το ☁ δείχνει ότι όλα είναι συγχρονισμένα. <b>Ο σύνδεσμός σας είναι το κλειδί</b> — μοιραστείτε τον με τον/τη σύντροφό σας. Από το «Aa» αλλάζετε πώς φαίνονται τα ονόματα."],
-    mTables:["Τα τραπέζια","<b>Πατήστε ένα τραπέζι</b> από τη λίστα (ή στην κάτοψη) για να ανοίξει η λίστα θέσεών του. Το «⤢ Όλα» σας γυρίζει πίσω."],
-    mNames:["Ονόματα","Γράψτε όνομα, <b>Enter</b> → επόμενη θέση. Η κουκκίδα αλλάζει την ομάδα (χρώμα). «‹ Τραπέζια» για επιστροφή."],
-    mGuests:["Καλεσμένοι & μετακίνηση","👥 = λίστα καλεσμένων και ομάδες: πατήστε ένα όνομα και μετά μια καρέκλα. Για να μετακινήσετε τραπέζι, <b>κρατήστε το πατημένο μισό δευτερόλεπτο</b> και σύρετε."],
-    done:["Αυτό ήταν!","Στο ⋯ θα βρείτε εκτύπωση, <b>ιστορικό εκδόσεων</b> (επαναφορά οποιασδήποτε προηγούμενης έκδοσης) και αυτόν τον οδηγό."]
+    dGuests:["Καλεσμένοι","Γράψτε ονόματα στο <b>Προσθήκη ονομάτων</b>, ένα ανά γραμμή."],
+    dTables:["Ονόματα στα τραπέζια","<b>Πατήστε ένα τραπέζι</b>, γράψτε όνομα, <b>Enter</b>. Η κουκκίδα = ομάδα."],
+    dFloor:["Η κάτοψη","<b>Σύρετε</b> τραπέζια και διακόσμηση. Ctrl+Z για αναίρεση."],
+    dSave:["Αποθήκευση","☁ = όλα συγχρονισμένα. <b>Ο σύνδεσμός σας είναι το κλειδί.</b>"],
+    mTables:["Τα τραπέζια","<b>Πατήστε ένα τραπέζι</b> για να ανοίξουν οι θέσεις του."],
+    mNames:["Ονόματα","Γράψτε όνομα, <b>Enter</b> → επόμενη θέση. Η κουκκίδα = ομάδα."],
+    mGuests:["Καλεσμένοι","👥 = καλεσμένοι και ομάδες. Για μετακίνηση τραπεζιού, <b>κρατήστε το μισό δευτερόλεπτο</b> και σύρετε."],
+    done:["Αυτό ήταν!","Στο ⋯: εκτύπωση και αυτός ο οδηγός· κάτω από «Περισσότερα…» το <b>ιστορικό εκδόσεων</b>, εξαγωγή και γλώσσα."]
   },
   backTables:"‹ Τραπέζια", rowGroup:"Ομάδα καλεσμένου", rowNewGroup:"Ομάδα για τα νέα ονόματα", gmManage:"⚙ Διαχείριση ομάδων…", mGroups:"👪 Ομάδες…", groupsTitle:"Ομάδες καλεσμένων", groupsHint:"Μετονομάστε, αλλάξτε χρώμα ή διαγράψτε ομάδες — οι καλεσμένοι κρατούν τις θέσεις τους. Ο αριθμός δείχνει πόσοι ανήκουν σε κάθε ομάδα.", groupsNewPh:"Νέα ομάδα…", groupsAdd:"Προσθήκη", customColor:"Άλλο χρώμα…", tGroupAdded:"Προστέθηκε η ομάδα «{n}»",
   mHistory:"🕘 Ιστορικό εκδόσεων", histTitle:"Ιστορικό εκδόσεων", histHint:"Κάθε αποθήκευση κρατά την προηγούμενη έκδοση στον διακομιστή. Επαναφέρετε όποια θέλετε — η τωρινή έκδοση κρατιέται κι αυτή.", histRow:"{g} καλεσμένοι · {s} με θέση · {n} τραπέζια", histRestore:"Επαναφορά", histConfirm:"Επαναφορά της έκδοσης «{t}»; Η τωρινή έκδοση μένει στο ιστορικό.", histRestored:"Επαναφέρθηκε η έκδοση «{t}»", histEmpty:"Δεν υπάρχουν προηγούμενες εκδόσεις ακόμη.", histFail:"Δεν ήταν δυνατή η ανάκτηση του ιστορικού", histNoCloud:"Το ιστορικό υπάρχει μόνο για σχέδια που είναι online.",
   resetWarn2:"ΠΡΟΣΟΧΗ: το σχέδιο έχει {g} καλεσμένους ({s} με θέση). Να σβηστούν ΟΛΑ;", tResetHist:"Έγινε επαναφορά — η προηγούμενη έκδοση υπάρχει στο ⋯ → Ιστορικό εκδόσεων",
   cWipeBlocked:"Δεν αποθηκεύτηκε: το online σχέδιο έχει {n} καλεσμένους ενώ αυτό εδώ είναι άδειο. Φορτώνω ξανά το online σχέδιο.", cLocalErr:"Το τοπικό αντίγραφο δεν φορτώθηκε ({e}) — φόρτωση από το cloud.", cLoadErr:"Σφάλμα φόρτωσης από το cloud: {e}",
-  view:"Προβολή", names:"Ονόματα καλεσμένων", nm_full:"Πλήρη", nm_short:"Σύντομα", nm_initials:"Αρχικά", nameSize:"Μέγεθος ονομάτων", numSize:"Μέγεθος αριθμών τραπεζιών", zoomLbl:"Ζουμ", undo:"Αναίρεση", redo:"Επανάληψη", tUndo:"Αναιρέθηκε", tRedo:"Επαναλήφθηκε", tNumSize:"Μέγεθος αριθμών {n}%", mRound:"＋ Στρογγυλό τραπέζι", holdToMove:"Για να μετακινήσετε τραπέζι ή αντικείμενο, κρατήστε το πατημένο μισό δευτερόλεπτο και σύρετε. Αλλιώς σύρετε ελεύθερα για να μετακινηθείτε στον χώρο.",
+  view:"Προβολή", names:"Ονόματα καλεσμένων", nm_full:"Πλήρη", nm_short:"Σύντομα", nm_initials:"Αρχικά", nameSize:"Μέγεθος ονομάτων", numSize:"Μέγεθος αριθμών τραπεζιών", zoomLbl:"Ζουμ", undo:"Αναίρεση", redo:"Επανάληψη", tUndo:"Αναιρέθηκε", tRedo:"Επαναλήφθηκε", tNumSize:"Μέγεθος αριθμών {n}%", mRound:"＋ Στρογγυλό τραπέζι", holdToMove:"Για μετακίνηση, κρατήστε το τραπέζι ή αντικείμενο μισό δευτερόλεπτο και σύρετε.",
   tools:"Τραπέζια & χώρος", addRound:"＋ Στρογγυλό", addHead:"＋ Νυφικό", decor:"🛋 Διακόσμηση", autoSeat:"✨ Αυτόματα", floor:"Δάπεδο",
   guests:"Καλεσμένοι", unseatedN:"{n} χωρίς θέση", searchPh:"Αναζήτηση ονόματος…", all:"Όλοι", addGroup:"＋ ομάδα", addGroupTitle:"Νέα ομάδα",
-  addNames:"Προσθήκη ονομάτων", namesPh:"Ένα όνομα ανά γραμμή…", namesHint:"Μπαίνουν στην επιλεγμένη ομάδα · Ctrl+Enter για προσθήκη", namesTo:"Τα νέα ονόματα μπαίνουν σε: {g} · Ctrl+Enter", addToList:"Προσθήκη στη λίστα",
+  addNames:"Προσθήκη ονομάτων", namesPh:"Ένα όνομα ανά γραμμή…", namesHint:"Μπαίνουν στην επιλεγμένη ομάδα · Ctrl+Enter για προσθήκη", namesTo:"Τα νέα ονόματα μπαίνουν σε: {g} · Ctrl+Enter", namesToTouch:"Τα νέα ονόματα μπαίνουν σε: {g}", addToList:"Προσθήκη στη λίστα",
   poolEmpty:"Όλοι οι καλεσμένοι έχουν θέση 🎉", poolEmptyNew:"Δεν υπάρχουν καλεσμένοι ακόμη.<br>Προσθέστε ονόματα παρακάτω ↓", poolEmptyGroup:"Κανείς χωρίς θέση σε αυτή την ομάδα — δείτε «Όλοι»", noMatch:"Κανένα όνομα δεν ταιριάζει",
   chipEdit:"Επεξεργασία ονόματος & ομάδας", chipRemove:"Αφαίρεση καλεσμένου", groupTip:"Κλικ: επιλογή · Διπλό κλικ: μετονομασία · Δεξί κλικ: χρώμα / διαγραφή", groupMore:"Μετονομασία / χρώμα / διαγραφή",
   prevTable:"Προηγούμενο τραπέζι", nextTable:"Επόμενο τραπέζι", tableSettings:"Ρυθμίσεις τραπεζιού", close:"Κλείσιμο",
-  focusHint:"Γράψτε ένα όνομα και πατήστε Enter για την επόμενη θέση — ή διαλέξτε από τις προτάσεις.",
-  seatPh:"κενή θέση", unseat:"Αφαίρεση από τη θέση", fill:"✨ Γέμισμα από ομάδα", clearTable:"Άδειασμα", clearConfirm:"Να επιστρέψουν όλοι οι καλεσμένοι του «{n}» στους χωρίς θέση;",
+  seatPh:"κενή θέση", unseat:"Αφαίρεση από τη θέση", fill:"✨ Γέμισμα", clearTable:"Άδειασμα", clearConfirm:"Να επιστρέψουν όλοι οι καλεσμένοι του «{n}» στους χωρίς θέση;",
   fillNone:"Δεν υπάρχουν καλεσμένοι χωρίς θέση εκεί", filled:"Τοποθετήθηκαν {n}", createNew:"＋ Νέος καλεσμένος «{n}»", renameTo:"✎ Μετονομασία σε «{n}»", moreMatches:"…και άλλοι {n} — συνεχίστε να γράφετε",
   pbHint:"→ πατήστε μια θέση", pbUnseat:"↩ Χωρίς θέση", pbEdit:"Επεξεργασία", pbCancel:"Άκυρο",
   menuTitle:"Ρυθμίσεις τραπεζιού", menuTitleHead:"Ρυθμίσεις νυφικού τραπεζιού", capLabel:"Θέσεις", capLabelHead:"Συνολικές θέσεις (οι 2 είναι οι ακριανές)", labelPh:"Όνομα / αριθμός τραπεζιού", deleteTable:"🗑 Διαγραφή", focusSeats:"✎ Ονόματα",
-  mShare:"☁ Κοινή χρήση & συγχρονισμός", mImportGuests:"＋ Εισαγωγή λίστας καλεσμένων", mExport:"⬆ Εξαγωγή σχεδίου", mImport:"⬇ Εισαγωγή σχεδίου", mPrint:"🖨 Εκτύπωση", mReset:"Επαναφορά σχεδίου", mLang:"Γλώσσα", mDecor:"🛋 Διακόσμηση & αντικείμενα", mHead:"＋ Νυφικό τραπέζι", mAuto:"✨ Αυτόματη τοποθέτηση",
+  mShare:"☁ Κοινή χρήση & συγχρονισμός", mImportGuests:"＋ Εισαγωγή λίστας καλεσμένων", mExport:"⬆ Εξαγωγή σχεδίου", mImport:"⬇ Εισαγωγή σχεδίου", mPrint:"🖨 Εκτύπωση", mReset:"Επαναφορά σχεδίου", mLang:"Γλώσσα", mMore:"Περισσότερα…", capPlan:"Σχέδιο", capFiles:"Αρχεία & αντίγραφα", mDecor:"🛋 Διακόσμηση & αντικείμενα", mHead:"＋ Νυφικό τραπέζι", mAuto:"✨ Αυτόματη τοποθέτηση",
   stats:"{t} τραπέζια · {s}/{g} με θέση · {c} θέσεις",
   headTable:"💑 Νυφικό τραπέζι", headFacing:"βλέπει προς την πίστα",
   groupsDefault:["Πλευρά νύφης","Πλευρά γαμπρού","Φίλοι","Οικογένεια"],
@@ -685,35 +734,35 @@ en:{
   switchPlan:"Switch couple / event", newPlan:"New plan (couple / event)", planMore:"Rename · duplicate · delete",
   shareTitle:"Share & sync", fontDown:"Smaller names", fontUp:"Larger names", fit:"Fit", zoomIn:"Zoom in", zoomOut:"Zoom out", print:"Print", more:"More",
   tsTitle:"Tables", tsAll:"All", tsToggle:"Show / hide the table list",
-  helpTitle:"Guide", mTour:"❓ How to use", tourSkip:"Skip guide", tourStart:"Let's go", tourBack:"Back", tourNext:"Next", tourDone:"Done",
+  helpTitle:"Guide", mTour:"❓ How to use", tourSkip:"Skip guide", tourBack:"Back", tourNext:"Next", tourDone:"Done",
+  welcomeTitle:"Welcome!", welcome1:"Tap a table.", welcome2:"Type a name and press Enter.", welcome3:"Your link is the key — keep it.", welcomeGo:"Let's go", welcomeSteps:"Show me the steps",
+  hintEnter:"Type a name, Enter → next seat.",
   tour:{
-    welcome:["Welcome","This is where you seat your guests. Everything <b>saves by itself</b>. A few quick steps — or skip them."],
-    dGuests:["Guests","Type names under <b>Add names</b>, one per line. Groups (bride, groom, friends…) give them colours."],
-    dTables:["Names at the tables","<b>Click a table</b> (in the list on the right or on the floor), type a name, <b>Enter</b> → next seat. The dot changes the group."],
-    dFloor:["The floor","<b>Drag</b> tables and decor to move them — or a guest onto a chair. Ctrl + wheel to zoom, Ctrl+Z to undo."],
-    dSave:["Saving & sharing","☁ shows everything is in sync. <b>Your link is the key</b> — share it with your partner. “Aa” changes how names appear."],
-    mTables:["The tables","<b>Tap a table</b> in the list (or on the floor) to open its seat list. “⤢ All” takes you back."],
-    mNames:["Names","Type a name, <b>Enter</b> → next seat. The dot changes the group (colour). “‹ Tables” goes back."],
-    mGuests:["Guests & moving","👥 = guest list and groups: tap a name, then a chair. To move a table, <b>hold it for half a second</b> and drag."],
-    done:["That's it!","Under ⋯ you'll find print, <b>version history</b> (restore any earlier version) and this guide."]
+    dGuests:["Guests","Type names under <b>Add names</b>, one per line."],
+    dTables:["Names at the tables","<b>Click a table</b>, type a name, <b>Enter</b>. The dot = group."],
+    dFloor:["The floor","<b>Drag</b> tables and decor. Ctrl+Z undoes."],
+    dSave:["Saving","☁ = everything in sync. <b>Your link is the key.</b>"],
+    mTables:["The tables","<b>Tap a table</b> to open its seats."],
+    mNames:["Names","Type a name, <b>Enter</b> → next seat. The dot = group."],
+    mGuests:["Guests","👥 = guests and groups. To move a table, <b>hold it for half a second</b> and drag."],
+    done:["That's it!","Under ⋯: print and this guide; under “More…” the <b>version history</b>, export and language."]
   },
   backTables:"‹ Tables", rowGroup:"Guest's group", rowNewGroup:"Group for new names", gmManage:"⚙ Manage groups…", mGroups:"👪 Groups…", groupsTitle:"Guest groups", groupsHint:"Rename, recolour or delete groups — guests keep their seats. The number shows how many belong to each group.", groupsNewPh:"New group…", groupsAdd:"Add", customColor:"Other colour…", tGroupAdded:"Added the group “{n}”",
   mHistory:"🕘 Version history", histTitle:"Version history", histHint:"Every save keeps the previous version on the server. Restore any of them — the current version is kept too.", histRow:"{g} guests · {s} seated · {n} tables", histRestore:"Restore", histConfirm:"Restore the version from “{t}”? The current version stays in the history.", histRestored:"Restored the version from “{t}”", histEmpty:"No previous versions yet.", histFail:"Couldn't load the history", histNoCloud:"History exists only for plans that are online.",
   resetWarn2:"WARNING: this plan has {g} guests ({s} seated). Delete ALL of them?", tResetHist:"Reset done — the previous version is under ⋯ → Version history",
   cWipeBlocked:"Not saved: the online plan has {n} guests while this copy is empty. Reloading the online plan.", cLocalErr:"The local copy could not be loaded ({e}) — loading from the cloud.", cLoadErr:"Error loading from the cloud: {e}",
-  view:"View", names:"Guest names", nm_full:"Full", nm_short:"Short", nm_initials:"Initials", nameSize:"Name size", numSize:"Table number size", zoomLbl:"Zoom", undo:"Undo", redo:"Redo", tUndo:"Undone", tRedo:"Redone", tNumSize:"Table numbers {n}%", mRound:"＋ Round table", holdToMove:"To move a table or item, hold it for half a second, then drag. Otherwise drag freely to pan around the venue.",
+  view:"View", names:"Guest names", nm_full:"Full", nm_short:"Short", nm_initials:"Initials", nameSize:"Name size", numSize:"Table number size", zoomLbl:"Zoom", undo:"Undo", redo:"Redo", tUndo:"Undone", tRedo:"Redone", tNumSize:"Table numbers {n}%", mRound:"＋ Round table", holdToMove:"To move a table or item, hold it half a second, then drag.",
   tools:"Tables & space", addRound:"＋ Round table", addHead:"＋ Head table", decor:"🛋 Decor", autoSeat:"✨ Auto-seat", floor:"Floor",
   guests:"Guests", unseatedN:"{n} unseated", searchPh:"Search a name…", all:"All", addGroup:"＋ group", addGroupTitle:"New group",
-  addNames:"Add names", namesPh:"One name per line…", namesHint:"They join the selected group · Ctrl+Enter to add", namesTo:"New names go to: {g} · Ctrl+Enter", addToList:"Add to list",
+  addNames:"Add names", namesPh:"One name per line…", namesHint:"They join the selected group · Ctrl+Enter to add", namesTo:"New names go to: {g} · Ctrl+Enter", namesToTouch:"New names go to: {g}", addToList:"Add to list",
   poolEmpty:"Everyone has a seat 🎉", poolEmptyNew:"No guests yet.<br>Add names below ↓", poolEmptyGroup:"No unseated guests in this group — see “All”", noMatch:"No name matches",
   chipEdit:"Edit name & group", chipRemove:"Remove guest", groupTip:"Click: select · Double-click: rename · Right-click: colour / delete", groupMore:"Rename / colour / delete",
   prevTable:"Previous table", nextTable:"Next table", tableSettings:"Table settings", close:"Close",
-  focusHint:"Type a name and press Enter for the next seat — or pick one of the suggestions.",
-  seatPh:"empty seat", unseat:"Remove from seat", fill:"✨ Fill from group", clearTable:"Clear", clearConfirm:"Send everyone at “{n}” back to the unseated list?",
+  seatPh:"empty seat", unseat:"Remove from seat", fill:"✨ Fill", clearTable:"Clear", clearConfirm:"Send everyone at “{n}” back to the unseated list?",
   fillNone:"No unseated guests there", filled:"Seated {n}", createNew:"＋ New guest “{n}”", renameTo:"✎ Rename to “{n}”", moreMatches:"…and {n} more — keep typing",
   pbHint:"→ tap a seat", pbUnseat:"↩ Unseat", pbEdit:"Edit", pbCancel:"Cancel",
   menuTitle:"Table settings", menuTitleHead:"Head table settings", capLabel:"Seats", capLabelHead:"Total seats (2 are the ends)", labelPh:"Table name / number", deleteTable:"🗑 Delete", focusSeats:"✎ Names",
-  mShare:"☁ Share & sync", mImportGuests:"＋ Import guest list", mExport:"⬆ Export plan", mImport:"⬇ Import plan", mPrint:"🖨 Print", mReset:"Reset plan", mLang:"Language", mDecor:"🛋 Decor & items", mHead:"＋ Head table", mAuto:"✨ Auto-seat",
+  mShare:"☁ Share & sync", mImportGuests:"＋ Import guest list", mExport:"⬆ Export plan", mImport:"⬇ Import plan", mPrint:"🖨 Print", mReset:"Reset plan", mLang:"Language", mMore:"More…", capPlan:"Plan", capFiles:"Files & backups", mDecor:"🛋 Decor & items", mHead:"＋ Head table", mAuto:"✨ Auto-seat",
   stats:"{t} tables · {s}/{g} seated · {c} seats",
   headTable:"💑 Head table", headFacing:"faces the dance floor",
   groupsDefault:["Bride's side","Groom's side","Friends","Family"],
@@ -753,35 +802,35 @@ de:{
   switchPlan:"Paar / Veranstaltung wechseln", newPlan:"Neuer Plan (Paar / Veranstaltung)", planMore:"Umbenennen · duplizieren · löschen",
   shareTitle:"Teilen & synchronisieren", fontDown:"Kleinere Namen", fontUp:"Größere Namen", fit:"Einpassen", zoomIn:"Vergrößern", zoomOut:"Verkleinern", print:"Drucken", more:"Mehr",
   tsTitle:"Tische", tsAll:"Alle", tsToggle:"Tischliste ein-/ausblenden",
-  helpTitle:"Anleitung", mTour:"❓ Anleitung", tourSkip:"Anleitung überspringen", tourStart:"Los geht's", tourBack:"Zurück", tourNext:"Weiter", tourDone:"Fertig",
+  helpTitle:"Anleitung", mTour:"❓ Anleitung", tourSkip:"Anleitung überspringen", tourBack:"Zurück", tourNext:"Weiter", tourDone:"Fertig",
+  welcomeTitle:"Willkommen!", welcome1:"Tippen Sie auf einen Tisch.", welcome2:"Namen eingeben und Enter drücken.", welcome3:"Ihr Link ist der Schlüssel — gut aufbewahren.", welcomeGo:"Los geht's", welcomeSteps:"Schritte zeigen",
+  hintEnter:"Namen eingeben, Enter → nächster Platz.",
   tour:{
-    welcome:["Willkommen","Hier setzen Sie Ihre Gäste an die Tische. Alles <b>speichert sich von selbst</b>. Ein paar kurze Schritte — oder überspringen."],
-    dGuests:["Gäste","Namen unter <b>Namen hinzufügen</b> eingeben, einen pro Zeile. Gruppen (Braut, Bräutigam, Freunde…) geben ihnen Farben."],
-    dTables:["Namen an den Tischen","<b>Einen Tisch anklicken</b> (in der Liste rechts oder auf der Fläche), Namen eingeben, <b>Enter</b> → nächster Platz. Der Punkt ändert die Gruppe."],
-    dFloor:["Die Fläche","Tische und Deko <b>ziehen</b>, um sie zu verschieben — oder einen Gast auf einen Stuhl. Strg + Mausrad zoomt, Strg+Z macht rückgängig."],
-    dSave:["Speichern & Teilen","☁ zeigt, dass alles synchron ist. <b>Ihr Link ist der Schlüssel</b> — teilen Sie ihn mit Ihrem Partner. „Aa“ ändert, wie Namen erscheinen."],
-    mTables:["Die Tische","<b>Einen Tisch antippen</b> in der Liste (oder auf der Fläche), um seine Platzliste zu öffnen. „⤢ Alle“ bringt Sie zurück."],
-    mNames:["Namen","Namen eingeben, <b>Enter</b> → nächster Platz. Der Punkt ändert die Gruppe (Farbe). „‹ Tische“ geht zurück."],
-    mGuests:["Gäste & Bewegen","👥 = Gästeliste und Gruppen: einen Namen antippen, dann einen Stuhl. Um einen Tisch zu verschieben, <b>eine halbe Sekunde gedrückt halten</b> und ziehen."],
-    done:["Das war's!","Unter ⋯ finden Sie Drucken, <b>Versionsverlauf</b> (jede frühere Version wiederherstellen) und diese Anleitung."]
+    dGuests:["Gäste","Namen unter <b>Namen hinzufügen</b> eingeben, einen pro Zeile."],
+    dTables:["Namen an den Tischen","<b>Tisch anklicken</b>, Namen eingeben, <b>Enter</b>. Der Punkt = Gruppe."],
+    dFloor:["Die Fläche","Tische und Deko <b>ziehen</b>. Strg+Z macht rückgängig."],
+    dSave:["Speichern","☁ = alles synchron. <b>Ihr Link ist der Schlüssel.</b>"],
+    mTables:["Die Tische","<b>Einen Tisch antippen</b>, um seine Plätze zu öffnen."],
+    mNames:["Namen","Namen eingeben, <b>Enter</b> → nächster Platz. Der Punkt = Gruppe."],
+    mGuests:["Gäste","👥 = Gäste und Gruppen. Zum Verschieben eines Tisches <b>eine halbe Sekunde halten</b> und ziehen."],
+    done:["Das war's!","Unter ⋯: Drucken und diese Anleitung; unter „Mehr…“ den <b>Versionsverlauf</b>, Export und Sprache."]
   },
   backTables:"‹ Tische", rowGroup:"Gruppe des Gastes", rowNewGroup:"Gruppe für neue Namen", gmManage:"⚙ Gruppen verwalten…", mGroups:"👪 Gruppen…", groupsTitle:"Gästegruppen", groupsHint:"Gruppen umbenennen, umfärben oder löschen — die Gäste behalten ihre Plätze. Die Zahl zeigt, wie viele zu jeder Gruppe gehören.", groupsNewPh:"Neue Gruppe…", groupsAdd:"Hinzufügen", customColor:"Andere Farbe…", tGroupAdded:"Gruppe „{n}“ hinzugefügt",
   mHistory:"🕘 Versionsverlauf", histTitle:"Versionsverlauf", histHint:"Jedes Speichern behält die vorherige Version auf dem Server. Stellen Sie jede beliebige wieder her — die aktuelle bleibt ebenfalls erhalten.", histRow:"{g} Gäste · {s} platziert · {n} Tische", histRestore:"Wiederherstellen", histConfirm:"Version vom „{t}“ wiederherstellen? Die aktuelle Version bleibt im Verlauf.", histRestored:"Version vom „{t}“ wiederhergestellt", histEmpty:"Noch keine früheren Versionen.", histFail:"Verlauf konnte nicht geladen werden", histNoCloud:"Einen Verlauf gibt es nur für Pläne, die online sind.",
   resetWarn2:"ACHTUNG: Dieser Plan hat {g} Gäste ({s} platziert). Wirklich ALLE löschen?", tResetHist:"Zurückgesetzt — die vorherige Version steht unter ⋯ → Versionsverlauf",
   cWipeBlocked:"Nicht gespeichert: Der Online-Plan hat {n} Gäste, diese Kopie ist leer. Der Online-Plan wird neu geladen.", cLocalErr:"Die lokale Kopie konnte nicht geladen werden ({e}) — Laden aus der Cloud.", cLoadErr:"Fehler beim Laden aus der Cloud: {e}",
-  view:"Ansicht", names:"Gästenamen", nm_full:"Voll", nm_short:"Kurz", nm_initials:"Initialen", nameSize:"Namensgröße", numSize:"Größe der Tischnummern", zoomLbl:"Zoom", undo:"Rückgängig", redo:"Wiederholen", tUndo:"Rückgängig gemacht", tRedo:"Wiederholt", tNumSize:"Tischnummern {n}%", mRound:"＋ Runder Tisch", holdToMove:"Um einen Tisch oder ein Objekt zu verschieben, eine halbe Sekunde gedrückt halten und dann ziehen. Sonst frei ziehen, um sich im Raum zu bewegen.",
+  view:"Ansicht", names:"Gästenamen", nm_full:"Voll", nm_short:"Kurz", nm_initials:"Initialen", nameSize:"Namensgröße", numSize:"Größe der Tischnummern", zoomLbl:"Zoom", undo:"Rückgängig", redo:"Wiederholen", tUndo:"Rückgängig gemacht", tRedo:"Wiederholt", tNumSize:"Tischnummern {n}%", mRound:"＋ Runder Tisch", holdToMove:"Zum Verschieben Tisch oder Objekt eine halbe Sekunde halten, dann ziehen.",
   tools:"Tische & Fläche", addRound:"＋ Runder Tisch", addHead:"＋ Brauttisch", decor:"🛋 Deko", autoSeat:"✨ Auto-Füllen", floor:"Boden",
   guests:"Gäste", unseatedN:"{n} ohne Platz", searchPh:"Namen suchen…", all:"Alle", addGroup:"＋ Gruppe", addGroupTitle:"Neue Gruppe",
-  addNames:"Namen hinzufügen", namesPh:"Ein Name pro Zeile…", namesHint:"Kommen in die gewählte Gruppe · Strg+Enter zum Hinzufügen", namesTo:"Neue Namen kommen in: {g} · Strg+Enter", addToList:"Zur Liste hinzufügen",
+  addNames:"Namen hinzufügen", namesPh:"Ein Name pro Zeile…", namesHint:"Kommen in die gewählte Gruppe · Strg+Enter zum Hinzufügen", namesTo:"Neue Namen kommen in: {g} · Strg+Enter", namesToTouch:"Neue Namen kommen in: {g}", addToList:"Zur Liste hinzufügen",
   poolEmpty:"Alle Gäste haben einen Platz 🎉", poolEmptyNew:"Noch keine Gäste.<br>Namen unten hinzufügen ↓", poolEmptyGroup:"Niemand ohne Platz in dieser Gruppe — siehe „Alle“", noMatch:"Kein Name passt",
   chipEdit:"Name & Gruppe bearbeiten", chipRemove:"Gast entfernen", groupTip:"Klick: auswählen · Doppelklick: umbenennen · Rechtsklick: Farbe / löschen", groupMore:"Umbenennen / Farbe / löschen",
   prevTable:"Vorheriger Tisch", nextTable:"Nächster Tisch", tableSettings:"Tisch-Einstellungen", close:"Schließen",
-  focusHint:"Namen eingeben und Enter drücken für den nächsten Platz — oder einen Vorschlag wählen.",
-  seatPh:"freier Platz", unseat:"Vom Platz entfernen", fill:"✨ Aus Gruppe füllen", clearTable:"Leeren", clearConfirm:"Alle Gäste von „{n}“ zurück in die Liste ohne Platz?",
+  seatPh:"freier Platz", unseat:"Vom Platz entfernen", fill:"✨ Füllen", clearTable:"Leeren", clearConfirm:"Alle Gäste von „{n}“ zurück in die Liste ohne Platz?",
   fillNone:"Dort gibt es keine Gäste ohne Platz", filled:"{n} platziert", createNew:"＋ Neuer Gast „{n}“", renameTo:"✎ Umbenennen in „{n}“", moreMatches:"…und {n} weitere — weiter tippen",
   pbHint:"→ Platz antippen", pbUnseat:"↩ Platz freigeben", pbEdit:"Bearbeiten", pbCancel:"Abbrechen",
   menuTitle:"Tisch-Einstellungen", menuTitleHead:"Brauttisch-Einstellungen", capLabel:"Plätze", capLabelHead:"Plätze gesamt (2 davon an den Enden)", labelPh:"Tischname / -nummer", deleteTable:"🗑 Löschen", focusSeats:"✎ Namen",
-  mShare:"☁ Teilen & synchronisieren", mImportGuests:"＋ Gästeliste importieren", mExport:"⬆ Plan exportieren", mImport:"⬇ Plan importieren", mPrint:"🖨 Drucken", mReset:"Plan zurücksetzen", mLang:"Sprache", mDecor:"🛋 Deko & Objekte", mHead:"＋ Brauttisch", mAuto:"✨ Auto-Füllen",
+  mShare:"☁ Teilen & synchronisieren", mImportGuests:"＋ Gästeliste importieren", mExport:"⬆ Plan exportieren", mImport:"⬇ Plan importieren", mPrint:"🖨 Drucken", mReset:"Plan zurücksetzen", mLang:"Sprache", mMore:"Mehr…", capPlan:"Plan", capFiles:"Dateien & Sicherungen", mDecor:"🛋 Deko & Objekte", mHead:"＋ Brauttisch", mAuto:"✨ Auto-Füllen",
   stats:"{t} Tische · {s}/{g} platziert · {c} Plätze",
   headTable:"💑 Brauttisch", headFacing:"blickt zur Tanzfläche",
   groupsDefault:["Seite der Braut","Seite des Bräutigams","Freunde","Familie"],
@@ -1160,13 +1209,13 @@ function buildSeat(t,i,relx,rely,fs,seatH){
   if(gid){
     const col=guestColor(gid);
     const shown=displayName(gid);
-    seat.style.background=col; seat.style.width=seatWidthFor(shown,fs)+"px";
+    seat.style.backgroundColor=col; seat.style.width=seatWidthFor(shown,fs)+"px";   // colour only: the CSS gradient keeps the pill's sheen
     if(gStatus(gid)!=="confirmed"){ seat.style.borderStyle="dashed"; seat.style.borderColor="rgba(255,255,255,.9)"; seat.style.backgroundClip="padding-box"; }   // not-yet-confirmed: white dashes inside the pill, visible on any floor
     seat.innerHTML=`<span class="nm">${escapeHtml(shown)}</span>`;
     seat.title=guestName(gid)+(guestGroup(gid)?` · ${guestGroup(gid).name}`:"")+statusTitle(gid);
     seat.draggable=true; seat.dataset.guestId=gid;
   }else{
-    seat.style.width="42px";
+    seat.style.width="34px";
     seat.innerHTML=`<span class="nm" style="opacity:.6">+</span>`;
   }
   wireSeat(seat);
@@ -1180,13 +1229,13 @@ function renderRoundTable(t, wrap){
   const g=roundGeom(t);
   const disc=document.createElement("div");
   disc.className="table-disc";
-  disc.style.width=(g.discR*2)+"px"; disc.style.height=(g.discR*2)+"px";
+  disc.style.width=(g.discR*2)+"px"; disc.style.height=(g.discR*2)+"px"; disc.style.setProperty("--dd",(g.discR*2)+"px");
   const occ=t.seats.filter(Boolean).length;
   disc.innerHTML=`<span class="tgear" title="${escapeHtml(tr("tableSettings"))}">⚙</span><span class="tnum">${escapeHtml(t.label)}</span><span class="tcount">${occ}/${t.capacity}</span>`;
   disc.title=tr("tableTip");
   disc.querySelector(".tgear").addEventListener("click",e=>{ e.stopPropagation(); openMenu(t.id,e); });
   disc.addEventListener("contextmenu",e=>{ e.preventDefault(); openMenu(t.id,e); });
-  makeDraggable(disc, wrap, t, ()=>renderTables([t.id]), ()=>{ focusTable(t.id); hintHold(); });
+  makeDraggable(disc, wrap, t, ()=>renderTables([t.id]), ()=>focusTable(t.id));
   wrap.appendChild(disc);
   for(let i=0;i<t.capacity;i++){
     const a=(i/t.capacity)*2*Math.PI - Math.PI/2;
@@ -1215,7 +1264,7 @@ function renderHeadTable(t, wrap){
   disc.title=tr("tableTip");
   disc.querySelector(".tgear").addEventListener("click",e=>{ e.stopPropagation(); openMenu(t.id,e); });
   disc.addEventListener("contextmenu",e=>{ e.preventDefault(); openMenu(t.id,e); });
-  makeDraggable(disc, wrap, t, ()=>renderTables([t.id]), ()=>{ focusTable(t.id); hintHold(); });
+  makeDraggable(disc, wrap, t, ()=>renderTables([t.id]), ()=>focusTable(t.id));
   wrap.appendChild(disc);
   // main row on the FAR side of the table, so the couple sits behind the table facing the dance floor
   for(let i=0;i<g.top;i++){
@@ -1259,7 +1308,7 @@ function renderGroups(){
   add.className="chip add"; add.textContent=tr("addGroup"); add.title=tr("groupsTitle");
   add.addEventListener("click",openGroupsModal); box.appendChild(add);
   const ag=state.groups.find(g=>g.id===state.activeGroupId);   // say where new names will go
-  const hint=$("namesHint"); if(hint) hint.textContent=tr("namesTo",{g:ag?ag.name:tr("noGroup")});
+  const hint=$("namesHint"); if(hint) hint.textContent = isTouch ? tr("namesToTouch",{g:ag?ag.name:tr("noGroup")}) : tr("namesTo",{g:ag?ag.name:tr("noGroup")});   // no Ctrl+Enter on a phone
 }
 function makeGroupChip(g, count, isAll){
   const chip=document.createElement("div");
@@ -1291,6 +1340,7 @@ function renderPool(){
   $("poolCount").textContent=tr("unseatedN",{n:un.length});
   $("mbCount").textContent=un.length;
   $("searchWrap").classList.toggle("has", !!searchQ);
+  $("searchWrap").hidden = !searchQ && document.activeElement!==$("guestSearch") && un.length<8;   // search only once the list is long enough to need it
   if(ids.length===0){
     const msg = searchQ ? escapeHtml(tr("noMatch")) : (state.activeGroupId&&un.length) ? escapeHtml(tr("poolEmptyGroup")) : (Object.keys(state.guests).length ? escapeHtml(tr("poolEmpty")) : tr("poolEmptyNew"));
     pool.innerHTML=`<div class="empty-note">${msg}</div>`;
@@ -1614,9 +1664,17 @@ $("tsAll").addEventListener("click",overview);
 $("tsToggle").addEventListener("click",()=>{ const on=document.body.classList.toggle("strip-collapsed"); $("tsToggle").textContent=on?"⌃":"⌄";
   try{ localStorage.setItem("weddingSeatingPlanner.strip", on?"1":""); }catch(e){} requestAnimationFrame(()=>{ zoom=clamp(fitZoom(),0.2,2.5); applyZoom(); }); });
 try{ if(localStorage.getItem("weddingSeatingPlanner.strip")==="1"){ document.body.classList.add("strip-collapsed"); $("tsToggle").textContent="⌃"; } }catch(e){}
+// phone: the tools section starts folded and remembers what the user did with it (PC: always open)
+try{ const ts=$("toolsSec"); if(isNarrow()) ts.open=localStorage.getItem("weddingSeatingPlanner.tools")==="1";
+  ts.addEventListener("toggle",()=>{ if(!isNarrow()) return; try{ localStorage.setItem("weddingSeatingPlanner.tools", ts.open?"1":""); }catch(e){} }); }catch(e){}
 $("viewBtn").addEventListener("click",e=>{ e.stopPropagation(); openViewMenu(e.currentTarget); });
-// One-time hint the first time a touch user taps a table: hold to move, drag elsewhere to pan.
-function hintHold(){ if(!isTouch) return; try{ if(localStorage.getItem("weddingSeatingPlanner.hint.hold")) return; localStorage.setItem("weddingSeatingPlanner.hint.hold","1"); }catch(e){} toast(tr("holdToMove"),5000); }
+// One-time hints. Hold-to-move shows the first time a finger tries to DRAG a table and the floor pans instead (not on a tap —
+// the freshly opened sheet must not get a toast on top). The Enter hint is one line inside the sheet until the first name is seated.
+const HINT_HOLD="weddingSeatingPlanner.hint.hold", HINT_ENTER="weddingSeatingPlanner.hint.enter";
+function seenHint(k){ try{ return !!localStorage.getItem(k); }catch(e){ return true; } }
+function markHint(k){ try{ localStorage.setItem(k,"1"); }catch(e){} }   // hints are re-evaluated on the next sheet open, not mid-typing
+function hintHold(){ if(!isTouch || seenHint(HINT_HOLD)) return; markHint(HINT_HOLD); toast(tr("holdToMove"),4000); }
+function renderSheetHint(){ const el=$("fHint"); if(!el) return; el.hidden=!(focusedTable() && !seenHint(HINT_ENTER)); if(!el.hidden) el.textContent=tr("hintEnter"); }
 
 // ---- tap to place: HTML5 drag & drop never fires on touch, so this is the phone's way to seat anyone ----
 let pick=null;   // {type,guestId,from,tableId,seatIndex}
@@ -1732,6 +1790,7 @@ function makeDraggable(handleEl, moveEl, obj, onEnd, onTap){
     if(e.target.closest(".tgear")||e.target.closest(".rz")||e.target.closest(".rot-h")) return;
     if(e.button!==0) return;
     const touch=e.pointerType==="touch";
+    if(activeDragCancel) activeDragCancel();   // a second finger (pinch) cancels the first pending hold instead of leaving it armed
     e.stopPropagation(); if(!touch) e.preventDefault();
     const sx=e.clientX, sy=e.clientY, ox=obj.x, oy=obj.y, t0=performance.now();
     let moved=false, lifted=false, done=false, holdTimer=null;
@@ -1753,6 +1812,8 @@ function makeDraggable(handleEl, moveEl, obj, onEnd, onTap){
       try{ handleEl.releasePointerCapture(e.pointerId); }catch(x){}
       handleEl.removeEventListener("pointermove",mv); handleEl.removeEventListener("pointerup",up); handleEl.removeEventListener("pointercancel",up); handleEl.removeEventListener("touchmove",tm);
       if(cancelled){ if(lifted&&moved){ obj.x=ox; obj.y=oy; moveEl.style.left=ox+"px"; moveEl.style.top=oy+"px"; } return; }
+      if(touch && !lifted && (moved || (ev && ev.type==="pointercancel"))) hintHold();   // tried to drag, the floor panned instead (iOS often cancels before a >10px move is seen)
+      if(touch && lifted && moved) markHint(HINT_HOLD);                                  // already knows the gesture
       if(lifted&&moved){ save(); if(onEnd)onEnd(); }
       else if(!moved && onTap && ev && ev.type!=="pointercancel") onTap();
     }
@@ -1865,7 +1926,7 @@ document.addEventListener("click",e=>{
   [["groupmenu",closeGroupMenu],["featuremenu",closeFeatureMenu],["guesteditor",closeGuestEditor]].forEach(([id,fn])=>{ const el=$(id); if(el.style.display==="block" && !el.contains(e.target)) fn(); });
   const pm=$("profilemenu"); if(pm.style.display==="block" && !pm.contains(e.target) && e.target.id!=="profMore") closeProfileMenu();
   const mm=$("moremenu"); if(mm.style.display==="block" && !mm.contains(e.target) && !e.target.closest("#moreBtn")) mm.style.display="none";
-  const fm=$("fillmenu"); if(fm.style.display==="block" && !fm.contains(e.target) && !e.target.closest("#fFill")) fm.style.display="none";
+  const fm=$("fillmenu"); if(fm.style.display==="block" && !fm.contains(e.target) && !e.target.closest("#fFill,#menuFill")) fm.style.display="none";
   const vm=$("viewmenu"); if(vm.style.display==="block" && !vm.contains(e.target) && !e.target.closest("#viewBtn,#mbView")) vm.style.display="none";
   const pl=$("palette"); if(pl.style.display==="block" && !pl.contains(e.target)) pl.style.display="none";
 });
@@ -1877,9 +1938,52 @@ document.addEventListener("click",e=>{
 const focusEl=$("focus"), fSeats=$("fSeats");
 let sug=null, viewAnim=null;
 function focusedTable(){ return state.tables.find(t=>t.id===focusId)||null; }
+// ---- On-screen keyboard (phones): iOS Safari and Android Chrome keep the layout viewport full-height under the keyboard,
+// so a fixed bottom sheet is painted BEHIND it. Measure the hidden strip via visualViewport, lift the sheet/drawer above
+// it (--kb / body.kb) and scroll the active row into the visible part — never the document (Safari pans it itself). ----
+const vv=window.visualViewport; let kbRaf=0;
+function kbZoomed(){ return !!vv && Math.abs(vv.scale-1)>0.02; }   // pinch-zoomed page: vv.height shrinks without a keyboard
+function kbField(){ const ae=document.activeElement; return (ae&&(ae.tagName==="INPUT"||ae.tagName==="TEXTAREA")&&ae.closest("#focus, #sidebar"))?ae:null; }
+let kbPrev=0;
+function syncKeyboard(){
+  kbRaf=0;
+  const ae=isNarrow()?kbField():null, zoomed=kbZoomed();
+  const kbH=(vv&&!zoomed)?Math.round(window.innerHeight-vv.height):0;   // keyboard height, independent of how far Safari panned (toolbars shrink both together)
+  const kb=(ae&&kbH>=120)?kbH:0;                                // <120px = toolbar show/hide, never a keyboard
+  document.documentElement.style.setProperty("--kb",kb+"px");
+  document.body.classList.toggle("kb",kb>0);                   // follows the MEASUREMENT: Android's Back closes the keyboard without a blur
+  if(ae&&kb&&!zoomed&&(window.scrollY||vv.offsetTop)) window.scrollTo(0,0);   // undo Safari's own "reveal the field" pan
+  if(ae) revealField(ae);
+  if((kb>0)!==(kbPrev>0)) reanchorSheetMenus(); kbPrev=kb;
+}
+// A popover opened from the sheet's ⚙ while the keyboard was up must follow the sheet when it drops back (and after its .2s slide).
+function reanchorSheetMenus(){
+  if(!isNarrow()) return; const a=$("fSettings");
+  if(menu.style.display==="block" && focusId!=null && activeMenuTableId===focusId) showPopover(menu, anchorOf(a));
+  const fm=$("fillmenu"); if(fm.style.display==="block" && fm.dataset.fromSheet) showPopover(fm, anchorOf(a));
+}
+focusEl.addEventListener("transitionend",e=>{ if(e.propertyName==="height") reanchorSheetMenus(); });
+function queueKb(){ if(!kbRaf) kbRaf=requestAnimationFrame(syncKeyboard); }
+if(vv){ vv.addEventListener("resize",queueKb); vv.addEventListener("scroll",queueKb); }
+document.addEventListener("focusin",queueKb);
+document.addEventListener("focusout",()=>setTimeout(queueKb,80));   // Enter blurs row i and focuses row i+1 in one tick: judge the NEW activeElement
+// Scroll the field's own list so the row AND its suggestion box are visible above the keyboard.
+function revealField(ae){
+  const sc=ae.closest("#fSeats, .side-scroll"); if(!sc) return;
+  const row=ae.closest(".frow")||ae;
+  const nx=row.nextElementSibling, box=(nx&&nx.classList.contains("fsug"))?nx:null;
+  const sr=sc.getBoundingClientRect(), vis=(vv&&!kbZoomed())?vv.offsetTop+vv.height:window.innerHeight;
+  const top=sr.top+4, bottom=Math.min(sr.bottom,vis)-4;
+  const rr=row.getBoundingClientRect(), rb=(box||row).getBoundingClientRect().bottom;
+  if(rr.top<top) sc.scrollTop+=rr.top-top;
+  else if(rb>bottom) sc.scrollTop+=Math.min(rb-bottom, rr.top-top);   // show the suggestions too, never push the row off the top
+}
 function visibleBox(){
   let w=stagewrap.clientWidth, h=stagewrap.clientHeight;
-  if(isNarrow() && document.body.classList.contains("focused")) h=Math.max(140, h-focusEl.getBoundingClientRect().height);
+  if(isNarrow() && document.body.classList.contains("focused")){
+    const sh=document.body.classList.contains("kb")?window.innerHeight*0.46:focusEl.getBoundingClientRect().height;   // resting height while typing: ‹ › must not zoom into a 140px band
+    h=Math.max(140, h-sh);
+  }
   return {w,h};
 }
 // Glide the view so stage point (cx,cy) sits at the visible centre at zoom z.
@@ -1910,7 +2014,7 @@ function focusTable(id, opts={}){
   focusId=id;
   document.body.classList.add("focused"); setNav(false); hideSug();
   stage.querySelectorAll(".table").forEach(w=>w.classList.toggle("focused", +w.dataset.tableId===id));
-  renderFocus();
+  renderFocus(); renderSheetHint();
   // focus the wanted row synchronously — iOS only opens the keyboard for focus() inside the user gesture
   if(opts.row!=null) focusRow(opts.row);
   // zoom onto the table once the panel has taken its space (layout changes on open)
@@ -1925,6 +2029,7 @@ function unfocusTable(){
   if(focusId==null && !document.body.classList.contains("focused")) return;
   flushLiveRow();
   focusId=null; hideSug(); document.body.classList.remove("focused"); focusEl.classList.remove("tall");
+  document.body.classList.remove("kb"); document.documentElement.style.setProperty("--kb","0px");   // closed while the keyboard was still up
   stage.querySelectorAll(".table.focused").forEach(w=>w.classList.remove("focused"));
   layoutCanvas();
 }
@@ -1943,7 +2048,7 @@ function renderFocus(){
     const gid=t.seats[i];
     const row=document.createElement("div"); row.className="frow"+(gid?" occ":""); row.dataset.i=i;
     const dotColor=gid?guestColor(gid):(ag?ag.color:"#cfc8bd");
-    row.innerHTML=`<span class="fn">${i+1}</span><button class="fdot${gid?"":" empty"}" tabindex="-1" title="${escapeHtml(gid?tr("rowGroup"):tr("rowNewGroup"))}" style="background-color:${safeColor(dotColor)}"></button><input type="text" maxlength="40" autocomplete="off" spellcheck="false" placeholder="${escapeHtml(tr("seatPh"))}" value="${gid?escapeHtml(guestName(gid)):""}"><button class="fx" title="${escapeHtml(tr("unseat"))}" tabindex="-1">✕</button>`;
+    row.innerHTML=`<span class="fn">${i+1}</span><button class="fdot${gid?"":" empty"}" tabindex="-1" title="${escapeHtml(gid?tr("rowGroup"):tr("rowNewGroup"))}" style="background-color:${safeColor(dotColor)}"></button><input type="text" maxlength="40" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="words" enterkeyhint="${i+1<t.capacity?"next":"done"}" placeholder="${escapeHtml(tr("seatPh"))}" value="${gid?escapeHtml(guestName(gid)):""}"><button class="fx" title="${escapeHtml(tr("unseat"))}" tabindex="-1">✕</button>`;
     const dot=row.querySelector(".fdot");
     dot.addEventListener("pointerdown",e=>e.preventDefault());   // don't blur a row being typed in
     dot.addEventListener("click",e=>{ e.stopPropagation(); const g2=t.seats[i]; if(g2) openGroupMenu(g2, anchorOf(dot)); else openActiveGroupMenu(anchorOf(dot)); });
@@ -1968,7 +2073,7 @@ function renderFocus(){
   if(keep){ const inp=rowInput(keep.i); if(inp){ inp.value=keep.v; inp.focus({preventScroll:true}); try{ inp.setSelectionRange(keep.s,keep.e); }catch(e){} } }
 }
 function rowInput(i){ return fSeats.querySelector(`.frow[data-i="${i}"] input`); }
-function focusRow(i){ const inp=rowInput(i); if(!inp) return; inp.focus(); inp.select(); inp.scrollIntoView({block:"nearest"}); }
+function focusRow(i){ const inp=rowInput(i); if(!inp) return; inp.focus({preventScroll:true}); inp.select(); revealField(inp); }
 function markSeat(i){ stage.querySelectorAll(".table.focused .seat").forEach(s=>s.classList.toggle("sel", +s.dataset.seatIndex===i)); }
 function onRowKey(e,i,inp){
   e.stopPropagation();
@@ -1988,7 +2093,7 @@ function onRowKey(e,i,inp){
     else commitRow(tb,i,v,null);
     renderFocus();
     const next=e.shiftKey? i-1 : i+1;
-    if(next>=0 && next<tb.capacity) focusRow(next); else (e.shiftKey?$("fBack"):$("fFill")).focus();
+    if(next>=0 && next<tb.capacity) focusRow(next); else (e.shiftKey?$("fBack"):(isNarrow()?$("fSettings"):$("fFill"))).focus();
   }
 }
 // Apply what was typed/chosen for seat i. Returns true if the plan changed.
@@ -2004,7 +2109,7 @@ function commitRow(tb,i,text,chosenId){
       changed=true;
     }
   }
-  if(changed){ save(); renderTables([tb.id]); renderPool(); renderGroups(); }
+  if(changed){ save(); renderTables([tb.id]); renderPool(); renderGroups(); if(!cur) markHint(HINT_ENTER); }   // first NEW name seated: the hint line goes away the next time a sheet opens (no shift under the finger now)
   return changed;
 }
 // Suggestions under the active row: unseated guests matching the text (active group first when empty).
@@ -2035,7 +2140,8 @@ function paintSug(){
     el.addEventListener("click",()=>chooseSug(+el.dataset.k));
   });
   row.after(box);
-  const sel=box.querySelector(".sel"); if(sel) sel.scrollIntoView({block:"nearest"});
+  const inp=rowInput(sug.i); if(inp) revealField(inp);
+  if(sug.nav){ const sel=box.querySelector(".sel"); if(sel) sel.scrollIntoView({block:"nearest"}); }   // ↑↓ keyboard navigation (PC) only
 }
 function hideSug(){ sug=null; fSeats.querySelectorAll(".fsug").forEach(e=>e.remove()); }
 function chooseSug(k){
@@ -2054,19 +2160,23 @@ $("fPrev").addEventListener("click",()=>stepTable(-1));
 $("fNext").addEventListener("click",()=>stepTable(1));
 $("fBack").addEventListener("click",()=>{ if(isNarrow()) overview(); else unfocusTable(); });   // ‹ Τραπέζια: back to the list / the whole floor
 $("fSettings").addEventListener("click",e=>{ if(focusId!=null) openMenu(focusId, anchorOf(e.currentTarget)); });
-$("fHandle").addEventListener("click",()=>focusEl.classList.toggle("tall"));
-$("fName").addEventListener("click",()=>{ if(isNarrow()) focusEl.classList.toggle("tall"); });
-$("fClear").addEventListener("click",()=>{ const t=focusedTable(); if(!t) return; if(!t.seats.some(Boolean)) return;
-  if(!confirm(tr("clearConfirm",{n:t.label}))) return; t.seats=t.seats.map(()=>null); save(); renderTables([t.id]); renderPool(); toast(tr("tCleared")); });
-$("fFill").addEventListener("click",e=>{
-  const t=focusedTable(); if(!t) return;
+function sheetToggle(){ if(document.body.classList.contains("kb")){ focusEl.classList.remove("tall"); const ae=kbField(); if(ae) ae.blur(); return; } focusEl.classList.toggle("tall"); }   // keyboard up: drop to the resting size
+$("fHandle").addEventListener("click",sheetToggle);
+$("fName").addEventListener("click",()=>{ if(isNarrow()) sheetToggle(); });
+function clearTableSeats(t){ if(!t||!t.seats.some(Boolean)) return; if(!confirm(tr("clearConfirm",{n:t.label}))) return; t.seats=t.seats.map(()=>null); save(); renderTables([t.id]); renderPool(); toast(tr("tCleared")); }
+function openFillMenu(t, anc){   // anc = anchorOf(...) taken BEFORE the caller closes its own popover
   const un=unseatedIds(); const per={}; un.forEach(id=>{ const g=state.guests[id].groupId||""; per[g]=(per[g]||0)+1; });
   const m=$("fillmenu");
   const rows=[{id:"",name:tr("all"),color:null,n:un.length}].concat(state.groups.map(g=>({id:g.id,name:g.name,color:g.color,n:per[g.id]||0})));
   m.innerHTML=rows.map(r=>`<div class="gm-item" data-gid="${escapeHtml(r.id)}">${r.color?`<span class="dot" style="background:${safeColor(r.color)}"></span>`:""}${escapeHtml(r.name)}<span class="n">${r.n}</span></div>`).join("");
   m.querySelectorAll(".gm-item").forEach(it=>it.onclick=()=>{ m.style.display="none"; fillFrom(t, it.dataset.gid||null); });
-  showPopover(m, anchorOf(e.currentTarget));
-});
+  m.dataset.fromSheet=(isNarrow() && t.id===focusId)?"1":"";   // phone: came from the sheet's ⚙ → re-anchor there if the sheet moves
+  showPopover(m, anc);
+}
+$("fClear").addEventListener("click",()=>clearTableSeats(focusedTable()));
+$("fFill").addEventListener("click",e=>{ const t=focusedTable(); if(t) openFillMenu(t, anchorOf(e.currentTarget)); });
+$("menuClear").addEventListener("click",()=>{ const t=state.tables.find(x=>x.id===activeMenuTableId); closeMenu(); clearTableSeats(t); });
+$("menuFill").addEventListener("click",e=>{ const t=state.tables.find(x=>x.id===activeMenuTableId), anc=anchorOf(e.currentTarget); closeMenu(); if(t) openFillMenu(t, anc); });
 function fillFrom(t, gid){
   let ids=unseatedIds(); if(gid) ids=ids.filter(id=>state.guests[id].groupId===gid);
   if(!ids.length){ toast(tr("fillNone")); return; }
@@ -2095,20 +2205,27 @@ document.addEventListener("keydown",e=>{
 // ============================================================
 //  GUIDED TOUR — first visit (per device) and ⋯ → Οδηγός χρήσης / "?" · one flow for phones, one for PCs
 // ============================================================
-const TOUR_KEY="weddingSeatingPlanner.tour.v1";
+const TOUR_KEY="weddingSeatingPlanner.tour.v1", WELCOME_KEY="weddingSeatingPlanner.welcome.v1";
 let tour=null;
+// First visit: one centred card with the three things that matter, "Ξεκινάω" or "Δείξτε μου τα βήματα" (the spotlight tour).
+function startWelcome(){
+  if(tour) return;
+  setPick(null); hideSug(); document.querySelectorAll(".modal-back.open").forEach(m=>m.classList.remove("open"));
+  tour={ steps:[{key:"welcome",target:null,welcome:true}], i:0 }; $("tour").hidden=false; document.body.classList.add("touring");
+  try{ localStorage.setItem(WELCOME_KEY,"1"); }catch(e){}
+  showTourStep();
+}
+function maybeWelcome(){ try{ if(localStorage.getItem(WELCOME_KEY)||localStorage.getItem(TOUR_KEY)) return; }catch(e){ return; } setTimeout(startWelcome, 700); }
 function tourSteps(){
   const S=(key,target,opts)=>({key,target,...(opts||{})});
   const first=()=>state.tables[0]&&state.tables[0].id;
   if(isNarrow()) return [
-    S("welcome",null),
     S("mTables","#tablestrip",{prep:()=>overview()}),
     S("mNames","#focus",{prep:()=>{ if(first()!=null) focusTable(first()); }, after:()=>overview()}),
     S("mGuests","#mobilebar"),
     S("done","#moreBtn"),
   ];
   return [
-    S("welcome",null),
     S("dGuests","#sidebar .sec:nth-child(2)"),
     S("dTables","#focus",{prep:()=>{ if(first()!=null) focusTable(first()); }, after:()=>overview()}),
     S("dFloor","#stagewrap"),
@@ -2134,6 +2251,18 @@ function showTourStep(){
 function placeTour(){
   if(!tour) return; const st=tour.steps[tour.i];
   const spot=$("tourSpot"), card=$("tourCard"); const vh=window.innerHeight, vw=window.innerWidth;
+  if(st.welcome){
+    spot.style.left=(vw/2)+"px"; spot.style.top=(vh/2)+"px"; spot.style.width="0px"; spot.style.height="0px"; spot.style.outlineWidth="0";
+    const lines=[tr("welcome1"),tr("welcome2")]; const cp=currentProfile(); if(!IS_LAB && cp && cp.cloudId) lines.push(tr("welcome3"));   // the link line only when there is a link to keep
+    card.innerHTML=`<h3 class="tour-welcome">${escapeHtml(tr("welcomeTitle"))}</h3><ol class="tour-lines">${lines.map(l=>`<li>${escapeHtml(l)}</li>`).join("")}</ol>
+      <div class="tour-btns"><button class="ibtn" data-a="steps">${escapeHtml(tr("welcomeSteps"))}</button><span class="spacer"></span><button class="ibtn primary" data-a="go">${escapeHtml(tr("welcomeGo"))}</button></div>`;
+    card.style.bottom=""; card.style.top="50%"; card.style.left="50%"; card.style.right=""; card.style.transform="translate(-50%,-50%)";
+    card.style.maxWidth=(isNarrow()?(vw-32):380)+"px"; card.style.width=isNarrow()?"calc(100vw - 32px)":"";
+    card.querySelector('[data-a="go"]').onclick=()=>endTour();
+    card.querySelector('[data-a="steps"]').onclick=()=>{ endTour(); startTour(); };
+    return;
+  }
+  card.style.transform=""; card.style.width="";   // normal steps: clear what the welcome card set
   const tgt=st.target?document.querySelector(st.target):null; const r=tgt?tgt.getBoundingClientRect():null;
   const visible=!!(r&&r.width>0&&r.height>0);
   if(visible){ spot.style.left=(r.left-6)+"px"; spot.style.top=(r.top-6)+"px"; spot.style.width=(r.width+12)+"px"; spot.style.height=(r.height+12)+"px"; spot.style.outlineWidth="2px"; }
@@ -2141,7 +2270,7 @@ function placeTour(){
   const tx=(T.tour&&T.tour[st.key])||T_ALL.el.tour[st.key];
   const last=tour.i===tour.steps.length-1;
   card.innerHTML=`<button class="tour-x" data-a="skip" title="${escapeHtml(tr("tourSkip"))}">✕</button><div class="tour-step">${tour.i+1} / ${tour.steps.length}</div><h3>${escapeHtml(tx[0])}</h3><p>${tx[1]}</p>
-    <div class="tour-btns">${last?"":`<button class="ibtn" data-a="skip">${escapeHtml(tr("tourSkip"))}</button>`}<span class="spacer"></span>${tour.i>0?`<button class="ibtn" data-a="back">${escapeHtml(tr("tourBack"))}</button>`:""}<button class="ibtn primary" data-a="next">${escapeHtml(last?tr("tourDone"):(tour.i===0?tr("tourStart"):tr("tourNext")))}</button></div>`;
+    <div class="tour-btns">${last?"":`<button class="ibtn" data-a="skip">${escapeHtml(tr("tourSkip"))}</button>`}<span class="spacer"></span>${tour.i>0?`<button class="ibtn" data-a="back">${escapeHtml(tr("tourBack"))}</button>`:""}<button class="ibtn primary" data-a="next">${escapeHtml(last?tr("tourDone"):tr("tourNext"))}</button></div>`;
   card.style.maxWidth=Math.min(400, vw-24)+"px";
   const atTop = visible && (r.top+r.height/2 > vh*0.55);
   card.style.top=atTop?"16px":""; card.style.bottom=atTop?"":"16px";
@@ -2153,7 +2282,6 @@ function placeTour(){
 }
 window.addEventListener("resize",()=>{ if(tour) placeTour(); });
 $("helpBtn").addEventListener("click",startTour);
-function maybeStartTour(){ try{ if(localStorage.getItem(TOUR_KEY)) return; }catch(e){ return; } setTimeout(startTour, 900); }
 
 // ============================================================
 //  GUEST SEARCH (sidebar) — filters the unseated list; Enter picks the first match
@@ -2163,7 +2291,7 @@ searchInp.addEventListener("input",()=>{ searchQ=searchInp.value; renderPool(); 
 searchInp.addEventListener("keydown",e=>{ e.stopPropagation();
   if(e.key==="Escape"){ searchInp.value=""; searchQ=""; renderPool(); searchInp.blur(); }
   if(e.key==="Enter"){ const ids=visiblePoolIds(); if(ids.length){ setPick({type:"guest",guestId:ids[0],from:"pool"}); searchInp.blur(); } } });
-$("searchClear").addEventListener("click",()=>{ searchInp.value=""; searchQ=""; renderPool(); searchInp.focus(); });
+$("searchClear").addEventListener("click",()=>{ searchInp.value=""; searchQ=""; renderPool(); if(!$("searchWrap").hidden) searchInp.focus(); });
 
 // ============================================================
 //  TOOLBAR · MORE MENU
@@ -2267,16 +2395,22 @@ function mergeGuestList(data){
   toast(tr("tMerged",{a:added})+(skipped?tr("tMergedSkipped",{s:skipped}):""));
 }
 // ⋯ menu: everything that isn't needed every minute
+// Four rows a couple needs, everything else behind «Περισσότερα…» (captioned) — nothing is more than two taps away.
 $("moreBtn").addEventListener("click",e=>{
-  const m=$("moremenu");
-  const items=[]; if(!IS_LAB) items.push(["share",tr("mShare")]); items.push(["groups",tr("mGroups")],["guests",tr("mImportGuests")]);
-  if(isNarrow()) items.push(["sep"],["newplan","＋ "+tr("newPlan")],["planmore","✎ "+tr("planMore")],["sep"],["round",tr("mRound")],["head",tr("mHead")],["decor",tr("mDecor")],["auto",tr("mAuto")]);
-  items.push(["sep"],["export",tr("mExport")],["import",tr("mImport")],["print",tr("mPrint")],["sep"],["tour",tr("mTour")]);
-  if(!IS_LAB) items.push(["history",tr("mHistory")]);
-  items.push(["reset",tr("mReset")]);
-  if(!IS_LAB) items.push(["sep"],["lang-el","ΕΛ · Ελληνικά"],["lang-en","EN · English"],["lang-de","DE · Deutsch"]);
-  m.innerHTML=items.map(([a,l])=>a==="sep"?`<div class="gm-sep"></div>`:`<div class="gm-item${a==="reset"?" danger":""}${a==="lang-"+LANG?" on":""}" data-act="${a}">${escapeHtml(l)}</div>`).join("");
-  m.querySelectorAll(".gm-item").forEach(it=>it.onclick=ev=>{ ev.stopPropagation(); m.style.display="none"; const a=it.dataset.act;
+  const m=$("moremenu"); m.classList.remove("expanded");
+  const primary=[]; if(!IS_LAB) primary.push(["share",tr("mShare")]);
+  primary.push(["groups",tr("mGroups")],["print",tr("mPrint")],["tour",tr("mTour")]);
+  const more=[];
+  if(isNarrow()) more.push(["cap",tr("capPlan")],["newplan","＋ "+tr("newPlan")],["planmore","✎ "+tr("planMore")],["cap",tr("tools")],["round",tr("mRound")],["head",tr("mHead")],["decor",tr("mDecor")],["auto",tr("mAuto")]);
+  more.push(["cap",tr("capFiles")],["guests",tr("mImportGuests")],["export",tr("mExport")],["import",tr("mImport")]);
+  if(!IS_LAB) more.push(["history",tr("mHistory")]);
+  more.push(["reset",tr("mReset")]);
+  if(!IS_LAB) more.push(["cap",tr("mLang")],["lang-el","ΕΛ · Ελληνικά"],["lang-en","EN · English"],["lang-de","DE · Deutsch"]);
+  const row=([a,l])=>a==="cap"?`<div class="gm-cap">${escapeHtml(l)}</div>`:`<div class="gm-item${a==="reset"?" danger":""}${a==="lang-"+LANG?" on":""}" data-act="${a}">${escapeHtml(l)}</div>`;
+  m.innerHTML=primary.map(row).join("")+`<div class="gm-sep"></div><div class="gm-item more" data-act="more">${escapeHtml(tr("mMore"))} ›</div><div class="gm-more">${more.map(row).join("")}</div>`;
+  m.querySelectorAll(".gm-item").forEach(it=>it.onclick=ev=>{ ev.stopPropagation(); const a=it.dataset.act;
+    if(a==="more"){ m.classList.add("expanded"); showPopover(m, anchorOf($("moreBtn"))); return; }   // re-place: the menu just grew
+    m.style.display="none";
     if(a==="share") openCloud(); else if(a==="guests") importGuestList(); else if(a==="head") $("addHeadBtn").click(); else if(a==="decor") openDecor();
     else if(a==="newplan") newProfile(); else if(a==="planmore") openProfileMenu(anchorOf($("moreBtn")));
     else if(a==="round") addRoundTable(); else if(a==="history") openHistory(); else if(a==="groups") openGroupsModal(); else if(a==="tour") startTour();
@@ -2585,6 +2719,8 @@ function fitZoom(){ const b=visibleBox(), n=isNarrow(); return Math.min(1,(b.w-(
 function initialZoom(){ if(isNarrow()) layoutCanvas(true); return Math.min(1, Math.max(fitZoom(), isNarrow()?0.1:0.5)); }
 function applyZoom(){
   layoutCanvas();
+  // far view (phones only, overview zoom): one big number per table instead of counters/gear/'+' nobody can read at 16 % — hysteresis so a pinch at the edge doesn't flicker
+  const far=document.body.classList.contains("far"); document.body.classList.toggle("far", isNarrow() && (far ? zoom<0.50 : zoom<0.40));
   stage.style.transform=`scale(${zoom})`;
   const m=isNarrow()?12:24, w=(state.stage&&state.stage.w)||1700, h=(state.stage&&state.stage.h)||1360;
   stage.style.margin=`${m}px ${Math.round(m+w*(zoom-1))}px ${Math.round(m+h*(zoom-1))}px ${m}px`;
@@ -2622,8 +2758,8 @@ function rasterizeMaterials(){
 setTimeout(rasterizeMaterials, 0);
 // ☁ open a shared link if present, otherwise refresh the active profile from the cloud (the lab never talks to the cloud)
 if(!IS_LAB){ const p0=currentProfile(); if(loadError && p0 && p0.cloudId) toast(tr("cLocalErr",{e:loadError}),7000); }
-if(!IS_LAB) (async()=>{ if(!(await openSharedFromURL())) await pullIfNewer(); if(getSyncCode()) await syncFromCode(); startCloudPoll(); maybeStartTour(); })();
-else maybeStartTour();
+if(!IS_LAB) (async()=>{ if(!(await openSharedFromURL())) await pullIfNewer(); if(getSyncCode()) await syncFromCode(); startCloudPoll(); maybeWelcome(); })();
+else maybeWelcome();
 </script>
 </body>
 </html>
