@@ -242,6 +242,12 @@ cascade-purges its plans; venues can rotate their own key; backups encrypted at 
   name is moved by HOLDING it ~⅓ s and dragging (`seatHold`, same feel as tables: lift, glow, drop on another chair = move/swap);
   a TAP picks it (pick bar: tap a chair · edit · unseat); a long press never opens the guest editor on touch (right-click still
   does with a mouse). Seats are `draggable` only with a mouse (iOS would start a native drag session otherwise).
+- **Place handle** (2026-09-11, second tester could not guess that names on the floor are interactive and looked for a
+  handle in the list): every unseated name in the list and every occupied row of the table sheet carries a grip icon
+  (`.grip`, `i-grip`). Click/tap → `openPlaceMenu` (#placemenu): "Διαλέξτε καρέκλα στην κάτοψη" (hands over to the
+  existing pick flow) or a table list (free/total) → its seats (taken ones dimmed, the guest's own seat marked ←) →
+  `placeGuestInSeat`. On PC the chip is also draggable from the handle. While a name is picked, free chairs pulse green
+  and occupied chairs get an amber ring (drop = swap/replace); the picked seat keeps the accent ring (`.seat.picked`).
 - **One-time tips** (`showTip`/`checkTips`, `weddingSeatingPlanner.tips`): a small dark card (top-right on phones, over the floor
   on PC) shown once per device at the moment the action becomes useful: first seated name → "hold/drag a name to another chair";
   names added to the list → "tap a name then a chair" / "drag or Auto-seat"; ≥6 guests none grouped → the dot changes the group;

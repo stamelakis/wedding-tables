@@ -123,11 +123,29 @@ __ROBOTS__
   body.touch .chip .gmore{ opacity:.45; }
   #pool{ display:flex; flex-direction:column; gap:5px; min-height:44px; }
   #pool.dragover{ outline:2px dashed var(--accent); outline-offset:-4px; border-radius:10px; background:var(--accent-soft); }
-  .gchip{ display:flex; align-items:center; gap:8px; padding:7px 6px 7px 10px; border-radius:10px; background:var(--paper); border:1px solid var(--line); border-left:5px solid #ccc; cursor:grab; user-select:none; font-size:13px; transition:box-shadow .12s,background .12s; }
+  .gchip{ display:flex; align-items:center; gap:6px; padding:7px 6px 7px 4px; border-radius:10px; background:var(--paper); border:1px solid var(--line); border-left:5px solid #ccc; cursor:grab; user-select:none; font-size:13px; transition:box-shadow .12s,background .12s; }
   .gchip:hover{ box-shadow:var(--shadow-1); background:#fff; }
   .gchip:active{ cursor:grabbing; }
   .gchip .nm{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .gchip .acts{ display:flex; gap:0; opacity:0; transition:opacity .12s; }
+  /* the "place" handle: always visible — it is how a first-time user discovers that names go onto chairs */
+  .grip{ display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border:none; background:none; color:var(--faint); cursor:grab; border-radius:7px; flex:none; padding:0; }
+  .grip .ic{ width:16px; height:16px; }
+  .grip:hover{ background:var(--card); color:var(--accent-ink); }
+  body.touch .grip{ color:var(--soft); }
+  .frow .grip{ visibility:hidden; cursor:pointer; }
+  .frow.occ .grip{ visibility:visible; }
+  #placemenu{ width:260px; padding:6px; }
+  #placemenu .pm-list{ max-height:min(48vh,340px); overflow-y:auto; overscroll-behavior:contain; }
+  #placemenu .gm-item .n{ margin-left:auto; color:var(--faint); font-size:11.5px; font-variant-numeric:tabular-nums; }
+  #placemenu .gm-item.dim{ opacity:.5; }
+  #placemenu .pm-seat .fn{ width:18px; color:var(--faint); font-size:11px; font-variant-numeric:tabular-nums; }
+  #placemenu .pm-seat.taken{ opacity:.5; cursor:default; }
+  #placemenu .pm-seat i{ color:var(--faint); }
+  #placemenu .pm-list{ overflow-x:hidden; }
+  #placemenu .gm-item{ min-width:0; }
+  #placemenu .pm-name{ flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; }
+  #placemenu .gm-item .n, #placemenu .pm-seat .fn{ flex:none; }
   .gchip:hover .acts, .gchip.picked .acts{ opacity:1; }
   body.touch .gchip .acts{ opacity:.45; }   /* still tappable, just quieter */
   .gchip .acts button{ border:none; background:none; color:var(--faint); cursor:pointer; font-size:13px; padding:4px 6px; border-radius:6px; line-height:1; }
@@ -198,8 +216,10 @@ __ROBOTS__
   .seat.dragover{ background:#fff !important; border-color:var(--accent) !important; border-style:solid !important; color:var(--accent-ink) !important; }
   .seat .nm{ padding:0 5px; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
   .table.focused .seat.sel{ box-shadow:0 0 0 3px #fff,0 0 0 5px var(--accent); }
-  body.picking .seat:not(.occupied){ border-color:var(--accent); border-style:solid; background:rgba(255,255,255,.92); animation:pulse 1.3s ease-in-out infinite; }
-  @keyframes pulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(125,90,140,.55); } 50%{ box-shadow:0 0 0 7px rgba(125,90,140,0); } }
+  /* a name is picked: every chair says what happens if you tap it — green = free, amber = occupied (swap / replace) */
+  body.picking .seat:not(.occupied){ border-color:#2f8f4e; border-style:solid; background:#d9f2df; color:#1f6b38; animation:pulseFree 1.3s ease-in-out infinite; }
+  body.picking .seat:not(.occupied) .nm{ opacity:1 !important; font-weight:700; }
+  @keyframes pulseFree{ 0%,100%{ box-shadow:0 0 0 2px rgba(255,255,255,.9),0 0 0 4px rgba(47,143,78,.9); } 50%{ box-shadow:0 0 0 2px rgba(255,255,255,.9),0 0 0 9px rgba(47,143,78,0); } }
   #stageResize{ position:absolute; right:-4px; bottom:-4px; width:26px; height:26px; background:var(--accent); border:2px solid #fff; border-radius:7px; cursor:nwse-resize; z-index:8; box-shadow:0 2px 6px rgba(0,0,0,.3); }
   #stageResize::after{ content:"⤡"; color:#fff; font-size:15px; display:flex; align-items:center; justify-content:center; height:100%; }
 
@@ -269,6 +289,9 @@ __ROBOTS__
   body.touch .table-disc, body.touch .feature{ touch-action:pan-x pan-y; }
   /* touch: cheaper paint — no soft shadows on 300 pills, no drape ring, no dotted paper */
   body.touch .seat.occupied{ box-shadow:0 1px 3px rgba(0,0,0,.28); text-shadow:none; }
+  body.picking .seat.occupied, body.touch.picking .seat.occupied{ box-shadow:0 0 0 2px #fff,0 0 0 4px #e0a030; }
+  body.picking .seat.occupied.picked, body.touch.picking .seat.occupied.picked{ box-shadow:0 0 0 2px #fff,0 0 0 4px var(--accent); }   /* the one being moved */
+  body.picking .seat.occupied.lifted, body.touch.picking .seat.occupied.lifted{ box-shadow:0 0 0 3px var(--accent-soft),0 0 0 5px var(--accent),0 12px 28px rgba(30,20,10,.4); }
   body.touch .table-disc{ box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 3px 8px rgba(70,40,15,.22); }
   body.touch .table-disc::before{ display:none; }
   body.touch #stage{ box-shadow:inset 0 0 0 1px rgba(0,0,0,.14),0 8px 24px rgba(40,30,20,.2); }
@@ -444,7 +467,7 @@ __ROBOTS__
     body.touch .feature .rz, body.touch .feature .rot-h{ display:block; }   /* no hover on touch — show decor handles */
     .ibtn{ height:36px; min-width:36px; }
     .tools .ibtn{ height:40px; }
-    .gchip{ padding:9px 6px 9px 10px; }
+    .gchip{ padding-top:9px; padding-bottom:9px; }
   }
   @media (max-width:420px){ #zoomFit{ padding:0 7px; font-size:12px; } }
 
@@ -479,6 +502,7 @@ __ROBOTS__
     body.zoomed #stagewrap{ flex:1 1 auto; }
     body.picking #tablestrip{ display:none; }
     #stagewrap{ padding-bottom:0; }
+    body.picking.zoomed:not(.focused) #stagewrap{ padding-bottom:calc(70px + env(safe-area-inset-bottom)); }   /* room to scroll the bottom chairs above the pick bar */
     #appbar #viewBtn, #appbar #undoBtn, #appbar #redoBtn, #appbar #helpBtn{ display:none; }   /* they live in the bottom bar / ⋯ on phones */
   }
 
@@ -530,6 +554,7 @@ __ROBOTS__
   <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.6a2.4 2.4 0 1 1 3.4 2.2c-.7.4-1 .9-1 1.7"/><path d="M12 17h.01"/></symbol>
   <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></symbol>
   <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.5 0 2-1 1.5-2s0-2 1.5-2h1.5A3.5 3.5 0 0 0 20 13.5 9 9 0 0 0 12 3z"/><circle cx="8" cy="10" r="1"/><circle cx="12" cy="7" r="1"/><circle cx="16" cy="10" r="1"/></symbol>
+  <symbol id="i-grip" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.4"/><circle cx="15" cy="6" r="1.4"/><circle cx="9" cy="12" r="1.4"/><circle cx="15" cy="12" r="1.4"/><circle cx="9" cy="18" r="1.4"/><circle cx="15" cy="18" r="1.4"/></symbol>
   <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M8.5 14.5a6 6 0 1 1 7 0c-.6.5-1 1.3-1 2.1V18h-5v-1.4c0-.8-.4-1.6-1-2.1z"/></symbol>
   <symbol id="i-broom" viewBox="0 0 24 24"><path d="m14 4 6 6-7.5 7.5-6-6z"/><path d="M8.5 15.5 4 20"/><path d="m10 18 2-2"/></symbol>
 </svg>
@@ -638,6 +663,7 @@ __ROBOTS__
   </div>
 </div>
 <div id="groupmenu" class="popover"></div>
+<div id="placemenu" class="popover"></div>
 <div id="guesteditor" class="popover"></div>
 <div id="featuremenu" class="popover"></div>
 <div id="profilemenu" class="popover"></div>
@@ -735,7 +761,8 @@ el:{
   welcomeTitle:"Καλώς ήρθατε!", welcome1:"Πατήστε ένα τραπέζι.", welcome2:"Γράψτε όνομα και πατήστε Enter.", welcome3:"Ο σύνδεσμός σας είναι το κλειδί — φυλάξτε τον.", welcomeGo:"Ξεκινάω", welcomeSteps:"Δείξτε μου τα βήματα",
   hintEnter:"Γράψτε όνομα, Enter → επόμενη θέση.",
   tipMoveTouch:"Κρατήστε ένα όνομα μισό δευτερόλεπτο και σύρετέ το σε άλλη καρέκλα.", tipMove:"Σύρετε ένα όνομα σε άλλη καρέκλα για να το μετακινήσετε.",
-  tipPickTouch:"Πατήστε ένα όνομα από τη λίστα και μετά μια καρέκλα.", tipPick:"Σύρετε ονόματα από τη λίστα στις καρέκλες — ή «Αυτόματα» για όλους μαζί.",
+  tipPickTouch:"Το εικονίδιο δίπλα σε κάθε όνομα το τοποθετεί: διαλέξτε τραπέζι και θέση, ή καρέκλα στην κάτοψη.", tipPick:"Σύρετε ένα όνομα από το εικονίδιό του σε καρέκλα — ή πατήστε το για τραπέζι και θέση.",
+  gripTitle:"Τοποθέτηση σε τραπέζι…", pmFor:"Θέση για: {n}", pmFloor:"Διαλέξτε καρέκλα στην κάτοψη", tPlaced:"{n} → {t}",
   tipGroups:"Δώστε χρώμα στις παρέες: η κουκκίδα δίπλα σε κάθε όνομα αλλάζει ομάδα.", tipFull:"Γέμισε; Από τις ρυθμίσεις του τραπεζιού (γρανάζι) αλλάζετε τις θέσεις του.", tipPrint:"Σχεδόν έτοιμο! Στο ⋯ → Εκτύπωση βγαίνει η λίστα ανά τραπέζι.",
   tour:{
     dGuests:["Καλεσμένοι","Γράψτε ονόματα στο <b>Προσθήκη ονομάτων</b>, ένα ανά γραμμή."],
@@ -806,7 +833,8 @@ en:{
   welcomeTitle:"Welcome!", welcome1:"Tap a table.", welcome2:"Type a name and press Enter.", welcome3:"Your link is the key — keep it.", welcomeGo:"Let's go", welcomeSteps:"Show me the steps",
   hintEnter:"Type a name, Enter → next seat.",
   tipMoveTouch:"Hold a name for half a second and drag it to another chair.", tipMove:"Drag a name to another chair to move them.",
-  tipPickTouch:"Tap a name in the list, then a chair.", tipPick:"Drag names from the list onto chairs — or “Auto-seat” for everyone at once.",
+  tipPickTouch:"The handle next to a name places it: choose a table and a seat, or a chair on the floor.", tipPick:"Drag a name by its handle onto a chair — or click the handle for table and seat.",
+  gripTitle:"Place at a table…", pmFor:"Seat for: {n}", pmFloor:"Pick a chair on the floor", tPlaced:"{n} → {t}",
   tipGroups:"Colour the groups: the dot next to a name changes its group.", tipFull:"Full? Table settings (the gear) change its number of seats.", tipPrint:"Almost there! ⋯ → Print gives you the list per table.",
   tour:{
     dGuests:["Guests","Type names under <b>Add names</b>, one per line."],
@@ -877,7 +905,8 @@ de:{
   welcomeTitle:"Willkommen!", welcome1:"Tippen Sie auf einen Tisch.", welcome2:"Namen eingeben und Enter drücken.", welcome3:"Ihr Link ist der Schlüssel — gut aufbewahren.", welcomeGo:"Los geht's", welcomeSteps:"Schritte zeigen",
   hintEnter:"Namen eingeben, Enter → nächster Platz.",
   tipMoveTouch:"Einen Namen eine halbe Sekunde halten und auf einen anderen Stuhl ziehen.", tipMove:"Einen Namen auf einen anderen Stuhl ziehen, um ihn umzusetzen.",
-  tipPickTouch:"Einen Namen in der Liste antippen, dann einen Stuhl.", tipPick:"Namen aus der Liste auf Stühle ziehen — oder „Auto-Füllen“ für alle auf einmal.",
+  tipPickTouch:"Der Griff neben einem Namen platziert ihn: Tisch und Platz wählen, oder einen Stuhl auf der Fläche.", tipPick:"Einen Namen am Griff auf einen Stuhl ziehen — oder den Griff für Tisch und Platz antippen.",
+  gripTitle:"An einen Tisch setzen…", pmFor:"Platz für: {n}", pmFloor:"Stuhl auf der Fläche wählen", tPlaced:"{n} → {t}",
   tipGroups:"Farbe für die Gruppen: der Punkt neben einem Namen ändert seine Gruppe.", tipFull:"Voll? In den Tisch-Einstellungen (Zahnrad) ändern Sie die Platzzahl.", tipPrint:"Fast fertig! ⋯ → Drucken gibt die Liste pro Tisch.",
   tour:{
     dGuests:["Gäste","Namen unter <b>Namen hinzufügen</b> eingeben, einen pro Zeile."],
@@ -1131,7 +1160,7 @@ function updateUndoButtons(){
 }
 function restoreSnapshot(json){
   const s=sanitizePlan(JSON.parse(json)); if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s);
-  setPick(null); dragData=null; hideSug();
+  setPick(null); dragData=null; hideSug(); closePlaceMenu();
   state=s; uid=Math.max(uid, state._uid||0); fontScale=state.seatFontScale||1;
   applyStage(); $("stageFloor").value=state.stageMaterial||"grass";
   if(focusId!=null && !state.tables.some(t=>t.id===focusId)) unfocusTable();
@@ -1278,7 +1307,8 @@ function roundGeom(t){
 function buildSeat(t,i,relx,rely,fs,seatH){
   const seat=document.createElement("div");
   const gid=t.seats[i];
-  seat.className="seat"+(gid?" occupied":"");
+  const picked=pick && pick.from==="seat" && pick.tableId===t.id && pick.seatIndex===i && pick.guestId===gid;
+  seat.className="seat"+(gid?" occupied":"")+(picked?" picked":"");
   seat.style.left=relx+"px"; seat.style.top=rely+"px";
   seat.style.height=seatH+"px"; seat.style.borderRadius=(seatH/2)+"px"; seat.style.fontSize=fs+"px";
   seat.dataset.tableId=t.id; seat.dataset.seatIndex=i;
@@ -1429,10 +1459,11 @@ function renderPool(){
     chip.className="gchip"; chip.draggable=true; chip.dataset.guestId=id;
     chip.style.borderLeftColor=col; chip.style.background=hexTint(col);
     chip.title=(guestGroup(id)?guestGroup(id).name:"")+statusTitle(id);
-    chip.innerHTML=`<span class="nm">${escapeHtml(guestName(id))}${statusTag(id)}</span><span class="acts"><button class="edit" title="${escapeHtml(tr("chipEdit"))}">${ICON("edit")}</button><button class="x" title="${escapeHtml(tr("chipRemove"))}">✕</button></span>`;
+    chip.innerHTML=`<span class="grip" title="${escapeHtml(tr("gripTitle"))}">${ICON("grip")}</span><span class="nm">${escapeHtml(guestName(id))}${statusTag(id)}</span><span class="acts"><button class="edit" title="${escapeHtml(tr("chipEdit"))}">${ICON("edit")}</button><button class="x" title="${escapeHtml(tr("chipRemove"))}">✕</button></span>`;
     if(pick && pick.from==="pool" && pick.guestId===id) chip.classList.add("picked");
     chip.addEventListener("dragstart",e=>{ dragData={type:"guest",guestId:id,from:"pool"}; e.dataTransfer.effectAllowed="move"; });
     chip.addEventListener("contextmenu",e=>{ e.preventDefault(); openGuestEditor(id,e); });
+    chip.querySelector(".grip").addEventListener("click",e=>{ e.stopPropagation(); openPlaceMenu(id, anchorOf(e.currentTarget), null); });
     chip.addEventListener("click",e=>{
       if(e.target.closest(".acts")) return;
       const same = pick && pick.from==="pool" && pick.guestId===id;
@@ -1521,6 +1552,7 @@ function groupRowsHtml(selId){
 }
 // Change a guest's group (from a seat row's dot, a chip, the pick bar…)
 function openGroupMenu(guestId, evt){
+  closePlaceMenu();
   const menu=$("groupmenu"); const g=state.guests[guestId]; if(!g) return;
   menu.innerHTML=`<div class="gm-cap">${escapeHtml(tr("rowGroup"))}</div>`+groupRowsHtml(g.groupId||null);
   menu.querySelectorAll(".gm-item[data-gid]").forEach(it=>{ it.onclick=()=>{ g.groupId=it.dataset.gid||null; save(); renderTables(); renderPool(); renderGroups(); closeGroupMenu(); }; });
@@ -1529,6 +1561,7 @@ function openGroupMenu(guestId, evt){
 }
 // Choose the group that NEW names will join (an empty seat row's dot)
 function openActiveGroupMenu(evt){
+  closePlaceMenu();
   const menu=$("groupmenu");
   menu.innerHTML=`<div class="gm-cap">${escapeHtml(tr("rowNewGroup"))}</div>`+groupRowsHtml(state.activeGroupId||null);
   menu.querySelectorAll(".gm-item[data-gid]").forEach(it=>{ it.onclick=()=>{ state.activeGroupId=it.dataset.gid||null; save(); renderGroups(); renderPool(); if(focusId!=null) renderFocus(); closeGroupMenu(); }; });
@@ -1570,6 +1603,7 @@ function openPalette(g, anchorEl){
 }
 // Combined name + group editor (from a pool chip ✎ / right-click, a placed guest, or the pick bar).
 function openGuestEditor(guestId, evt){
+  closePlaceMenu();
   const g=state.guests[guestId]; if(!g) return;
   const menu=$("guesteditor");
   const opts=[{id:"",name:tr("noGroup"),color:"#d8d2c8"}].concat(state.groups.map(gr=>({id:gr.id,name:gr.name,color:gr.color})));
@@ -1782,6 +1816,8 @@ let pick=null;   // {type,guestId,from,tableId,seatIndex}
 function setPick(p){
   pick=p||null;
   document.body.classList.toggle("picking", !!pick);
+  stage.querySelectorAll(".seat.picked").forEach(el=>el.classList.remove("picked"));
+  if(pick&&pick.from==="seat"){ const el=stage.querySelector(`.seat[data-table-id="${pick.tableId}"][data-seat-index="${pick.seatIndex}"]`); if(el) el.classList.add("picked"); }
   renderPickBar(); renderPool();
   if(pick && isNarrow()) setNav(false);   // reveal the seats they're aiming at
 }
@@ -1905,20 +1941,58 @@ function seatHold(e, seat, tableId, idx){
   seat.addEventListener("pointermove",mv); seat.addEventListener("pointerup",up); seat.addEventListener("pointercancel",cancel); seat.addEventListener("touchmove",tm,{passive:false});
   holdTimer=setTimeout(lift,320);
 }
-function placeGuestInSeat(drag, tableId, seatIndex){
+// "Place" menu from a name's handle: pick a chair on the floor, or choose a table and then a seat — no dragging needed.
+// `from` is null for an unseated name, {tableId,seatIndex} for a seated one (moving keeps the swap semantics of a drop).
+function dragFor(guestId, from){ return from?{type:"guest",guestId,from:"seat",tableId:from.tableId,seatIndex:from.seatIndex}:{type:"guest",guestId,from:"pool"}; }
+function openPlaceMenu(guestId, anc, from){
+  if(!state.guests[guestId]) return;
+  closeGroupMenu(); closeGuestEditor(); closeFeatureMenu(); closeMenu(); $("palette").style.display="none";   // one popover at a time
+  const m=$("placemenu"); m._anchor=anc; m._guest=guestId; m._from=from;
+  renderPlaceTables(m); showPopover(m, placeAnchor(m));
+}
+// Where the menu belongs NOW: the live grip of its row / chip (rows and chips are rebuilt on every change, the sheet moves when
+// the keyboard drops), falling back to the sheet's ⚙ or the point it was opened at.
+function placeAnchor(m){
+  if(m._from && m._from.tableId===focusId){
+    const g=fSeats.querySelector(`.frow[data-i="${m._from.seatIndex}"] .grip`);
+    if(g){ const r=g.getBoundingClientRect(), fr=fSeats.getBoundingClientRect(); if(r.bottom>fr.top && r.top<fr.bottom) return anchorOf(g); }
+    return anchorOf($("fSettings"));
+  }
+  if(!m._from){ const g=$("pool").querySelector(`.gchip[data-guest-id="${m._guest}"] .grip`); if(g) return anchorOf(g); }
+  return m._anchor;
+}
+function closePlaceMenu(){ const m=$("placemenu"); m.style.display="none"; }
+function renderPlaceTables(m){
+  const guestId=m._guest, from=m._from;
+  const rows=state.tables.map(t=>{ const free=t.seats.filter(x=>!x).length; return `<div class="gm-item${free?"":" dim"}" data-tid="${t.id}">${t.shape==="head"?ICON("heart"):ICON("table")}<span class="pm-name">${escapeHtml(t.label)}</span><span class="n">${free}/${t.capacity}</span></div>`; }).join("");
+  m.innerHTML=`<div class="gm-cap">${escapeHtml(tr("pmFor",{n:guestName(guestId)}))}</div><div class="gm-item" data-act="floor">${ICON("fit")}${escapeHtml(tr("pmFloor"))}</div><div class="gm-sep"></div><div class="pm-list">${rows}</div>`;
+  m.querySelector('[data-act="floor"]').onclick=()=>{ closePlaceMenu(); setPick(dragFor(guestId, from)); };   // setPick closes the drawer on phones; overview() would cancel the pick
+  m.querySelectorAll('[data-tid]').forEach(el=>el.onclick=ev=>{ ev.stopPropagation(); renderPlaceSeats(m, +el.dataset.tid); showPopover(m, placeAnchor(m)); });
+}
+function renderPlaceSeats(m, tid){
+  const guestId=m._guest, from=m._from, t=state.tables.find(x=>x.id===tid); if(!t) return;
+  const rows=t.seats.map((sid,i)=>{ const mine=from&&from.tableId===tid&&from.seatIndex===i; return `<div class="gm-item pm-seat${sid?" taken":""}" data-i="${i}"><span class="fn">${i+1}</span><span class="pm-name">${sid?escapeHtml(guestName(sid))+(mine?" ←":""):`<i>${escapeHtml(tr("seatPh"))}</i>`}</span></div>`; }).join("");
+  m.innerHTML=`<div class="gm-item" data-act="back">${ICON("left")}<b class="pm-name">${escapeHtml(t.label)}</b></div><div class="gm-sep"></div><div class="pm-list">${rows}</div>`;
+  m.querySelector('[data-act="back"]').onclick=ev=>{ ev.stopPropagation(); renderPlaceTables(m); showPopover(m, placeAnchor(m)); };
+  m.querySelectorAll(".pm-seat:not(.taken)").forEach(el=>el.onclick=ev=>{ ev.stopPropagation(); closePlaceMenu(); if(placeGuestInSeat(dragFor(guestId, from), tid, +el.dataset.i)) toast(tr("tPlaced",{n:guestName(guestId), t:t.label})); });
+}
+function placeGuestInSeat(drag, tableId, seatIndex){   // returns true only when the plan changed
   const table=state.tables.find(t=>t.id===tableId);
-  if(!table || !drag || !state.guests[drag.guestId]) return;
-  const occupant=table.seats[seatIndex];
+  if(!table || !drag || !state.guests[drag.guestId]) return false;
+  const occupant=table.seats[seatIndex]; if(occupant===drag.guestId) return false;
+  const touched=[tableId];
   if(drag.from==="seat"){
     const src=state.tables.find(t=>t.id===drag.tableId);
-    if(!src || src.seats[drag.seatIndex]!==drag.guestId) return;   // the plan changed under the drag (cloud pull, undo): drop nothing
-    src.seats[drag.seatIndex]=occupant;
-    table.seats[seatIndex]=drag.guestId;
+    if(!src || src.seats[drag.seatIndex]!==drag.guestId) return false;   // the plan changed under the drag (cloud pull, undo): drop nothing
+    src.seats[drag.seatIndex]=occupant; touched.push(src.id);
   }else{
-    table.seats[seatIndex]=drag.guestId;
+    // "from the list" — but the guest may have been seated meanwhile (a blur-commit, undo, another device): move, never duplicate
+    state.tables.forEach(t=>{ const j=t.seats.indexOf(drag.guestId); if(j>=0){ t.seats[j]=(t===table&&j!==seatIndex)?occupant:null; touched.push(t.id); } });
   }
-  save(); renderTables([tableId, drag.tableId].filter(x=>x!=null)); renderPool();
+  table.seats[seatIndex]=drag.guestId;
+  save(); renderTables([...new Set(touched)]); renderPool();
   checkTips(table.seats.every(Boolean)?"full":"placed");
+  return true;
 }
 const poolEl=$("pool");
 poolEl.addEventListener("dragover",e=>{ if(dragData&&dragData.type==="guest"){ e.preventDefault(); poolEl.classList.add("dragover"); }});
@@ -2036,6 +2110,7 @@ function makeStageResizable(h){
 // ============================================================
 const menu=$("tablemenu");
 function openMenu(tableId, evt){
+  closePlaceMenu();
   activeMenuTableId=tableId;
   const t=state.tables.find(x=>x.id===tableId); if(!t) return;
   $("menuTitle").textContent = t.shape==="head" ? tr("menuTitleHead") : tr("menuTitle");
@@ -2070,7 +2145,7 @@ $("menuDelete").addEventListener("click",()=>{
 $("menuNames").addEventListener("click",()=>{ const id=activeMenuTableId; closeMenu(); if(id!=null) focusTable(id,{row:0}); });
 document.addEventListener("click",e=>{
   if(menu.style.display==="block" && !menu.contains(e.target) && !e.target.classList.contains("tgear") && e.target.id!=="fSettings") closeMenu();
-  [["groupmenu",closeGroupMenu],["featuremenu",closeFeatureMenu],["guesteditor",closeGuestEditor]].forEach(([id,fn])=>{ const el=$(id); if(el.style.display==="block" && !el.contains(e.target)) fn(); });
+  [["groupmenu",closeGroupMenu],["featuremenu",closeFeatureMenu],["guesteditor",closeGuestEditor],["placemenu",closePlaceMenu]].forEach(([id,fn])=>{ const el=$(id); if(el.style.display==="block" && !el.contains(e.target)) fn(); });
   const pm=$("profilemenu"); if(pm.style.display==="block" && !pm.contains(e.target) && e.target.id!=="profMore") closeProfileMenu();
   const mm=$("moremenu"); if(mm.style.display==="block" && !mm.contains(e.target) && !e.target.closest("#moreBtn")) mm.style.display="none";
   const fm=$("fillmenu"); if(fm.style.display==="block" && !fm.contains(e.target) && !e.target.closest("#fFill,#menuFill")) fm.style.display="none";
@@ -2108,6 +2183,7 @@ function reanchorSheetMenus(){
   if(!isNarrow()) return; const a=$("fSettings");
   if(menu.style.display==="block" && focusId!=null && activeMenuTableId===focusId) showPopover(menu, anchorOf(a));
   const fm=$("fillmenu"); if(fm.style.display==="block" && fm.dataset.fromSheet) showPopover(fm, anchorOf(a));
+  const pm=$("placemenu"); if(pm.style.display==="block") showPopover(pm, placeAnchor(pm));
 }
 focusEl.addEventListener("transitionend",e=>{ if(e.propertyName==="height") reanchorSheetMenus(); });
 function queueKb(){ if(!kbRaf) kbRaf=requestAnimationFrame(syncKeyboard); }
@@ -2175,7 +2251,7 @@ function focusTable(id, opts={}){
 function unfocusTable(){
   if(focusId==null && !document.body.classList.contains("focused")) return;
   flushLiveRow();
-  focusId=null; hideSug(); document.body.classList.remove("focused"); focusEl.classList.remove("tall");
+  focusId=null; hideSug(); closePlaceMenu(); document.body.classList.remove("focused"); focusEl.classList.remove("tall");
   document.body.classList.remove("kb"); document.documentElement.style.setProperty("--kb","0px");   // closed while the keyboard was still up
   stage.querySelectorAll(".table.focused").forEach(w=>w.classList.remove("focused"));
   layoutCanvas();
@@ -2195,7 +2271,9 @@ function renderFocus(){
     const gid=t.seats[i];
     const row=document.createElement("div"); row.className="frow"+(gid?" occ":""); row.dataset.i=i;
     const dotColor=gid?guestColor(gid):(ag?ag.color:"#cfc8bd");
-    row.innerHTML=`<span class="fn">${i+1}</span><button class="fdot${gid?"":" empty"}" tabindex="-1" title="${escapeHtml(gid?tr("rowGroup"):tr("rowNewGroup"))}" style="background-color:${safeColor(dotColor)}"></button><input type="text" maxlength="40" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="words" enterkeyhint="${i+1<t.capacity?"next":"done"}" placeholder="${escapeHtml(tr("seatPh"))}" value="${gid?escapeHtml(guestName(gid)):""}"><button class="fx" title="${escapeHtml(tr("unseat"))}" tabindex="-1">✕</button>`;
+    row.innerHTML=`<span class="fn">${i+1}</span><button class="fdot${gid?"":" empty"}" tabindex="-1" title="${escapeHtml(gid?tr("rowGroup"):tr("rowNewGroup"))}" style="background-color:${safeColor(dotColor)}"></button><input type="text" maxlength="40" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="words" enterkeyhint="${i+1<t.capacity?"next":"done"}" placeholder="${escapeHtml(tr("seatPh"))}" value="${gid?escapeHtml(guestName(gid)):""}"><button class="grip" title="${escapeHtml(tr("gripTitle"))}" tabindex="-1">${ICON("grip")}</button><button class="fx" title="${escapeHtml(tr("unseat"))}" tabindex="-1">✕</button>`;
+    const grip=row.querySelector(".grip");
+    grip.addEventListener("click",e=>{ e.stopPropagation(); const g2=t.seats[i]; if(!g2) return; const ae=document.activeElement; if(ae&&ae.closest("#fSeats")) ae.blur(); openPlaceMenu(g2, anchorOf(grip), {tableId:t.id, seatIndex:i}); });
     const dot=row.querySelector(".fdot");
     dot.addEventListener("pointerdown",e=>e.preventDefault());   // don't blur a row being typed in
     dot.addEventListener("click",e=>{ e.stopPropagation(); const g2=t.seats[i]; if(g2) openGroupMenu(g2, anchorOf(dot)); else openActiveGroupMenu(anchorOf(dot)); });
@@ -2346,6 +2424,7 @@ document.addEventListener("keydown",e=>{
   if(e.key!=="Escape") return;
   if(tour){ endTour(); return; }
   if(document.querySelector(".modal-back.open")){ document.querySelectorAll(".modal-back.open").forEach(m=>m.classList.remove("open")); return; }
+  for(const [id,fn] of [["placemenu",closePlaceMenu],["groupmenu",closeGroupMenu],["featuremenu",closeFeatureMenu]]){ const el=$(id); if(el.style.display==="block"){ fn(); return; } }   // innermost thing first
   if(pick){ setPick(null); return; }
   if(document.body.classList.contains("nav-open")){ setNav(false); return; }
   if(focusId!=null) unfocusTable();
@@ -2597,7 +2676,7 @@ function interactionBusy(){
   const ae=document.activeElement;
   if(ae && (ae.tagName==="INPUT"||ae.tagName==="TEXTAREA"||ae.isContentEditable)) return true;
   if(document.querySelector(".modal-back.open")) return true;
-  for(const id of ["groupmenu","guesteditor","tablemenu","featuremenu","profilemenu","moremenu","fillmenu","viewmenu","palette"]){ const el=$(id); if(el && el.style.display==="block") return true; }
+  for(const id of ["groupmenu","guesteditor","tablemenu","featuremenu","profilemenu","moremenu","fillmenu","viewmenu","palette","placemenu"]){ const el=$(id); if(el && el.style.display==="block") return true; }
   return false;
 }
 async function cloudCreate(){
@@ -2708,6 +2787,7 @@ function flushCloudPush(){
 window.addEventListener("pagehide",flushCloudPush);
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") flushCloudPush(); });
 function applyPulledPlan(cur, d){
+  closePlaceMenu();
   const s=d.plan||{}; delete s._profileName;
   if(!s.tables){ cur.cloudUpdated=d.updated; saveProfilesIdx(); return; }
   sanitizePlan(s); if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s);
