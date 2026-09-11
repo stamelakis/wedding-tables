@@ -246,6 +246,10 @@ cascade-purges its plans; venues can rotate their own key; backups encrypted at 
   `LIFT`=48 screen px above the finger; the drop target is the chair nearest to the PILL (not the finger) within `REACH`=46 px,
   shown enlarged + ringed (`.seat.snap`), and `#dragtag` at the top says "→ 3 · θέση 5" (green) or "↔ Μαρία" (amber = swap).
   Chair positions are measured once at lift and shifted when the floor edge-pans (finger within 36 px of the canvas edge).
+  Gotchas fixed by review: the pill's delta is appended AFTER the seat's own `translate(-50%,-50%) rotate(-rot)` (so it stays
+  in stage axes on rotated tables) and that base transform is restored on finish; the source `.table` gets z-index 60 for the
+  drag (tables are stacking contexts); the snap enlargement uses the separate CSS `scale` property (an inline transform would
+  beat a class rule); chairs under the sheet / pick bar are skipped as targets.
 - **Place handle** (2026-09-11, second tester could not guess that names on the floor are interactive and looked for a
   handle in the list): every unseated name in the list and every occupied row of the table sheet carries a grip icon
   (`.grip`, `i-grip`). Click/tap → `openPlaceMenu` (#placemenu): "Διαλέξτε καρέκλα στην κάτοψη" (hands over to the

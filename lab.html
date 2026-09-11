@@ -215,8 +215,8 @@
   body.touch .seat{ -webkit-touch-callout:none; }
   /* the chair a lifted pill will land on: bigger, ringed — the finger no longer has to be exactly on it */
   .seat.snap{ z-index:55; transition:none; }
-  .seat.snap:not(.occupied){ transform:translate(-50%,-50%) scale(1.45); background:#fff !important; border-color:var(--accent) !important; box-shadow:0 0 0 3px #fff,0 0 0 6px var(--accent),0 6px 16px rgba(30,20,10,.35) !important; }
-  .seat.snap.occupied{ transform:translate(-50%,-50%) scale(1.25); box-shadow:0 0 0 3px #fff,0 0 0 6px #e0a030,0 6px 16px rgba(30,20,10,.35) !important; }
+  .seat.snap:not(.occupied){ scale:1.45; background:#fff !important; border-color:var(--accent) !important; box-shadow:0 0 0 3px #fff,0 0 0 6px var(--accent),0 6px 16px rgba(30,20,10,.35) !important; }
+  .seat.snap.occupied{ scale:1.25; box-shadow:0 0 0 3px #fff,0 0 0 6px #e0a030,0 6px 16px rgba(30,20,10,.35) !important; }
   #dragtag{ position:fixed; top:calc(var(--appbar-h) + 10px); left:50%; transform:translateX(-50%); z-index:360; background:#2a2622; color:#fff; padding:7px 14px; border-radius:999px; font-size:14px; font-weight:600; white-space:nowrap; max-width:calc(100vw - 24px); overflow:hidden; text-overflow:ellipsis; box-shadow:0 6px 20px rgba(0,0,0,.3); pointer-events:none; }
   #dragtag[hidden]{ display:none; }
   #dragtag.free{ background:#2f8f4e; }
@@ -1925,7 +1925,11 @@ function seatHold(e, seat, tableId, idx){
   const unblock=blockCtxMenu(); holdArmed=true;
   // The finger hides what is under it: once lifted the pill floats LIFT px above the finger, the drop target is the chair
   // nearest to the pill (within REACH), it is enlarged + ringed, and a label at the top says where the name will land.
-  const LIFT=48, REACH=46; let chairs=null, lastX=sx, lastY=sy, panRaf=0;
+  const LIFT=48, REACH=46; let chairs=null, lastX=sx, lastY=sy, panRaf=0, sl0=0, st0=0, occl=[];
+  // The seat's own inline transform is translate(-50%,-50%) rotate(-tableRot): appending the finger delta AFTER it keeps the
+  // delta in stage axes on rotated tables (the wrap's rotation and the seat's counter-rotation cancel) — and restoring it on
+  // finish keeps the name upright when nothing is re-rendered.
+  const baseT=seat.style.transform||"translate(-50%,-50%)", wrapEl=seat.closest(".table");
   function measureChairs(){ chairs=[...stage.querySelectorAll(".seat")].filter(x=>x!==seat).map(x=>{ const r=x.getBoundingClientRect(); return {el:x, x:r.left+r.width/2, y:r.top+r.height/2}; }); }
   function setTarget(tgt){
     if(tgt===over) return;
@@ -1939,23 +1943,29 @@ function seatHold(e, seat, tableId, idx){
   }
   function aim(px,py){   // px,py = finger; the pill's centre is LIFT above it
     const ax=px, ay=py-LIFT; let best=null, bd=Infinity;
-    for(const c of chairs){ const d=Math.hypot(c.x-ax, c.y-ay); if(d<bd){ bd=d; best=c; } }
+    for(const c of chairs){
+      if(occl.some(o=>c.x>=o.left&&c.x<=o.right&&c.y>=o.top&&c.y<=o.bottom)) continue;   // under the sheet / pick bar: not a target you can see
+      const d=Math.hypot(c.x-ax, c.y-ay); if(d<bd){ bd=d; best=c; } }
     setTarget(best&&bd<=REACH?best.el:null);
   }
-  function place(px,py){ seat.style.transform=`translate(-50%,-50%) translate(${(px-sx)/zoom}px,${(py-sy-LIFT)/zoom}px)`; }
+  function place(px,py){ const dl=stagewrap.scrollLeft-sl0, dt=stagewrap.scrollTop-st0;   // the floor may have edge-panned under the finger
+    seat.style.transform=`${baseT} translate(${(px-sx+dl)/zoom}px,${(py-sy-LIFT+dt)/zoom}px)`; }
   function edgePan(){   // finger near an edge of the canvas: slide the floor, keep the cached chair positions in step
     panRaf=0; if(!lifted||done) return;
     const r=stagewrap.getBoundingClientRect(), m=36, step=7; let ddx=0, ddy=0;
+    let bottom=r.bottom; if(isNarrow() && document.body.classList.contains("focused")) bottom=Math.min(bottom, focusEl.getBoundingClientRect().top);   // the visible floor ends at the sheet
     if(lastX<r.left+m) ddx=-step; else if(lastX>r.right-m) ddx=step;
-    if(lastY<r.top+m) ddy=-step; else if(lastY>r.bottom-m) ddy=step;
+    if(lastY<r.top+m) ddy=-step; else if(lastY>bottom-m) ddy=step;
     if(!ddx&&!ddy) return;
     const l0=stagewrap.scrollLeft, t0=stagewrap.scrollTop; stagewrap.scrollLeft+=ddx; stagewrap.scrollTop+=ddy;
     const mx=stagewrap.scrollLeft-l0, my=stagewrap.scrollTop-t0;
-    if(mx||my){ for(const c of chairs){ c.x-=mx; c.y-=my; } aim(lastX,lastY); panRaf=requestAnimationFrame(edgePan); }
+    if(mx||my){ for(const c of chairs){ c.x-=mx; c.y-=my; } place(lastX,lastY); aim(lastX,lastY); panRaf=requestAnimationFrame(edgePan); }
   }
   function lift(){ if(done||lifted) return; if(!seat.isConnected){ finish(null,true); return; }
     lifted=true; pointerGesture=true; try{ seat.setPointerCapture(e.pointerId); }catch(x){}
-    seat.classList.add("lifted"); seat.style.pointerEvents="none"; seat.style.zIndex="60";
+    seat.classList.add("lifted"); seat.style.pointerEvents="none"; if(wrapEl) wrapEl.style.zIndex="60";   // the whole source table paints above later tables
+    sl0=stagewrap.scrollLeft; st0=stagewrap.scrollTop;
+    occl=[focusEl,$("pickbar")].map(el=>el.getBoundingClientRect()).filter(o=>o.width>0&&o.height>0);
     measureChairs(); place(sx,sy);   // pops up above the finger straight away
     if(navigator.vibrate){ try{ navigator.vibrate(12); }catch(x){} } }
   function mv(ev){
@@ -1973,7 +1983,7 @@ function seatHold(e, seat, tableId, idx){
     if(over) over.classList.remove("dragover","snap"); $("dragtag").hidden=true;
     if(!lifted) return;
     seatDragEndedAt=performance.now();
-    seat.classList.remove("lifted"); seat.style.pointerEvents=""; seat.style.zIndex=""; seat.style.transform="";
+    seat.classList.remove("lifted"); seat.style.pointerEvents=""; seat.style.transform=baseT; if(wrapEl) wrapEl.style.zIndex="";
     if(cancelled||!over||!moved) return;
     placeGuestInSeat({type:"guest",guestId,from:"seat",tableId,seatIndex:idx}, +over.dataset.tableId, +over.dataset.seatIndex);
   }
