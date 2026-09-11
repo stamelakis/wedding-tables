@@ -213,6 +213,14 @@
   .seat.occupied:active{ cursor:grabbing; }
   .seat.lifted, body.touch .seat.lifted{ box-shadow:0 0 0 3px var(--accent-soft),0 0 0 5px var(--accent),0 12px 28px rgba(30,20,10,.4); transition:none; }
   body.touch .seat{ -webkit-touch-callout:none; }
+  /* the chair a lifted pill will land on: bigger, ringed — the finger no longer has to be exactly on it */
+  .seat.snap{ z-index:55; transition:none; }
+  .seat.snap:not(.occupied){ transform:translate(-50%,-50%) scale(1.45); background:#fff !important; border-color:var(--accent) !important; box-shadow:0 0 0 3px #fff,0 0 0 6px var(--accent),0 6px 16px rgba(30,20,10,.35) !important; }
+  .seat.snap.occupied{ transform:translate(-50%,-50%) scale(1.25); box-shadow:0 0 0 3px #fff,0 0 0 6px #e0a030,0 6px 16px rgba(30,20,10,.35) !important; }
+  #dragtag{ position:fixed; top:calc(var(--appbar-h) + 10px); left:50%; transform:translateX(-50%); z-index:360; background:#2a2622; color:#fff; padding:7px 14px; border-radius:999px; font-size:14px; font-weight:600; white-space:nowrap; max-width:calc(100vw - 24px); overflow:hidden; text-overflow:ellipsis; box-shadow:0 6px 20px rgba(0,0,0,.3); pointer-events:none; }
+  #dragtag[hidden]{ display:none; }
+  #dragtag.free{ background:#2f8f4e; }
+  #dragtag.swap{ background:#b8791a; }
   .seat.dragover{ background:#fff !important; border-color:var(--accent) !important; border-style:solid !important; color:var(--accent-ink) !important; }
   .seat .nm{ padding:0 5px; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
   .table.focused .seat.sel{ box-shadow:0 0 0 3px #fff,0 0 0 5px var(--accent); }
@@ -725,6 +733,7 @@
 </div>
 <div class="toast" id="toast"></div>
 <div id="tip" hidden></div>
+<div id="dragtag" hidden></div>
 <div id="navScrim"></div>
 <div id="pickbar"></div>
 <div id="printarea"></div>
@@ -762,6 +771,7 @@ el:{
   hintEnter:"Γράψτε όνομα, Enter → επόμενη θέση.",
   tipMoveTouch:"Κρατήστε ένα όνομα μισό δευτερόλεπτο και σύρετέ το σε άλλη καρέκλα.", tipMove:"Σύρετε ένα όνομα σε άλλη καρέκλα για να το μετακινήσετε.",
   tipPickTouch:"Το εικονίδιο δίπλα σε κάθε όνομα το τοποθετεί: διαλέξτε τραπέζι και θέση, ή καρέκλα στην κάτοψη.", tipPick:"Σύρετε ένα όνομα από το εικονίδιό του σε καρέκλα — ή πατήστε το για τραπέζι και θέση.",
+  dragTo:"→ {t} · θέση {n}", dragSwap:"↔ {n}",
   gripTitle:"Τοποθέτηση σε τραπέζι…", pmFor:"Θέση για: {n}", pmFloor:"Διαλέξτε καρέκλα στην κάτοψη", tPlaced:"{n} → {t}",
   tipGroups:"Δώστε χρώμα στις παρέες: η κουκκίδα δίπλα σε κάθε όνομα αλλάζει ομάδα.", tipFull:"Γέμισε; Από τις ρυθμίσεις του τραπεζιού (γρανάζι) αλλάζετε τις θέσεις του.", tipPrint:"Σχεδόν έτοιμο! Στο ⋯ → Εκτύπωση βγαίνει η λίστα ανά τραπέζι.",
   tour:{
@@ -834,6 +844,7 @@ en:{
   hintEnter:"Type a name, Enter → next seat.",
   tipMoveTouch:"Hold a name for half a second and drag it to another chair.", tipMove:"Drag a name to another chair to move them.",
   tipPickTouch:"The handle next to a name places it: choose a table and a seat, or a chair on the floor.", tipPick:"Drag a name by its handle onto a chair — or click the handle for table and seat.",
+  dragTo:"→ {t} · seat {n}", dragSwap:"↔ {n}",
   gripTitle:"Place at a table…", pmFor:"Seat for: {n}", pmFloor:"Pick a chair on the floor", tPlaced:"{n} → {t}",
   tipGroups:"Colour the groups: the dot next to a name changes its group.", tipFull:"Full? Table settings (the gear) change its number of seats.", tipPrint:"Almost there! ⋯ → Print gives you the list per table.",
   tour:{
@@ -906,6 +917,7 @@ de:{
   hintEnter:"Namen eingeben, Enter → nächster Platz.",
   tipMoveTouch:"Einen Namen eine halbe Sekunde halten und auf einen anderen Stuhl ziehen.", tipMove:"Einen Namen auf einen anderen Stuhl ziehen, um ihn umzusetzen.",
   tipPickTouch:"Der Griff neben einem Namen platziert ihn: Tisch und Platz wählen, oder einen Stuhl auf der Fläche.", tipPick:"Einen Namen am Griff auf einen Stuhl ziehen — oder den Griff für Tisch und Platz antippen.",
+  dragTo:"→ {t} · Platz {n}", dragSwap:"↔ {n}",
   gripTitle:"An einen Tisch setzen…", pmFor:"Platz für: {n}", pmFloor:"Stuhl auf der Fläche wählen", tPlaced:"{n} → {t}",
   tipGroups:"Farbe für die Gruppen: der Punkt neben einem Namen ändert seine Gruppe.", tipFull:"Voll? In den Tisch-Einstellungen (Zahnrad) ändern Sie die Platzzahl.", tipPrint:"Fast fertig! ⋯ → Drucken gibt die Liste pro Tisch.",
   tour:{
@@ -1911,24 +1923,54 @@ function seatHold(e, seat, tableId, idx){
   if(pointerGesture) return;                 // never arm a hold on top of a resize / rotate / stage-resize gesture
   const sx=e.clientX, sy=e.clientY, guestId=seat.dataset.guestId; let lifted=false, moved=false, done=false, over=null, holdTimer=null;
   const unblock=blockCtxMenu(); holdArmed=true;
-  function lift(){ if(done||lifted) return; if(!seat.isConnected){ finish(null,true); return; }   // re-rendered under the finger (cloud pull): nothing to lift
+  // The finger hides what is under it: once lifted the pill floats LIFT px above the finger, the drop target is the chair
+  // nearest to the pill (within REACH), it is enlarged + ringed, and a label at the top says where the name will land.
+  const LIFT=48, REACH=46; let chairs=null, lastX=sx, lastY=sy, panRaf=0;
+  function measureChairs(){ chairs=[...stage.querySelectorAll(".seat")].filter(x=>x!==seat).map(x=>{ const r=x.getBoundingClientRect(); return {el:x, x:r.left+r.width/2, y:r.top+r.height/2}; }); }
+  function setTarget(tgt){
+    if(tgt===over) return;
+    if(over) over.classList.remove("dragover","snap");
+    over=tgt; const tag=$("dragtag");
+    if(!over){ tag.hidden=true; return; }
+    over.classList.add("dragover","snap");
+    const tb=state.tables.find(x=>x.id===+over.dataset.tableId), occ=tb&&tb.seats[+over.dataset.seatIndex];
+    tag.textContent=occ?tr("dragSwap",{n:guestName(occ)}):tr("dragTo",{t:tb?tb.label:"",n:+over.dataset.seatIndex+1});
+    tag.className=occ?"swap":"free"; tag.hidden=false;
+  }
+  function aim(px,py){   // px,py = finger; the pill's centre is LIFT above it
+    const ax=px, ay=py-LIFT; let best=null, bd=Infinity;
+    for(const c of chairs){ const d=Math.hypot(c.x-ax, c.y-ay); if(d<bd){ bd=d; best=c; } }
+    setTarget(best&&bd<=REACH?best.el:null);
+  }
+  function place(px,py){ seat.style.transform=`translate(-50%,-50%) translate(${(px-sx)/zoom}px,${(py-sy-LIFT)/zoom}px)`; }
+  function edgePan(){   // finger near an edge of the canvas: slide the floor, keep the cached chair positions in step
+    panRaf=0; if(!lifted||done) return;
+    const r=stagewrap.getBoundingClientRect(), m=36, step=7; let ddx=0, ddy=0;
+    if(lastX<r.left+m) ddx=-step; else if(lastX>r.right-m) ddx=step;
+    if(lastY<r.top+m) ddy=-step; else if(lastY>r.bottom-m) ddy=step;
+    if(!ddx&&!ddy) return;
+    const l0=stagewrap.scrollLeft, t0=stagewrap.scrollTop; stagewrap.scrollLeft+=ddx; stagewrap.scrollTop+=ddy;
+    const mx=stagewrap.scrollLeft-l0, my=stagewrap.scrollTop-t0;
+    if(mx||my){ for(const c of chairs){ c.x-=mx; c.y-=my; } aim(lastX,lastY); panRaf=requestAnimationFrame(edgePan); }
+  }
+  function lift(){ if(done||lifted) return; if(!seat.isConnected){ finish(null,true); return; }
     lifted=true; pointerGesture=true; try{ seat.setPointerCapture(e.pointerId); }catch(x){}
     seat.classList.add("lifted"); seat.style.pointerEvents="none"; seat.style.zIndex="60";
+    measureChairs(); place(sx,sy);   // pops up above the finger straight away
     if(navigator.vibrate){ try{ navigator.vibrate(12); }catch(x){} } }
   function mv(ev){
     const dx=ev.clientX-sx, dy=ev.clientY-sy;
     if(!lifted){ if(Math.abs(dx)>10||Math.abs(dy)>10) finish(ev,true); return; }   // moving before the lift = panning the floor
-    moved=true;
-    seat.style.transform=`translate(-50%,-50%) translate(${dx/zoom}px,${dy/zoom}px)`;
-    const el=document.elementFromPoint(ev.clientX,ev.clientY); const tgt=(el&&el.closest)?el.closest(".seat"):null;
-    if(tgt!==over){ if(over) over.classList.remove("dragover"); over=(tgt&&tgt!==seat)?tgt:null; if(over) over.classList.add("dragover"); }
+    moved=true; lastX=ev.clientX; lastY=ev.clientY;
+    place(lastX,lastY); aim(lastX,lastY);
+    if(!panRaf) panRaf=requestAnimationFrame(edgePan);
   }
   function tm(ev){ if(lifted) ev.preventDefault(); }   // once lifted, the finger must not scroll the floor
   function finish(ev,cancelled){
-    if(done) return; done=true; clearTimeout(holdTimer); pointerGesture=false; activeDragCancel=null; holdArmed=false; unblock();
+    if(done) return; done=true; clearTimeout(holdTimer); cancelAnimationFrame(panRaf); pointerGesture=false; activeDragCancel=null; holdArmed=false; unblock();
     try{ seat.releasePointerCapture(e.pointerId); }catch(x){}
     seat.removeEventListener("pointermove",mv); seat.removeEventListener("pointerup",up); seat.removeEventListener("pointercancel",cancel); seat.removeEventListener("touchmove",tm);
-    if(over) over.classList.remove("dragover");
+    if(over) over.classList.remove("dragover","snap"); $("dragtag").hidden=true;
     if(!lifted) return;
     seatDragEndedAt=performance.now();
     seat.classList.remove("lifted"); seat.style.pointerEvents=""; seat.style.zIndex=""; seat.style.transform="";

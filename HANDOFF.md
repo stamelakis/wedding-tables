@@ -242,6 +242,10 @@ cascade-purges its plans; venues can rotate their own key; backups encrypted at 
   name is moved by HOLDING it ~⅓ s and dragging (`seatHold`, same feel as tables: lift, glow, drop on another chair = move/swap);
   a TAP picks it (pick bar: tap a chair · edit · unseat); a long press never opens the guest editor on touch (right-click still
   does with a mouse). Seats are `draggable` only with a mouse (iOS would start a native drag session otherwise).
+- **Touch drag you can see** (2026-09-11, Andreas: "my finger hides where I'm dropping"): in `seatHold` the lifted pill floats
+  `LIFT`=48 screen px above the finger; the drop target is the chair nearest to the PILL (not the finger) within `REACH`=46 px,
+  shown enlarged + ringed (`.seat.snap`), and `#dragtag` at the top says "→ 3 · θέση 5" (green) or "↔ Μαρία" (amber = swap).
+  Chair positions are measured once at lift and shifted when the floor edge-pans (finger within 36 px of the canvas edge).
 - **Place handle** (2026-09-11, second tester could not guess that names on the floor are interactive and looked for a
   handle in the list): every unseated name in the list and every occupied row of the table sheet carries a grip icon
   (`.grip`, `i-grip`). Click/tap → `openPlaceMenu` (#placemenu): "Διαλέξτε καρέκλα στην κάτοψη" (hands over to the
