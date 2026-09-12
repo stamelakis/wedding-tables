@@ -250,6 +250,23 @@ cascade-purges its plans; venues can rotate their own key; backups encrypted at 
   in stage axes on rotated tables) and that base transform is restored on finish; the source `.table` gets z-index 60 for the
   drag (tables are stacking contexts); the snap enlargement uses the separate CSS `scale` property (an inline transform would
   beat a class rule); chairs under the sheet / pick bar are skipped as targets.
+- **Desktop feedback pass (2026-09-13)**: grab the empty floor to pan (mouse; `panState`, a drag never counts as the
+  floor click); a name dropped / tapped onto a TABLE takes a free chair next to someone (`freeSeatFor`, `placeInTable`,
+  `wireDiscDrop`; touch drags fall back to the disc under the pill); the search box is always shown on PC and sticky while
+  the list scrolls; empty chairs paint above neighbouring name pills (z-index 2 vs 1); decor/table handles fade out with a
+  0.6 s delay and stay while the item is selected (`.sel`, set in makeDraggable's pointerdown, cleared by a floor click);
+  names that would overlap a neighbour step outward onto a second ring just far enough (`off[]`, `seatStem` dot marks the
+  chair) — head-table names step down a row.
+- **Invitations** (`state.parties` [{id,name}], `guest.partyId`): created while typing names ("Οικ. Παπαδόπουλου:" on its
+  own line groups the names below it until a blank line), edited per guest in the guest editor (datalist of existing
+  invitations), shown as subsections of the guest list (`.pparty` header: tap = pick the whole party, its grip = place
+  menu → table seats everyone, drag it on PC, pencil = rename / empty name = dissolve), `placePartyInTable`, auto-seat keeps
+  parties together and joins members already seated, print shows "· invitation" after each name plus an "Προσκλήσεις"
+  section with every member's table. `pruneParties` drops empty parties; sanitizePlan validates `partyId`.
+  Semantics fixed by review: a party gesture (header tap / grip / drag / drop) seats ONLY `partyUnseated(pid)` — members
+  already at a table stay put (the header shows "shown / total" under a filter); one save + one undo step per gesture
+  (`placeGuestInSeat(…, quiet)` returns the touched tables); renaming to an existing name merges; dropping a name back on
+  its own table is a no-op; `seatNeighbours` knows the head table's row + ends.
 - **Place handle** (2026-09-11, second tester could not guess that names on the floor are interactive and looked for a
   handle in the list): every unseated name in the list and every occupied row of the table sheet carries a grip icon
   (`.grip`, `i-grip`). Click/tap → `openPlaceMenu` (#placemenu): "Διαλέξτε καρέκλα στην κάτοψη" (hands over to the
