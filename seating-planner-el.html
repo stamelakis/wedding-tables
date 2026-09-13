@@ -224,6 +224,8 @@
   .stem{ position:absolute; width:8px; height:8px; border-radius:50%; transform:translate(-50%,-50%); border:1.5px solid #fff; box-shadow:0 1px 2px rgba(0,0,0,.25); pointer-events:none; z-index:0; }
   .leader{ position:absolute; height:1.5px; transform-origin:0 50%; opacity:.6; pointer-events:none; z-index:0; }
   .seat.occupied{ z-index:1; }
+  .table:hover{ z-index:50; }
+  .seat.occupied:hover{ z-index:30; box-shadow:0 0 0 2px #fff,0 4px 14px rgba(30,20,10,.35) !important; }   /* a hovered name comes to the front while the mouse is on it */
   .seat:not(.occupied){ z-index:2; }   /* an empty chair must stay visible next to long names */
   .seat.lifted, body.touch .seat.lifted{ box-shadow:0 0 0 3px var(--accent-soft),0 0 0 5px var(--accent),0 12px 28px rgba(30,20,10,.4); transition:none; }
   body.touch .seat{ -webkit-touch-callout:none; }
@@ -1419,7 +1421,8 @@ function seatLeader(ax,ay,px,py,gid){   // a dot on the chair + a thin line to w
   return frag;
 }
 function tableExtent(t){   // half-size of a table incl. its seats and any name that slid outward — used to zoom onto it
-  if(t.shape==="head"){ const {g,W,pos}=headLayout(t); let rx=g.tableW/2+30+100; pos.forEach((x,i)=>{ if(t.seats[i]) rx=Math.max(rx, Math.abs(x)+W[i]/2+10); }); return { rx, ry:g.tableH/2+g.seatH+40 }; }
+  if(t.shape==="head"){ const {g,W,pos}=headLayout(t); let rx=g.tableW/2+30+100, ry=g.tableH/2+g.seatH+40;
+    pos.forEach((p,i)=>{ if(t.seats[i]&&p.moved){ rx=Math.max(rx, Math.abs(p.sx)+W[i]/2+10); ry=Math.max(ry, Math.abs(p.sy)+g.seatH/2+30); } }); return { rx, ry }; }
   const {g,W,seats}=roundLayout(t); let rx=g.ringR+100, ry=g.ringR+40;
   seats.forEach((p,i)=>{ if(p.moved){ rx=Math.max(rx, Math.abs(p.sx)+W[i]/2+10); ry=Math.max(ry, Math.abs(p.sy)+g.seatH/2+30); } });
   return {rx, ry};
@@ -1448,71 +1451,60 @@ function renderRoundTable(t, wrap){
   });
   addTableRotateHandle(wrap, t, hTop+19);   // = ringR+30 when nothing moved
 }
+// Boxes placed as close to home as possible without collisions (stage frame). items: {hx,hy,w,h,ox,oy} — home, size and the
+// outward direction; obstacles: fixed boxes (empty chairs, the head table); disc: the round table {x,y,ring}. A pill that is
+// free at home stays there; otherwise it takes the nearest free spot around its chair (outward preferred, sideways when that is
+// closer), never crossing inward over the chairs. Nothing is ever pushed to a shared far circle.
+function placeNear(items, obstacles, disc){
+  const boxes=obstacles.slice(), res=[];
+  const hitB=(x,y,w,h,B)=>Math.abs(x-B.x)<(w+B.w)/2+2 && Math.abs(y-B.y)<(h+B.h)/2+2;
+  // the pill's CENTRE stays on or outside the chair ring (a wide pill's inner corner may brush the disc, as it always did at its chair)
+  const ok=(x,y,w,h)=>(!disc||Math.hypot(x-disc.x,y-disc.y)>=disc.ring-4) && !boxes.some(B=>hitB(x,y,w,h,B));
+  for(const it of items){
+    let p=null;
+    if(ok(it.hx,it.hy,it.w,it.h)) p={x:it.hx,y:it.hy};
+    else if(it.slide) for(let d=6; d<=it.maxSlide && !p; d+=6){ for(const sgn of [1,-1]){ const q=it.slide(d*sgn); if(ok(q.x,q.y,it.w,it.h)){ p=q; break; } } }   // first choice: slide along the chairs, into the free space beside the table
+    if(!p) for(let r=6; r<=150 && !p; r+=6){ let best=null;
+      for(let k=0;k<24;k++){ const a=k/24*2*Math.PI, x=it.hx+r*Math.cos(a), y=it.hy+r*Math.sin(a);
+        if(!ok(x,y,it.w,it.h)) continue; const pref=-(Math.cos(a)*it.ox+Math.sin(a)*it.oy); if(!best||pref<best.pref) best={x,y,pref}; }   // same distance: the most outward wins
+      if(best) p={x:best.x,y:best.y}; }
+    if(!p) p={x:it.hx,y:it.hy};   // nowhere within 150 px: stay home
+    res.push(p); boxes.push({x:p.x,y:p.y,w:it.w,h:it.h});
+  }
+  return res;
+}
 // Where every seat of a round table goes. The collision maths runs in the STAGE frame (pills are counter-rotated, so they are
 // axis-aligned there); results come back in wrap coordinates (x,y) plus the stage ones (sx,sy) for the zoom extent.
 function roundLayout(t){
-  const g=roundGeom(t), cnt=t.capacity, rot=(t.rot||0)*Math.PI/180, c=Math.cos(rot), s=Math.sin(rot);
-  const ang0=i=>(i/cnt)*2*Math.PI-Math.PI/2;
+  const g=roundGeom(t), cnt=t.capacity, rot=(t.rot||0)*Math.PI/180, c=Math.cos(rot), s=Math.sin(rot), R=g.ringR, h=g.seatH;
+  const ang=i=>(i/cnt)*2*Math.PI-Math.PI/2+rot;
   const W=[]; for(let i=0;i<cnt;i++){ const gid=t.seats[i]; W.push(gid?seatWidthFor(displayName(gid),g.fs):34); }
-  const lay=layoutRingLabels(cnt, i=>ang0(i)+rot, W, g.seatH, g.ringR, t.seats.map(Boolean));
-  const seats=lay.map((p,i)=>({ x:p.x*c+p.y*s, y:-p.x*s+p.y*c, sx:p.x, sy:p.y, moved:p.moved, cx:Math.cos(ang0(i))*g.ringR, cy:Math.sin(ang0(i))*g.ringR }));
+  const chairs=[], items=[];
+  for(let i=0;i<cnt;i++){ const a=ang(i), hx=Math.cos(a)*R, hy=Math.sin(a)*R;
+    if(t.seats[i]) items.push({i,hx,hy,w:W[i],h,ox:Math.cos(a),oy:Math.sin(a), slide:d=>({x:Math.cos(a+d/R)*R, y:Math.sin(a+d/R)*R}), maxSlide:W[i]}); else chairs.push({x:hx,y:hy,w:34,h}); }
+  const placed=placeNear(items, chairs, {x:0,y:0,ring:R});
+  const seats=[]; for(let i=0;i<cnt;i++){ const a=ang(i); seats[i]={sx:Math.cos(a)*R, sy:Math.sin(a)*R, moved:false}; }
+  items.forEach((it,k)=>{ const p=placed[k]; seats[it.i]={sx:p.x, sy:p.y, moved:Math.abs(p.x-it.hx)>3||Math.abs(p.y-it.hy)>3}; });
+  seats.forEach((p,i)=>{ p.x=p.sx*c+p.sy*s; p.y=-p.sx*s+p.sy*c; const a0=ang(i)-rot; p.cx=Math.cos(a0)*R; p.cy=Math.sin(a0)*R; });
   return {g, W, seats};
 }
-// The head table's row of names: colliding names slide sideways (only names move; an empty chair is a fixed obstacle).
-// Two axis-aligned pills along a row rotated by rot are clear as soon as EITHER screen axis separates them.
+// The head table's row of names: a colliding name takes the nearest free spot (below or beside the row), tied to its chair.
 function headLayout(t){
-  const g=headGeom(t), rot=(t.rot||0)*Math.PI/180, c=Math.abs(Math.cos(rot)), s=Math.abs(Math.sin(rot));
-  const W=[], xs=[]; for(let i=0;i<g.top;i++){ const gid=t.seats[i]; W.push(gid?seatWidthFor(displayName(gid),g.fs):34); xs.push(-g.innerW/2+g.slot/2+i*g.slot); }
-  const pos=xs.slice(), named=i=>!!t.seats[i];
-  for(let k=0;k<60;k++){ let moved=false;
-    for(let i=0;i<g.top-1;i++){ if(!named(i)&&!named(i+1)) continue;
-      const need=Math.min(c>1e-6?((W[i]+W[i+1])/2+2)/c:Infinity, s>1e-6?(g.seatH+2)/s:Infinity), d=pos[i+1]-pos[i];
-      if(d<need){ const def=need-d; if(named(i)&&named(i+1)){ pos[i]-=def/2; pos[i+1]+=def/2; } else if(named(i)) pos[i]-=def; else pos[i+1]+=def; moved=true; } }
-    if(!moved) break; }
-  return {g, W, xs, pos};
-}
-// Labels around a circle: boxes W×h at the chairs; if any two collide, move them to a circle just outside the chairs and
-// push neighbours apart along it (arc length) until every box has room; a bigger circle when the ring is too crowded.
-function layoutRingLabels(cnt, ang, W, h, R, occ){   // occ[i]: a name pill (moves) vs an empty chair (stays where it is)
-  const at=(i,r,a)=>({x:Math.cos(a)*r, y:Math.sin(a)*r, w:W[i], h});
-  const ovBy=m=>(A,B)=>Math.abs(A.x-B.x)<(A.w+B.w)/2+m && Math.abs(A.y-B.y)<(A.h+B.h)/2+m;
-  const ovHome=ovBy(-3), ovAcc=ovBy(2);   // at home, rounded pills may touch by 3 px before we bother; a spread layout must leave a 2 px gap
-  const anyOvBy=(b,ov)=>{ for(let i=0;i<cnt;i++) for(let j=i+1;j<cnt;j++) if((occ[i]||occ[j]) && ov(b[i],b[j])) return true; return false; };
-  const anyOv=b=>anyOvBy(b,ovAcc);
-  const home=[]; for(let i=0;i<cnt;i++) home.push(at(i,R,ang(i)));
-  const finish=res=>res.map((b,i)=>({x:b.x,y:b.y,moved:!!occ[i]&&(Math.abs(b.x-home[i].x)>1||Math.abs(b.y-home[i].y)>1)}));
-  const idx=[]; for(let i=0;i<cnt;i++) if(occ[i]) idx.push(i);
-  if(idx.length<2 || !anyOvBy(home,ovHome)) return finish(home);
-  // a leader (chair → pill) must not run under another pill, or the dot looks glued to the wrong name (Liang–Barsky clip)
-  const crosses=(p0,p1,B)=>{ let t0=0,t1=1; const dx=p1.x-p0.x, dy=p1.y-p0.y;
-    for(const [p,q] of [[-dx,p0.x-(B.x-B.w/2)],[dx,(B.x+B.w/2)-p0.x],[-dy,p0.y-(B.y-B.h/2)],[dy,(B.y+B.h/2)-p0.y]]){
-      if(p===0){ if(q<0) return false; } else { const r=q/p; if(p<0){ if(r>t1) return false; if(r>t0) t0=r; } else { if(r<t0) return false; if(r<t1) t1=r; } } }
-    return t0<=t1; };
-  const buried=res=>idx.some(i=>(Math.abs(res[i].x-home[i].x)>1||Math.abs(res[i].y-home[i].y)>1) && res.some((B,j)=>j!==i && crosses(home[i],res[i],B)));
-  const need=i=>{ const a=ang(i); return Math.abs(W[i]*Math.sin(a))+Math.abs(h*Math.cos(a))+6; };   // room a pill needs along the tangent
-  const spread=(ring,R2)=>{   // push the pills of one circle apart along its arc; null when the circle cannot hold them
-    const circ=2*Math.PI*R2, ext=ring.map(need), pos=ring.map(i=>ang(i)*R2);
-    if(ext.reduce((x,y)=>x+y,0)>circ) return null; const m=ring.length;
-    for(let k=0;k<120;k++){ let moved=false;
-      for(let i=0;i<m;i++){ const j=(i+1)%m; let d=pos[j]-pos[i]; if(j===0) d+=circ;
-        const want=(ext[i]+ext[j])/2; if(d<want-0.01){ const push=(want-d)/2; pos[i]-=push; pos[j]+=push; moved=true; } }
-      if(!moved) break; }
-    const out={}; ring.forEach((i,k)=>{ out[i]=at(i,R2,pos[k]/R2); }); return out; };
-  const place=(...parts)=>{ const res=home.map(b=>({...b})); parts.forEach(p=>{ for(const i in p) res[i]=p[i]; }); return res; };
-  const step=h+4, base=R+h/2+12, cap=R+8*h, total=idx.reduce((x,i)=>x+need(i),0);
-  let best=null, clean=null;
-  for(let R2=Math.max(base, base+Math.ceil((total/(2*Math.PI)-base)/step)*step); R2<=cap; R2+=step){   // the smallest circle on the ladder that can hold every pill
-    const p=spread(idx,R2); if(!p) continue;
-    const res=place(p); best=res; if(anyOv(res)) continue;
-    clean=clean||res; if(!buried(res)) return finish(res);
-  }
-  if(clean) return finish(clean);
-  const rings=[idx.filter((_,k)=>k%2===0), idx.filter((_,k)=>k%2===1)];   // beyond the cap: two circles, alternate pills (each carries half the width)
-  for(let r0=Math.max(base,cap-step); r0<=cap+2*step; r0+=step){
-    const a=spread(rings[0],r0), b=spread(rings[1],r0+step); if(!a||!b) continue;
-    const res=place(a,b); best=res; if(!anyOv(res)) return finish(res);
-  }
-  return finish(best||home);   // truly hopeless (30 seats of 190 px names): the least bad attempt
+  const g=headGeom(t), rot=(t.rot||0)*Math.PI/180, c=Math.cos(rot), s=Math.sin(rot), h=g.seatH;
+  const toS=(x,y)=>({x:x*c-y*s, y:x*s+y*c}), toW=(X,Y)=>({x:X*c+Y*s, y:-X*s+Y*c});
+  const W=[]; for(let i=0;i<g.top;i++){ const gid=t.seats[i]; W.push(gid?seatWidthFor(displayName(gid),g.fs):34); }
+  const rely=g.tableH/2+h/2+6;
+  const corners=[[-g.tableW/2,-g.tableH/2],[g.tableW/2,-g.tableH/2],[g.tableW/2,g.tableH/2],[-g.tableW/2,g.tableH/2]].map(([x,y])=>toS(x,y));
+  const bx=Math.min(...corners.map(p=>p.x)), bX=Math.max(...corners.map(p=>p.x)), by=Math.min(...corners.map(p=>p.y)), bY=Math.max(...corners.map(p=>p.y));
+  const obstacles=[{x:(bx+bX)/2,y:(by+bY)/2,w:bX-bx,h:bY-by}], items=[], homes=[];
+  for(let i=0;i<g.top;i++){ const hw=-g.innerW/2+g.slot/2+i*g.slot, p=toS(hw,rely); homes.push({x:hw,y:rely});
+    if(t.seats[i]) items.push({i,hx:p.x,hy:p.y,w:W[i],h,ox:-s,oy:c, slide:d=>({x:p.x+d*c, y:p.y+d*s}), maxSlide:W[i]}); else obstacles.push({x:p.x,y:p.y,w:34,h}); }
+  const li=g.top, ri=g.top+1, endGap=30;
+  [[li,-(g.tableW/2)-endGap],[ri,(g.tableW/2)+endGap]].forEach(([idx,x])=>{ if(idx<t.capacity){ const p=toS(x,0); obstacles.push({x:p.x,y:p.y,w:t.seats[idx]?seatWidthFor(displayName(t.seats[idx]),g.fs):34,h}); } });
+  const placed=placeNear(items, obstacles, null);
+  const pos=homes.map(hm=>({x:hm.x,y:hm.y,sx:0,sy:0,moved:false}));
+  items.forEach((it,k)=>{ const p=placed[k], w=toW(p.x,p.y); pos[it.i]={x:w.x,y:w.y,sx:p.x,sy:p.y,moved:Math.abs(p.x-it.hx)>3||Math.abs(p.y-it.hy)>3}; });
+  return {g, W, homes, pos};
 }
 function headGeom(t){
   const n=t.capacity;
@@ -1540,11 +1532,10 @@ function renderHeadTable(t, wrap){
   wrap.appendChild(disc);
   // main row on the FAR side of the table, so the couple sits behind the table facing the dance floor
   // the row of names under the table: colliding names slide sideways (past the table ends if needed), tied to their chair
-  const {xs, pos}=headLayout(t);
-  const rely = (g.tableH/2) + g.seatH/2 + 6;
-  for(let i=0;i<g.top;i++){
-    if(t.seats[i] && Math.abs(pos[i]-xs[i])>1) wrap.appendChild(seatLeader(xs[i], g.tableH/2, pos[i], rely, t.seats[i]));
-    wrap.appendChild(buildSeat(t,i, pos[i], rely, g.fs, g.seatH));
+  const {homes, pos}=headLayout(t);
+  for(let i=0;i<g.top;i++){ const p=pos[i];
+    if(t.seats[i] && p.moved) wrap.appendChild(seatLeader(homes[i].x, g.tableH/2, p.x, p.y, t.seats[i]));
+    wrap.appendChild(buildSeat(t,i, p.x, p.y, g.fs, g.seatH));
   }
   const li=g.top, ri=g.top+1, endGap=30;
   if(li<t.capacity) wrap.appendChild(buildSeat(t,li, -(g.tableW/2)-endGap, 0, g.fs, g.seatH));

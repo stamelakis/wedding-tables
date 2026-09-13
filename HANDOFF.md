@@ -255,11 +255,13 @@ cascade-purges its plans; venues can rotate their own key; backups encrypted at 
   `wireDiscDrop`; touch drags fall back to the disc under the pill); the search box is always shown on PC and sticky while
   the list scrolls; empty chairs paint above neighbouring name pills (z-index 2 vs 1); decor/table handles fade out with a
   0.6 s delay and stay while the item is selected (`.sel`, set in makeDraggable's pointerdown, cleared by a floor click);
-  names that would collide slide apart along an outer circle like pie-chart labels (`layoutRingLabels`: arc-length
-  spreading on a circle just outside the chairs, a bigger circle when crowded), each tied to its chair by a dot + thin
-  leader (`seatLeader`); a table with no collision renders exactly as before. Head-table names slide sideways in their
-  row. Andreas rejected the earlier radial second-ring stagger (2026-09-14) — do not bring it back. The user's lever for
-  very crowded tables is Aa → Σύντομα / Αρχικά.
+  a name that would collide takes the NEAREST free spot around its chair (`placeNear`, stage frame): first it slides
+  along the chairs (sideways, into the free space beside the table, up to its own width), only then the nearest spot in
+  any direction with outward preferred; empty chairs, the disc and already-placed names are obstacles; each moved name is
+  tied to its chair by a dot + thin leader (`seatLeader`). A table with no collision renders exactly as before. Head-table
+  names do the same along their row. Andreas rejected two earlier versions (2026-09-14): the radial second-ring stagger
+  and a shared outer circle ("use the space next to the table, don't drift toward other tables") — keep names hugging
+  their own table. Hovering a name brings it (and its table) to the front.
 - **Invitations** (`state.parties` [{id,name}], `guest.partyId`): created while typing names ("Οικ. Παπαδόπουλου:" on its
   own line groups the names below it until a blank line), edited per guest in the guest editor (datalist of existing
   invitations), shown as subsections of the guest list (`.pparty` header: tap = pick the whole party, its grip = place
