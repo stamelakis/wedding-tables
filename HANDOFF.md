@@ -272,6 +272,19 @@ cascade-purges its plans; venues can rotate their own key; backups encrypted at 
   already at a table stay put (the header shows "shown / total" under a filter); one save + one undo step per gesture
   (`placeGuestInSeat(…, quiet)` returns the touched tables); renaming to an existing name merges; dropping a name back on
   its own table is a no-op; `seatNeighbours` knows the head table's row + ends.
+- **Delete key** (2026-09-13, Andreas: "delete tables by choosing and pressing delete, with a warning I can silence"):
+  on PC, Delete or Backspace (not while typing, not while a modal is open, no key repeat) removes the thing chosen last —
+  a decor item carrying `.feature.hsel` (set on pointerdown; grabbing a table clears it), else the focused table. Every
+  delete (gear menu, decor menu, key) goes through `confirmDelete(text, onYes)` → `#delModal` (`.modal.narrow`) with a
+  "Να μην ξαναρωτηθώ" checkbox stored in `weddingSeatingPlanner.skipDeleteConfirm`; when set, deletes run at once.
+  `deleteTable` / `deleteFeature` save, re-render and toast "Διαγράφηκε «…» — ↶ για αναίρεση"; ↶ brings it back.
+  The native `confirm()` is gone from these paths. Phones have no Delete key: the gear-menu path shows the same modal.
+  Review fixes: no delete while the tour runs, during a pointer gesture (drag/resize/rotate) or from Backspace inside the
+  names panel (Enter on the last row lands on the Fill button); undo/redo pause while any modal is open; a pick lifted from
+  the deleted table is dropped; decor is resolved by position (`dataset.fi`, imported files may repeat ids); focusing a
+  table by any path clears `.hsel`; the skip flag is per planner (`PBASE`) and ⋯ → Περισσότερα → "Ρώτα ξανά πριν τη
+  διαγραφή" appears while it is set; every dismiss path runs the same close (handlers cleared, focus restored, clicks
+  inside never reach the click-outside closers).
 - **Import modes** (2026-09-13, Andreas built a plan in the lab and wanted only names + seating in Andreas & Lina): the
   import modal has a radio chooser — `new` (old behaviour: separate profile), `appendNames`, `appendAll` (file tables added as
   new tables with their people), `replaceNames` (list replaced, tables emptied, layout kept), `replaceSeating` (file tables paired

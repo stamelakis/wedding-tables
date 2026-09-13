@@ -363,6 +363,9 @@
   .modal-back{ position:fixed; inset:0; background:rgba(30,20,10,.45); display:none; align-items:center; justify-content:center; z-index:300; backdrop-filter:blur(2px); }
   .modal-back.open{ display:flex; }
   .modal{ background:var(--card); border-radius:16px; width:min(620px,94vw); max-height:84vh; overflow:auto; box-shadow:0 30px 80px rgba(0,0,0,.35); }
+  .modal.narrow{ width:min(440px,94vw); }
+  .delskip{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--soft); margin:6px 0 2px; cursor:pointer; user-select:none; }
+  .delskip input{ width:16px; height:16px; margin:0; }
   .modal-head{ display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--card); z-index:1; }
   .modal-head strong{ font-size:15px; font-family:var(--serif); }
   .modal-head .mx{ border:none; background:none; font-size:20px; cursor:pointer; color:var(--faint); line-height:1; }
@@ -686,6 +689,16 @@
 <div id="moremenu" class="popover"></div>
 <div id="viewmenu" class="popover"></div>
 <div id="palette" class="popover"></div>
+<div id="delModal" class="modal-back">
+  <div class="modal narrow">
+    <div class="modal-head"><strong data-t="delTitle"></strong><button class="mx" id="delClose">✕</button></div>
+    <div class="mbody">
+      <div id="delText" style="font-size:14px;line-height:1.45;color:var(--ink);padding:2px 0 8px"></div>
+      <label class="delskip"><input type="checkbox" id="delSkip"><span data-t="delSkip"></span></label>
+      <div class="mrow"><button class="ibtn danger" id="delOk" data-t="delOk"></button><button class="ibtn" id="delCancel" data-t="pbCancel"></button></div>
+    </div>
+  </div>
+</div>
 <div id="groupsModal" class="modal-back">
   <div class="modal">
     <div class="modal-head"><strong data-t="groupsTitle"></strong><button class="mx" id="groupsClose">✕</button></div>
@@ -818,7 +831,7 @@ el:{
   fillNone:"Δεν υπάρχουν καλεσμένοι χωρίς θέση εκεί", filled:"Τοποθετήθηκαν {n}", createNew:"＋ Νέος καλεσμένος «{n}»", renameTo:"Μετονομασία σε «{n}»", moreMatches:"…και άλλοι {n} — συνεχίστε να γράφετε",
   pbHint:"→ πατήστε μια θέση", pbUnseat:"↩ Χωρίς θέση", pbEdit:"Επεξεργασία", pbCancel:"Άκυρο",
   menuTitle:"Ρυθμίσεις τραπεζιού", menuTitleHead:"Ρυθμίσεις νυφικού τραπεζιού", capLabel:"Θέσεις", capLabelHead:"Συνολικές θέσεις (οι 2 είναι οι ακριανές)", labelPh:"Όνομα / αριθμός τραπεζιού", deleteTable:"Διαγραφή", focusSeats:"Ονόματα",
-  mShare:"Κοινή χρήση & συγχρονισμός", mImportGuests:"Λίστα καλεσμένων από αρχείο κτήματος", mExport:"Εξαγωγή σχεδίου (αρχείο)", mImport:"Εισαγωγή σχεδίου — νέο ή συγχώνευση…", mPrint:"Εκτύπωση", mReset:"Επαναφορά σχεδίου", mLang:"Γλώσσα", mMore:"Περισσότερα…", capPlan:"Σχέδιο", capFiles:"Αρχεία & αντίγραφα", mDecor:"Διακόσμηση & αντικείμενα", mHead:"Νυφικό τραπέζι", mAuto:"Αυτόματη τοποθέτηση",
+  mShare:"Κοινή χρήση & συγχρονισμός", mImportGuests:"Λίστα καλεσμένων από αρχείο κτήματος", mExport:"Εξαγωγή σχεδίου (αρχείο)", mImport:"Εισαγωγή σχεδίου — νέο ή συγχώνευση…", mPrint:"Εκτύπωση", mReset:"Επαναφορά σχεδίου", mAskDel:"Ρώτα ξανά πριν τη διαγραφή", tAskDel:"Εντάξει — θα ρωτάω πριν από κάθε διαγραφή.", mLang:"Γλώσσα", mMore:"Περισσότερα…", capPlan:"Σχέδιο", capFiles:"Αρχεία & αντίγραφα", mDecor:"Διακόσμηση & αντικείμενα", mHead:"Νυφικό τραπέζι", mAuto:"Αυτόματη τοποθέτηση",
   stats:"{t} τραπέζια · {s}/{g} με θέση · {c} θέσεις",
   headTable:"Νυφικό τραπέζι", headFacing:"βλέπει προς την πίστα",
   groupsDefault:["Πλευρά νύφης","Πλευρά γαμπρού","Φίλοι","Οικογένεια"],
@@ -828,13 +841,13 @@ el:{
   decorTitle:"Προσθήκη διακόσμησης & αντικειμένων", decorHint:"Πατήστε ένα αντικείμενο για να μπει στον χώρο· μετά σύρετέ το στη θέση του και αλλάξτε μέγεθος από τη γωνία του.", decorAdded:"{n} — σύρετέ το στη θέση του",
   featTip:"Σύρετε για μετακίνηση · γωνία για μέγεθος · ⟳ για περιστροφή · γρανάζι για επιφάνεια / επίπεδο / διαγραφή", featGear:"Επιφάνεια / επίπεδο / διαγραφή",
   fmSurface:"Επιφάνεια", fmLayer:"Επίπεδο", fmBack:"⤓ Τέρμα πίσω", fmBackward:"↓ Πιο πίσω", fmForward:"↑ Πιο μπροστά", fmFront:"⤒ Τέρμα μπροστά", fmRename:"Ετικέτα", fmDelete:"Διαγραφή", fmStage:"Δάπεδο για ολόκληρο τον χώρο", fmLabelPrompt:"Ετικέτα (κενό για καμία):",
-  stageResizeTip:"Σύρετε για αλλαγή μεγέθους του χώρου", tableTip:"Πατήστε για ονόματα · σύρετε για μετακίνηση · γρανάζι για ρυθμίσεις",
+  stageResizeTip:"Σύρετε για αλλαγή μεγέθους του χώρου", tableTip:"Πατήστε για ονόματα · σύρετε για μετακίνηση · γρανάζι για ρυθμίσεις · Delete για διαγραφή",
   gmRename:"Μετονομασία «{n}»", gmRecolor:"Αλλαγή χρώματος", gmDelete:"Διαγραφή ομάδας", noGroup:"Χωρίς ομάδα", geName:"Όνομα καλεσμένου", geType:"Ομάδα",
   pRename:"Μετονομασία", pDup:"Αντιγραφή", pDel:"Διαγραφή",
   promptNewGroup:"Όνομα νέας ομάδας:", groupN:"Ομάδα {n}", promptRenameGroup:"Μετονομασία ομάδας:", confirmDeleteGroup:"Διαγραφή ομάδας «{n}»; Οι καλεσμένοι κρατούν τις θέσεις τους αλλά χάνουν το χρώμα.",
   promptNewProfile:"Νέο σχέδιο — όνομα ζευγαριού / εκδήλωσης:", weddingN:"Γάμος {n}", promptRenameProfile:"Μετονομασία σχεδίου:", copySuffix:" (αντίγραφο)", confirmDeleteProfile:"Διαγραφή του σχεδίου «{n}»; Δεν μπορεί να αναιρεθεί.", keepOne:"Διατηρήστε τουλάχιστον ένα σχέδιο",
   ourWedding:"Ο γάμος μας", sharedPlan:"Κοινόχρηστο σχέδιο", importedPlan:"Εισαγόμενο σχέδιο", pastedPlan:"Επικολλημένο σχέδιο", labPlan:"Δοκιμαστικός γάμος",
-  confirmDeleteTable:"Διαγραφή «{n}»; Οι καλεσμένοι του επιστρέφουν στους χωρίς θέση.",
+  confirmDeleteTable:"Διαγραφή «{n}»; Οι καλεσμένοι του επιστρέφουν στους χωρίς θέση.", confirmDeleteFeature:"Διαγραφή «{n}»;", delTitle:"Διαγραφή", delSkip:"Να μην ξαναρωτηθώ", delOk:"Διαγραφή", tDeleted:"Διαγράφηκε «{n}» — ↶ για αναίρεση",
   confirmResetShared:"Επαναφορά στην αρχική διάταξη; Διαγράφονται όλοι οι καλεσμένοι — και επειδή το σχέδιο είναι κοινόχρηστο, θα το δουν όλοι όσοι έχουν τον σύνδεσμο.", confirmReset:"Επαναφορά στην αρχική διάταξη; Διαγράφονται όλοι οι καλεσμένοι.",
   tGuestRemoved:"Ο καλεσμένος αφαιρέθηκε", tTableAdded:"Νέο τραπέζι — γράψτε τα ονόματα ή σύρετέ το στη θέση του", tHeadAdded:"Προστέθηκε νυφικό τραπέζι", tGuestsAdded:"{n} καλεσμένος/-οι προστέθηκαν", tAutoSeated:"Τοποθετήθηκαν {n} καλεσμένος/-οι", tNoSeats:"Δεν υπάρχουν ελεύθερες θέσεις ή καλεσμένοι χωρίς θέση", tBumped:"{n} καλεσμένος/-οι μετακινήθηκαν σε «χωρίς θέση»", tReset:"Έγινε επαναφορά", tProfileCreated:"Δημιουργήθηκε νέο σχέδιο", tProfileCopied:"Το σχέδιο αντιγράφηκε", tProfileDeleted:"Το σχέδιο διαγράφηκε", tImported:"Εισήχθη ως νέο σχέδιο: «{n}»", tCopied:"Αντιγράφηκε στο πρόχειρο", tCopyHint:"Επιλέξτε όλα & πατήστε Ctrl+C", tDownloaded:"Λήφθηκε {n}", tNotPlan:"Δεν είναι αρχείο σχεδίου ή λίστας καλεσμένων", tInvalidFile:"Μη έγκυρο αρχείο", tPasteFirst:"Επικολλήστε πρώτα κείμενο σχεδίου", tInvalidPaste:"Το κείμενο δεν είναι έγκυρο σχέδιο", tFont:"Μέγεθος ονομάτων {n}%", tFullPlan:"Αυτό είναι πλήρες σχέδιο — χρησιμοποιήστε την «Εισαγωγή σχεδίου»", tNotGuestList:"Δεν είναι αρχείο λίστας καλεσμένων", tMerged:"Προστέθηκαν {a} καλεσμένος/-οι", tMergedSkipped:" · παραλείφθηκαν {s} ήδη εισαγμένοι", tCleared:"Το τραπέζι άδειασε",
   exportTitle:"Αντιγραφή / λήψη σχεδίου", exportHint:"Αντιγράψτε το κείμενο και επικολλήστε το στην «Εισαγωγή σχεδίου» σε άλλη συσκευή — ή κατεβάστε το ως αρχείο.", exportCopy:"Αντιγραφή", exportDownload:"Λήψη αρχείου",
@@ -900,7 +913,7 @@ en:{
   fillNone:"No unseated guests there", filled:"Seated {n}", createNew:"＋ New guest “{n}”", renameTo:"Rename to “{n}”", moreMatches:"…and {n} more — keep typing",
   pbHint:"→ tap a seat", pbUnseat:"↩ Unseat", pbEdit:"Edit", pbCancel:"Cancel",
   menuTitle:"Table settings", menuTitleHead:"Head table settings", capLabel:"Seats", capLabelHead:"Total seats (2 are the ends)", labelPh:"Table name / number", deleteTable:"Delete", focusSeats:"Names",
-  mShare:"Share & sync", mImportGuests:"Guest list from a venue file", mExport:"Export plan (file)", mImport:"Import plan — new or merge…", mPrint:"Print", mReset:"Reset plan", mLang:"Language", mMore:"More…", capPlan:"Plan", capFiles:"Files & backups", mDecor:"Decor & items", mHead:"Head table", mAuto:"Auto-seat",
+  mShare:"Share & sync", mImportGuests:"Guest list from a venue file", mExport:"Export plan (file)", mImport:"Import plan — new or merge…", mPrint:"Print", mReset:"Reset plan", mAskDel:"Ask again before deleting", tAskDel:"OK — I will ask before every delete.", mLang:"Language", mMore:"More…", capPlan:"Plan", capFiles:"Files & backups", mDecor:"Decor & items", mHead:"Head table", mAuto:"Auto-seat",
   stats:"{t} tables · {s}/{g} seated · {c} seats",
   headTable:"Head table", headFacing:"faces the dance floor",
   groupsDefault:["Bride's side","Groom's side","Friends","Family"],
@@ -910,13 +923,13 @@ en:{
   decorTitle:"Add decor & items", decorHint:"Click an item to drop it into the space, then drag it into place and resize from its corner.", decorAdded:"{n} — drag it into place",
   featTip:"Drag to move · corner to resize · ⟳ to rotate · gear for surface / layer / delete", featGear:"Surface / layer / delete",
   fmSurface:"Surface", fmLayer:"Layer", fmBack:"⤓ Send to back", fmBackward:"↓ Send backward", fmForward:"↑ Bring forward", fmFront:"⤒ Bring to front", fmRename:"Label", fmDelete:"Delete", fmStage:"Floor for the whole space", fmLabelPrompt:"Label (leave empty for none):",
-  stageResizeTip:"Drag to resize the whole space", tableTip:"Click for names · drag to move · gear for settings",
+  stageResizeTip:"Drag to resize the whole space", tableTip:"Click for names · drag to move · gear for settings · Delete to remove",
   gmRename:"Rename “{n}”", gmRecolor:"Change colour", gmDelete:"Delete group", noGroup:"No group", geName:"Guest name", geType:"Group",
   pRename:"Rename", pDup:"Duplicate", pDel:"Delete",
   promptNewGroup:"New group name:", groupN:"Group {n}", promptRenameGroup:"Rename group:", confirmDeleteGroup:"Delete group “{n}”? Guests keep their seats but lose the colour.",
   promptNewProfile:"New plan — couple / event name:", weddingN:"Wedding {n}", promptRenameProfile:"Rename plan:", copySuffix:" (copy)", confirmDeleteProfile:"Delete the plan “{n}”? This cannot be undone.", keepOne:"Keep at least one plan",
   ourWedding:"Our wedding", sharedPlan:"Shared plan", importedPlan:"Imported plan", pastedPlan:"Pasted plan", labPlan:"Demo wedding",
-  confirmDeleteTable:"Delete “{n}”? Its guests return to the unseated list.",
+  confirmDeleteTable:"Delete “{n}”? Its guests return to the unseated list.", confirmDeleteFeature:"Delete “{n}”?", delTitle:"Delete", delSkip:"Don't ask again", delOk:"Delete", tDeleted:"Deleted “{n}” — ↶ to undo",
   confirmResetShared:"Reset to the starter layout? This removes all guests — and because the plan is shared, everyone with the link will see the reset.", confirmReset:"Reset to the starter layout? This removes all guests.",
   tGuestRemoved:"Guest removed", tTableAdded:"New table — type the names or drag it into place", tHeadAdded:"Head table added", tGuestsAdded:"{n} guest(s) added", tAutoSeated:"Seated {n} guest(s)", tNoSeats:"No free seats or no unseated guests", tBumped:"{n} guest(s) moved to unseated", tReset:"Reset done", tProfileCreated:"New plan created", tProfileCopied:"Plan duplicated", tProfileDeleted:"Plan deleted", tImported:"Imported as a new plan: “{n}”", tCopied:"Copied to clipboard", tCopyHint:"Select all & press Ctrl+C", tDownloaded:"Downloaded {n}", tNotPlan:"Not a plan or guest-list file", tInvalidFile:"Invalid file", tPasteFirst:"Paste plan text first", tInvalidPaste:"That text isn't a valid plan", tFont:"Name size {n}%", tFullPlan:"That's a full plan — use “Import plan”", tNotGuestList:"Not a guest-list file", tMerged:"Added {a} guest(s)", tMergedSkipped:" · skipped {s} already imported", tCleared:"Table cleared",
   exportTitle:"Copy / download this plan", exportHint:"Copy this text and paste it into “Import plan” on another device — or download it as a file.", exportCopy:"Copy", exportDownload:"Download file",
@@ -982,7 +995,7 @@ de:{
   fillNone:"Dort gibt es keine Gäste ohne Platz", filled:"{n} platziert", createNew:"＋ Neuer Gast „{n}“", renameTo:"Umbenennen in „{n}“", moreMatches:"…und {n} weitere — weiter tippen",
   pbHint:"→ Platz antippen", pbUnseat:"↩ Platz freigeben", pbEdit:"Bearbeiten", pbCancel:"Abbrechen",
   menuTitle:"Tisch-Einstellungen", menuTitleHead:"Brauttisch-Einstellungen", capLabel:"Plätze", capLabelHead:"Plätze gesamt (2 davon an den Enden)", labelPh:"Tischname / -nummer", deleteTable:"Löschen", focusSeats:"Namen",
-  mShare:"Teilen & synchronisieren", mImportGuests:"Gästeliste aus Datei des Veranstaltungsorts", mExport:"Plan exportieren (Datei)", mImport:"Plan importieren — neu oder zusammenführen…", mPrint:"Drucken", mReset:"Plan zurücksetzen", mLang:"Sprache", mMore:"Mehr…", capPlan:"Plan", capFiles:"Dateien & Sicherungen", mDecor:"Deko & Objekte", mHead:"Brauttisch", mAuto:"Auto-Füllen",
+  mShare:"Teilen & synchronisieren", mImportGuests:"Gästeliste aus Datei des Veranstaltungsorts", mExport:"Plan exportieren (Datei)", mImport:"Plan importieren — neu oder zusammenführen…", mPrint:"Drucken", mReset:"Plan zurücksetzen", mAskDel:"Vor dem Löschen wieder fragen", tAskDel:"Okay — ich frage vor jedem Löschen.", mLang:"Sprache", mMore:"Mehr…", capPlan:"Plan", capFiles:"Dateien & Sicherungen", mDecor:"Deko & Objekte", mHead:"Brauttisch", mAuto:"Auto-Füllen",
   stats:"{t} Tische · {s}/{g} platziert · {c} Plätze",
   headTable:"Brauttisch", headFacing:"blickt zur Tanzfläche",
   groupsDefault:["Seite der Braut","Seite des Bräutigams","Freunde","Familie"],
@@ -992,13 +1005,13 @@ de:{
   decorTitle:"Deko & Objekte hinzufügen", decorHint:"Objekt anklicken, um es auf die Fläche zu setzen; dann an die richtige Stelle ziehen und an der Ecke die Größe ändern.", decorAdded:"{n} — an die richtige Stelle ziehen",
   featTip:"Ziehen zum Verschieben · Ecke für Größe · ⟳ zum Drehen · Zahnrad für Oberfläche / Ebene / löschen", featGear:"Oberfläche / Ebene / löschen",
   fmSurface:"Oberfläche", fmLayer:"Ebene", fmBack:"⤓ Ganz nach hinten", fmBackward:"↓ Nach hinten", fmForward:"↑ Nach vorne", fmFront:"⤒ Ganz nach vorne", fmRename:"Beschriftung", fmDelete:"Löschen", fmStage:"Boden für die gesamte Fläche", fmLabelPrompt:"Beschriftung (leer für keine):",
-  stageResizeTip:"Ziehen, um die gesamte Fläche zu vergrößern", tableTip:"Antippen für Namen · ziehen zum Verschieben · Zahnrad für Einstellungen",
+  stageResizeTip:"Ziehen, um die gesamte Fläche zu vergrößern", tableTip:"Antippen für Namen · ziehen zum Verschieben · Zahnrad für Einstellungen · Entf zum Löschen",
   gmRename:"„{n}“ umbenennen", gmRecolor:"Farbe ändern", gmDelete:"Gruppe löschen", noGroup:"Keine Gruppe", geName:"Gastname", geType:"Gruppe",
   pRename:"Umbenennen", pDup:"Duplizieren", pDel:"Löschen",
   promptNewGroup:"Name der neuen Gruppe:", groupN:"Gruppe {n}", promptRenameGroup:"Gruppe umbenennen:", confirmDeleteGroup:"Gruppe „{n}“ löschen? Die Gäste behalten ihre Plätze, verlieren aber die Farbe.",
   promptNewProfile:"Neuer Plan — Name des Paares / der Veranstaltung:", weddingN:"Hochzeit {n}", promptRenameProfile:"Plan umbenennen:", copySuffix:" (Kopie)", confirmDeleteProfile:"Plan „{n}“ löschen? Das kann nicht rückgängig gemacht werden.", keepOne:"Mindestens einen Plan behalten",
   ourWedding:"Unsere Hochzeit", sharedPlan:"Geteilter Plan", importedPlan:"Importierter Plan", pastedPlan:"Eingefügter Plan", labPlan:"Demo-Hochzeit",
-  confirmDeleteTable:"„{n}“ löschen? Die Gäste kommen zurück in die Liste ohne Platz.",
+  confirmDeleteTable:"„{n}“ löschen? Die Gäste kommen zurück in die Liste ohne Platz.", confirmDeleteFeature:"„{n}“ löschen?", delTitle:"Löschen", delSkip:"Nicht mehr fragen", delOk:"Löschen", tDeleted:"„{n}“ gelöscht — ↶ macht es rückgängig",
   confirmResetShared:"Auf die Startanordnung zurücksetzen? Alle Gäste werden entfernt — und weil der Plan geteilt ist, sehen das alle mit dem Link.", confirmReset:"Auf die Startanordnung zurücksetzen? Alle Gäste werden entfernt.",
   tGuestRemoved:"Gast entfernt", tTableAdded:"Neuer Tisch — Namen eingeben oder an die richtige Stelle ziehen", tHeadAdded:"Brauttisch hinzugefügt", tGuestsAdded:"{n} Gast/Gäste hinzugefügt", tAutoSeated:"{n} Gast/Gäste platziert", tNoSeats:"Keine freien Plätze oder keine Gäste ohne Platz", tBumped:"{n} Gast/Gäste in „ohne Platz“ verschoben", tReset:"Zurückgesetzt", tProfileCreated:"Neuer Plan erstellt", tProfileCopied:"Plan dupliziert", tProfileDeleted:"Plan gelöscht", tImported:"Als neuer Plan importiert: „{n}“", tCopied:"In die Zwischenablage kopiert", tCopyHint:"Alles markieren & Strg+C drücken", tDownloaded:"{n} heruntergeladen", tNotPlan:"Keine Plan- oder Gästelisten-Datei", tInvalidFile:"Ungültige Datei", tPasteFirst:"Zuerst Plantext einfügen", tInvalidPaste:"Dieser Text ist kein gültiger Plan", tFont:"Namensgröße {n}%", tFullPlan:"Das ist ein vollständiger Plan — „Plan importieren“ verwenden", tNotGuestList:"Keine Gästelisten-Datei", tMerged:"{a} Gast/Gäste hinzugefügt", tMergedSkipped:" · {s} bereits importierte übersprungen", tCleared:"Tisch geleert",
   exportTitle:"Plan kopieren / herunterladen", exportHint:"Text kopieren und auf einem anderen Gerät unter „Plan importieren“ einfügen — oder als Datei herunterladen.", exportCopy:"Kopieren", exportDownload:"Datei herunterladen",
@@ -1325,10 +1338,10 @@ let focusRowWanted = null;   // row to focus after the next renderFocus
 
 function renderFeatures(){
   stage.querySelectorAll(".feature").forEach(e=>e.remove());
-  (state.features||[]).forEach(f=>{
+  (state.features||[]).forEach((f,fi)=>{
     const el=document.createElement("div");
     const kind=FEATURE_KINDS.includes(f.kind)?f.kind:"marker";
-    el.className="feature k-"+kind;
+    el.className="feature k-"+kind; el.dataset.fi=fi;
     el.style.left=f.x+"px"; el.style.top=f.y+"px"; el.style.width=f.w+"px"; el.style.height=f.h+"px";
     if(kind==="zone"){
       applyMaterial(el, f.material||"grass");
@@ -1811,7 +1824,7 @@ function openFeatureMenu(f, evt){
   menu.querySelectorAll(".fm-mat").forEach(m=>m.onclick=()=>{ f.material=m.dataset.mat; save(); renderFeatures(); closeFeatureMenu(); });
   ["back","backward","forward","front"].forEach(dir=>{ const el=menu.querySelector(`[data-act="${dir}"]`); if(el) el.onclick=()=>{ moveFeature(f,dir); closeFeatureMenu(); }; });
   menu.querySelector('[data-act="rename"]').onclick=()=>{ const nm=prompt(tr("fmLabelPrompt"), f.label||""); if(nm!==null){ f.label=nm; save(); renderFeatures(); } closeFeatureMenu(); };
-  menu.querySelector('[data-act="delete"]').onclick=()=>{ state.features=state.features.filter(x=>x.id!==f.id); save(); renderFeatures(); closeFeatureMenu(); };
+  menu.querySelector('[data-act="delete"]').onclick=()=>deleteFeature(f);
   showPopover(menu,evt);
 }
 // Right-click the empty space → change the whole floor
@@ -2268,7 +2281,8 @@ function makeDraggable(handleEl, moveEl, obj, onEnd, onTap){
     const touch=e.pointerType==="touch";
     if(activeDragCancel) activeDragCancel();   // a second finger (pinch) cancels the first pending hold instead of leaving it armed
     e.stopPropagation(); if(!touch) e.preventDefault();
-    if(moveEl.classList.contains("feature")){ stage.querySelectorAll(".feature.hsel").forEach(x=>{ if(x!==moveEl) x.classList.remove("hsel"); }); moveEl.classList.add("hsel"); }   // decor keeps its handles while the mouse travels to them (tables: hover / focus)
+    if(moveEl.classList.contains("feature")){ stage.querySelectorAll(".feature.hsel").forEach(x=>{ if(x!==moveEl) x.classList.remove("hsel"); }); moveEl.classList.add("hsel"); }
+    else stage.querySelectorAll(".feature.hsel").forEach(x=>x.classList.remove("hsel"));   // grabbing a table un-chooses the decor, so Delete hits the thing chosen last   // decor keeps its handles while the mouse travels to them (tables: hover / focus)
     const sx=e.clientX, sy=e.clientY, ox=obj.x, oy=obj.y, t0=performance.now();
     let moved=false, lifted=false, done=false, holdTimer=null;
     const unblock=touch?blockCtxMenu():null; if(touch) holdArmed=true;
@@ -2392,13 +2406,38 @@ function setCapacity(n){
   if(bumped) toast(tr("tBumped",{n:bumped}));
   renderPool();
 }
-$("menuDelete").addEventListener("click",()=>{
-  const t=state.tables.find(x=>x.id===activeMenuTableId); if(!t)return;
-  if(!confirm(tr("confirmDeleteTable",{n:t.label})))return;
-  if(focusId===t.id) unfocusTable();
-  state.tables=state.tables.filter(x=>x.id!==activeMenuTableId);
-  save(); renderTables(); renderPool(); closeMenu();
-});
+// One confirmation for every delete (gear menu, decor menu, the Delete key) — with "don't ask again"; ↶ always brings it back.
+const DEL_SKIP_KEY=PBASE+".skipDeleteConfirm";   // per planner (the lab keeps its own); ⋯ → "Ρώτα ξανά πριν τη διαγραφή" clears it
+function skipDeleteConfirm(){ try{ return localStorage.getItem(DEL_SKIP_KEY)==="1"; }catch(e){ return false; } }
+function confirmDelete(text, onYes){
+  if(skipDeleteConfirm()){ onYes(); return; }
+  const m=$("delModal"), prev=document.activeElement; $("delText").textContent=text; $("delSkip").checked=false; m.classList.add("open");
+  const close=()=>{ m.classList.remove("open"); m._close=null; $("delOk").onclick=$("delCancel").onclick=$("delClose").onclick=null;
+    if(prev&&prev!==document.body&&document.contains(prev)&&prev.focus){ try{ prev.focus({preventScroll:true}); }catch(e){} } };
+  m._close=close;
+  $("delOk").onclick=()=>{ if($("delSkip").checked){ try{ localStorage.setItem(DEL_SKIP_KEY,"1"); }catch(e){} } close(); onYes(); };
+  $("delCancel").onclick=close; $("delClose").onclick=close;
+  setTimeout(()=>$("delOk").focus(),0);
+}
+$("delModal").addEventListener("click",e=>{ e.stopPropagation(); if(e.target===e.currentTarget&&e.currentTarget._close) e.currentTarget._close(); });   // a click inside must not close the menu underneath
+function deleteTable(id){
+  const t=state.tables.find(x=>x.id===id); if(!t) return;
+  confirmDelete(tr("confirmDeleteTable",{n:t.label}), ()=>{
+    if(!state.tables.some(x=>x.id===id)) return;   // gone meanwhile (undo, a pull)
+    if(pick&&pick.from==="seat"&&pick.tableId===id) setPick(null);   // a name picked up from this table has nowhere to go back to
+    if(focusId===id) unfocusTable(); closeMenu();
+    state.tables=state.tables.filter(x=>x.id!==id); save(); renderTables(); renderPool();
+    toast(tr("tDeleted",{n:t.label}),3500);
+  });
+}
+function deleteFeature(f){
+  const name=f.label||tr("decor");
+  confirmDelete(tr("confirmDeleteFeature",{n:name}), ()=>{
+    const i=(state.features||[]).indexOf(f); if(i<0) return;   // gone meanwhile
+    state.features=state.features.filter((x,k)=>k!==i);   // by position: ids from imported files may repeat
+    save(); renderFeatures(); closeFeatureMenu(); toast(tr("tDeleted",{n:name}),3500); });
+}
+$("menuDelete").addEventListener("click",()=>deleteTable(activeMenuTableId));
 $("menuNames").addEventListener("click",()=>{ const id=activeMenuTableId; closeMenu(); if(id!=null) focusTable(id,{row:0}); });
 document.addEventListener("click",e=>{
   if(menu.style.display==="block" && !menu.contains(e.target) && !e.target.classList.contains("tgear") && e.target.id!=="fSettings") closeMenu();
@@ -2491,7 +2530,7 @@ function focusTable(id, opts={}){
   const t=state.tables.find(x=>x.id===id); if(!t) return;
   if(focusId!==id) flushLiveRow();
   const wasOpen=document.body.classList.contains("focused");
-  focusId=id;
+  focusId=id; stage.querySelectorAll(".feature.hsel").forEach(x=>x.classList.remove("hsel"));
   document.body.classList.add("focused"); setNav(false); hideSug();
   stage.querySelectorAll(".table").forEach(w=>w.classList.toggle("focused", +w.dataset.tableId===id));
   renderFocus(); renderSheetHint();
@@ -2690,10 +2729,17 @@ stagewrap.addEventListener("click",e=>{
 });
 document.addEventListener("keydown",e=>{
   const tag=(e.target&&e.target.tagName)||""; const typing=tag==="INPUT"||tag==="TEXTAREA"||tag==="SELECT"||(e.target&&e.target.isContentEditable);
-  if((e.ctrlKey||e.metaKey)&&!typing){ const k=e.key.toLowerCase(); if(k==="z"&&!e.shiftKey){ e.preventDefault(); undo(); return; } if(k==="y"||(k==="z"&&e.shiftKey)){ e.preventDefault(); redo(); return; } }
+  const modalOpen=!!document.querySelector(".modal-back.open");
+  if((e.ctrlKey||e.metaKey)&&!typing&&!modalOpen){ const k=e.key.toLowerCase(); if(k==="z"&&!e.shiftKey){ e.preventDefault(); undo(); return; } if(k==="y"||(k==="z"&&e.shiftKey)){ e.preventDefault(); redo(); return; } }
+  const inPanel=!!(e.target&&e.target.closest&&e.target.closest("#focus"));   // Backspace after Enter left a seat row must not take the table
+  if((e.key==="Delete"||(e.key==="Backspace"&&!inPanel)) && !e.repeat && !typing && !modalOpen && !tour && !pointerGesture){   // the chosen thing goes (after the confirmation)
+    const fs=stage.querySelector(".feature.hsel");
+    if(fs){ const f=(state.features||[])[+fs.dataset.fi]; if(f){ e.preventDefault(); deleteFeature(f); return; } }
+    if(focusId!=null){ e.preventDefault(); deleteTable(focusId); return; }
+  }
   if(e.key!=="Escape") return;
   if(tour){ endTour(); return; }
-  if(document.querySelector(".modal-back.open")){ document.querySelectorAll(".modal-back.open").forEach(m=>m.classList.remove("open")); return; }
+  if(modalOpen){ document.querySelectorAll(".modal-back.open").forEach(m=>{ if(m._close) m._close(); else m.classList.remove("open"); }); return; }
   for(const [id,fn] of [["placemenu",closePlaceMenu],["groupmenu",closeGroupMenu],["featuremenu",closeFeatureMenu]]){ const el=$(id); if(el.style.display==="block"){ fn(); return; } }   // innermost thing first
   if(pick){ setPick(null); return; }
   if(document.body.classList.contains("nav-open")){ setNav(false); return; }
@@ -2961,9 +3007,10 @@ $("moreBtn").addEventListener("click",e=>{
   if(isNarrow()) more.push(["cap",tr("capPlan")],["newplan",tr("newPlan")],["planmore",tr("planMore")],["cap",tr("tools")],["round",tr("mRound")],["head",tr("mHead")],["decor",tr("mDecor")],["auto",tr("mAuto")]);
   more.push(["cap",tr("capFiles")],["guests",tr("mImportGuests")],["export",tr("mExport")],["import",tr("mImport")]);
   if(!IS_LAB) more.push(["history",tr("mHistory")]);
+  if(skipDeleteConfirm()) more.push(["askdel",tr("mAskDel")]);
   more.push(["reset",tr("mReset")]);
   if(!IS_LAB) more.push(["cap",tr("mLang")],["lang-el","ΕΛ · Ελληνικά"],["lang-en","EN · English"],["lang-de","DE · Deutsch"]);
-  const MI={share:"cloud",groups:"people",print:"print",tour:"help",newplan:"plus",planmore:"edit",round:"table",head:"heart",decor:"decor",auto:"spark",guests:"dl",export:"up",import:"dl",history:"clock"};
+  const MI={share:"cloud",groups:"people",print:"print",tour:"help",askdel:"trash",newplan:"plus",planmore:"edit",round:"table",head:"heart",decor:"decor",auto:"spark",guests:"dl",export:"up",import:"dl",history:"clock"};
   const row=([a,l])=>a==="cap"?`<div class="gm-cap">${escapeHtml(l)}</div>`:`<div class="gm-item${a==="reset"?" danger":""}${a==="lang-"+LANG?" on":""}" data-act="${a}">${MI[a]?ICON(MI[a]):'<span class="ic"></span>'}${escapeHtml(l)}</div>`;
   m.innerHTML=primary.map(row).join("")+`<div class="gm-sep"></div><div class="gm-item more" data-act="more"><span class="ic"></span>${escapeHtml(tr("mMore"))} ›</div><div class="gm-more">${more.map(row).join("")}</div>`;
   m.querySelectorAll(".gm-item").forEach(it=>it.onclick=ev=>{ ev.stopPropagation(); const a=it.dataset.act;
@@ -2973,6 +3020,7 @@ $("moreBtn").addEventListener("click",e=>{
     else if(a==="newplan") newProfile(); else if(a==="planmore") openProfileMenu(anchorOf($("moreBtn")));
     else if(a==="round") addRoundTable(); else if(a==="history") openHistory(); else if(a==="groups") openGroupsModal(); else if(a==="tour") startTour();
     else if(a==="auto") autoSeat(); else if(a==="export") openExport(); else if(a==="import") openImport(); else if(a==="print") buildAndPrint(); else if(a==="reset") resetPlan();
+    else if(a==="askdel"){ try{ localStorage.removeItem(DEL_SKIP_KEY); }catch(e){} toast(tr("tAskDel"),2500); }
     else if(a.startsWith("lang-")){ const l=a.slice(5); location.href=({el:"seating-planner-el.html",en:"seating-planner.html",de:"seating-planner-de.html"})[l]; } });
   showPopover(m, anchorOf(e.currentTarget));
 });
