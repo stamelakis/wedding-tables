@@ -202,6 +202,7 @@
   .table-disc::before{ content:""; position:absolute; inset:-5px; border-radius:inherit; border:1px solid rgba(255,255,255,.6); box-shadow:0 0 0 4px rgba(255,255,255,.2); pointer-events:none; }
   .table-disc.head{ border-radius:14px; background:linear-gradient(180deg,#fffaf1 0%,#f6ecd9 100%); border:1.5px solid #cdb07a; }
   .table-disc.dragover{ box-shadow:0 0 0 4px #fff,0 0 0 8px var(--accent) !important; }
+  .table.mergeto .table-disc{ box-shadow:0 0 0 4px #fff,0 0 0 8px var(--accent) !important; }
   .table-disc.head::after{ content:""; position:absolute; inset:4px; border:1px solid rgba(181,138,60,.55); border-radius:10px; pointer-events:none; }   /* gold inner rule */
   .table-disc:active{ cursor:grabbing; }
   .table:hover .table-disc{ box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 12px 26px rgba(30,20,10,.28),0 2px 4px rgba(30,20,10,.12); }
@@ -237,6 +238,7 @@
   #dragtag[hidden]{ display:none; }
   #dragtag.free{ background:#2f8f4e; }
   #dragtag.swap{ background:#b8791a; }
+  #dragtag.merge{ background:var(--accent); }
   .seat.dragover{ background:#fff !important; border-color:var(--accent) !important; border-style:solid !important; color:var(--accent-ink) !important; }
   .seat .nm{ padding:0 5px; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
   .table.focused .seat.sel{ box-shadow:0 0 0 3px #fff,0 0 0 5px var(--accent); }
@@ -291,8 +293,20 @@
   .fsug div.new{ color:var(--accent-ink); font-weight:600; }
   .fsug div.more{ color:var(--faint); font-size:11.5px; cursor:default; padding-top:4px; }
   .ffoot{ padding:8px 10px; border-top:1px solid var(--line); display:flex; flex-wrap:wrap; gap:6px; flex:none; }
-  .ffoot #fGroup{ flex:1 1 100%; }
-  .ffoot .ibtn{ flex:1; height:36px; font-size:12.5px; }
+  .fchk{ width:22px; height:22px; border:2px solid var(--line); border-radius:6px; background:#fff; flex:none; cursor:pointer; padding:0; display:flex; align-items:center; justify-content:center; font-size:14px; color:#fff; }
+  .frow.sel .fchk{ background:var(--accent); border-color:var(--accent); }
+  .frow.sel .fchk::after{ content:"✓"; }
+  body.partysel .frow:not(.occ){ opacity:.4; }
+  body.partysel .frow.occ{ cursor:pointer; }
+  body.partysel .frow input{ pointer-events:none; }
+  body.partysel .frow.sel input{ background:var(--accent-soft); }
+  #partysel{ padding:8px 10px; border-bottom:1px solid var(--line); background:var(--paper); display:flex; flex-direction:column; gap:6px; flex:none; }
+  #partysel[hidden]{ display:none; }
+  #partysel .pb1{ font-size:12.5px; color:var(--soft); }
+  #partysel .pb2{ display:flex; gap:6px; }
+  #partysel input{ flex:1; min-width:0; height:34px; border:1px solid var(--line); border-radius:9px; padding:0 10px; font:inherit; font-size:13.5px; background:var(--card); }
+  #partysel .ibtn{ height:34px; }
+  .ffoot .ibtn{ flex:1 1 calc(50% - 3px); height:36px; font-size:12.5px; }   /* Fill | Clear on one row, Group | Invitation on the next */
 
   /* ---------- Mobile bar · pick bar · drawer ---------- */
   #mobilebar{ display:none; position:fixed; left:10px; right:10px; bottom:calc(10px + env(safe-area-inset-bottom)); z-index:120; gap:2px; padding:4px; background:rgba(255,253,250,.96); border:1px solid var(--line); border-radius:18px; box-shadow:0 6px 22px rgba(40,30,20,.16); }
@@ -576,6 +590,8 @@
   #printarea .pinv b{ font-size:12.5px; }
   #printarea .pinv .n{ color:#888; }
   #printarea .pinv ul{ margin:2px 0 0 14px; padding:0; line-height:1.45; }
+  #printarea .pinvl{ list-style:none; margin:0; padding:0; font-size:12.5px; line-height:1.6; }
+  #printarea .pinvl .pn{ color:#888; font-size:11px; margin-left:4px; }
 </style>
 </head>
 <body>
@@ -680,8 +696,9 @@
       <button class="ibtn" id="fSettings" data-t-title="tableSettings"><svg class="ic" aria-hidden="true"><use href="#i-gear"/></svg></button>
     </div>
     <div class="fhint" id="fHint" hidden></div>
+    <div id="partysel" hidden><div class="pb1"><b id="psCount"></b> · <span data-t="partySelHint"></span></div><div class="pb2"><input id="psName" list="psList" maxlength="60" autocomplete="off" data-t-ph="psNamePh"><datalist id="psList"></datalist><button class="ibtn primary" id="psOk" data-t="psOk"></button><button class="ibtn sq" id="psCancel" data-t-title="pbCancel">✕</button></div></div>
     <div id="fSeats"></div>
-    <div class="ffoot"><button class="ibtn" id="fFill"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg><span data-t="fill"></span></button><button class="ibtn" id="fClear"><svg class="ic" aria-hidden="true"><use href="#i-broom"/></svg><span data-t="clearTable"></span></button><button class="ibtn" id="fGroup"><svg class="ic" aria-hidden="true"><use href="#i-people"/></svg><span data-t="tableGroup"></span></button></div>
+    <div class="ffoot"><button class="ibtn" id="fFill"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg><span data-t="fill"></span></button><button class="ibtn" id="fClear"><svg class="ic" aria-hidden="true"><use href="#i-broom"/></svg><span data-t="clearTable"></span></button><button class="ibtn" id="fGroup"><svg class="ic" aria-hidden="true"><use href="#i-people"/></svg><span data-t="tableGroup"></span></button><button class="ibtn" id="fParty"><svg class="ic" aria-hidden="true"><use href="#i-edit"/></svg><span data-t="partyNew"></span></button></div>
   </aside>
 </div>
 
@@ -712,6 +729,7 @@
     <button class="ibtn" id="menuClear"><svg class="ic" aria-hidden="true"><use href="#i-broom"/></svg><span data-t="clearTable"></span></button>
     <button class="ibtn danger" id="menuDelete"><svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg><span data-t="deleteTable"></span></button>
     <button class="ibtn wide" id="menuGroup"><svg class="ic" aria-hidden="true"><use href="#i-people"/></svg><span data-t="tableGroup"></span></button>
+    <button class="ibtn wide" id="menuParty"><svg class="ic" aria-hidden="true"><use href="#i-edit"/></svg><span data-t="partyNew"></span></button>
   </div>
 </div>
 <div id="groupmenu" class="popover"></div>
@@ -722,6 +740,16 @@
 <div id="moremenu" class="popover"></div>
 <div id="viewmenu" class="popover"></div>
 <div id="palette" class="popover"></div>
+<div id="printModal" class="modal-back">
+  <div class="modal narrow">
+    <div class="modal-head"><strong data-t="printTitleM"></strong><button class="mx" id="printClose">✕</button></div>
+    <div class="mbody">
+      <label class="imode"><input type="radio" name="pmode" value="names" checked><span data-t="pmNames"></span></label>
+      <label class="imode" style="margin-top:6px"><input type="radio" name="pmode" value="parties"><span data-t="pmParties"></span></label>
+      <div class="mrow"><button class="ibtn primary" id="printGo" data-t="mPrint"></button></div>
+    </div>
+  </div>
+</div>
 <div id="delModal" class="modal-back">
   <div class="modal narrow">
     <div class="modal-head"><strong data-t="delTitle"></strong><button class="mx" id="delClose">✕</button></div>
@@ -835,8 +863,8 @@ el:{
   tipMoveTouch:"Κρατήστε ένα όνομα μισό δευτερόλεπτο και σύρετέ το σε άλλη καρέκλα.", tipMove:"Σύρετε ένα όνομα σε άλλη καρέκλα για να το μετακινήσετε.",
   tipPickTouch:"Το εικονίδιο δίπλα σε κάθε όνομα το τοποθετεί: διαλέξτε τραπέζι και θέση, ή καρέκλα στην κάτοψη.", tipPick:"Σύρετε ένα όνομα από το εικονίδιό του σε καρέκλα — ή πατήστε το για τραπέζι και θέση.",
   dragTo:"→ {t} · θέση {n}", dragSwap:"↔ {n}", dragToTable:"→ {t} · ελεύθερη θέση", tTableFull:"Το «{n}» είναι γεμάτο",
-  geParty:"Πρόσκληση", gePartyPh:"π.χ. Οικ. Παπαδόπουλου", gripParty:"Τοποθέτηση όλης της πρόσκλησης…", partyRename:"Μετονομασία / διάλυση πρόσκλησης", partyRenamePrompt:"Όνομα πρόσκλησης (κενό = διάλυση):",
-  pbParty:"{n} · {c} άτομα", tPartyPartial:"{n}/{m} της πρόσκλησης στο «{t}» — δεν χωρούν όλοι", printInvites:"Προσκλήσεις", printNoSeat:"χωρίς θέση",
+  geParty:"Προσκλητήριο", gePartyPh:"π.χ. Οικ. Παπαδόπουλου", gripParty:"Τοποθέτηση όλου του προσκλητηρίου…", partyRename:"Μετονομασία / διάλυση προσκλητηρίου", partyRenamePrompt:"Όνομα προσκλητηρίου (κενό = διάλυση):",
+  pbParty:"{n} · {c} άτομα", tPartyPartial:"{n}/{m} του προσκλητηρίου στο «{t}» — δεν χωρούν όλοι", printInvites:"Προσκλητήρια", printNoSeat:"χωρίς θέση",
   gripTitle:"Τοποθέτηση σε τραπέζι…", pmFor:"Θέση για: {n}", pmFloor:"Διαλέξτε καρέκλα στην κάτοψη", tPlaced:"{n} → {t}",
   tipGroups:"Δώστε χρώμα στις παρέες: η κουκκίδα δίπλα σε κάθε όνομα αλλάζει ομάδα · το γρανάζι βάζει όλο το τραπέζι σε μία.", tipFull:"Γέμισε; Από τις ρυθμίσεις του τραπεζιού (γρανάζι) αλλάζετε τις θέσεις του.", tipPrint:"Σχεδόν έτοιμο! Στο ⋯ → Εκτύπωση βγαίνει η λίστα ανά τραπέζι.",
   tour:{
@@ -856,15 +884,15 @@ el:{
   view:"Προβολή", names:"Ονόματα καλεσμένων", nm_full:"Πλήρη", nm_short:"Σύντομα", nm_initials:"Αρχικά", nameSize:"Μέγεθος ονομάτων", numSize:"Μέγεθος αριθμών τραπεζιών", zoomLbl:"Ζουμ", undo:"Αναίρεση", redo:"Επανάληψη", tUndo:"Αναιρέθηκε", tRedo:"Επαναλήφθηκε", tNumSize:"Μέγεθος αριθμών {n}%", mRound:"Στρογγυλό τραπέζι", holdToMove:"Για μετακίνηση, κρατήστε το τραπέζι ή αντικείμενο μισό δευτερόλεπτο και σύρετε.",
   tools:"Τραπέζια & χώρος", addRound:"Στρογγυλό", addHead:"Νυφικό", decor:"Διακόσμηση", autoSeat:"Αυτόματα", floor:"Δάπεδο",
   guests:"Καλεσμένοι", unseatedN:"{n} χωρίς θέση", searchPh:"Αναζήτηση ονόματος…", all:"Όλοι", addGroup:"＋ ομάδα", addGroupTitle:"Νέα ομάδα",
-  addNames:"Προσθήκη ονομάτων", namesPh:"Ένα όνομα ανά γραμμή…\nΟικ. Παπαδόπουλου:\nΓιώργος\nΜαρία", namesHint:"Μπαίνουν στην επιλεγμένη ομάδα · Ctrl+Enter για προσθήκη", namesTo:"Τα νέα ονόματα μπαίνουν σε: {g} · «Όνομα πρόσκλησης:» σε δική του γραμμή ομαδοποιεί όσα ακολουθούν · Ctrl+Enter", namesToTouch:"Τα νέα ονόματα μπαίνουν σε: {g} · «Όνομα πρόσκλησης:» σε δική του γραμμή ομαδοποιεί όσα ακολουθούν", addToList:"Προσθήκη στη λίστα",
+  addNames:"Προσθήκη ονομάτων", namesPh:"Ένα όνομα ανά γραμμή…\nΟικ. Παπαδόπουλου:\nΓιώργος\nΜαρία", namesHint:"Μπαίνουν στην επιλεγμένη ομάδα · Ctrl+Enter για προσθήκη", namesTo:"Τα νέα ονόματα μπαίνουν σε: {g} · «Όνομα προσκλητηρίου:» σε δική του γραμμή ομαδοποιεί όσα ακολουθούν · Ctrl+Enter", namesToTouch:"Τα νέα ονόματα μπαίνουν σε: {g} · «Όνομα προσκλητηρίου:» σε δική του γραμμή ομαδοποιεί όσα ακολουθούν", addToList:"Προσθήκη στη λίστα",
   poolEmpty:"Όλοι οι καλεσμένοι έχουν θέση 🎉", poolEmptyNew:"Δεν υπάρχουν καλεσμένοι ακόμη.<br>Προσθέστε ονόματα παρακάτω ↓", poolEmptyGroup:"Κανείς χωρίς θέση σε αυτή την ομάδα — δείτε «Όλοι»", noMatch:"Κανένα όνομα δεν ταιριάζει",
   chipEdit:"Επεξεργασία ονόματος & ομάδας", chipRemove:"Αφαίρεση καλεσμένου", groupTip:"Κλικ: επιλογή · Διπλό κλικ: μετονομασία · Δεξί κλικ: χρώμα / διαγραφή", groupMore:"Μετονομασία / χρώμα / διαγραφή",
   prevTable:"Προηγούμενο τραπέζι", nextTable:"Επόμενο τραπέζι", tableSettings:"Ρυθμίσεις τραπεζιού", close:"Κλείσιμο",
-  seatPh:"κενή θέση", unseat:"Αφαίρεση από τη θέση", fill:"Γέμισμα", clearTable:"Άδειασμα", tableGroup:"Ομάδα για όλο το τραπέζι…", tgCap:"Όλοι στο «{n}» → ομάδα", tgEmpty:"Κανείς δεν κάθεται ακόμη στο «{n}».", tGrouped:"«{g}»: όλοι στο «{n}» ({k})", tUngrouped:"Χωρίς ομάδα: όλοι στο «{n}» ({k})", clearConfirm:"Να επιστρέψουν όλοι οι καλεσμένοι του «{n}» στους χωρίς θέση;",
+  seatPh:"κενή θέση", unseat:"Αφαίρεση από τη θέση", fill:"Γέμισμα", clearTable:"Άδειασμα", tableGroup:"Ομάδα τραπεζιού…", partyNew:"Προσκλητήριο…", partySelHint:"Πατήστε τα ονόματα που ανήκουν στο ίδιο προσκλητήριο", psCount:"{n} επιλεγμένα", psNamePh:"Όνομα προσκλητηρίου (π.χ. ΚΟΤΣΩΝΑΣ)", psOk:"Δημιουργία", partyN:"Προσκλητήριο {n}", tPartyMade:"Προσκλητήριο «{n}»: {k} ονόματα", tPartyNone:"Πατήστε πρώτα τα ονόματα που θέλετε", printTitleM:"Εκτύπωση", pmNames:"Ονόματα ανά τραπέζι", pmParties:"Προσκλητήρια ανά τραπέζι (πόσα άτομα από κάθε προσκλητήριο)", nameCase:"Γραφή", nc_asis:"Όπως γράφτηκαν", nc_upper:"ΚΕΦΑΛΑΙΑ", nc_lower:"Πεζά", tLowerHint:"Πεζά με αρχικό κεφαλαίο — οι τόνοι επιστρέφουν μόνο σε γνωστά μικρά ονόματα· τα υπόλοιπα διορθώστε τα με το χέρι.", confirmMerge:"Συγχώνευση «{a}» στο «{b}»; Τα {n} άτομα μετακινούνται και το «{b}» θα έχει {c} θέσεις.", mergeTitle:"Συγχώνευση τραπεζιών", mergeOk:"Συγχώνευση", dragMerge:"Συγχώνευση με «{b}»", tTablesMerged:"«{a}» → «{b}»: {n} άτομα, {c} θέσεις — ↶ για αναίρεση", tMergeTooBig:"Δεν γίνεται: το «{b}» θα χρειαζόταν {c} θέσεις (μέγιστο 30).", tgCap:"Όλοι στο «{n}» → ομάδα", tgEmpty:"Κανείς δεν κάθεται ακόμη στο «{n}».", tGrouped:"«{g}»: όλοι στο «{n}» ({k})", tUngrouped:"Χωρίς ομάδα: όλοι στο «{n}» ({k})", clearConfirm:"Να επιστρέψουν όλοι οι καλεσμένοι του «{n}» στους χωρίς θέση;",
   fillNone:"Δεν υπάρχουν καλεσμένοι χωρίς θέση εκεί", filled:"Τοποθετήθηκαν {n}", createNew:"＋ Νέος καλεσμένος «{n}»", renameTo:"Μετονομασία σε «{n}»", moreMatches:"…και άλλοι {n} — συνεχίστε να γράφετε",
   pbHint:"→ πατήστε μια θέση", pbUnseat:"↩ Χωρίς θέση", pbEdit:"Επεξεργασία", pbCancel:"Άκυρο",
   menuTitle:"Ρυθμίσεις τραπεζιού", menuTitleHead:"Ρυθμίσεις νυφικού τραπεζιού", capLabel:"Θέσεις", capLabelHead:"Συνολικές θέσεις (οι 2 είναι οι ακριανές)", labelPh:"Όνομα / αριθμός τραπεζιού", deleteTable:"Διαγραφή", focusSeats:"Ονόματα",
-  mShare:"Κοινή χρήση & συγχρονισμός", mImportGuests:"Λίστα καλεσμένων από αρχείο κτήματος", mExport:"Εξαγωγή σχεδίου (αρχείο)", mImport:"Εισαγωγή σχεδίου — νέο ή συγχώνευση…", mPrint:"Εκτύπωση", mReset:"Επαναφορά σχεδίου", mAskDel:"Ρώτα ξανά πριν τη διαγραφή", tAskDel:"Εντάξει — θα ρωτάω πριν από κάθε διαγραφή.", mLang:"Γλώσσα", mMore:"Περισσότερα…", capPlan:"Σχέδιο", capFiles:"Αρχεία & αντίγραφα", mDecor:"Διακόσμηση & αντικείμενα", mHead:"Νυφικό τραπέζι", mAuto:"Αυτόματη τοποθέτηση",
+  mShare:"Κοινή χρήση & συγχρονισμός", mImportGuests:"Λίστα καλεσμένων από αρχείο κτήματος", mExport:"Εξαγωγή σχεδίου (αρχείο)", mImport:"Εισαγωγή σχεδίου — νέο ή συγχώνευση…", mPrint:"Εκτύπωση", mReset:"Επαναφορά σχεδίου", mAskDel:"Ρώτα ξανά πριν από διαγραφή ή συγχώνευση", tAskDel:"Εντάξει — θα ρωτάω ξανά πριν από κάθε διαγραφή ή συγχώνευση.", mLang:"Γλώσσα", mMore:"Περισσότερα…", capPlan:"Σχέδιο", capFiles:"Αρχεία & αντίγραφα", mDecor:"Διακόσμηση & αντικείμενα", mHead:"Νυφικό τραπέζι", mAuto:"Αυτόματη τοποθέτηση",
   stats:"{t} τραπέζια · {s}/{g} με θέση · {c} θέσεις",
   headTable:"Νυφικό τραπέζι", headFacing:"βλέπει προς την πίστα",
   groupsDefault:["Πλευρά νύφης","Πλευρά γαμπρού","Φίλοι","Οικογένεια"],
@@ -942,11 +970,11 @@ en:{
   poolEmpty:"Everyone has a seat 🎉", poolEmptyNew:"No guests yet.<br>Add names below ↓", poolEmptyGroup:"No unseated guests in this group — see “All”", noMatch:"No name matches",
   chipEdit:"Edit name & group", chipRemove:"Remove guest", groupTip:"Click: select · Double-click: rename · Right-click: colour / delete", groupMore:"Rename / colour / delete",
   prevTable:"Previous table", nextTable:"Next table", tableSettings:"Table settings", close:"Close",
-  seatPh:"empty seat", unseat:"Remove from seat", fill:"Fill", clearTable:"Clear", tableGroup:"Group for the whole table…", tgCap:"Everyone at “{n}” → group", tgEmpty:"Nobody is seated at “{n}” yet.", tGrouped:"“{g}”: everyone at “{n}” ({k})", tUngrouped:"No group: everyone at “{n}” ({k})", clearConfirm:"Send everyone at “{n}” back to the unseated list?",
+  seatPh:"empty seat", unseat:"Remove from seat", fill:"Fill", clearTable:"Clear", tableGroup:"Table group…", partyNew:"Invitation…", partySelHint:"Tap the names that share one invitation", psCount:"{n} selected", psNamePh:"Invitation name (e.g. the Smiths)", psOk:"Create", partyN:"Invitation {n}", tPartyMade:"Invitation “{n}”: {k} names", tPartyNone:"Tap the names you want first", printTitleM:"Print", pmNames:"Names per table", pmParties:"Invitations per table (how many people of each)", nameCase:"Letter case", nc_asis:"As typed", nc_upper:"UPPERCASE", nc_lower:"Lowercase", tLowerHint:"Capitalised words — Greek accents come back only for known first names; fix the rest by hand.", confirmMerge:"Merge “{a}” into “{b}”? Its {n} people move over and “{b}” will have {c} seats.", mergeTitle:"Merge tables", mergeOk:"Merge", dragMerge:"Merge into “{b}”", tTablesMerged:"“{a}” → “{b}”: {n} people, {c} seats — ↶ to undo", tMergeTooBig:"Not possible: “{b}” would need {c} seats (30 at most).", tgCap:"Everyone at “{n}” → group", tgEmpty:"Nobody is seated at “{n}” yet.", tGrouped:"“{g}”: everyone at “{n}” ({k})", tUngrouped:"No group: everyone at “{n}” ({k})", clearConfirm:"Send everyone at “{n}” back to the unseated list?",
   fillNone:"No unseated guests there", filled:"Seated {n}", createNew:"＋ New guest “{n}”", renameTo:"Rename to “{n}”", moreMatches:"…and {n} more — keep typing",
   pbHint:"→ tap a seat", pbUnseat:"↩ Unseat", pbEdit:"Edit", pbCancel:"Cancel",
   menuTitle:"Table settings", menuTitleHead:"Head table settings", capLabel:"Seats", capLabelHead:"Total seats (2 are the ends)", labelPh:"Table name / number", deleteTable:"Delete", focusSeats:"Names",
-  mShare:"Share & sync", mImportGuests:"Guest list from a venue file", mExport:"Export plan (file)", mImport:"Import plan — new or merge…", mPrint:"Print", mReset:"Reset plan", mAskDel:"Ask again before deleting", tAskDel:"OK — I will ask before every delete.", mLang:"Language", mMore:"More…", capPlan:"Plan", capFiles:"Files & backups", mDecor:"Decor & items", mHead:"Head table", mAuto:"Auto-seat",
+  mShare:"Share & sync", mImportGuests:"Guest list from a venue file", mExport:"Export plan (file)", mImport:"Import plan — new or merge…", mPrint:"Print", mReset:"Reset plan", mAskDel:"Ask again before deleting or merging", tAskDel:"OK — I will ask before every delete or merge.", mLang:"Language", mMore:"More…", capPlan:"Plan", capFiles:"Files & backups", mDecor:"Decor & items", mHead:"Head table", mAuto:"Auto-seat",
   stats:"{t} tables · {s}/{g} seated · {c} seats",
   headTable:"Head table", headFacing:"faces the dance floor",
   groupsDefault:["Bride's side","Groom's side","Friends","Family"],
@@ -1024,11 +1052,11 @@ de:{
   poolEmpty:"Alle Gäste haben einen Platz 🎉", poolEmptyNew:"Noch keine Gäste.<br>Namen unten hinzufügen ↓", poolEmptyGroup:"Niemand ohne Platz in dieser Gruppe — siehe „Alle“", noMatch:"Kein Name passt",
   chipEdit:"Name & Gruppe bearbeiten", chipRemove:"Gast entfernen", groupTip:"Klick: auswählen · Doppelklick: umbenennen · Rechtsklick: Farbe / löschen", groupMore:"Umbenennen / Farbe / löschen",
   prevTable:"Vorheriger Tisch", nextTable:"Nächster Tisch", tableSettings:"Tisch-Einstellungen", close:"Schließen",
-  seatPh:"freier Platz", unseat:"Vom Platz entfernen", fill:"Füllen", clearTable:"Leeren", tableGroup:"Gruppe für den ganzen Tisch…", tgCap:"Alle an „{n}“ → Gruppe", tgEmpty:"An „{n}“ sitzt noch niemand.", tGrouped:"„{g}“: alle an „{n}“ ({k})", tUngrouped:"Keine Gruppe: alle an „{n}“ ({k})", clearConfirm:"Alle Gäste von „{n}“ zurück in die Liste ohne Platz?",
+  seatPh:"freier Platz", unseat:"Vom Platz entfernen", fill:"Füllen", clearTable:"Leeren", tableGroup:"Tischgruppe…", partyNew:"Einladung…", partySelHint:"Tippen Sie die Namen an, die zu einer Einladung gehören", psCount:"{n} ausgewählt", psNamePh:"Name der Einladung (z. B. Familie Müller)", psOk:"Anlegen", partyN:"Einladung {n}", tPartyMade:"Einladung „{n}“: {k} Namen", tPartyNone:"Zuerst die Namen antippen", printTitleM:"Drucken", pmNames:"Namen pro Tisch", pmParties:"Einladungen pro Tisch (wie viele Personen je Einladung)", nameCase:"Schreibweise", nc_asis:"Wie eingegeben", nc_upper:"GROSSBUCHSTABEN", nc_lower:"Kleinbuchstaben", tLowerHint:"Groß-/Kleinschreibung — griechische Akzente kommen nur bei bekannten Vornamen zurück; den Rest bitte von Hand.", confirmMerge:"„{a}“ in „{b}“ zusammenführen? Die {n} Personen ziehen um und „{b}“ bekommt {c} Plätze.", mergeTitle:"Tische zusammenführen", mergeOk:"Zusammenführen", dragMerge:"Zusammenführen mit „{b}“", tTablesMerged:"„{a}“ → „{b}“: {n} Personen, {c} Plätze — ↶ macht es rückgängig", tMergeTooBig:"Geht nicht: „{b}“ bräuchte {c} Plätze (höchstens 30).", tgCap:"Alle an „{n}“ → Gruppe", tgEmpty:"An „{n}“ sitzt noch niemand.", tGrouped:"„{g}“: alle an „{n}“ ({k})", tUngrouped:"Keine Gruppe: alle an „{n}“ ({k})", clearConfirm:"Alle Gäste von „{n}“ zurück in die Liste ohne Platz?",
   fillNone:"Dort gibt es keine Gäste ohne Platz", filled:"{n} platziert", createNew:"＋ Neuer Gast „{n}“", renameTo:"Umbenennen in „{n}“", moreMatches:"…und {n} weitere — weiter tippen",
   pbHint:"→ Platz antippen", pbUnseat:"↩ Platz freigeben", pbEdit:"Bearbeiten", pbCancel:"Abbrechen",
   menuTitle:"Tisch-Einstellungen", menuTitleHead:"Brauttisch-Einstellungen", capLabel:"Plätze", capLabelHead:"Plätze gesamt (2 davon an den Enden)", labelPh:"Tischname / -nummer", deleteTable:"Löschen", focusSeats:"Namen",
-  mShare:"Teilen & synchronisieren", mImportGuests:"Gästeliste aus Datei des Veranstaltungsorts", mExport:"Plan exportieren (Datei)", mImport:"Plan importieren — neu oder zusammenführen…", mPrint:"Drucken", mReset:"Plan zurücksetzen", mAskDel:"Vor dem Löschen wieder fragen", tAskDel:"Okay — ich frage vor jedem Löschen.", mLang:"Sprache", mMore:"Mehr…", capPlan:"Plan", capFiles:"Dateien & Sicherungen", mDecor:"Deko & Objekte", mHead:"Brauttisch", mAuto:"Auto-Füllen",
+  mShare:"Teilen & synchronisieren", mImportGuests:"Gästeliste aus Datei des Veranstaltungsorts", mExport:"Plan exportieren (Datei)", mImport:"Plan importieren — neu oder zusammenführen…", mPrint:"Drucken", mReset:"Plan zurücksetzen", mAskDel:"Vor dem Löschen oder Zusammenführen wieder fragen", tAskDel:"Okay — ich frage vor jedem Löschen oder Zusammenführen.", mLang:"Sprache", mMore:"Mehr…", capPlan:"Plan", capFiles:"Dateien & Sicherungen", mDecor:"Deko & Objekte", mHead:"Brauttisch", mAuto:"Auto-Füllen",
   stats:"{t} Tische · {s}/{g} platziert · {c} Plätze",
   headTable:"Brauttisch", headFacing:"blickt zur Tanzfläche",
   groupsDefault:["Seite der Braut","Seite des Bräutigams","Freunde","Familie"],
@@ -1290,7 +1318,8 @@ function migrateLayout(s){
 
 // ---------- helpers ----------
 function assignedGuestIds(){ const set=new Set(); state.tables.forEach(t=>t.seats.forEach(g=>{ if(g)set.add(g); })); return set; }
-function guestName(id){ return state.guests[id]?.name ?? "?"; }
+function guestName(id){ const g=state.guests[id]; return g?caseName(g.name):"?"; }   // as displayed (letter-case mode applied)
+function rawName(id){ return state.guests[id]?.name ?? "?"; }
 function guestGroup(id){ const gid=state.guests[id]?.groupId; return gid? state.groups.find(g=>g.id===gid) : null; }
 function guestColor(id){ const g=guestGroup(id); return g? g.color : "#7e6d5f"; }
 // How a name shows on the seat pill: full «Ανδρέας Σταμελάκης», short «Ανδρέας Σ.», initials «Α.Σ.» (colours stay).
@@ -1304,6 +1333,31 @@ function hexTint(hex){ return hex+"1f"; }
 function toast(msg,ms){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._to); t._to=setTimeout(()=>t.classList.remove("show"),ms||1700); }
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function norm(s){ return String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim(); }
+// ---- Greek-aware letter case. A display mode (Aa menu): the stored spelling never changes, so ΚΕΦΑΛΑΙΑ ↔ Πεζά is lossless
+// for anything typed with accents; names that arrived in capitals get their accent back only when the first name is known.
+const GREEK_FIRST="Γιώργος Γεώργιος Γιάννης Ιωάννης Κώστας Κωνσταντίνος Δημήτρης Δημήτριος Νίκος Νικόλαος Μιχάλης Μιχαήλ Βασίλης Βασίλειος Αντώνης Αντώνιος Χρήστος Παναγιώτης Πάνος Θανάσης Αθανάσιος Αλέξανδρος Αλέξης Ανδρέας Μανώλης Εμμανουήλ Σταύρος Σπύρος Σπυρίδων Θοδωρής Θεόδωρος Στέλιος Στυλιανός Λευτέρης Ελευθέριος Πέτρος Παύλος Στέφανος Φώτης Φώτιος Τάσος Αναστάσιος Άγγελος Ευάγγελος Βαγγέλης Ηλίας Σωτήρης Σωτήριος Γρηγόρης Γρηγόριος Λάμπρος Μάριος Μάρκος Χάρης Χαράλαμπος Μπάμπης Άρης Αριστείδης Διονύσης Διονύσιος Νότης Λουκάς Ορέστης Περικλής Σάκης Τάκης Μάκης Άκης Ζαχαρίας Ιάσονας Οδυσσέας Φίλιππος Απόστολος Τόλης Αργύρης Αργύριος Θωμάς Ιορδάνης Κυριάκος Λεωνίδας Μιλτιάδης Μενέλαος Νεκτάριος Πρόδρομος Σεραφείμ Σωκράτης Τηλέμαχος Τριαντάφυλλος Χρυσόστομος Χρύσανθος Γεράσιμος Μάνος Νάσος Ντίνος Ρένος Στράτος Ευστράτιος Ευθύμης Ευθύμιος Θέμης Θεμιστοκλής Λάζαρος Πασχάλης Παρασκευάς Ραφαήλ Ρήγας Σίμος Τζώρτζης Χρόνης Άρτεμης Αχιλλέας Βύρωνας Δαμιανός Ερμής Ευριπίδης Ζήσης Θεοφάνης Ιάκωβος Κλεάνθης Κοσμάς Λούης Μελέτης Νεόφυτος Ξενοφών Ορφέας Πλάτωνας Ρωμανός Σέργιος Τέλης Τρύφωνας Φάνης Φοίβος Χρυσοβαλάντης Μαρία Ελένη Κατερίνα Αικατερίνη Γεωργία Σοφία Άννα Δήμητρα Βασιλική Βίκυ Ειρήνη Ευαγγελία Εύη Χριστίνα Αθηνά Αναστασία Νατάσα Ιωάννα Παρασκευή Βούλα Αγγελική Ευφροσύνη Φρόσω Φωτεινή Δέσποινα Κωνσταντίνα Ντίνα Ελευθερία Ζωή Νίκη Ελπίδα Ιουλία Μαργαρίτα Ραφαέλα Στέλλα Στυλιανή Χρυσούλα Χρύσα Παναγιώτα Γιώτα Θεοδώρα Δώρα Αλεξάνδρα Αντωνία Ανδριάνα Αργυρώ Αρετή Ασπασία Αφροδίτη Βαρβάρα Βερονίκη Γλυκερία Ευτυχία Ζαφειρία Θάλεια Ισμήνη Καλλιόπη Κλεοπάτρα Λυδία Μαριάννα Μαρίνα Μελίνα Μυρτώ Νεφέλη Ολυμπία Ουρανία Πηνελόπη Ρένα Σμαράγδα Τζένη Φανή Φαίδρα Χαρά Χαρίκλεια Χάιδω Ελισάβετ Λίνα Ανθή Αριάδνη Βιργινία Δανάη Ελένα Ερμιόνη Ευδοκία Ευγενία Ζηνοβία Ηρώ Θεανώ Ιφιγένεια Κική Κλαίρη Κορίνα Λαμπρινή Μάγδα Μαγδαληνή Μαρίκα Μάρθα Μαριλένα Ματίνα Μίνα Μυρσίνη Νάντια Νικολέτα Ξένια Πέγκυ Πόπη Ρεβέκκα Ρούλα Σεβαστή Σούλα Τασούλα Τατιάνα Τζίνα Τούλα Φιλιώ Φλώρα Φωφώ Χρυσάνθη Αλίκη Άλκηστη Άρτεμις Βάσω Βενετία Γαλάτεια Ελεάννα Ελίνα Ερατώ Ζέτα Ηλέκτρα Ιόλη Καίτη Κάτια Λένα Λητώ Μαίρη Μελίτα Νανά Νάσια Νόρα Ρίτα Σάσα Τζούλια Τίνα Φένια Φαίη Αγάπη Αγνή Αιμιλία Αντιγόνη Αρσινόη Βικτωρία Γεσθημανή Δάφνη Διαμάντω Ελευθερία Ευανθία Ζαχαρούλα Θεοδοσία Καλομοίρα Κρυσταλλία Κυριακή Λεμονιά Μαριάνθη Μελπομένη Νικολίνα Πολυξένη Σταματία Σταυρούλα Χρυσαυγή";
+function upperGreek(s){   // ΚΕΦΑΛΑΙΑ the Greek way: the accent goes, the dialytika stay (Διονύσης → ΔΙΟΝΥΣΗΣ, Ναΐμ → ΝΑΪΜ); other scripts keep their marks
+  return String(s||"").normalize("NFD").replace(/([\u0370-\u03ff])([\u0300-\u036f]+)/g,(m,b,marks)=>b+marks.replace(/[\u0300\u0301\u0342\u0345]/g,"")).normalize("NFC").toUpperCase();
+}
+const GREEK_FIRST_MAP={}; GREEK_FIRST.split(" ").forEach(w=>{ const k=upperGreek(w); if(!(k in GREEK_FIRST_MAP)) GREEK_FIRST_MAP[k]=w; });   // first spelling wins
+function lowerGreek(s){   // Πεζά με αρχικό κεφαλαίο: only ALL-CAPS words change; a known first name gets its accent back (ΔΙΟΝΥΣΗΣ → Διονύσης), the rest are capitalised as they are
+  return String(s||"").replace(/[\p{L}\p{M}]+/gu, w=>{ if(w!==w.toUpperCase()||w===w.toLowerCase()) return w;
+    const hit=GREEK_FIRST_MAP[upperGreek(w)]; if(hit) return hit;
+    const low=w.toLowerCase().replace(/σ$/,"ς"); return low.charAt(0).toUpperCase()+low.slice(1); });
+}
+function caseName(s){ let m=null; try{ m=state&&state.nameCase; }catch(e){} return m==="upper"?upperGreek(s):m==="lower"?lowerGreek(s):String(s||""); }
+// Surname stems for the "same family" affinity of auto-seat and the suggested invitation name: every token that is not a
+// known first name, with the Greek ending dropped (ΚΟΤΣΩΝΑΣ / ΚΟΤΣΩΝΑ → ΚΟΤΣΩΝ, ΠΑΠΑΔΟΠΟΥΛΟΣ / ΠΑΠΑΔΟΠΟΥΛΟΥ → ΠΑΠΑΔΟΠΟΥΛ)
+function surnameStems(name){   // at most one stem per guest — the last token that is not a known first name; a "+ συνοδός" / "& guest" tail is ignored
+  const toks=upperGreek(String(name||"").split(/[+&]/)[0]).split(/[^\p{L}]+/u).filter(w=>w.length>=4&&!GREEK_FIRST_MAP[w]);
+  for(let i=toks.length-1;i>=0;i--){ const st=toks[i].replace(/(ΟΥΣ|ΟΥ|ΟΣ|ΗΣ|ΑΣ|ΕΣ|ΟΙ|ΩΝ|Η|Α|Ο|Ε|Σ)$/,""); if(st.length>=4) return [st]; }   // last usable token (ΚΟΤΣΩΝΑ-ΚΑΖΗ: ΚΑΖ is too short → ΚΟΤΣΩΝ)
+  return [];
+}
+function surnameToken(name){   // the surname as written: the last token that is not a known first name (else the last word); a "+ συνοδός" tail is ignored
+  const toks=String(name||"").split(/\s*[+&]\s*/)[0].split(/[^\p{L}\p{M}]+/u).filter(w=>w.length>=3);
+  const sur=toks.filter(w=>!GREEK_FIRST_MAP[upperGreek(w)]);
+  return sur.length?sur[sur.length-1]:(toks.length>1?toks[toks.length-1]:"");
+}
 // Colours and icons from cloud/imported plans are interpolated into HTML, so clamp them to safe shapes
 // on ingest (a shared plan is attacker-controlled): colours to a hex literal, icons to a short markup-free string.
 function safeColor(c){ return (typeof c==="string" && /^#[0-9a-fA-F]{3,8}$/.test(c)) ? c : "#7e6d5f"; }
@@ -1346,6 +1400,8 @@ function sanitizePlan(s){ if(!s||typeof s!=="object") return s;
     if(!(s.seatFontScale>=0.6&&s.seatFontScale<=2)) s.seatFontScale=1;
     if(!(s.tableFontScale>=0.6&&s.tableFontScale<=2.4)) s.tableFontScale=1;
     if(!["full","short","initials"].includes(s.nameMode)) s.nameMode="full";
+    if(!["asis","upper","lower"].includes(s.nameCase)) s.nameCase="asis";
+    if(!["names","parties"].includes(s.printMode)) s.printMode="names";
     if(s.activeGroupId!=null && !s.groups.some(g=>g.id===s.activeGroupId)) s.activeGroupId=null;
   return s; }
 function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
@@ -1457,7 +1513,7 @@ function renderRoundTable(t, wrap){
   disc.title=tr("tableTip");
   disc.querySelector(".tgear").addEventListener("click",e=>{ e.stopPropagation(); openMenu(t.id,e); });
   disc.addEventListener("contextmenu",e=>{ e.preventDefault(); openMenu(t.id,e); });
-  makeDraggable(disc, wrap, t, ()=>renderTables([t.id]), ()=>{ if(pick){ const p=pick; setPick(null); placeInTable(p, t.id); } else focusTable(t.id); });
+  makeDraggable(disc, wrap, t, ()=>renderTables([t.id]), ()=>{ if(pick){ const p=pick; setPick(null); placeInTable(p, t.id); } else focusTable(t.id); }, tableHooks());
   wireDiscDrop(disc, t);
   wrap.appendChild(disc);
   // Name pills that would collide slide apart along an outer circle (like labels around a pie chart), each tied to its
@@ -1547,7 +1603,7 @@ function renderHeadTable(t, wrap){
   disc.title=tr("tableTip");
   disc.querySelector(".tgear").addEventListener("click",e=>{ e.stopPropagation(); openMenu(t.id,e); });
   disc.addEventListener("contextmenu",e=>{ e.preventDefault(); openMenu(t.id,e); });
-  makeDraggable(disc, wrap, t, ()=>renderTables([t.id]), ()=>{ if(pick){ const p=pick; setPick(null); placeInTable(p, t.id); } else focusTable(t.id); });
+  makeDraggable(disc, wrap, t, ()=>renderTables([t.id]), ()=>{ if(pick){ const p=pick; setPick(null); placeInTable(p, t.id); } else focusTable(t.id); }, tableHooks());
   wireDiscDrop(disc, t);
   wrap.appendChild(disc);
   // main row on the FAR side of the table, so the couple sits behind the table facing the dance floor
@@ -1640,7 +1696,7 @@ function renderPool(){
 function partyHeader(p, members, total){
   const h=document.createElement("div"); h.className="pparty"; h.draggable=true; h.dataset.pid=p.id;
   const cnt=(total&&total!==members.length)?`${members.length} / ${total}`:String(members.length);   // a colour / search filter hides some: say so — the gesture seats all of them
-  h.innerHTML=`<span class="grip" title="${escapeHtml(tr("gripParty"))}">${ICON("grip")}</span><b>${escapeHtml(p.name)}</b><span class="n">${cnt}</span><button class="pedit" title="${escapeHtml(tr("partyRename"))}">${ICON("edit")}</button>`;
+  h.innerHTML=`<span class="grip" title="${escapeHtml(tr("gripParty"))}">${ICON("grip")}</span><b>${escapeHtml(caseName(p.name))}</b><span class="n">${cnt}</span><button class="pedit" title="${escapeHtml(tr("partyRename"))}">${ICON("edit")}</button>`;
   if(pick&&pick.type==="party"&&pick.partyId===p.id) h.classList.add("picked");
   h.addEventListener("dragstart",e=>{ dragData={type:"party",partyId:p.id}; e.dataTransfer.effectAllowed="move"; });
   h.querySelector(".grip").addEventListener("click",e=>{ e.stopPropagation(); openPlaceMenu(null, anchorOf(e.currentTarget), null, p.id); });
@@ -1794,6 +1850,50 @@ function setTableGroup(t, gid){
   const g=gid?state.groups.find(x=>x.id===gid):null;
   toast(g?tr("tGrouped",{g:g.name,n:cur.label,k:ids.length}):tr("tUngrouped",{n:cur.label,k:ids.length}),3000);
 }
+// ---- Προσκλητήριο from the sheet: tick the names that share one invitation, name it, done (one save) ----
+let partySel=null;   // {tableId, ids:Set} while picking
+function startPartySelect(t){
+  if(!t) return;
+  if(partySel&&partySel.tableId===t.id){ try{ $("psName").focus({preventScroll:true}); }catch(e){} return; }   // pressed again: keep the ticks, go to the name
+  if(focusId!==t.id) focusTable(t.id,{});
+  if(!tableSeated(t).length){ toast(tr("tgEmpty",{n:t.label}),2500); return; }
+  closeMenu(); closeGroupMenu(); closePlaceMenu(); hideSug();
+  partySel={tableId:t.id, ids:new Set()}; document.body.classList.add("partysel");
+  $("psList").innerHTML=(state.parties||[]).map(p=>`<option value="${escapeHtml(p.name)}">`).join("");
+  const inp=$("psName"); inp.value=""; inp.dataset.auto="1"; $("partysel").hidden=false; updatePartyBar(); renderFocus();
+}
+function endPartySelect(){ if(!partySel) return; partySel=null; document.body.classList.remove("partysel"); $("partysel").hidden=true; if(focusId!=null) renderFocus(); }
+function togglePartySel(gid){ if(!partySel) return; if(partySel.ids.has(gid)) partySel.ids.delete(gid); else partySel.ids.add(gid); updatePartyBar(); renderFocus(); }
+function suggestPartyName(ids){   // an existing invitation among the picked names, else the surname most of them share — stored spelling (the Aa mode is applied on display)
+  for(const id of ids){ const p=partyOf(id); if(p) return p.name; }
+  const perStem={}, perTok={};
+  for(const id of ids){ const nm=rawName(id), st=surnameStems(nm)[0]; if(!st) continue;
+    perStem[st]=(perStem[st]||0)+1;
+    const tok=nm.split(/\s*[+&]\s*/)[0].split(/[^\p{L}\p{M}]+/u).find(w=>upperGreek(w).startsWith(st));
+    if(tok){ const k=st+"|"+tok; perTok[k]=(perTok[k]||0)+1; } }
+  const top=Object.keys(perStem).sort((a,b)=>perStem[b]-perStem[a])[0];
+  if(top){ const best=Object.keys(perTok).filter(k=>k.startsWith(top+"|")).sort((a,b)=>perTok[b]-perTok[a]||b.length-a.length)[0]; if(best) return best.slice(top.length+1); }
+  for(const id of ids){ const t=surnameToken(rawName(id)); if(t) return t; } return "";
+}
+function partySelIds(){   // only names still seated at the picked table — ×, undo or a grip move may have taken one away
+  const t=state.tables.find(x=>x.id===partySel.tableId);
+  partySel.ids.forEach(id=>{ if(!t||!state.guests[id]||!t.seats.includes(id)) partySel.ids.delete(id); });
+  return [...partySel.ids];
+}
+function updatePartyBar(){ if(!partySel) return; const ids=partySelIds(); $("psCount").textContent=tr("psCount",{n:ids.length}); const inp=$("psName"); if(inp.dataset.auto==="1") inp.value=suggestPartyName(ids); }
+function makePartyFromSelection(){
+  if(!partySel) return; const ids=partySelIds();
+  if(!ids.length){ toast(tr("tPartyNone")); return; }
+  const nm=$("psName").value.trim()||suggestPartyName(ids)||tr("partyN",{n:(state.parties||[]).length+1});
+  const p=ensureParty(nm); ids.forEach(id=>{ state.guests[id].partyId=p.id; }); pruneParties();
+  save(); renderPool(); endPartySelect(); toast(tr("tPartyMade",{n:caseName(p.name),k:ids.length}),3000);
+}
+$("psOk").addEventListener("click",makePartyFromSelection);
+$("psCancel").addEventListener("click",endPartySelect);
+$("psName").addEventListener("input",()=>{ $("psName").dataset.auto=""; });
+$("psName").addEventListener("keydown",e=>{ e.stopPropagation(); if(e.key==="Enter"){ e.preventDefault(); makePartyFromSelection(); } else if(e.key==="Escape"){ e.preventDefault(); endPartySelect(); } });
+$("fParty").addEventListener("click",()=>startPartySelect(focusedTable()));
+$("menuParty").addEventListener("click",()=>{ const t=state.tables.find(x=>x.id===activeMenuTableId); closeMenu(); if(t) startPartySelect(t); });
 $("menuGroup").addEventListener("click",e=>{ const t=state.tables.find(x=>x.id===activeMenuTableId), anc=anchorOf(e.currentTarget); closeMenu(); if(t) openTableGroupMenu(t, anc); });   // the click bubbles to the closer, which exempts these two openers
 $("fGroup").addEventListener("click",e=>{ const t=focusedTable(); if(t) openTableGroupMenu(t, anchorOf(e.currentTarget)); });
 // Choose the group that NEW names will join (an empty seat row's dot)
@@ -2273,7 +2373,7 @@ function renderPlaceSeats(m, tid){
 // A name (or a whole invitation) dropped or tapped onto a TABLE rather than a chair takes a free seat — next to someone already there if possible.
 // ---- Invitations ("Πρόσκληση"): a named party of guests — created while typing names ("Οικ. Παπαδόπουλου:" above its members),
 // edited per guest, shown as a subsection in the list, seated together, printed as subsections. ----
-function partyName(pid){ const p=(state.parties||[]).find(x=>x.id===pid); return p?p.name:""; }
+function partyName(pid){ const p=(state.parties||[]).find(x=>x.id===pid); return p?caseName(p.name):""; }
 function partyOf(id){ const g=state.guests[id]; return (g&&g.partyId)?((state.parties||[]).find(p=>p.id===g.partyId)||null):null; }
 function partyMembers(pid){ return Object.keys(state.guests).filter(id=>state.guests[id].partyId===pid); }
 function partyUnseated(pid){ const a=assignedGuestIds(); return partyMembers(pid).filter(id=>!a.has(id)); }   // what a party gesture acts on: members still in the list
@@ -2344,7 +2444,7 @@ poolEl.addEventListener("drop",e=>{ e.preventDefault(); poolEl.classList.remove(
 // Mouse: grab and drag at once. Touch: a finger on an object PANS the floor (touch-action pan-x pan-y);
 // holding still for ~⅓ s "lifts" the object (haptic tick + glow) and only then does the finger move it.
 let activeDragCancel=null;   // cancels a pending hold / active drag (a second finger = pinch)
-function makeDraggable(handleEl, moveEl, obj, onEnd, onTap){
+function makeDraggable(handleEl, moveEl, obj, onEnd, onTap, hooks){   // hooks: {move(obj), clear(), drop(obj,ox,oy)→true when it handled the drop}
   handleEl.addEventListener("pointerdown",e=>{
     if(e.target.closest(".tgear")||e.target.closest(".rz")||e.target.closest(".rot-h")) return;
     if(e.button!==0) return;
@@ -2367,16 +2467,18 @@ function makeDraggable(handleEl, moveEl, obj, onEnd, onTap){
       if(!moved) return;
       obj.x=clamp(ox+ddx/zoom, 20, maxX); obj.y=clamp(oy+ddy/zoom, 20, maxY);
       moveEl.style.left=obj.x+"px"; moveEl.style.top=obj.y+"px";
+      if(hooks&&hooks.move) hooks.move(obj);
     }
     function tm(ev){ if(lifted) ev.preventDefault(); }   // once lifted, the finger must not scroll the floor
     function finish(ev, cancelled){
       if(done) return; done=true; clearTimeout(holdTimer); pointerGesture=false; activeDragCancel=null; moveEl.classList.remove("lifted"); if(unblock) unblock(); if(touch) holdArmed=false;
       try{ handleEl.releasePointerCapture(e.pointerId); }catch(x){}
       handleEl.removeEventListener("pointermove",mv); handleEl.removeEventListener("pointerup",up); handleEl.removeEventListener("pointercancel",up); handleEl.removeEventListener("touchmove",tm);
+      if(hooks&&hooks.clear) hooks.clear();
       if(cancelled){ if(lifted&&moved){ obj.x=ox; obj.y=oy; moveEl.style.left=ox+"px"; moveEl.style.top=oy+"px"; } return; }
       if(touch && !lifted && (moved || (ev && ev.type==="pointercancel"))) hintHold();   // tried to drag, the floor panned instead (iOS often cancels before a >10px move is seen)
       if(touch && lifted && moved) markHint(HINT_HOLD);                                  // already knows the gesture
-      if(lifted&&moved){ save(); if(onEnd)onEnd(); }
+      if(lifted&&moved){ if(hooks&&hooks.drop&&hooks.drop(obj,ox,oy)) return; save(); if(onEnd)onEnd(); }
       else if(!moved && onTap && ev && ev.type!=="pointercancel") onTap();
     }
     function up(ev){ finish(ev,false); }
@@ -2466,26 +2568,72 @@ $("menuLabel").addEventListener("input",e=>{ const t=state.tables.find(x=>x.id==
 $("menuLabel").addEventListener("keydown",e=>{ e.stopPropagation(); if(e.key==="Enter"||e.key==="Escape") closeMenu(); });
 menu.querySelectorAll(".caps button").forEach(b=>b.addEventListener("click",()=>setCapacity(+b.dataset.cap)));
 $("menuCapCustom").addEventListener("change",e=>{ const v=parseInt(e.target.value,10); if(v>=1&&v<=30) setCapacity(v); });
+function resizeSeats(t,n){   // keeps everyone seated who fits; returns how many lost their chair
+  const old=t.seats, newSeats=Array(n).fill(null); let bumped=0;
+  for(let i=0;i<old.length;i++){ if(old[i]!=null){ if(i<n)newSeats[i]=old[i]; else{ const free=newSeats.indexOf(null); if(free>=0)newSeats[free]=old[i]; else bumped++; } } }
+  t.capacity=n; t.seats=newSeats; return bumped;
+}
 function setCapacity(n){
   const t=state.tables.find(x=>x.id===activeMenuTableId); if(!t)return;
   if(t.shape==="head") n=Math.max(3,n);
-  const old=t.seats, newSeats=Array(n).fill(null); let bumped=0;
-  for(let i=0;i<old.length;i++){ if(old[i]!=null){ if(i<n)newSeats[i]=old[i]; else{ const free=newSeats.indexOf(null); if(free>=0)newSeats[free]=old[i]; else bumped++; } } }
-  t.capacity=n; t.seats=newSeats; save(); renderTables([t.id]);
+  const bumped=resizeSeats(t,n); save(); renderTables([t.id]);
   menu.querySelectorAll(".caps button").forEach(bt=>bt.classList.toggle("active",+bt.dataset.cap===n));
   if(bumped) toast(tr("tBumped",{n:bumped}));
   renderPool();
 }
+// ---- Drop a table on another: everyone moves over, the target grows to fit them, the dragged table goes ----
+function mergeTargetFor(t){   // the table whose top the dragged centre is over (a disc, or the head table's rotated rectangle); closest wins
+  let best=null, bd=Infinity;
+  for(const o of state.tables){ if(o===t) continue;
+    const dx=t.x-o.x, dy=t.y-o.y, d=Math.hypot(dx,dy); let inside;
+    if(o.shape==="head"){ const g=headGeom(o), a=-(o.rot||0)*Math.PI/180, lx=dx*Math.cos(a)-dy*Math.sin(a), ly=dx*Math.sin(a)+dy*Math.cos(a); inside=Math.abs(lx)<g.tableW/2&&Math.abs(ly)<g.tableH/2; }
+    else inside=d<roundGeom(o).discR*0.95;
+    if(inside&&d<bd){ best=o; bd=d; } }
+  return best;
+}
+let mergeOver=null;
+function markMergeTarget(src,dst){
+  if(mergeOver&&mergeOver!==dst){ const w=stage.querySelector(`.table[data-table-id="${mergeOver.id}"]`); if(w) w.classList.remove("mergeto"); }
+  mergeOver=dst; const tag=$("dragtag");
+  if(!dst){ if(tag.className==="merge"){ tag.hidden=true; tag.className=""; } return; }
+  const w=stage.querySelector(`.table[data-table-id="${dst.id}"]`); if(w) w.classList.add("mergeto");
+  tag.textContent=tr("dragMerge",{b:dst.label}); tag.className="merge"; tag.hidden=false;
+}
+function tableHooks(){ return {
+  move:t=>markMergeTarget(t, mergeTargetFor(t)),
+  clear:()=>markMergeTarget(null,null),
+  drop:(t,ox,oy)=>{ const dst=mergeTargetFor(t); markMergeTarget(null,null); if(!dst) return false;
+    flushLiveRow();   // a name still being typed in the sheet joins the merge
+    t.x=ox; t.y=oy; renderTables([t.id]);   // back where it was: the merge is the outcome, not the overlap
+    const n=tableSeated(t).length, c=Math.max(dst.capacity, tableSeated(dst).length+n);
+    if(c>30){ toast(tr("tMergeTooBig",{b:dst.label,c}),3500); return true; }   // 30 = the sanitizer's clamp: a bigger table would lose chairs on reload
+    confirmAction(tr("confirmMerge",{a:t.label,b:dst.label,n,c}), ()=>mergeTables(t,dst), {key:MERGE_SKIP_KEY, title:tr("mergeTitle"), ok:tr("mergeOk")});
+    return true; }
+}; }
+function mergeTables(src,dst){
+  if(!state.tables.includes(src)||!state.tables.includes(dst)) return;   // gone meanwhile (undo, a pull)
+  const ids=tableSeated(src); const need=tableSeated(dst).length+ids.length;
+  if(need>dst.capacity) resizeSeats(dst, dst.shape==="head"?Math.max(3,need):need);
+  ids.forEach(id=>{ const i=dst.seats.indexOf(null); if(i>=0) dst.seats[i]=id; });
+  if(pick&&pick.from==="seat"&&pick.tableId===src.id) setPick(null);
+  const wasFocused=focusId===src.id; if(wasFocused) unfocusTable(); closeMenu(); closeGroupMenu();
+  state.tables=state.tables.filter(x=>x!==src); save(); renderTables(); renderPool();
+  if(wasFocused) focusTable(dst.id,{});
+  toast(tr("tTablesMerged",{a:src.label,b:dst.label,n:ids.length,c:dst.capacity}),3500);
+}
 // One confirmation for every delete (gear menu, decor menu, the Delete key) — with "don't ask again"; ↶ always brings it back.
-const DEL_SKIP_KEY=PBASE+".skipDeleteConfirm";   // per planner (the lab keeps its own); ⋯ → "Ρώτα ξανά πριν τη διαγραφή" clears it
-function skipDeleteConfirm(){ try{ return localStorage.getItem(DEL_SKIP_KEY)==="1"; }catch(e){ return false; } }
-function confirmDelete(text, onYes){
-  if(skipDeleteConfirm()){ onYes(); return; }
-  const m=$("delModal"), prev=document.activeElement; $("delText").textContent=text; $("delSkip").checked=false; m.classList.add("open");
+const DEL_SKIP_KEY=PBASE+".skipDeleteConfirm", MERGE_SKIP_KEY=PBASE+".skipMergeConfirm";   // per planner (the lab keeps its own); ⋯ → "Ρώτα ξανά…" clears both
+function skipFlag(key){ try{ return localStorage.getItem(key)==="1"; }catch(e){ return false; } }
+function skipDeleteConfirm(){ return skipFlag(DEL_SKIP_KEY)||skipFlag(MERGE_SKIP_KEY); }   // "is any warning silenced?" (menu entry)
+function confirmDelete(text, onYes){ confirmAction(text, onYes, {key:DEL_SKIP_KEY}); }
+function confirmAction(text, onYes, opts){   // the same small modal for every "are you sure": delete, merge…
+  const key=(opts&&opts.key)||DEL_SKIP_KEY; if(skipFlag(key)){ onYes(); return; }
+  const m=$("delModal"), prev=document.activeElement; $("delText").textContent=text; $("delSkip").checked=false;
+  m.querySelector(".modal-head strong").textContent=(opts&&opts.title)||tr("delTitle"); $("delOk").textContent=(opts&&opts.ok)||tr("delOk"); m.classList.add("open");
   const close=()=>{ m.classList.remove("open"); m._close=null; $("delOk").onclick=$("delCancel").onclick=$("delClose").onclick=null;
     if(prev&&prev!==document.body&&document.contains(prev)&&prev.focus){ try{ prev.focus({preventScroll:true}); }catch(e){} } };
   m._close=close;
-  $("delOk").onclick=()=>{ if($("delSkip").checked){ try{ localStorage.setItem(DEL_SKIP_KEY,"1"); }catch(e){} } close(); onYes(); };
+  $("delOk").onclick=()=>{ if($("delSkip").checked){ try{ localStorage.setItem(key,"1"); }catch(e){} } close(); onYes(); };
   $("delCancel").onclick=close; $("delClose").onclick=close;
   setTimeout(()=>$("delOk").focus(),0);
 }
@@ -2601,6 +2749,7 @@ function focusTable(id, opts={}){
   const t=state.tables.find(x=>x.id===id); if(!t) return;
   if(focusId!==id) flushLiveRow();
   const wasOpen=document.body.classList.contains("focused");
+  if(partySel&&partySel.tableId!==id) endPartySelect();   // picking names belongs to one table
   focusId=id; stage.querySelectorAll(".feature.hsel").forEach(x=>x.classList.remove("hsel"));
   document.body.classList.add("focused"); setNav(false); hideSug();
   stage.querySelectorAll(".table").forEach(w=>w.classList.toggle("focused", +w.dataset.tableId===id));
@@ -2618,7 +2767,7 @@ function focusTable(id, opts={}){
 function unfocusTable(){
   if(focusId==null && !document.body.classList.contains("focused")) return;
   flushLiveRow();
-  focusId=null; hideSug(); closePlaceMenu(); document.body.classList.remove("focused"); focusEl.classList.remove("tall");
+  focusId=null; hideSug(); closePlaceMenu(); endPartySelect(); document.body.classList.remove("focused"); focusEl.classList.remove("tall");
   document.body.classList.remove("kb"); document.documentElement.style.setProperty("--kb","0px");   // closed while the keyboard was still up
   stage.querySelectorAll(".table.focused").forEach(w=>w.classList.remove("focused"));
   layoutCanvas();
@@ -2638,7 +2787,10 @@ function renderFocus(){
     const gid=t.seats[i];
     const row=document.createElement("div"); row.className="frow"+(gid?" occ":""); row.dataset.i=i;
     const dotColor=gid?guestColor(gid):(ag?ag.color:"#cfc8bd");
-    row.innerHTML=`<span class="fn">${i+1}</span><button class="fdot${gid?"":" empty"}" tabindex="-1" title="${escapeHtml(gid?tr("rowGroup"):tr("rowNewGroup"))}" style="background-color:${safeColor(dotColor)}"></button><input type="text" maxlength="40" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="words" enterkeyhint="${i+1<t.capacity?"next":"done"}" placeholder="${escapeHtml(tr("seatPh"))}" value="${gid?escapeHtml(guestName(gid)):""}"><button class="grip" title="${escapeHtml(tr("gripTitle"))}" tabindex="-1">${ICON("grip")}</button><button class="fx" title="${escapeHtml(tr("unseat"))}" tabindex="-1">✕</button>`;
+    if(partySel&&gid&&partySel.ids.has(gid)) row.classList.add("sel");
+    row.innerHTML=`${(partySel&&gid)?`<button class="fchk" tabindex="-1"></button>`:""}<span class="fn">${i+1}</span><button class="fdot${gid?"":" empty"}" tabindex="-1" title="${escapeHtml(gid?tr("rowGroup"):tr("rowNewGroup"))}" style="background-color:${safeColor(dotColor)}"></button><input type="text" maxlength="40" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="words" enterkeyhint="${i+1<t.capacity?"next":"done"}" placeholder="${escapeHtml(tr("seatPh"))}" value="${gid?escapeHtml(guestName(gid)):""}"><button class="grip" title="${escapeHtml(tr("gripTitle"))}" tabindex="-1">${ICON("grip")}</button><button class="fx" title="${escapeHtml(tr("unseat"))}" tabindex="-1">✕</button>`;
+    if(partySel){ row.addEventListener("pointerdown",e=>{ if(partySel&&t.seats[i]&&!e.target.closest(".grip,.fx,.fdot")) e.preventDefault(); });   // a tick must not take the focus from the name field
+      row.addEventListener("click",e=>{ if(!partySel||!t.seats[i]||e.target.closest(".grip,.fx,.fdot")) return; e.preventDefault(); togglePartySel(t.seats[i]); }); }
     const grip=row.querySelector(".grip");
     grip.addEventListener("click",e=>{ e.stopPropagation(); const g2=t.seats[i]; if(!g2) return; const ae=document.activeElement; if(ae&&ae.closest("#fSeats")) ae.blur(); openPlaceMenu(g2, anchorOf(grip), {tableId:t.id, seatIndex:i}); });
     const dot=row.querySelector(".fdot");
@@ -2663,6 +2815,7 @@ function renderFocus(){
   }
   fSeats.scrollTop=st;
   if(keep){ const inp=rowInput(keep.i); if(inp){ inp.value=keep.v; inp.focus({preventScroll:true}); try{ inp.setSelectionRange(keep.s,keep.e); }catch(e){} } }
+  if(partySel){ const ids=partySelIds(); $("psCount").textContent=tr("psCount",{n:ids.length}); }   // × / undo / a move may have dropped a ticked name
 }
 function rowInput(i){ return fSeats.querySelector(`.frow[data-i="${i}"] input`); }
 function focusRow(i){ const inp=rowInput(i); if(!inp) return; inp.focus({preventScroll:true}); inp.select(); revealField(inp); }
@@ -2694,7 +2847,7 @@ function commitRow(tb,i,text,chosenId){
   if(cur && !state.guests[cur]){ tb.seats[i]=null; cur=null; changed=true; }   // dangling id from a desynced plan
   if(chosenId && state.guests[chosenId]){ if(cur!==chosenId){ tb.seats[i]=chosenId; changed=true; } }
   else if(v){
-    if(cur){ if(state.guests[cur].name!==v){ state.guests[cur].name=v; changed=true; } }
+    if(cur){ if(state.guests[cur].name!==v && guestName(cur)!==v){ state.guests[cur].name=v; changed=true; } }   // the row shows the cased form: same text = no rename
     else {
       const ex=unseatedIds().find(id=>norm(guestName(id))===norm(v));   // typed an existing unseated name → seat that guest, no duplicate
       if(ex) tb.seats[i]=ex; else { const id="g"+nextId(); state.guests[id]={ name:v, groupId:state.activeGroupId||null }; tb.seats[i]=id; }
@@ -2803,7 +2956,7 @@ document.addEventListener("keydown",e=>{
   const modalOpen=!!document.querySelector(".modal-back.open");
   if((e.ctrlKey||e.metaKey)&&!typing&&!modalOpen){ const k=e.key.toLowerCase(); if(k==="z"&&!e.shiftKey){ e.preventDefault(); undo(); return; } if(k==="y"||(k==="z"&&e.shiftKey)){ e.preventDefault(); redo(); return; } }
   const inPanel=!!(e.target&&e.target.closest&&e.target.closest("#focus"));   // Backspace after Enter left a seat row must not take the table
-  if((e.key==="Delete"||(e.key==="Backspace"&&!inPanel)) && !e.repeat && !typing && !modalOpen && !tour && !pointerGesture){   // the chosen thing goes (after the confirmation)
+  if((e.key==="Delete"||(e.key==="Backspace"&&!inPanel)) && !e.repeat && !typing && !modalOpen && !tour && !pointerGesture && !partySel){   // the chosen thing goes (after the confirmation)
     const fs=stage.querySelector(".feature.hsel");
     if(fs){ const f=(state.features||[])[+fs.dataset.fi]; if(f){ e.preventDefault(); deleteFeature(f); return; } }
     if(focusId!=null){ e.preventDefault(); deleteTable(focusId); return; }
@@ -2812,6 +2965,7 @@ document.addEventListener("keydown",e=>{
   if(tour){ endTour(); return; }
   if(modalOpen){ document.querySelectorAll(".modal-back.open").forEach(m=>{ if(m._close) m._close(); else m.classList.remove("open"); }); return; }
   for(const [id,fn] of [["placemenu",closePlaceMenu],["groupmenu",closeGroupMenu],["featuremenu",closeFeatureMenu]]){ const el=$(id); if(el.style.display==="block"){ fn(); return; } }   // innermost thing first
+  if(partySel){ endPartySelect(); return; }
   if(pick){ setPick(null); return; }
   if(document.body.classList.contains("nav-open")){ setNav(false); return; }
   if(focusId!=null) unfocusTable();
@@ -2931,20 +3085,31 @@ $("addGuestBtn").addEventListener("click",()=>{
   checkTips("added");
 });
 $("guestInput").addEventListener("keydown",e=>{ e.stopPropagation(); if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)) $("addGuestBtn").click(); });
-function autoSeat(){   // whole invitations first (a party only goes where it fits together), then singles; grouped by colour
-  const un=unseatedIds(), seen=new Set(), chunks=[];
-  un.forEach(id=>{ const p=state.guests[id].partyId; if(p){ if(seen.has(p)) return; seen.add(p); chunks.push(un.filter(x=>state.guests[x].partyId===p)); } else chunks.push([id]); });
-  chunks.sort((a,b)=>(b.length-a.length)||String(state.guests[a[0]].groupId).localeCompare(String(state.guests[b[0]].groupId)));
-  let placed=0;
-  for(let c=chunks.length-1;c>=0;c--){   // members of an invitation that already sits somewhere join that table when it has room
-    const pid=state.guests[chunks[c][0]].partyId; if(!pid) continue;
-    const home=state.tables.find(t=>t.shape!=="head"&&t.seats.some(id=>id&&state.guests[id]&&state.guests[id].partyId===pid)); if(!home) continue;
-    const free=home.seats.map((x,i)=>x?null:i).filter(i=>i!=null); if(free.length<chunks[c].length) continue;
-    chunks[c].forEach(id=>{ home.seats[free.shift()]=id; placed++; }); chunks.splice(c,1);
+function autoSeat(){   // whole invitations first, then families (names sharing a surname inside one colour group), then singles — each chunk goes to the table with its own kind, else the first table with room
+  const un=unseatedIds(); if(!un.length){ toast(tr("tNoSeats")); return; }
+  const stemsOf={}; const stems=id=>stemsOf[id]||(stemsOf[id]=surnameStems(rawName(id)));
+  const chunks=[], seenP=new Set(), rest=[];
+  un.forEach(id=>{ const p=state.guests[id].partyId; if(p){ if(!seenP.has(p)){ seenP.add(p); chunks.push({ids:un.filter(x=>state.guests[x].partyId===p), pid:p}); } } else rest.push(id); });
+  const parent={}; const find=x=>parent[x]===x?x:(parent[x]=find(parent[x])); rest.forEach(id=>{ parent[id]=id; });
+  const byKey={}; rest.forEach(id=>{ const g=state.guests[id].groupId||""; stems(id).forEach(st=>{ const k=g+"|"+st; if(byKey[k]) parent[find(id)]=find(byKey[k]); else byKey[k]=id; }); });
+  const fam={}; rest.forEach(id=>{ const r=find(id); (fam[r]=fam[r]||[]).push(id); }); Object.values(fam).forEach(ids=>chunks.push({ids}));
+  const tables=state.tables.filter(t=>t.shape!=="head"), freeIdx=t=>t.seats.map((x,i)=>x?null:i).filter(i=>i!=null);
+  const seatedP=new Set(); tables.forEach(t=>t.seats.forEach(id=>{ const p=id&&state.guests[id]&&state.guests[id].partyId; if(p) seatedP.add(p); }));
+  const home=c=>(c.pid&&seatedP.has(c.pid))?0:1, gkey=c=>String(state.guests[c.ids[0]].groupId||"\uffff");
+  chunks.sort((a,b)=>home(a)-home(b)||(b.ids.length-a.ids.length)||gkey(a).localeCompare(gkey(b)));   // the rest of a seated invitation first (its table still has the room), then the bigger chunks (a family needs a whole block), then colour group
+  const affinity=(t,c)=>{ const here=t.seats.filter(id=>id&&state.guests[id]); if(!here.length) return 0;
+    const g=state.guests[c.ids[0]].groupId||null, cst=new Set(c.ids.flatMap(stems)); let sc=0;
+    if(c.pid&&here.some(id=>state.guests[id].partyId===c.pid)) sc+=8;          // the rest of the invitation sits here
+    if(here.some(id=>stems(id).some(x=>cst.has(x)))) sc+=4;                       // same surname at this table
+    sc+=here.some(id=>(state.guests[id].groupId||null)===g)?2:-3;                 // own colour group here / only strangers
+    return sc; };
+  let placed=0; const leftovers=[];
+  for(const c of chunks){
+    const fit=tables.filter(t=>freeIdx(t).length>=c.ids.length); if(!fit.length){ leftovers.push(...c.ids); continue; }
+    fit.sort((a,b)=>affinity(b,c)-affinity(a,c)||(tables.indexOf(a)-tables.indexOf(b)));
+    const free=freeIdx(fit[0]); c.ids.forEach(id=>{ fit[0].seats[free.shift()]=id; placed++; });
   }
-  for(const t of state.tables){ if(t.shape==="head") continue; const free=t.seats.map((x,i)=>x?null:i).filter(i=>i!=null);
-    for(let c=0;c<chunks.length&&free.length;){ const ch=chunks[c]; if(ch.length<=free.length){ ch.forEach(id=>{ t.seats[free.shift()]=id; placed++; }); chunks.splice(c,1); } else c++; } }
-  chunks.flat().forEach(id=>{ for(const t of state.tables){ if(t.shape==="head") continue; const i=t.seats.indexOf(null); if(i>=0){ t.seats[i]=id; placed++; return; } } });   // parties bigger than any table: split
+  for(const t of tables.slice().sort((a,b)=>freeIdx(b).length-freeIdx(a).length)){ const free=freeIdx(t); while(free.length&&leftovers.length){ t.seats[free.shift()]=leftovers.shift(); placed++; } }   // bigger than any free block: split over the emptiest tables
   save(); renderTables(); renderPool(); toast(placed?tr("tAutoSeated",{n:placed}):tr("tNoSeats"));
   checkTips("placed");
 }
@@ -3081,7 +3246,7 @@ $("moreBtn").addEventListener("click",e=>{
   if(skipDeleteConfirm()) more.push(["askdel",tr("mAskDel")]);
   more.push(["reset",tr("mReset")]);
   if(!IS_LAB) more.push(["cap",tr("mLang")],["lang-el","ΕΛ · Ελληνικά"],["lang-en","EN · English"],["lang-de","DE · Deutsch"]);
-  const MI={share:"cloud",groups:"people",print:"print",tour:"help",askdel:"trash",newplan:"plus",planmore:"edit",round:"table",head:"heart",decor:"decor",auto:"spark",guests:"dl",export:"up",import:"dl",history:"clock"};
+  const MI={share:"cloud",groups:"people",print:"print",tour:"help",askdel:"help",newplan:"plus",planmore:"edit",round:"table",head:"heart",decor:"decor",auto:"spark",guests:"dl",export:"up",import:"dl",history:"clock"};
   const row=([a,l])=>a==="cap"?`<div class="gm-cap">${escapeHtml(l)}</div>`:`<div class="gm-item${a==="reset"?" danger":""}${a==="lang-"+LANG?" on":""}" data-act="${a}">${MI[a]?ICON(MI[a]):'<span class="ic"></span>'}${escapeHtml(l)}</div>`;
   m.innerHTML=primary.map(row).join("")+`<div class="gm-sep"></div><div class="gm-item more" data-act="more"><span class="ic"></span>${escapeHtml(tr("mMore"))} ›</div><div class="gm-more">${more.map(row).join("")}</div>`;
   m.querySelectorAll(".gm-item").forEach(it=>it.onclick=ev=>{ ev.stopPropagation(); const a=it.dataset.act;
@@ -3090,8 +3255,8 @@ $("moreBtn").addEventListener("click",e=>{
     if(a==="share") openCloud(); else if(a==="guests") importGuestList(); else if(a==="head") $("addHeadBtn").click(); else if(a==="decor") openDecor();
     else if(a==="newplan") newProfile(); else if(a==="planmore") openProfileMenu(anchorOf($("moreBtn")));
     else if(a==="round") addRoundTable(); else if(a==="history") openHistory(); else if(a==="groups") openGroupsModal(); else if(a==="tour") startTour();
-    else if(a==="auto") autoSeat(); else if(a==="export") openExport(); else if(a==="import") openImport(); else if(a==="print") buildAndPrint(); else if(a==="reset") resetPlan();
-    else if(a==="askdel"){ try{ localStorage.removeItem(DEL_SKIP_KEY); }catch(e){} toast(tr("tAskDel"),2500); }
+    else if(a==="auto") autoSeat(); else if(a==="export") openExport(); else if(a==="import") openImport(); else if(a==="print") openPrint(); else if(a==="reset") resetPlan();
+    else if(a==="askdel"){ try{ localStorage.removeItem(DEL_SKIP_KEY); localStorage.removeItem(MERGE_SKIP_KEY); }catch(e){} toast(tr("tAskDel"),2500); }
     else if(a.startsWith("lang-")){ const l=a.slice(5); location.href=({el:"seating-planner-el.html",en:"seating-planner.html",de:"seating-planner-de.html"})[l]; } });
   showPopover(m, anchorOf(e.currentTarget));
 });
@@ -3349,11 +3514,26 @@ $("cloudModal").addEventListener("click",e=>{ if(e.target.id==="cloudModal") e.c
 // ============================================================
 //  PRINT
 // ============================================================
-$("printBtn").addEventListener("click",buildAndPrint);
-function buildAndPrint(){
-  const area=$("printarea");
+$("printBtn").addEventListener("click",openPrint);
+function openPrint(){
+  const m=$("printModal"), mode=state.printMode==="parties"?"parties":"names";
+  m.querySelectorAll('input[name="pmode"]').forEach(r=>{ r.checked=r.value===mode; }); m.classList.add("open");
+}
+$("printGo").addEventListener("click",()=>{ const m=$("printModal"); const r=m.querySelector('input[name="pmode"]:checked'); const mode=(r&&r.value==="parties")?"parties":"names";
+  if(state.printMode!==mode){ state.printMode=mode; save({noHistory:true}); } m.classList.remove("open"); buildAndPrint(mode); });
+$("printClose").addEventListener("click",()=>$("printModal").classList.remove("open"));
+function buildAndPrint(mode){
+  const area=$("printarea"); const byParties=mode==="parties";
   const legend=state.groups.map(g=>`<span><span class="dot" style="background:${g.color}"></span>${escapeHtml(g.name)}</span>`).join("");
   const cards=state.tables.map(t=>{
+    if(byParties){   // one line per invitation at this table (how many of its people sit here), singles by name
+      const byP=new Map(), singles=[];
+      t.seats.forEach(gid=>{ if(!gid||!state.guests[gid]) return; const p=partyOf(gid); if(p){ if(!byP.has(p.id)) byP.set(p.id,{p,ids:[]}); byP.get(p.id).ids.push(gid); } else singles.push(gid); });
+      const lines=[...byP.values()].map(({p,ids})=>{ const tot=partyMembers(p.id).length; return `<li><span class="gdot" style="background:${guestColor(ids[0])}"></span><b>${escapeHtml(caseName(p.name))}</b> <span class="pn">${ids.length}${tot!==ids.length?" / "+tot:""}</span></li>`; })
+        .concat(singles.map(gid=>`<li><span class="gdot" style="background:${guestColor(gid)}"></span>${escapeHtml(guestName(gid))} <span class="pn">1</span></li>`));
+      const occ=t.seats.filter(Boolean).length;
+      return `<div class="pcard"><h3>${escapeHtml(t.label)} <span style="font-weight:400;color:#888;font-size:12px">(${occ}/${t.capacity})</span></h3><ul class="pinvl">${lines.join("")||`<li class="empty">—</li>`}</ul></div>`;
+    }
     const rows=t.seats.map(gid=> gid?`<li><span class="gdot" style="background:${guestColor(gid)}"></span>${escapeHtml(guestName(gid))}${STATUS_TXT(gStatus(gid))?` <span style="color:#a00">(${STATUS_TXT(gStatus(gid))})</span>`:""}</li>`:`<li class="empty">${escapeHtml(tr("printEmpty"))}</li>`).join("");
     const occ=t.seats.filter(Boolean).length;
     return `<div class="pcard"><h3>${escapeHtml(t.label)} <span style="font-weight:400;color:#888;font-size:12px">(${occ}/${t.capacity})</span></h3><ol>${rows}</ol></div>`;
@@ -3362,7 +3542,7 @@ function buildAndPrint(){
   const unHtml=un.length?`<div class="punassigned"><strong>${escapeHtml(tr("printUnassigned",{n:un.length}))}</strong> ${un.map(id=>escapeHtml(guestName(id))).join(", ")}</div>`:"";
   const tableOf={}; state.tables.forEach(t=>t.seats.forEach(gid=>{ if(gid) tableOf[gid]=t.label; }));
   const parties=(state.parties||[]).map(p=>({p, m:partyMembers(p.id)})).filter(x=>x.m.length).sort((a,b)=>a.p.name.localeCompare(b.p.name));
-  const invHtml=parties.length?`<h3 class="pinvh">${escapeHtml(tr("printInvites"))}</h3><div class="pinvs">${parties.map(({p,m})=>`<div class="pinv"><b>${escapeHtml(p.name)}</b> <span class="n">(${m.length})</span><ul>${m.map(id=>`<li>${escapeHtml(guestName(id))}${tableOf[id]?` <span class="ptag">— ${escapeHtml(tableOf[id])}</span>`:` <span class="ptag">— ${escapeHtml(tr("printNoSeat"))}</span>`}</li>`).join("")}</ul></div>`).join("")}</div>`:"";
+  const invHtml=(parties.length&&!byParties)?`<h3 class="pinvh">${escapeHtml(tr("printInvites"))}</h3><div class="pinvs">${parties.map(({p,m})=>`<div class="pinv"><b>${escapeHtml(caseName(p.name))}</b> <span class="n">(${m.length})</span><ul>${m.map(id=>`<li>${escapeHtml(guestName(id))}${tableOf[id]?` <span class="ptag">— ${escapeHtml(tableOf[id])}</span>`:` <span class="ptag">— ${escapeHtml(tr("printNoSeat"))}</span>`}</li>`).join("")}</ul></div>`).join("")}</div>`:"";
   const seated=assignedGuestIds().size, totalSeats=state.tables.reduce((s,t)=>s+t.capacity,0);
   area.innerHTML=`<h2>${escapeHtml(tr("printTitle"))}</h2>
     <div class="psub">${escapeHtml(tr("printSub",{t:state.tables.length, s:seated, c:totalSeats}))}</div>
@@ -3377,11 +3557,14 @@ function buildAndPrint(){
 function setFontScale(v){ fontScale=clamp(v,0.6,2.0); state.seatFontScale=fontScale; save(); renderTables(); toast(tr("tFont",{n:Math.round(fontScale*100)})); }
 function setTableFontScale(v){ state.tableFontScale=clamp(v,0.6,2.4); save(); renderTables(); toast(tr("tNumSize",{n:Math.round(state.tableFontScale*100)})); }
 function setNameMode(m){ if(!["full","short","initials"].includes(m)) return; state.nameMode=m; save(); renderTables(); }
+function setNameCase(m){ if(!["asis","upper","lower"].includes(m)||m===(state.nameCase||"asis")) return; state.nameCase=m; save(); renderTables(); renderPool(); if(focusId!=null) renderFocus(); if(m==="lower") toast(tr("tLowerHint"),4500); }
 // The "Aa" view menu: name display · name size · table-number size · zoom — same on PC and phone.
 function renderViewMenu(){
   const m=$("viewmenu"); const mode=state.nameMode||"full"; const tfs=state.tableFontScale||1;
   m.innerHTML=`<div class="gm-cap">${escapeHtml(tr("names"))}</div>
     <div class="vrow"><div class="seg" id="vmNames">${["full","short","initials"].map(k=>`<button data-m="${k}" class="${mode===k?"on":""}">${escapeHtml(tr({full:"nm_full",short:"nm_short",initials:"nm_initials"}[k]))}</button>`).join("")}</div></div>
+    <div class="gm-cap">${escapeHtml(tr("nameCase"))}</div>
+    <div class="vrow"><div class="seg" id="vmCase">${["asis","upper","lower"].map(k=>`<button data-c="${k}" class="${(state.nameCase||"asis")===k?"on":""}">${escapeHtml(tr({asis:"nc_asis",upper:"nc_upper",lower:"nc_lower"}[k]))}</button>`).join("")}</div></div>
     <div class="gm-cap">${escapeHtml(tr("nameSize"))}</div>
     <div class="vrow"><button class="ibtn" data-a="fdown">A−</button><span class="pct">${Math.round(fontScale*100)}%</span><button class="ibtn" data-a="fup">A＋</button></div>
     <div class="gm-cap">${escapeHtml(tr("numSize"))}</div>
@@ -3389,6 +3572,7 @@ function renderViewMenu(){
     <div class="gm-cap">${escapeHtml(tr("zoomLbl"))}</div>
     <div class="vrow"><button class="ibtn" data-a="zout">−</button><span class="pct">${Math.round(zoom*100)}%</span><button class="ibtn" data-a="zin">＋</button><button class="ibtn" data-a="fit">${escapeHtml(tr("fit"))}</button></div>`;
   m.querySelectorAll("#vmNames button").forEach(b=>b.onclick=ev=>{ ev.stopPropagation(); setNameMode(b.dataset.m); renderViewMenu(); });
+  m.querySelectorAll("#vmCase button").forEach(b=>b.onclick=ev=>{ ev.stopPropagation(); setNameCase(b.dataset.c); renderViewMenu(); });
   m.querySelectorAll("[data-a]").forEach(b=>b.onclick=ev=>{ ev.stopPropagation(); const a=b.dataset.a;
     if(a==="fdown") setFontScale(fontScale-0.15); else if(a==="fup") setFontScale(fontScale+0.15);
     else if(a==="ndown") setTableFontScale((state.tableFontScale||1)-0.2); else if(a==="nup") setTableFontScale((state.tableFontScale||1)+0.2);

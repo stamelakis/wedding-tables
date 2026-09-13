@@ -272,6 +272,43 @@ cascade-purges its plans; venues can rotate their own key; backups encrypted at 
   already at a table stay put (the header shows "shown / total" under a filter); one save + one undo step per gesture
   (`placeGuestInSeat(…, quiet)` returns the touched tables); renaming to an existing name merges; dropping a name back on
   its own table is a no-op; `seatNeighbours` knows the head table's row + ends.
+- **Letter case** (2026-09-13, Andreas: "turn lower case to upper case across all tables/lists, removing τόνους;
+  upper → lower only if possible"): a DISPLAY mode in the Aa menu (`state.nameCase` asis/upper/lower) — the stored
+  spelling never changes, so ΚΕΦΑΛΑΙΑ ↔ Πεζά is lossless for anything typed with accents. `upperGreek` drops the tonos
+  (keeps dialytika: Ναΐμ → ΝΑΪΜ); `lowerGreek` capitalises ALL-CAPS words and restores the accent only for first names in
+  `GREEK_FIRST` (~330 names → `GREEK_FIRST_MAP`); other words stay accent-less (a one-time toast says so). `guestName(id)`
+  returns the displayed form, `rawName(id)` the stored one; `commitRow` treats a blurred row equal to either as "no rename".
+  `partyName`/party headers/print use `caseName` too.
+- **Προσκλητήρια from the sheet** (2026-09-13, Andreas: "pick the last 4 people and create a Προσκλητήριο I can name"):
+  gear menu → "Προσκλητήριο…" (`#menuParty`) or the PC footer `#fParty` → `startPartySelect(t)`: every occupied row gets a
+  check box (`.fchk`, row click toggles, inputs inert), a bar `#partysel` shows the count and a name field pre-filled with
+  the surname most of the picked names share (`suggestPartyName`: majority `surnameStems`, shown in the spelling most of
+  them use) or an existing invitation of one of them; Enter/Δημιουργία →
+  `makePartyFromSelection` (`ensureParty` merges by name, one save). Escape / another table / unfocus end it. Greek wording
+  is now "προσκλητήριο" everywhere (was "πρόσκληση"). Print: ⋯ → Εκτύπωση opens `#printModal` — "Ονόματα ανά τραπέζι"
+  (as before) or "Προσκλητήρια ανά τραπέζι" (`buildAndPrint("parties")`: per table one line per invitation with how many of
+  its people sit there, singles by name; `state.printMode` remembered without an undo step).
+- **Merge by drop** (2026-09-13, Andreas: "drag a table on another should merge them and even increase the seats"):
+  `makeDraggable` got `hooks` {move, clear, drop}; `tableHooks()` highlights the table under the dragged centre
+  (`mergeTargetFor`: inside the disc, or the head table's rotated rectangle; `.table.mergeto`, `#dragtag.merge`
+  "Συγχώνευση με «3»") and on drop puts the table back where it was and asks (`confirmAction`, own skip key
+  `MERGE_SKIP_KEY`, title "Συγχώνευση τραπεζιών"). `mergeTables(src,dst)`: `resizeSeats(dst, max(capacity, seated+incoming))`,
+  everyone moves over, the source is removed, one save, toast with ↶. `confirmDelete` is now a wrapper of `confirmAction`.
+- **Auto-seat v2** (2026-09-13, Andreas: "auto-fill by group and name similarity"): chunks = whole invitations, then
+  families (unseated names sharing a surname stem inside one colour group — union-find over `surnameStems`: tokens that
+  are not known first names with the Greek ending dropped, ΚΟΤΣΩΝΑΣ/ΚΟΤΣΩΝΑ → ΚΟΤΣΩΝ), then singles; ordered by colour
+  group then size; each chunk goes to the table with the best affinity (rest of its invitation +8, same surname +4, own
+  group +2 / only strangers −3), ties to the first table with room; a chunk bigger than any free block is split over the
+  emptiest tables.
+- Review fixes for the four features (15 confirmed): Σοφία wins over Σοφιά (first spelling wins in the map); the merge
+  toast key clashed with the guest-import key (now `tTablesMerged`); a merge that would pass 30 seats is refused with a
+  toast (the sanitizer clamps capacity at 30 — a bigger table would lose chairs on reload); a name still being typed is
+  flushed before a merge; the invitation suggestion uses the stored spelling; the selection survives a second press of
+  the button, ticks never steal focus from the name field, and names removed from the table (×, undo, move) drop out of
+  the ticks (`partySelIds`); the footer is a real 2×2; the ⋯ "ask again" entry covers merging; auto-seat orders
+  stragglers-of-a-seated-invitation → bigger chunks → colour group (group-first fragmented the free blocks);
+  `surnameStems` yields at most one stem per guest (last usable non-first-name token, "+ συνοδός" ignored) so shared
+  first names cannot chain strangers into one "family"; `surnameToken` prefers the last non-first-name token.
 - **Whole-table group** (2026-09-13, Andreas: "choose a table and make everyone sitting there part of a group, like
   Bride's family"): gear menu → "Ομάδα για όλο το τραπέζι…" (full-width `#menuGroup`) and, on PC, the sheet footer
   `#fGroup`. `openTableGroupMenu(t, anc)` reuses `#groupmenu`: one row per group with the count of the table's people
