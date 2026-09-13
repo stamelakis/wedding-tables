@@ -267,6 +267,16 @@ cascade-purges its plans; venues can rotate their own key; backups encrypted at 
   already at a table stay put (the header shows "shown / total" under a filter); one save + one undo step per gesture
   (`placeGuestInSeat(…, quiet)` returns the touched tables); renaming to an existing name merges; dropping a name back on
   its own table is a no-op; `seatNeighbours` knows the head table's row + ends.
+- **Import modes** (2026-09-13, Andreas built a plan in the lab and wanted only names + seating in Andreas & Lina): the
+  import modal has a radio chooser — `new` (old behaviour: separate profile), `appendNames`, `appendAll` (file tables added as
+  new tables with their people), `replaceNames` (list replaced, tables emptied, layout kept), `replaceSeating` (file tables paired
+  with ours by shape + name, then by order; capacity grows if needed; extras appended; layout kept), `replaceAll`
+  (restoreSnapshot + save, so ↶ undoes it). `mergePlanInto` remaps every guest id, matches groups and invitations by name.
+  A guest-list file ({importGuests}) still goes to mergeGuestList whatever the mode.
+  Review fixes: a confirmed replace opens the wipe window (`wipeAllowedUntil`, like resetPlan) so an emptied list is not
+  reverted by the cloud guard; pairing never crosses shapes (a round table cannot land on the head table); appended tables
+  step +40/+40 aside from an occupied spot; sanitizePlan drops a guest id that appears in two chairs (first wins) on every
+  ingest path; the Load / Choose-file row is sticky on phones; the toast says how many tables were added or enlarged.
 - **Place handle** (2026-09-11, second tester could not guess that names on the floor are interactive and looked for a
   handle in the list): every unseated name in the list and every occupied row of the table sheet carries a grip icon
   (`.grip`, `i-grip`). Click/tap → `openPlaceMenu` (#placemenu): "Διαλέξτε καρέκλα στην κάτοψη" (hands over to the

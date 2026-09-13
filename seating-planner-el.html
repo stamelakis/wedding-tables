@@ -392,6 +392,14 @@
   .modal textarea, .modal input[type=text], .modal input:not([type]){ width:100%; font-size:12px; border:1px solid var(--line); border-radius:8px; padding:8px; background:var(--paper); }
   .modal textarea{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:11px; resize:vertical; }
   .mrow{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  .modal .mlab{ font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--faint); font-weight:700; margin:10px 2px 5px; }
+  #importModal .mrow{ position:sticky; bottom:0; background:var(--card); margin:0 -16px; padding:10px 16px 12px; border-top:1px solid var(--line); }   /* Load / Choose file stay reachable while the mode list scrolls */
+  .imodes{ display:flex; flex-direction:column; gap:4px; }
+  .imode{ display:flex; gap:8px; align-items:flex-start; padding:6px 9px; border:1px solid var(--line); border-radius:9px; cursor:pointer; font-size:13px; background:var(--card); }
+  .imode input{ margin:3px 0 0; flex:none; }
+  .imode b{ display:block; font-weight:600; }
+  .imode small{ display:block; color:var(--soft); font-size:11.5px; line-height:1.35; }
+  .imode:has(input:checked){ border-color:var(--accent); background:var(--accent-soft); }
   .mrow .ibtn{ flex:1; min-width:120px; height:38px; }
   .hist{ display:flex; flex-direction:column; gap:6px; padding:10px 16px 16px; }
   .hrow{ display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; }
@@ -473,6 +481,7 @@
     .ffoot{ display:none; }   /* phone: fill/clear live under ⚙ — the rows get the space */
     .fhint{ padding:6px 14px 2px; font-size:13px; color:var(--soft); }
     .modal{ width:96vw; max-height:88vh; }
+    #importText{ height:80px !important; }
     .decor-grid{ grid-template-columns:repeat(auto-fill,minmax(92px,1fr)); gap:8px; padding:12px; }
     #pickbar{ bottom:calc(14px + env(safe-area-inset-bottom)); }
     #pickbar .pbhint{ display:none; }
@@ -731,7 +740,16 @@
     <div class="modal-head"><strong data-t="importTitle"></strong><button class="mx" id="importClose">✕</button></div>
     <div class="mhint" data-t="importHint"></div>
     <div class="mbody">
-      <textarea id="importText" data-t-ph="importPh" style="height:150px"></textarea>
+      <textarea id="importText" data-t-ph="importPh" style="height:110px"></textarea>
+      <div class="mlab" data-t="imTitle"></div>
+      <div class="imodes" id="importModes">
+        <label class="imode"><input type="radio" name="imode" value="new" checked><span><b data-t="im_new"></b><small data-t="im_new_d"></small></span></label>
+        <label class="imode"><input type="radio" name="imode" value="appendNames"><span><b data-t="im_appendNames"></b><small data-t="im_appendNames_d"></small></span></label>
+        <label class="imode"><input type="radio" name="imode" value="appendAll"><span><b data-t="im_appendAll"></b><small data-t="im_appendAll_d"></small></span></label>
+        <label class="imode"><input type="radio" name="imode" value="replaceNames"><span><b data-t="im_replaceNames"></b><small data-t="im_replaceNames_d"></small></span></label>
+        <label class="imode"><input type="radio" name="imode" value="replaceSeating"><span><b data-t="im_replaceSeating"></b><small data-t="im_replaceSeating_d"></small></span></label>
+        <label class="imode"><input type="radio" name="imode" value="replaceAll"><span><b data-t="im_replaceAll"></b><small data-t="im_replaceAll_d"></small></span></label>
+      </div>
       <div class="mrow"><button class="ibtn primary" id="importPaste" data-t="importPaste"></button><button class="ibtn" id="importFile" data-t="importFile"></button></div>
     </div>
   </div>
@@ -843,7 +861,14 @@ el:{
   confirmResetShared:"Επαναφορά στην αρχική διάταξη; Διαγράφονται όλοι οι καλεσμένοι — και επειδή το σχέδιο είναι κοινόχρηστο, θα το δουν όλοι όσοι έχουν τον σύνδεσμο.", confirmReset:"Επαναφορά στην αρχική διάταξη; Διαγράφονται όλοι οι καλεσμένοι.",
   tGuestRemoved:"Ο καλεσμένος αφαιρέθηκε", tTableAdded:"Νέο τραπέζι — γράψτε τα ονόματα ή σύρετέ το στη θέση του", tHeadAdded:"Προστέθηκε νυφικό τραπέζι", tGuestsAdded:"{n} καλεσμένος/-οι προστέθηκαν", tAutoSeated:"Τοποθετήθηκαν {n} καλεσμένος/-οι", tNoSeats:"Δεν υπάρχουν ελεύθερες θέσεις ή καλεσμένοι χωρίς θέση", tBumped:"{n} καλεσμένος/-οι μετακινήθηκαν σε «χωρίς θέση»", tReset:"Έγινε επαναφορά", tProfileCreated:"Δημιουργήθηκε νέο σχέδιο", tProfileCopied:"Το σχέδιο αντιγράφηκε", tProfileDeleted:"Το σχέδιο διαγράφηκε", tImported:"Εισήχθη ως νέο σχέδιο: «{n}»", tCopied:"Αντιγράφηκε στο πρόχειρο", tCopyHint:"Επιλέξτε όλα & πατήστε Ctrl+C", tDownloaded:"Λήφθηκε {n}", tNotPlan:"Δεν είναι αρχείο σχεδίου ή λίστας καλεσμένων", tInvalidFile:"Μη έγκυρο αρχείο", tPasteFirst:"Επικολλήστε πρώτα κείμενο σχεδίου", tInvalidPaste:"Το κείμενο δεν είναι έγκυρο σχέδιο", tFont:"Μέγεθος ονομάτων {n}%", tFullPlan:"Αυτό είναι πλήρες σχέδιο — χρησιμοποιήστε την «Εισαγωγή σχεδίου»", tNotGuestList:"Δεν είναι αρχείο λίστας καλεσμένων", tMerged:"Προστέθηκαν {a} καλεσμένος/-οι", tMergedSkipped:" · παραλείφθηκαν {s} ήδη εισαγμένοι", tCleared:"Το τραπέζι άδειασε",
   exportTitle:"Αντιγραφή / λήψη σχεδίου", exportHint:"Αντιγράψτε το κείμενο και επικολλήστε το στην «Εισαγωγή σχεδίου» σε άλλη συσκευή — ή κατεβάστε το ως αρχείο.", exportCopy:"Αντιγραφή", exportDownload:"Λήψη αρχείου",
-  importTitle:"Εισαγωγή σχεδίου", importHint:"Επικολλήστε κείμενο σχεδίου ή επιλέξτε αρχείο. Φορτώνεται ως νέο σχέδιο.", importPh:"Επικολλήστε εδώ το κείμενο του σχεδίου…", importPaste:"Φόρτωση", importFile:"Επιλογή αρχείου",
+  importTitle:"Εισαγωγή σχεδίου", importHint:"Επικολλήστε κείμενο σχεδίου ή επιλέξτε αρχείο — και διαλέξτε πώς θα μπει.", importPh:"Επικολλήστε εδώ το κείμενο του σχεδίου…", importPaste:"Φόρτωση", importFile:"Επιλογή αρχείου",
+  imTitle:"Τρόπος εισαγωγής", im_new:"Νέο σχέδιο", im_new_d:"Το αρχείο ανοίγει ως ξεχωριστό σχέδιο.",
+  im_appendNames:"Προσθήκη ονομάτων", im_appendNames_d:"Τα ονόματα του αρχείου προστίθενται στη λίστα, χωρίς θέση.",
+  im_appendAll:"Προσθήκη ονομάτων και τραπεζιών", im_appendAll_d:"Τα τραπέζια του αρχείου προστίθενται ως νέα, με όσους κάθονται σε αυτά.",
+  im_replaceNames:"Αντικατάσταση ονομάτων", im_replaceNames_d:"Η λίστα αντικαθίσταται· τα τραπέζια αδειάζουν, η διάταξη μένει.",
+  im_replaceSeating:"Αντικατάσταση ονομάτων και θέσεων", im_replaceSeating_d:"Ποιος κάθεται με ποιον περνά στα δικά σας τραπέζια (ίδιο όνομα, αλλιώς ίδια σειρά). Η διάταξη μένει· τραπέζι μεγαλώνει ή προστίθεται μόνο αν το αρχείο καθίζει περισσότερους.",
+  im_replaceAll:"Αντικατάσταση όλων", im_replaceAll_d:"Χώρος, τραπέζια, διακόσμηση και ονόματα — όλα από το αρχείο.",
+  importConfirmReplace:"Να αντικατασταθούν τα τωρινά δεδομένα με αυτά του αρχείου; (Αναίρεση με ↶)", tMergedPlan:"Εισαγωγή: {g} ονόματα · {t} τραπέζια", tMergedPlanAdded:" · {a} νέα τραπέζια", tMergedPlanGrown:" · {c} μεγάλωσαν",
   cloudTitle:"Κοινή χρήση & συγχρονισμός", cloudOk:"Συγχρονισμένο", cloudPending:"Αποθήκευση…", cloudErr:"Εκτός σύνδεσης", cloudIdle:"",
   cCodeHas:"Οι συσκευές σας συνδέονται με αυτόν τον ιδιωτικό <strong>κωδικό συγχρονισμού</strong>. Εισαγάγετέ τον σε άλλη συσκευή για να βλέπετε εκεί όλα τα σχέδιά σας.", cCodeCopy:"Αντιγραφή κωδικού", cRefresh:"ανανέωση σχεδίων τώρα", cDisconnect:"αποσύνδεση αυτής της συσκευής",
   cCodeNone:"<strong>Συγχρονισμός σε όλες τις συσκευές σας.</strong> Δημιουργήστε έναν ιδιωτικό κωδικό και εισαγάγετέ τον στο κινητό ή σε άλλον υπολογιστή.", cCodeGen:"Δημιουργία κωδικού συγχρονισμού", cCodePh:"…ή επικολλήστε κωδικό από άλλη συσκευή", cJoin:"Σύνδεση",
@@ -918,7 +943,14 @@ en:{
   confirmResetShared:"Reset to the starter layout? This removes all guests — and because the plan is shared, everyone with the link will see the reset.", confirmReset:"Reset to the starter layout? This removes all guests.",
   tGuestRemoved:"Guest removed", tTableAdded:"New table — type the names or drag it into place", tHeadAdded:"Head table added", tGuestsAdded:"{n} guest(s) added", tAutoSeated:"Seated {n} guest(s)", tNoSeats:"No free seats or no unseated guests", tBumped:"{n} guest(s) moved to unseated", tReset:"Reset done", tProfileCreated:"New plan created", tProfileCopied:"Plan duplicated", tProfileDeleted:"Plan deleted", tImported:"Imported as a new plan: “{n}”", tCopied:"Copied to clipboard", tCopyHint:"Select all & press Ctrl+C", tDownloaded:"Downloaded {n}", tNotPlan:"Not a plan or guest-list file", tInvalidFile:"Invalid file", tPasteFirst:"Paste plan text first", tInvalidPaste:"That text isn't a valid plan", tFont:"Name size {n}%", tFullPlan:"That's a full plan — use “Import plan”", tNotGuestList:"Not a guest-list file", tMerged:"Added {a} guest(s)", tMergedSkipped:" · skipped {s} already imported", tCleared:"Table cleared",
   exportTitle:"Copy / download this plan", exportHint:"Copy this text and paste it into “Import plan” on another device — or download it as a file.", exportCopy:"Copy", exportDownload:"Download file",
-  importTitle:"Import plan", importHint:"Paste plan text or choose a file. It loads as a new plan.", importPh:"Paste the plan text here…", importPaste:"Load", importFile:"Choose file",
+  importTitle:"Import plan", importHint:"Paste plan text or choose a file — and choose how it comes in.", importPh:"Paste the plan text here…", importPaste:"Load", importFile:"Choose file",
+  imTitle:"How to import", im_new:"New plan", im_new_d:"The file opens as a separate plan.",
+  im_appendNames:"Append names", im_appendNames_d:"The file's names are added to the list, unseated.",
+  im_appendAll:"Append names and tables", im_appendAll_d:"The file's tables are added as new tables, with whoever sits at them.",
+  im_replaceNames:"Replace names", im_replaceNames_d:"The list is replaced; tables are emptied, the layout stays.",
+  im_replaceSeating:"Replace names and seating", im_replaceSeating_d:"Who sits with whom is applied to your tables (same name, else same order). The layout stays; a table grows or is added only if the file seats more people.",
+  im_replaceAll:"Replace everything", im_replaceAll_d:"Space, tables, decor and names — all from the file.",
+  importConfirmReplace:"Replace the current data with the file's? (Undo with ↶)", tMergedPlan:"Imported: {g} names · {t} tables", tMergedPlanAdded:" · {a} new tables", tMergedPlanGrown:" · {c} enlarged",
   cloudTitle:"Share & sync", cloudOk:"Synced", cloudPending:"Saving…", cloudErr:"Offline", cloudIdle:"",
   cCodeHas:"Your devices are linked with this private <strong>sync code</strong>. Enter it on another device to see all your plans there.", cCodeCopy:"Copy code", cRefresh:"refresh plans now", cDisconnect:"disconnect this device",
   cCodeNone:"<strong>Sync across all your devices.</strong> Create a private code and enter it on your phone or another computer.", cCodeGen:"Create sync code", cCodePh:"…or paste a code from another device", cJoin:"Connect",
@@ -993,7 +1025,14 @@ de:{
   confirmResetShared:"Auf die Startanordnung zurücksetzen? Alle Gäste werden entfernt — und weil der Plan geteilt ist, sehen das alle mit dem Link.", confirmReset:"Auf die Startanordnung zurücksetzen? Alle Gäste werden entfernt.",
   tGuestRemoved:"Gast entfernt", tTableAdded:"Neuer Tisch — Namen eingeben oder an die richtige Stelle ziehen", tHeadAdded:"Brauttisch hinzugefügt", tGuestsAdded:"{n} Gast/Gäste hinzugefügt", tAutoSeated:"{n} Gast/Gäste platziert", tNoSeats:"Keine freien Plätze oder keine Gäste ohne Platz", tBumped:"{n} Gast/Gäste in „ohne Platz“ verschoben", tReset:"Zurückgesetzt", tProfileCreated:"Neuer Plan erstellt", tProfileCopied:"Plan dupliziert", tProfileDeleted:"Plan gelöscht", tImported:"Als neuer Plan importiert: „{n}“", tCopied:"In die Zwischenablage kopiert", tCopyHint:"Alles markieren & Strg+C drücken", tDownloaded:"{n} heruntergeladen", tNotPlan:"Keine Plan- oder Gästelisten-Datei", tInvalidFile:"Ungültige Datei", tPasteFirst:"Zuerst Plantext einfügen", tInvalidPaste:"Dieser Text ist kein gültiger Plan", tFont:"Namensgröße {n}%", tFullPlan:"Das ist ein vollständiger Plan — „Plan importieren“ verwenden", tNotGuestList:"Keine Gästelisten-Datei", tMerged:"{a} Gast/Gäste hinzugefügt", tMergedSkipped:" · {s} bereits importierte übersprungen", tCleared:"Tisch geleert",
   exportTitle:"Plan kopieren / herunterladen", exportHint:"Text kopieren und auf einem anderen Gerät unter „Plan importieren“ einfügen — oder als Datei herunterladen.", exportCopy:"Kopieren", exportDownload:"Datei herunterladen",
-  importTitle:"Plan importieren", importHint:"Plantext einfügen oder Datei wählen. Wird als neuer Plan geladen.", importPh:"Plantext hier einfügen…", importPaste:"Laden", importFile:"Datei wählen",
+  importTitle:"Plan importieren", importHint:"Plantext einfügen oder Datei wählen — und festlegen, wie er übernommen wird.", importPh:"Plantext hier einfügen…", importPaste:"Laden", importFile:"Datei wählen",
+  imTitle:"Art des Imports", im_new:"Neuer Plan", im_new_d:"Die Datei wird als eigener Plan geöffnet.",
+  im_appendNames:"Namen hinzufügen", im_appendNames_d:"Die Namen der Datei kommen ohne Platz in die Liste.",
+  im_appendAll:"Namen und Tische hinzufügen", im_appendAll_d:"Die Tische der Datei kommen als neue Tische dazu, mit ihren Gästen.",
+  im_replaceNames:"Namen ersetzen", im_replaceNames_d:"Die Liste wird ersetzt; die Tische werden geleert, die Anordnung bleibt.",
+  im_replaceSeating:"Namen und Sitzordnung ersetzen", im_replaceSeating_d:"Wer mit wem sitzt, wird auf Ihre Tische übertragen (gleicher Name, sonst gleiche Reihenfolge). Die Anordnung bleibt; ein Tisch wächst oder kommt hinzu nur, wenn die Datei mehr Personen setzt.",
+  im_replaceAll:"Alles ersetzen", im_replaceAll_d:"Fläche, Tische, Deko und Namen — alles aus der Datei.",
+  importConfirmReplace:"Aktuelle Daten durch die der Datei ersetzen? (Rückgängig mit ↶)", tMergedPlan:"Importiert: {g} Namen · {t} Tische", tMergedPlanAdded:" · {a} neue Tische", tMergedPlanGrown:" · {c} vergrößert",
   cloudTitle:"Teilen & synchronisieren", cloudOk:"Synchron", cloudPending:"Speichern…", cloudErr:"Offline", cloudIdle:"",
   cCodeHas:"Ihre Geräte sind über diesen privaten <strong>Sync-Code</strong> verbunden. Geben Sie ihn auf einem anderen Gerät ein, um dort alle Pläne zu sehen.", cCodeCopy:"Code kopieren", cRefresh:"Pläne jetzt aktualisieren", cDisconnect:"dieses Gerät trennen",
   cCodeNone:"<strong>Auf allen Geräten synchron.</strong> Erstellen Sie einen privaten Code und geben Sie ihn am Handy oder einem anderen Computer ein.", cCodeGen:"Sync-Code erstellen", cCodePh:"…oder Code von einem anderen Gerät einfügen", cJoin:"Verbinden",
@@ -1261,13 +1300,14 @@ function sanitizePlan(s){ if(!s||typeof s!=="object") return s;
     for(const k of Object.keys(s.guests)){ const g=s.guests[k]; if(!g||typeof g!=="object"){ delete s.guests[k]; continue; }
       g.name=String(g.name??"").slice(0,80); if(g.groupId!=null&&typeof g.groupId!=="string") g.groupId=null; if(g.note!=null) g.note=String(g.note).slice(0,200);
       if(g.partyId!=null&&(typeof g.partyId!=="string"||!s.parties.some(p=>p.id===g.partyId))) g.partyId=null; }
+    const seen=new Set();   // a guest id in two chairs (hand-edited / external file): the first chair wins
     s.tables.forEach(t=>{
       t.capacity=clamp(Math.floor(+t.capacity)||10,1,30);
       t.label=String(t.label??"").slice(0,60); t.shape=(t.shape==="head")?"head":"round";
       if(t.shape==="head" && /^💑\s/.test(t.label)){ const bare=t.label.replace(/^💑\s*/,""); if(["νυφικό τραπέζι","head table","brauttisch"].includes(bare.toLowerCase())) t.label=bare; }   // default labels stored before the emoji-free chrome (2026-09-10); self-contained: sanitizePlan runs during top-level load
       if(!isNum(t.x)) t.x=200; if(!isNum(t.y)) t.y=200; if(t.rot!=null&&!isNum(t.rot)) t.rot=0;
       if(!Array.isArray(t.seats)) t.seats=[];
-      t.seats=t.seats.slice(0,t.capacity).map(x=>(typeof x==="string"&&s.guests[x])?x:null);   // drop dangling guest ids
+      t.seats=t.seats.slice(0,t.capacity).map(x=>(typeof x==="string"&&s.guests[x]&&!seen.has(x))?(seen.add(x),x):null);   // drop dangling and repeated guest ids
       while(t.seats.length<t.capacity) t.seats.push(null);
     });
     s.features.forEach(f=>{
@@ -2786,10 +2826,52 @@ $("exportDownload").addEventListener("click",()=>{
   document.body.appendChild(a); a.click(); a.remove(); toast(tr("tDownloaded",{n:a.download}));
 });
 $("exportClose").addEventListener("click",()=>$("exportModal").classList.remove("open"));
+function importMode(){ const r=document.querySelector('input[name="imode"]:checked'); return r?r.value:"new"; }
 function doImportData(s, suggested){
-  if(s && typeof s==="object" && s.tables){ importPlanAsProfile(s, suggested); }
+  if(s && typeof s==="object" && s.tables){
+    const mode=importMode();
+    if(mode==="new"){ importPlanAsProfile(s, suggested); return; }
+    if(mode.startsWith("replace")){ if(!confirm(tr("importConfirmReplace"))) return; wipeAllowedUntil=Date.now()+60000; }   // an emptied list is what was asked for: no wipe refusal, ↶ still works
+    mergePlanInto(s, mode);
+  }
   else if(s && typeof s==="object" && s.importGuests){ mergeGuestList(s); }
   else { toast(tr("tNotPlan")); }
+}
+// Merge a plan file INTO the current plan. "names" = guests + their groups / invitations (matched by name, so colours are kept);
+// "tables" = who sits with whom. The layout (space, decor, table positions) only changes with replaceAll.
+function mergePlanInto(src, mode){
+  sanitizePlan(src); if(src.layoutVersion!==LAYOUT_VERSION) migrateLayout(src);
+  if(mode==="replaceAll"){
+    delete src._profileName; src._uid=Math.max(src._uid||0, uid);
+    restoreSnapshot(JSON.stringify(src)); uid=state._uid||uid; save();   // save() stacks the previous state, so ↶ brings it back
+    toast(tr("tMergedPlan",{g:Object.keys(state.guests).length, t:state.tables.length})); return;
+  }
+  if(mode==="replaceNames"||mode==="replaceSeating"){ state.guests={}; state.parties=[]; state.tables.forEach(t=>{ t.seats=t.seats.map(()=>null); }); }
+  const gmap={};   // their group id → ours (by name; new colours only for groups we don't have)
+  (src.groups||[]).forEach(sg=>{ let g=state.groups.find(x=>norm(x.name)===norm(sg.name));
+    if(!g){ g={id:"grp"+nextId(), name:sg.name, color:sg.color||GROUP_PALETTE[state.groups.length%GROUP_PALETTE.length]}; state.groups.push(g); } gmap[sg.id]=g.id; });
+  const pmap={}; (src.parties||[]).forEach(sp=>{ const p=ensureParty(sp.name); if(p) pmap[sp.id]=p.id; });
+  const idmap={}; let gCount=0;
+  Object.keys(src.guests||{}).forEach(sid=>{ const sg=src.guests[sid]; const nid="g"+nextId();
+    state.guests[nid]={ name:sg.name, groupId:(sg.groupId&&gmap[sg.groupId])||null, partyId:(sg.partyId&&pmap[sg.partyId])||null, ...(sg.status?{status:sg.status}:{}), ...(sg.note?{note:sg.note}:{}) };
+    idmap[sid]=nid; gCount++; });
+  const remap=seats=>seats.map(x=>(x&&idmap[x])||null);
+  const addTable=st=>{ const t={...st, id:nextId(), seats:remap(st.seats)};   // a new table steps aside if the spot is taken (a file exported from this very plan lands on top of it)
+    let k=0; while(k<20 && state.tables.some(x=>Math.hypot(x.x-t.x,x.y-t.y)<40)){ t.x+=40; t.y+=40; k++; } state.tables.push(t); };
+  let tCount=0, added=0, grown=0;
+  if(mode==="appendAll"){   // their tables come in as new tables, where they were, with their people
+    src.tables.forEach(st=>{ addTable(st); tCount++; added++; });
+  }
+  if(mode==="replaceSeating"){   // their seating lands on OUR tables: same shape + label first, then same shape in order; extras become new tables
+    const used=new Set(), pairs=src.tables.map(st=>{ const t=state.tables.find(x=>!used.has(x.id)&&x.shape===st.shape&&norm(x.label)===norm(st.label)); if(t) used.add(t.id); return [st,t||null]; });
+    pairs.forEach(p=>{ if(p[1]) return; const t=state.tables.find(x=>!used.has(x.id)&&x.shape===p[0].shape); if(t){ used.add(t.id); p[1]=t; } });   // never a round table onto the head table
+    pairs.forEach(([st,t])=>{
+      if(!t){ addTable(st); tCount++; added++; return; }
+      const seats=remap(st.seats), need=seats.reduce((m,x,i)=>x?i+1:m,0); if(need>t.capacity){ t.capacity=Math.min(30,need); grown++; }
+      t.seats=Array(t.capacity).fill(null); seats.forEach((x,i)=>{ if(i<t.capacity) t.seats[i]=x; }); tCount++; });
+  }
+  pruneParties(); sanitizePlan(state); save(); renderAll();
+  toast(tr("tMergedPlan",{g:gCount, t:tCount})+(mode==="replaceSeating"&&added?tr("tMergedPlanAdded",{a:added}):"")+(mode==="replaceSeating"&&grown?tr("tMergedPlanGrown",{c:grown}):""), 5000);
 }
 function pickImportFile(){
   const inp=document.createElement("input"); inp.type="file"; inp.accept="application/json";
@@ -2799,7 +2881,7 @@ function pickImportFile(){
     r.readAsText(f); };
   inp.click();
 }
-function openImport(){ $("importText").value=""; $("importModal").classList.add("open"); }
+function openImport(){ $("importText").value=""; const r=document.querySelector('input[name="imode"][value="new"]'); if(r) r.checked=true; $("importModal").classList.add("open"); }
 $("importPaste").addEventListener("click",()=>{
   const txt=$("importText").value.trim(); if(!txt){ toast(tr("tPasteFirst")); return; }
   try{ doImportData(JSON.parse(txt), tr("pastedPlan")); $("importModal").classList.remove("open"); }
