@@ -255,8 +255,11 @@ cascade-purges its plans; venues can rotate their own key; backups encrypted at 
   `wireDiscDrop`; touch drags fall back to the disc under the pill); the search box is always shown on PC and sticky while
   the list scrolls; empty chairs paint above neighbouring name pills (z-index 2 vs 1); decor/table handles fade out with a
   0.6 s delay and stay while the item is selected (`.sel`, set in makeDraggable's pointerdown, cleared by a floor click);
-  names that would overlap a neighbour step outward onto a second ring just far enough (`off[]`, `seatStem` dot marks the
-  chair) — head-table names step down a row.
+  names that would collide slide apart along an outer circle like pie-chart labels (`layoutRingLabels`: arc-length
+  spreading on a circle just outside the chairs, a bigger circle when crowded), each tied to its chair by a dot + thin
+  leader (`seatLeader`); a table with no collision renders exactly as before. Head-table names slide sideways in their
+  row. Andreas rejected the earlier radial second-ring stagger (2026-09-14) — do not bring it back. The user's lever for
+  very crowded tables is Aa → Σύντομα / Αρχικά.
 - **Invitations** (`state.parties` [{id,name}], `guest.partyId`): created while typing names ("Οικ. Παπαδόπουλου:" on its
   own line groups the names below it until a blank line), edited per guest in the guest editor (datalist of existing
   invitations), shown as subsections of the guest list (`.pparty` header: tap = pick the whole party, its grip = place
