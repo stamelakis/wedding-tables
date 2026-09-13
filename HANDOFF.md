@@ -272,6 +272,21 @@ cascade-purges its plans; venues can rotate their own key; backups encrypted at 
   already at a table stay put (the header shows "shown / total" under a filter); one save + one undo step per gesture
   (`placeGuestInSeat(…, quiet)` returns the touched tables); renaming to an existing name merges; dropping a name back on
   its own table is a no-op; `seatNeighbours` knows the head table's row + ends.
+- **Whole-table group** (2026-09-13, Andreas: "choose a table and make everyone sitting there part of a group, like
+  Bride's family"): gear menu → "Ομάδα για όλο το τραπέζι…" (full-width `#menuGroup`) and, on PC, the sheet footer
+  `#fGroup`. `openTableGroupMenu(t, anc)` reuses `#groupmenu`: one row per group with the count of the table's people
+  already in it (row `.on` when all share it), an inline "Νέα ομάδα…" input + ＋ (creates with the next unused colour and
+  assigns at once; becomes `activeGroupId` like the manager's Add), "Χωρίς ομάδα", "Διαχείριση ομάδων…".
+  `setTableGroup(t, gid)` sets `groupId` on every seated guest — one save = one undo step — and toasts
+  "«Οικογένεια νύφης»: όλοι στο «3» (8)". An empty table only toasts. The openers stop propagation (the document
+  click-outside closer would otherwise shut the popover on the same click); `reanchorSheetMenus` re-anchors it to the
+  sheet ⚙ on phones (`dataset.fromSheet`).
+  Review fixes: the openers let the click bubble and the document closer exempts `#fGroup,#menuGroup` (a
+  stopPropagation kept the Fill / gear popovers open underneath); creating a group here does NOT move the pool filter
+  (`activeGroupId` — everyone in the new group is seated, the list would go empty); the ＋ path checks the table still
+  exists; `deleteTable` and `restoreSnapshot` close `#groupmenu`; `editGroup` resets `fromSheet`; sanitizePlan nulls a
+  `groupId` that points at no group; the footer button has its own full-width row (the label overflowed a third of the
+  footer); focus returns to the footer/⚙ after the gesture so a stray Backspace stays inside the panel guard.
 - **Delete key** (2026-09-13, Andreas: "delete tables by choosing and pressing delete, with a warning I can silence"):
   on PC, Delete or Backspace (not while typing, not while a modal is open, no key repeat) removes the thing chosen last —
   a decor item carrying `.feature.hsel` (set on pointerdown; grabbing a table clears it), else the focused table. Every

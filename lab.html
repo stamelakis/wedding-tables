@@ -291,7 +291,8 @@
   .fsug div:hover, .fsug div.sel{ background:var(--accent-soft); }
   .fsug div.new{ color:var(--accent-ink); font-weight:600; }
   .fsug div.more{ color:var(--faint); font-size:11.5px; cursor:default; padding-top:4px; }
-  .ffoot{ padding:8px 10px; border-top:1px solid var(--line); display:flex; gap:6px; flex:none; }
+  .ffoot{ padding:8px 10px; border-top:1px solid var(--line); display:flex; flex-wrap:wrap; gap:6px; flex:none; }
+  .ffoot #fGroup{ flex:1 1 100%; }
   .ffoot .ibtn{ flex:1; height:36px; font-size:12.5px; }
 
   /* ---------- Mobile bar · pick bar · drawer ---------- */
@@ -365,6 +366,11 @@
   #tablemenu input[type=number]{ width:58px; height:30px; padding:0 6px; border:1px solid var(--line); border-radius:7px; }
   #tablemenu .menu-actions{ display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px; }
   #tablemenu .menu-actions .ibtn{ height:34px; font-size:12px; padding:0 6px; justify-content:flex-start; }
+  .menu-actions .ibtn.wide{ grid-column:1 / -1; }
+  .gm-item.gm-new{ padding:4px 6px; cursor:default; }
+  .gm-item.gm-new:hover{ background:transparent; }
+  .gm-item.gm-new input{ flex:1; min-width:0; width:120px; height:30px; border:1px solid var(--line); border-radius:8px; padding:0 8px; font:inherit; font-size:13px; background:var(--card); color:var(--ink); }
+  .gm-item.gm-new .ibtn{ height:30px; width:34px; padding:0; flex:none; justify-content:center; }
   #groupmenu, #profilemenu, #moremenu, #fillmenu{ min-width:190px; padding:6px; }
   #moremenu{ max-height:calc(100vh - 70px); max-height:calc(100dvh - 70px); overflow-y:auto; }
   #moremenu .gm-more{ display:none; }
@@ -676,7 +682,7 @@
     </div>
     <div class="fhint" id="fHint" hidden></div>
     <div id="fSeats"></div>
-    <div class="ffoot"><button class="ibtn" id="fFill"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg><span data-t="fill"></span></button><button class="ibtn" id="fClear"><svg class="ic" aria-hidden="true"><use href="#i-broom"/></svg><span data-t="clearTable"></span></button></div>
+    <div class="ffoot"><button class="ibtn" id="fFill"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg><span data-t="fill"></span></button><button class="ibtn" id="fClear"><svg class="ic" aria-hidden="true"><use href="#i-broom"/></svg><span data-t="clearTable"></span></button><button class="ibtn" id="fGroup"><svg class="ic" aria-hidden="true"><use href="#i-people"/></svg><span data-t="tableGroup"></span></button></div>
   </aside>
 </div>
 
@@ -706,6 +712,7 @@
     <button class="ibtn" id="menuFill"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg><span data-t="fill"></span></button>
     <button class="ibtn" id="menuClear"><svg class="ic" aria-hidden="true"><use href="#i-broom"/></svg><span data-t="clearTable"></span></button>
     <button class="ibtn danger" id="menuDelete"><svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg><span data-t="deleteTable"></span></button>
+    <button class="ibtn wide" id="menuGroup"><svg class="ic" aria-hidden="true"><use href="#i-people"/></svg><span data-t="tableGroup"></span></button>
   </div>
 </div>
 <div id="groupmenu" class="popover"></div>
@@ -832,7 +839,7 @@ el:{
   geParty:"Πρόσκληση", gePartyPh:"π.χ. Οικ. Παπαδόπουλου", gripParty:"Τοποθέτηση όλης της πρόσκλησης…", partyRename:"Μετονομασία / διάλυση πρόσκλησης", partyRenamePrompt:"Όνομα πρόσκλησης (κενό = διάλυση):",
   pbParty:"{n} · {c} άτομα", tPartyPartial:"{n}/{m} της πρόσκλησης στο «{t}» — δεν χωρούν όλοι", printInvites:"Προσκλήσεις", printNoSeat:"χωρίς θέση",
   gripTitle:"Τοποθέτηση σε τραπέζι…", pmFor:"Θέση για: {n}", pmFloor:"Διαλέξτε καρέκλα στην κάτοψη", tPlaced:"{n} → {t}",
-  tipGroups:"Δώστε χρώμα στις παρέες: η κουκκίδα δίπλα σε κάθε όνομα αλλάζει ομάδα.", tipFull:"Γέμισε; Από τις ρυθμίσεις του τραπεζιού (γρανάζι) αλλάζετε τις θέσεις του.", tipPrint:"Σχεδόν έτοιμο! Στο ⋯ → Εκτύπωση βγαίνει η λίστα ανά τραπέζι.",
+  tipGroups:"Δώστε χρώμα στις παρέες: η κουκκίδα δίπλα σε κάθε όνομα αλλάζει ομάδα · το γρανάζι βάζει όλο το τραπέζι σε μία.", tipFull:"Γέμισε; Από τις ρυθμίσεις του τραπεζιού (γρανάζι) αλλάζετε τις θέσεις του.", tipPrint:"Σχεδόν έτοιμο! Στο ⋯ → Εκτύπωση βγαίνει η λίστα ανά τραπέζι.",
   tour:{
     dGuests:["Καλεσμένοι","Γράψτε ονόματα στο <b>Προσθήκη ονομάτων</b>, ένα ανά γραμμή."],
     dTables:["Ονόματα στα τραπέζια","<b>Πατήστε ένα τραπέζι</b>, γράψτε όνομα, <b>Enter</b>. Η κουκκίδα = ομάδα."],
@@ -854,7 +861,7 @@ el:{
   poolEmpty:"Όλοι οι καλεσμένοι έχουν θέση 🎉", poolEmptyNew:"Δεν υπάρχουν καλεσμένοι ακόμη.<br>Προσθέστε ονόματα παρακάτω ↓", poolEmptyGroup:"Κανείς χωρίς θέση σε αυτή την ομάδα — δείτε «Όλοι»", noMatch:"Κανένα όνομα δεν ταιριάζει",
   chipEdit:"Επεξεργασία ονόματος & ομάδας", chipRemove:"Αφαίρεση καλεσμένου", groupTip:"Κλικ: επιλογή · Διπλό κλικ: μετονομασία · Δεξί κλικ: χρώμα / διαγραφή", groupMore:"Μετονομασία / χρώμα / διαγραφή",
   prevTable:"Προηγούμενο τραπέζι", nextTable:"Επόμενο τραπέζι", tableSettings:"Ρυθμίσεις τραπεζιού", close:"Κλείσιμο",
-  seatPh:"κενή θέση", unseat:"Αφαίρεση από τη θέση", fill:"Γέμισμα", clearTable:"Άδειασμα", clearConfirm:"Να επιστρέψουν όλοι οι καλεσμένοι του «{n}» στους χωρίς θέση;",
+  seatPh:"κενή θέση", unseat:"Αφαίρεση από τη θέση", fill:"Γέμισμα", clearTable:"Άδειασμα", tableGroup:"Ομάδα για όλο το τραπέζι…", tgCap:"Όλοι στο «{n}» → ομάδα", tgEmpty:"Κανείς δεν κάθεται ακόμη στο «{n}».", tGrouped:"«{g}»: όλοι στο «{n}» ({k})", tUngrouped:"Χωρίς ομάδα: όλοι στο «{n}» ({k})", clearConfirm:"Να επιστρέψουν όλοι οι καλεσμένοι του «{n}» στους χωρίς θέση;",
   fillNone:"Δεν υπάρχουν καλεσμένοι χωρίς θέση εκεί", filled:"Τοποθετήθηκαν {n}", createNew:"＋ Νέος καλεσμένος «{n}»", renameTo:"Μετονομασία σε «{n}»", moreMatches:"…και άλλοι {n} — συνεχίστε να γράφετε",
   pbHint:"→ πατήστε μια θέση", pbUnseat:"↩ Χωρίς θέση", pbEdit:"Επεξεργασία", pbCancel:"Άκυρο",
   menuTitle:"Ρυθμίσεις τραπεζιού", menuTitleHead:"Ρυθμίσεις νυφικού τραπεζιού", capLabel:"Θέσεις", capLabelHead:"Συνολικές θέσεις (οι 2 είναι οι ακριανές)", labelPh:"Όνομα / αριθμός τραπεζιού", deleteTable:"Διαγραφή", focusSeats:"Ονόματα",
@@ -914,7 +921,7 @@ en:{
   geParty:"Invitation", gePartyPh:"e.g. The Smiths", gripParty:"Seat the whole invitation…", partyRename:"Rename / dissolve invitation", partyRenamePrompt:"Invitation name (empty = dissolve):",
   pbParty:"{n} · {c} people", tPartyPartial:"{n}/{m} of the invitation at “{t}” — not everyone fits", printInvites:"Invitations", printNoSeat:"no seat",
   gripTitle:"Place at a table…", pmFor:"Seat for: {n}", pmFloor:"Pick a chair on the floor", tPlaced:"{n} → {t}",
-  tipGroups:"Colour the groups: the dot next to a name changes its group.", tipFull:"Full? Table settings (the gear) change its number of seats.", tipPrint:"Almost there! ⋯ → Print gives you the list per table.",
+  tipGroups:"Colour the groups: the dot next to a name changes its group · the gear puts a whole table in one.", tipFull:"Full? Table settings (the gear) change its number of seats.", tipPrint:"Almost there! ⋯ → Print gives you the list per table.",
   tour:{
     dGuests:["Guests","Type names under <b>Add names</b>, one per line."],
     dTables:["Names at the tables","<b>Click a table</b>, type a name, <b>Enter</b>. The dot = group."],
@@ -936,7 +943,7 @@ en:{
   poolEmpty:"Everyone has a seat 🎉", poolEmptyNew:"No guests yet.<br>Add names below ↓", poolEmptyGroup:"No unseated guests in this group — see “All”", noMatch:"No name matches",
   chipEdit:"Edit name & group", chipRemove:"Remove guest", groupTip:"Click: select · Double-click: rename · Right-click: colour / delete", groupMore:"Rename / colour / delete",
   prevTable:"Previous table", nextTable:"Next table", tableSettings:"Table settings", close:"Close",
-  seatPh:"empty seat", unseat:"Remove from seat", fill:"Fill", clearTable:"Clear", clearConfirm:"Send everyone at “{n}” back to the unseated list?",
+  seatPh:"empty seat", unseat:"Remove from seat", fill:"Fill", clearTable:"Clear", tableGroup:"Group for the whole table…", tgCap:"Everyone at “{n}” → group", tgEmpty:"Nobody is seated at “{n}” yet.", tGrouped:"“{g}”: everyone at “{n}” ({k})", tUngrouped:"No group: everyone at “{n}” ({k})", clearConfirm:"Send everyone at “{n}” back to the unseated list?",
   fillNone:"No unseated guests there", filled:"Seated {n}", createNew:"＋ New guest “{n}”", renameTo:"Rename to “{n}”", moreMatches:"…and {n} more — keep typing",
   pbHint:"→ tap a seat", pbUnseat:"↩ Unseat", pbEdit:"Edit", pbCancel:"Cancel",
   menuTitle:"Table settings", menuTitleHead:"Head table settings", capLabel:"Seats", capLabelHead:"Total seats (2 are the ends)", labelPh:"Table name / number", deleteTable:"Delete", focusSeats:"Names",
@@ -996,7 +1003,7 @@ de:{
   geParty:"Einladung", gePartyPh:"z. B. Familie Müller", gripParty:"Ganze Einladung platzieren…", partyRename:"Einladung umbenennen / auflösen", partyRenamePrompt:"Name der Einladung (leer = auflösen):",
   pbParty:"{n} · {c} Personen", tPartyPartial:"{n}/{m} der Einladung an „{t}“ — nicht alle passen", printInvites:"Einladungen", printNoSeat:"ohne Platz",
   gripTitle:"An einen Tisch setzen…", pmFor:"Platz für: {n}", pmFloor:"Stuhl auf der Fläche wählen", tPlaced:"{n} → {t}",
-  tipGroups:"Farbe für die Gruppen: der Punkt neben einem Namen ändert seine Gruppe.", tipFull:"Voll? In den Tisch-Einstellungen (Zahnrad) ändern Sie die Platzzahl.", tipPrint:"Fast fertig! ⋯ → Drucken gibt die Liste pro Tisch.",
+  tipGroups:"Farbe für die Gruppen: der Punkt neben einem Namen ändert seine Gruppe · das Zahnrad legt einen ganzen Tisch in eine.", tipFull:"Voll? In den Tisch-Einstellungen (Zahnrad) ändern Sie die Platzzahl.", tipPrint:"Fast fertig! ⋯ → Drucken gibt die Liste pro Tisch.",
   tour:{
     dGuests:["Gäste","Namen unter <b>Namen hinzufügen</b> eingeben, einen pro Zeile."],
     dTables:["Namen an den Tischen","<b>Tisch anklicken</b>, Namen eingeben, <b>Enter</b>. Der Punkt = Gruppe."],
@@ -1018,7 +1025,7 @@ de:{
   poolEmpty:"Alle Gäste haben einen Platz 🎉", poolEmptyNew:"Noch keine Gäste.<br>Namen unten hinzufügen ↓", poolEmptyGroup:"Niemand ohne Platz in dieser Gruppe — siehe „Alle“", noMatch:"Kein Name passt",
   chipEdit:"Name & Gruppe bearbeiten", chipRemove:"Gast entfernen", groupTip:"Klick: auswählen · Doppelklick: umbenennen · Rechtsklick: Farbe / löschen", groupMore:"Umbenennen / Farbe / löschen",
   prevTable:"Vorheriger Tisch", nextTable:"Nächster Tisch", tableSettings:"Tisch-Einstellungen", close:"Schließen",
-  seatPh:"freier Platz", unseat:"Vom Platz entfernen", fill:"Füllen", clearTable:"Leeren", clearConfirm:"Alle Gäste von „{n}“ zurück in die Liste ohne Platz?",
+  seatPh:"freier Platz", unseat:"Vom Platz entfernen", fill:"Füllen", clearTable:"Leeren", tableGroup:"Gruppe für den ganzen Tisch…", tgCap:"Alle an „{n}“ → Gruppe", tgEmpty:"An „{n}“ sitzt noch niemand.", tGrouped:"„{g}“: alle an „{n}“ ({k})", tUngrouped:"Keine Gruppe: alle an „{n}“ ({k})", clearConfirm:"Alle Gäste von „{n}“ zurück in die Liste ohne Platz?",
   fillNone:"Dort gibt es keine Gäste ohne Platz", filled:"{n} platziert", createNew:"＋ Neuer Gast „{n}“", renameTo:"Umbenennen in „{n}“", moreMatches:"…und {n} weitere — weiter tippen",
   pbHint:"→ Platz antippen", pbUnseat:"↩ Platz freigeben", pbEdit:"Bearbeiten", pbCancel:"Abbrechen",
   menuTitle:"Tisch-Einstellungen", menuTitleHead:"Brauttisch-Einstellungen", capLabel:"Plätze", capLabelHead:"Plätze gesamt (2 davon an den Enden)", labelPh:"Tischname / -nummer", deleteTable:"Löschen", focusSeats:"Namen",
@@ -1256,7 +1263,7 @@ function updateUndoButtons(){
 }
 function restoreSnapshot(json){
   const s=sanitizePlan(JSON.parse(json)); if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s);
-  setPick(null); dragData=null; hideSug(); closePlaceMenu();
+  setPick(null); dragData=null; hideSug(); closePlaceMenu(); closeGroupMenu();
   state=s; uid=Math.max(uid, state._uid||0); fontScale=state.seatFontScale||1;
   applyStage(); $("stageFloor").value=state.stageMaterial||"grass";
   if(focusId!=null && !state.tables.some(t=>t.id===focusId)) unfocusTable();
@@ -1315,7 +1322,7 @@ function sanitizePlan(s){ if(!s||typeof s!=="object") return s;
     if(!Array.isArray(s.parties)) s.parties=[];
     s.parties=s.parties.filter(p=>p&&typeof p==="object"&&p.id!=null).map(p=>({ id:String(p.id).replace(/[^\w-]/g,"").slice(0,40)||("p"+Math.floor(Math.random()*1e6)), name:String(p.name??"").slice(0,80) }));
     for(const k of Object.keys(s.guests)){ const g=s.guests[k]; if(!g||typeof g!=="object"){ delete s.guests[k]; continue; }
-      g.name=String(g.name??"").slice(0,80); if(g.groupId!=null&&typeof g.groupId!=="string") g.groupId=null; if(g.note!=null) g.note=String(g.note).slice(0,200);
+      g.name=String(g.name??"").slice(0,80); if(g.groupId!=null&&(typeof g.groupId!=="string"||!s.groups.some(x=>String(x.id)===g.groupId))) g.groupId=null; if(g.note!=null) g.note=String(g.note).slice(0,200);
       if(g.partyId!=null&&(typeof g.partyId!=="string"||!s.parties.some(p=>p.id===g.partyId))) g.partyId=null; }
     const seen=new Set();   // a guest id in two chairs (hand-edited / external file): the first chair wins
     s.tables.forEach(t=>{
@@ -1713,7 +1720,7 @@ function recolorGroup(id){
 }
 function editGroup(id,evt){
   const g=state.groups.find(x=>x.id===id); if(!g)return;
-  const menu=$("groupmenu");
+  const menu=$("groupmenu"); menu.dataset.fromSheet="";
   menu.innerHTML=`
     <div class="gm-item" data-act="rename"><span class="dot" style="background:${g.color}"></span>${escapeHtml(tr("gmRename",{n:g.name}))}</div>
     <div class="gm-item" data-act="recolor">${ICON("palette")}${escapeHtml(tr("gmRecolor"))}</div>
@@ -1748,16 +1755,53 @@ function groupRowsHtml(selId){
 function openGroupMenu(guestId, evt){
   closePlaceMenu();
   const menu=$("groupmenu"); const g=state.guests[guestId]; if(!g) return;
-  menu.innerHTML=`<div class="gm-cap">${escapeHtml(tr("rowGroup"))}</div>`+groupRowsHtml(g.groupId||null);
+  menu.dataset.fromSheet=""; menu.innerHTML=`<div class="gm-cap">${escapeHtml(tr("rowGroup"))}</div>`+groupRowsHtml(g.groupId||null);
   menu.querySelectorAll(".gm-item[data-gid]").forEach(it=>{ it.onclick=()=>{ g.groupId=it.dataset.gid||null; save(); renderTables(); renderPool(); renderGroups(); closeGroupMenu(); }; });
   menu.querySelector('[data-act="manage"]').onclick=()=>{ closeGroupMenu(); openGroupsModal(); };
   showPopover(menu,evt);
 }
+// Everyone at a table → one group (gear menu, sheet footer). Pick a group or type a new one; one save, one undo step.
+function tableSeated(t){ return t.seats.filter(id=>id&&state.guests[id]); }
+function openTableGroupMenu(t, anc){
+  closePlaceMenu();
+  const ids=tableSeated(t); if(!ids.length){ toast(tr("tgEmpty",{n:t.label}),2500); return; }
+  const per={}; ids.forEach(id=>{ const g=state.guests[id].groupId||""; per[g]=(per[g]||0)+1; });
+  const common=Object.keys(per).length===1 ? Object.keys(per)[0] : null;   // all already in one group → that row is "on"
+  const row=(gid,name,color)=>`<div class="gm-item${common===gid?" on":""}" data-gid="${escapeHtml(gid)}"><span class="dot" style="background:${color}"></span>${escapeHtml(name)}<span class="n">${per[gid]||""}</span></div>`;
+  const menu=$("groupmenu");
+  menu.innerHTML=`<div class="gm-cap">${escapeHtml(tr("tgCap",{n:t.label}))}</div>`
+    +state.groups.map(g=>row(g.id,g.name,safeColor(g.color))).join("")
+    +`<div class="gm-item gm-new"><input class="gnew" placeholder="${escapeHtml(tr("groupsNewPh"))}" maxlength="40" autocomplete="off"><button class="ibtn" data-act="new" title="${escapeHtml(tr("groupsAdd"))}">＋</button></div>`
+    +row("",tr("noGroup"),"#ccc")
+    +`<div class="gm-sep"></div><div class="gm-item" data-act="manage">${ICON("gear")}${escapeHtml(tr("gmManage"))}</div>`;
+  menu.querySelectorAll(".gm-item[data-gid]").forEach(it=>{ it.onclick=()=>setTableGroup(t, it.dataset.gid||null); });
+  const inp=menu.querySelector(".gnew"), mk=()=>{ if(!state.tables.some(x=>x.id===t.id)){ closeGroupMenu(); return; }   // table gone meanwhile (Delete key, undo, a pull): no unsaved group
+    const v=inp.value.trim(); if(!v){ inp.focus(); return; }
+    const color=[...GROUP_PALETTE,...EXTRA_PALETTE].find(c=>!state.groups.some(g=>g.color===c))||GROUP_PALETTE[state.groups.length%GROUP_PALETTE.length];
+    const g={id:"grp"+nextId(), name:v, color}; state.groups.push(g);   // not the pool filter (activeGroupId): everyone in this group is seated, the list would go empty
+    setTableGroup(t, g.id); };
+  menu.querySelector('[data-act="new"]').onclick=mk;
+  inp.addEventListener("keydown",e=>{ e.stopPropagation(); if(e.key==="Enter"){ e.preventDefault(); mk(); } if(e.key==="Escape"){ e.preventDefault(); closeGroupMenu(); } });
+  menu.querySelector('[data-act="manage"]').onclick=()=>{ closeGroupMenu(); openGroupsModal(); };
+  menu.dataset.fromSheet=(isNarrow() && t.id===focusId)?"1":"";   // phone: came from the sheet's ⚙ → re-anchor there if the sheet moves
+  showPopover(menu, anc);
+}
+function setTableGroup(t, gid){
+  const cur=state.tables.find(x=>x.id===t.id); if(!cur){ closeGroupMenu(); return; }
+  if(gid && !state.groups.some(g=>g.id===gid)) gid=null;
+  const ids=tableSeated(cur); ids.forEach(id=>{ state.guests[id].groupId=gid; });
+  save(); renderTables(); renderPool(); renderGroups(); if(focusId===cur.id) renderFocus(); closeGroupMenu();
+  if(focusId===cur.id){ const back=isNarrow()?$("fSettings"):$("fGroup"); if(back) try{ back.focus({preventScroll:true}); }catch(e){} }   // the popover had focus; back in the panel a stray Backspace stays harmless
+  const g=gid?state.groups.find(x=>x.id===gid):null;
+  toast(g?tr("tGrouped",{g:g.name,n:cur.label,k:ids.length}):tr("tUngrouped",{n:cur.label,k:ids.length}),3000);
+}
+$("menuGroup").addEventListener("click",e=>{ const t=state.tables.find(x=>x.id===activeMenuTableId), anc=anchorOf(e.currentTarget); closeMenu(); if(t) openTableGroupMenu(t, anc); });   // the click bubbles to the closer, which exempts these two openers
+$("fGroup").addEventListener("click",e=>{ const t=focusedTable(); if(t) openTableGroupMenu(t, anchorOf(e.currentTarget)); });
 // Choose the group that NEW names will join (an empty seat row's dot)
 function openActiveGroupMenu(evt){
   closePlaceMenu();
   const menu=$("groupmenu");
-  menu.innerHTML=`<div class="gm-cap">${escapeHtml(tr("rowNewGroup"))}</div>`+groupRowsHtml(state.activeGroupId||null);
+  menu.dataset.fromSheet=""; menu.innerHTML=`<div class="gm-cap">${escapeHtml(tr("rowNewGroup"))}</div>`+groupRowsHtml(state.activeGroupId||null);
   menu.querySelectorAll(".gm-item[data-gid]").forEach(it=>{ it.onclick=()=>{ state.activeGroupId=it.dataset.gid||null; save(); renderGroups(); renderPool(); if(focusId!=null) renderFocus(); closeGroupMenu(); }; });
   menu.querySelector('[data-act="manage"]').onclick=()=>{ closeGroupMenu(); openGroupsModal(); };
   showPopover(menu,evt);
@@ -2452,7 +2496,7 @@ function deleteTable(id){
   confirmDelete(tr("confirmDeleteTable",{n:t.label}), ()=>{
     if(!state.tables.some(x=>x.id===id)) return;   // gone meanwhile (undo, a pull)
     if(pick&&pick.from==="seat"&&pick.tableId===id) setPick(null);   // a name picked up from this table has nowhere to go back to
-    if(focusId===id) unfocusTable(); closeMenu();
+    if(focusId===id) unfocusTable(); closeMenu(); closeGroupMenu();
     state.tables=state.tables.filter(x=>x.id!==id); save(); renderTables(); renderPool();
     toast(tr("tDeleted",{n:t.label}),3500);
   });
@@ -2468,7 +2512,7 @@ $("menuDelete").addEventListener("click",()=>deleteTable(activeMenuTableId));
 $("menuNames").addEventListener("click",()=>{ const id=activeMenuTableId; closeMenu(); if(id!=null) focusTable(id,{row:0}); });
 document.addEventListener("click",e=>{
   if(menu.style.display==="block" && !menu.contains(e.target) && !e.target.classList.contains("tgear") && e.target.id!=="fSettings") closeMenu();
-  [["groupmenu",closeGroupMenu],["featuremenu",closeFeatureMenu],["guesteditor",closeGuestEditor],["placemenu",closePlaceMenu]].forEach(([id,fn])=>{ const el=$(id); if(el.style.display==="block" && !el.contains(e.target)) fn(); });
+  [["groupmenu",closeGroupMenu,"#fGroup,#menuGroup"],["featuremenu",closeFeatureMenu],["guesteditor",closeGuestEditor],["placemenu",closePlaceMenu]].forEach(([id,fn,keep])=>{ const el=$(id); if(el.style.display==="block" && !el.contains(e.target) && !(keep&&e.target.closest&&e.target.closest(keep))) fn(); });
   const pm=$("profilemenu"); if(pm.style.display==="block" && !pm.contains(e.target) && e.target.id!=="profMore") closeProfileMenu();
   const mm=$("moremenu"); if(mm.style.display==="block" && !mm.contains(e.target) && !e.target.closest("#moreBtn")) mm.style.display="none";
   const fm=$("fillmenu"); if(fm.style.display==="block" && !fm.contains(e.target) && !e.target.closest("#fFill,#menuFill")) fm.style.display="none";
@@ -2506,6 +2550,7 @@ function reanchorSheetMenus(){
   if(!isNarrow()) return; const a=$("fSettings");
   if(menu.style.display==="block" && focusId!=null && activeMenuTableId===focusId) showPopover(menu, anchorOf(a));
   const fm=$("fillmenu"); if(fm.style.display==="block" && fm.dataset.fromSheet) showPopover(fm, anchorOf(a));
+  const gm=$("groupmenu"); if(gm.style.display==="block" && gm.dataset.fromSheet) showPopover(gm, anchorOf(a));
   const pm=$("placemenu"); if(pm.style.display==="block") showPopover(pm, placeAnchor(pm));
 }
 focusEl.addEventListener("transitionend",e=>{ if(e.propertyName==="height") reanchorSheetMenus(); });
