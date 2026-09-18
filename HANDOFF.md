@@ -3,7 +3,7 @@
 > Read this first. It maps the whole system so a new agent (or developer) can pick it up cold.
 > **This repo is PUBLIC — never commit secrets here.** Real keys live in `ACCESS.local.md`
 > (git-ignored, on Andreas's PC), in the server's env files, and in Andreas's password manager.
-> Last updated: 2026-09-18 (roles & access — §1b).
+> Last updated: 2026-09-18 (roles & access — §1b; email recovery — §1c).
 
 ## 1. What this is
 
@@ -23,7 +23,8 @@ their guests at tables. Live at **https://takeaseat.gr**.
 **Pricing on the site (2026-09-08):** venues season **129 €/season** (unlimited weddings), venues per wedding **9 €**,
 couples **19 € one-off** (the "expensive" tier — never called that; venues simply get the partner price). All three
 numbers live only in the pricing section of `index.html`. Couples currently sign up by e-mail (the CTA is a mailto);
-fulfil in `admin.html` → **Couples (direct)** → create → send the **claim link** (§1b). Never again as a wedding under a
+fulfil in `admin.html` → **Couples (direct)** → create **with their email** (the claim link is mailed to them when mail
+is on — §1c; otherwise send the **claim link** yourself, §1b). Never again as a wedding under a
 "Direct couples" venue: those weddings are venue-owned, so the admin could open them.
 
 ## 1b. Roles & access (2026-09-18) — who can see and change what
@@ -57,18 +58,42 @@ fulfil in `admin.html` → **Couples (direct)** → create → send the **claim 
 - **Migration**: `migrate(env)` runs once at server start (guarded by `meta:schema`): owner/readKey/venueKey/perms for
   every existing plan, code roles, and a **14-day id-only read grace** for plans that existed before (old tabs, old
   view links, the old Hermes). Owners can end it early from ☁.
-- **Lost-link reset is an admin power** (decision for Andreas): «New link…» gives the admin a claim link he *could*
-  open himself before the couple. It is logged as «άνοιξε τον νέο σύνδεσμο που έδωσε η TakeaSeat» in the couple's access
-  log and every old link/device stops working, so it is visible — but not impossible. Closing it fully needs the new
-  link to go straight to the couple (e-mail from the server to the licence contact). The same holds for the very first
-  claim link: whoever opens it first becomes the couple.
+- **Lost links**: with mail on, couples and venues recover on their own and every new link goes straight to their
+  email (§1c). With mail off, «New link…» gives the admin a claim link he *could* open himself before the couple
+  (logged as «άνοιξε τον νέο σύνδεσμο που έδωσε η TakeaSeat», every old link/device stops) — visible, not impossible.
 - **Hermes after a deploy of this change**: the running `takeaseat_control.py` keeps the old code in memory and a new
   launch exits silently while it runs (single-instance guard). End the running pythonw process, then start it again.
 - **Honest limit**: this is enforced by the software (API, consoles, planner). Root on the server can still read the
   SQLite file, because the server itself must read plans (wipe guard, history, lock enforcement). End-to-end
   encryption would be a separate project (lost link = lost plan).
-- **Tests**: `node tools/test-api.mjs` (139 checks: every role, migration, legacy, races guards). The build now also
+- **Tests**: `node tools/test-api.mjs` (every role, migration, legacy, race guards, email — §1c). The build also
   fails on duplicate dictionary keys (a later key silently overrides the earlier one).
+
+## 1c. Email: customers get their own links and recover on their own (2026-09-18)
+
+Every couple and venue has a **recovery email** (`couple.email` / `venue.email`, index `email:<addr>`). With mail ON
+the server e-mails every link and key **straight to the customer**, and the owner API never returns them:
+- new couple → the **claim link** goes to the couple's email (admin sees "sent", never the link);
+- new venue → a **7-day setup link** (`venue.html#recover=`) where the venue creates its own console key;
+- **"forgot my link / key"**: couples at `/seating-planner-el.html#recover` (linked from the home page and from every
+  used/expired claim screen), venues from the sign-in screen of `venue.html` → `POST /recover` mails one-hour, one-time
+  links (answer is the same whether or not the address exists; 3 mails/hour per address, 20/hour per IP);
+- admin **Send link** (unopened: the claim link, renewed if expired; opened: a 7-day recovery link), **New link**
+  (reset) and venue **Reset key** all go by mail; a venue's current key keeps working until it uses the mailed link;
+- changing the address: the customer does it in **Access & support** (planner) / the key panel (venue console) and
+  confirms from the new address (`#verify=`); the old address is always told. The admin can also change it
+  (PATCH) — the old address is told and it shows in the couple's access log («άλλαξε το email ανάκτησης»).
+- Links always use `PUBLIC_URL` (never the request Host). Mails are plain text in el/en/de (`MAILS` in the worker).
+
+**Turning mail on** (`/opt/takeaseat/server/server.env`, then `docker compose … up -d`): `SMTP_HOST`, `SMTP_PORT`
+(465 = TLS, else STARTTLS), `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` (e.g. `TakeaSeat <hello@takeaseat.gr>`), optional
+`PUBLIC_URL`. The startup log says `mail: SMTP via …` or `mail: off`. Delivery failures are logged (`mail failed to
+ab***@…`), not retried — the admin can press Send link again. The sender domain needs SPF + DKIM at Papaki or the
+mails land in spam. **With mail OFF** nothing changes: claim links and venue keys are shown in `admin.html` as before.
+Dev: `MAIL_LOG=1 node tools/dev.mjs` prints mails to the console with links to the dev server.
+
+The remaining admin power over a couple plan is visible, not impossible: the admin can change a couple's address to
+one he controls and press Send link (or reset). The couple's old address is told and both steps are in their log.
 
 ## 2. Architecture
 
@@ -223,6 +248,9 @@ cascade-purges its plans; venues can rotate their own key; backups encrypted at 
 3. **Deferred hardening** (skipped as too risky to do unattended on the live shared box): run the
    container as a **non-root** user and move it off the shared `edu-admin_internal` network onto its own.
 4. **First real customers**: only Andreas's own wedding (Andreas & Lina, venue Jockey) + test plans exist so far.
+5. **Mail sender** (§1c): pick a transactional provider (e.g. Brevo / Postmark, EU) or a Google Workspace mailbox on
+   takeaseat.gr, add its SPF + DKIM records at Papaki, put `SMTP_*` + `MAIL_FROM` in `server.env`, and list the
+   provider as a sub-processor in `privacy.html` / `dpa.html` (the DPA promises venues notice before a new one).
 
 ## 9. Critical gotchas
 

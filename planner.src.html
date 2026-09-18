@@ -15,7 +15,7 @@ __ROBOTS__
   if(!/(^|\.)takeaseat\.gr$/i.test(location.hostname)) return;   // only gate the live product
   try{
     var qs=new URLSearchParams(location.search);
-    if(qs.get("plan")||qs.get("claim")||/[#&]claim=/.test(location.hash)) return;   // a plan/couple link, or a claim link
+    if(qs.get("plan")||qs.get("claim")||/[#&](claim=|recover(=|&|$)|verify=)/.test(location.hash)) return;   // a plan/couple link, a claim, recovery or email-confirmation link
     if(localStorage.getItem("weddingVenueKey")) return;                       // signed-in venue
     var idx=JSON.parse(localStorage.getItem("weddingSeatingPlanner.profiles")||"null");
     if(idx&&idx.profiles&&idx.profiles.some(function(x){return x.cloudId;})) return;  // returning couple
@@ -894,11 +894,19 @@ el:{
   cUploadNone:"Αυτό το σχέδιο είναι μόνο σε αυτή τη συσκευή. Τα σχέδια online τα δίνει το κτήμα σας ή η TakeaSeat.", cLegacyNote:"Παλιοί σύνδεσμοι προβολής και παράθυρα που άνοιξαν πριν από την ενημέρωση συγχρονίζονται έως {t}. Ανανεώστε το TakeaSeat στις άλλες συσκευές σας πριν το απενεργοποιήσετε.", cLegacyOff:"Απενεργοποίηση τώρα", cLegacyOffDone:"Οι παλιοί σύνδεσμοι δεν λειτουργούν πια.",
   claimTitle:"Το τραπεζολόγιό σας", claimLead:"Καλώς ήρθατε! Ο σύνδεσμος ανοίγει το σχέδιό σας μία φορά, σε αυτή τη συσκευή· μετά θα δείτε τον προσωπικό σας σύνδεσμο.", claimInApp:"Είστε μέσα σε εφαρμογή (Viber, Messenger, Instagram…). Ανοίξτε τον σύνδεσμο στο Chrome ή στο Safari, αλλιώς το σχέδιο θα μείνει μόνο εδώ.", claimGo:"Άνοιγμα του σχεδίου μου",
   claimDone:"Το «{n}» είναι δικό σας — μόνο εσείς το βλέπετε.", claimKeep:"Κρατήστε αυτόν τον προσωπικό σύνδεσμο και στείλτε τον στον/στη σύντροφό σας:", claimShare:"Αποστολή…", claimShareText:"Το τραπεζολόγιό μας «{n}»", claimContinue:"Συνέχεια",
-  claimUsedAt:"Αυτός ο σύνδεσμος άνοιξε ήδη ({t}). Αν τον άνοιξε ο/η σύντροφός σας, ζητήστε του/της τον «Σύνδεσμο επεξεργασίας» (☁). Αλλιώς γράψτε μας.", claimExpired:"Ο σύνδεσμος έληξε — γράψτε μας για νέο.", claimFail:"Δεν ήταν δυνατή η σύνδεση — δοκιμάστε ξανά.", claimRetry:"Ξανά", claimHome:"Αρχική σελίδα",
+  claimUsedAt:"Αυτός ο σύνδεσμος άνοιξε ήδη ({t}). Αν τον άνοιξε ο/η σύντροφός σας, ζητήστε του/της τον «Σύνδεσμο επεξεργασίας» (☁). Αλλιώς ζητήστε νέο σύνδεσμο στο email σας.", claimExpired:"Ο σύνδεσμος έληξε — ζητήστε νέο στο email σας.", claimFail:"Δεν ήταν δυνατή η σύνδεση — δοκιμάστε ξανά.", claimRetry:"Ξανά", claimHome:"Αρχική σελίδα",
   accAskVenue:"Για αλλαγές στον χώρο επικοινωνήστε με το κτήμα: {c}", accSupportView:"Βλέπετε το σχέδιο χωρίς να το αλλάζετε. Για διορθώσεις, ενεργοποιήστε την επεξεργασία.", accSupportEdit:"Ενεργοποίηση επεξεργασίας", tSupportEditOn:"Επεξεργασία ενεργή — οι αλλαγές αποθηκεύονται στο σχέδιο του πελάτη.", rbSupportView:"🛟 Υποστήριξη (προβολή) · έως {t}",
   accLinks:"Οι σύνδεσμοί σας", accLinksHint:"Αν ο σύνδεσμός σας έφτασε σε κάποιον που δεν θέλετε, φτιάξτε νέους: οι παλιοί και όλες οι άλλες συσκευές σταματούν να έχουν πρόσβαση.", accRotate:"Νέοι σύνδεσμοι", accRotateConfirm:"Οι παλιοί σύνδεσμοι και οι άλλες συσκευές σας θα σταματήσουν να έχουν πρόσβαση. Συνέχεια;", tRotated:"Νέοι σύνδεσμοι έτοιμοι — στείλτε τον νέο στον/στη σύντροφό σας.", atRotate:"έφτιαξε νέους συνδέσμους (οι παλιοί σταμάτησαν)",
   rbSupportOnVenue:"Το κτήμα έδωσε πρόσβαση στην υποστήριξη TakeaSeat έως {t}.", tRenameVenue:"Το όνομα του γάμου το ορίζει {v}.", tNoCopySupport:"Σε λειτουργία υποστήριξης δεν γίνονται αντίγραφα του σχεδίου.",
   featLockedTip:"Στοιχείο του χώρου — το ορίζει {v}", tMaxSeats:"Έως {n} καρέκλες ανά τραπέζι ({v}).", tResetKeepSpace:"Τα ονόματα και οι θέσεις διαγράφηκαν· ο χώρος του {v} έμεινε ως είχε.", tipFullLocked:"Γέμισε! Για περισσότερες καρέκλες ή τραπέζι, ρωτήστε το κτήμα.",
+  recLead:"Γράψτε το email που δώσατε στην TakeaSeat. Θα σας στείλουμε σύνδεσμο για να ανοίξετε ξανά το σχέδιό σας.", recEmailPh:"το email σας", recSend:"Στείλτε μου σύνδεσμο",
+  recSent:"Αν το {e} είναι καταχωρημένο, θα λάβετε μήνυμα σε λίγα λεπτά (δείτε και τα ανεπιθύμητα). Ο σύνδεσμος ισχύει μία ώρα.", recOff:"Η αποστολή email δεν είναι διαθέσιμη αυτή τη στιγμή. Γράψτε μας στο info@takeaseat.gr και θα σας βοηθήσουμε.",
+  recBad:"Ελέγξτε το email.", recRate:"Πολλές αιτήσεις — δοκιμάστε ξανά σε λίγο.", recOpenLead:"Ανοίγουμε ξανά το σχέδιό σας σε αυτή τη συσκευή.", recDone:"Το «{n}» άνοιξε ξανά σε αυτή τη συσκευή.",
+  recUsed:"Αυτός ο σύνδεσμος έχει ήδη χρησιμοποιηθεί ή δεν ισχύει πια. Ζητήστε νέο.", recExpired:"Ο σύνδεσμος έληξε (ισχύει μία ώρα). Ζητήστε νέο.", recAgain:"Στείλτε μου νέο σύνδεσμο",
+  verLead:"Επιβεβαιώστε ότι αυτό το email θα χρησιμοποιείται για την ανάκτηση του σχεδίου σας.", verGo:"Επιβεβαίωση", verDone:"Έτοιμο! Το {e} είναι πλέον το email ανάκτησης.", verBad:"Ο σύνδεσμος επιβεβαίωσης έληξε ή έχει ήδη χρησιμοποιηθεί. Ζητήστε νέο από «Πρόσβαση & υποστήριξη».",
+  accEmail:"Email ανάκτησης", accEmailHint:"Αν χάσετε τον σύνδεσμό σας, ζητήστε νέο με αυτό το email από το takeaseat.gr.", accEmailNone:"Δεν έχει οριστεί email — προσθέστε ένα, για να μπορείτε να ανακτήσετε το σχέδιο αν χάσετε τον σύνδεσμο.",
+  accEmailChange:"Αλλαγή", accEmailSet:"Αποθήκευση", accEmailSame:"Αυτό είναι ήδη το email ανάκτησης.", tEmailSent:"Στείλαμε σύνδεσμο επιβεβαίωσης στο {e}. Η αλλαγή γίνεται όταν τον ανοίξετε.",
+  atRecover:"άνοιξε το σχέδιο με σύνδεσμο ανάκτησης (email)", atEmail:"άλλαξε το email ανάκτησης",
   accTitle:"Πρόσβαση & υποστήριξη", mAccess:"Πρόσβαση & υποστήριξη", theVenue:"το κτήμα",
   rbVenue:"🏛 Κτήμα", rbVenueTip:"Ανοίξατε τον γάμο ως κτήμα: αλλάζετε τα πάντα. Το ζευγάρι αλλάζει μόνο ό,τι του επιτρέπετε.", rbTemplate:"🏛 Πρότυπο χώρου", rbTemplateTip:"Αυτή είναι η διάταξη του χώρου σας: κάθε νέος γάμος ξεκινά από εδώ (χωρίς καλεσμένους). Οι γάμοι που υπάρχουν ήδη δεν αλλάζουν.", rbPreview:"👁 Όπως το βλέπει το ζευγάρι",
   rbSupport:"🛟 Υποστήριξη · έως {t}", rbSupportTip:"Ο ιδιοκτήτης σάς έδωσε προσωρινή πρόσβαση. Τίποτα δεν μένει σε αυτή τη συσκευή.", rbViewer:"👁 Μόνο προβολή", rbViewerTip:"Βλέπετε το σχέδιο· δεν μπορείτε να το αλλάξετε.",
@@ -1004,11 +1012,19 @@ en:{
   cUploadNone:"This plan is only on this device. Online plans come from your venue or from TakeaSeat.", cLegacyNote:"Old view-only links, and app windows opened before the update, keep syncing until {t}. Reload TakeaSeat on your other devices before turning this off.", cLegacyOff:"Turn them off now", cLegacyOffDone:"Old links no longer work.",
   claimTitle:"Your seating plan", claimLead:"Welcome! This link opens your plan once, on this device; after that you will see your personal link.", claimInApp:"You are inside an app (Viber, Messenger, Instagram…). Open the link in Chrome or Safari, otherwise the plan will only stay here.", claimGo:"Open my plan",
   claimDone:"“{n}” is yours — only you can see it.", claimKeep:"Keep this personal link and send it to your partner:", claimShare:"Send…", claimShareText:"Our seating plan “{n}”", claimContinue:"Continue",
-  claimUsedAt:"This link was already opened ({t}). If your partner opened it, ask them for the “Edit link” (☁). Otherwise write to us.", claimExpired:"This link has expired — write to us for a new one.", claimFail:"Could not connect — please try again.", claimRetry:"Try again", claimHome:"Home page",
+  claimUsedAt:"This link was already opened ({t}). If your partner opened it, ask them for the “Edit link” (☁). Otherwise ask for a new link by email.", claimExpired:"This link has expired — ask for a new one by email.", claimFail:"Could not connect — please try again.", claimRetry:"Try again", claimHome:"Home page",
   accAskVenue:"For changes to the space, contact the venue: {c}", accSupportView:"You are viewing the plan without changing it. To fix something, turn on editing.", accSupportEdit:"Turn on editing", tSupportEditOn:"Editing is on — changes are saved to the customer's plan.", rbSupportView:"🛟 Support (view) · until {t}",
   accLinks:"Your links", accLinksHint:"If your link reached someone you did not intend, make new links: the old ones and all your other devices lose access.", accRotate:"New links", accRotateConfirm:"The old links and your other devices will lose access. Continue?", tRotated:"New links are ready — send the new one to your partner.", atRotate:"made new links (the old ones stopped working)",
   rbSupportOnVenue:"The venue gave TakeaSeat support access until {t}.", tRenameVenue:"The wedding's name is set by {v}.", tNoCopySupport:"In support mode the plan cannot be copied.",
   featLockedTip:"Part of the space — set by {v}", tMaxSeats:"Up to {n} chairs per table ({v}).", tResetKeepSpace:"Names and seating were cleared; the space of {v} stayed as it was.", tipFullLocked:"Full! For more chairs or another table, ask the venue.",
+  recLead:"Enter the email you gave TakeaSeat. We will send you a link to open your plan again.", recEmailPh:"your email", recSend:"Send me a link",
+  recSent:"If {e} is registered, you will get a message in a few minutes (check spam too). The link is valid for one hour.", recOff:"Sending email is not available right now. Write to info@takeaseat.gr and we will help.",
+  recBad:"Please check the email.", recRate:"Too many requests — try again in a while.", recOpenLead:"We will open your plan again on this device.", recDone:"“{n}” is open again on this device.",
+  recUsed:"This link was already used or is no longer valid. Ask for a new one.", recExpired:"This link has expired (it is valid for one hour). Ask for a new one.", recAgain:"Send me a new link",
+  verLead:"Confirm that this email will be used to recover your plan.", verGo:"Confirm", verDone:"Done! {e} is now your recovery email.", verBad:"This confirmation link has expired or was already used. Ask for a new one in “Access & support”.",
+  accEmail:"Recovery email", accEmailHint:"If you lose your link, ask for a new one with this email on takeaseat.gr.", accEmailNone:"No email set — add one so you can recover the plan if you lose the link.",
+  accEmailChange:"Change", accEmailSet:"Save", accEmailSame:"This is already your recovery email.", tEmailSent:"We sent a confirmation link to {e}. The change happens when you open it.",
+  atRecover:"opened the plan with a recovery link (email)", atEmail:"changed the recovery email",
   accTitle:"Access & support", mAccess:"Access & support", theVenue:"the venue",
   rbVenue:"🏛 Venue", rbVenueTip:"You opened this wedding as the venue: you can change everything. The couple changes only what you allow.", rbTemplate:"🏛 Venue template", rbTemplateTip:"This is your venue layout: every new wedding starts from here (without guests). Existing weddings do not change.", rbPreview:"👁 As the couple sees it",
   rbSupport:"🛟 Support · until {t}", rbSupportTip:"The owner gave you temporary access. Nothing stays on this device.", rbViewer:"👁 View only", rbViewerTip:"You can see the plan but not change it.",
@@ -1114,11 +1130,19 @@ de:{
   cUploadNone:"Dieser Plan ist nur auf diesem Gerät. Online-Pläne gibt es von Ihrer Location oder von TakeaSeat.", cLegacyNote:"Alte Ansichtslinks und Fenster, die vor dem Update geöffnet wurden, synchronisieren bis {t}. Laden Sie TakeaSeat auf Ihren anderen Geräten neu, bevor Sie das abschalten.", cLegacyOff:"Jetzt abschalten", cLegacyOffDone:"Alte Links funktionieren nicht mehr.",
   claimTitle:"Ihr Sitzplan", claimLead:"Willkommen! Dieser Link öffnet Ihren Plan einmal, auf diesem Gerät; danach sehen Sie Ihren persönlichen Link.", claimInApp:"Sie sind in einer App (Viber, Messenger, Instagram…). Öffnen Sie den Link in Chrome oder Safari, sonst bleibt der Plan nur hier.", claimGo:"Meinen Plan öffnen",
   claimDone:"„{n}“ gehört Ihnen — nur Sie sehen ihn.", claimKeep:"Bewahren Sie diesen persönlichen Link auf und senden Sie ihn Ihrem Partner:", claimShare:"Senden…", claimShareText:"Unser Sitzplan „{n}“", claimContinue:"Weiter",
-  claimUsedAt:"Dieser Link wurde bereits geöffnet ({t}). Wenn Ihr Partner ihn geöffnet hat, fragen Sie nach dem „Bearbeitungslink“ (☁). Sonst schreiben Sie uns.", claimExpired:"Dieser Link ist abgelaufen — schreiben Sie uns für einen neuen.", claimFail:"Keine Verbindung — bitte erneut versuchen.", claimRetry:"Erneut", claimHome:"Startseite",
+  claimUsedAt:"Dieser Link wurde bereits geöffnet ({t}). Wenn Ihr Partner ihn geöffnet hat, fragen Sie nach dem „Bearbeitungslink“ (☁). Sonst fordern Sie per E-Mail einen neuen Link an.", claimExpired:"Dieser Link ist abgelaufen — fordern Sie per E-Mail einen neuen an.", claimFail:"Keine Verbindung — bitte erneut versuchen.", claimRetry:"Erneut", claimHome:"Startseite",
   accAskVenue:"Für Änderungen am Raum wenden Sie sich an die Location: {c}", accSupportView:"Sie sehen den Plan, ohne ihn zu ändern. Zum Korrigieren schalten Sie das Bearbeiten ein.", accSupportEdit:"Bearbeiten einschalten", tSupportEditOn:"Bearbeiten ist an — Änderungen werden im Plan des Kunden gespeichert.", rbSupportView:"🛟 Support (Ansicht) · bis {t}",
   accLinks:"Ihre Links", accLinksHint:"Wenn Ihr Link bei jemandem gelandet ist, den Sie nicht wollten, erstellen Sie neue Links: die alten und alle anderen Geräte verlieren den Zugriff.", accRotate:"Neue Links", accRotateConfirm:"Die alten Links und Ihre anderen Geräte verlieren den Zugriff. Fortfahren?", tRotated:"Neue Links sind bereit — senden Sie den neuen an Ihren Partner.", atRotate:"erstellte neue Links (die alten gelten nicht mehr)",
   rbSupportOnVenue:"Die Location hat dem TakeaSeat-Support bis {t} Zugriff gegeben.", tRenameVenue:"Den Namen der Hochzeit legt {v} fest.", tNoCopySupport:"Im Support-Modus kann der Plan nicht kopiert werden.",
   featLockedTip:"Teil des Raums — festgelegt von {v}", tMaxSeats:"Bis zu {n} Stühle pro Tisch ({v}).", tResetKeepSpace:"Namen und Sitzordnung wurden geleert; der Raum von {v} blieb, wie er war.", tipFullLocked:"Voll! Für mehr Stühle oder einen weiteren Tisch fragen Sie die Location.",
+  recLead:"Geben Sie die E-Mail ein, die Sie TakeaSeat genannt haben. Wir senden Ihnen einen Link, um Ihren Plan wieder zu öffnen.", recEmailPh:"Ihre E-Mail", recSend:"Link senden",
+  recSent:"Wenn {e} registriert ist, erhalten Sie in wenigen Minuten eine Nachricht (prüfen Sie auch den Spam). Der Link gilt eine Stunde.", recOff:"E-Mail-Versand ist gerade nicht verfügbar. Schreiben Sie an info@takeaseat.gr, wir helfen Ihnen.",
+  recBad:"Bitte prüfen Sie die E-Mail.", recRate:"Zu viele Anfragen — bitte später erneut versuchen.", recOpenLead:"Wir öffnen Ihren Plan auf diesem Gerät wieder.", recDone:"„{n}“ ist auf diesem Gerät wieder geöffnet.",
+  recUsed:"Dieser Link wurde bereits benutzt oder gilt nicht mehr. Fordern Sie einen neuen an.", recExpired:"Dieser Link ist abgelaufen (er gilt eine Stunde). Fordern Sie einen neuen an.", recAgain:"Neuen Link senden",
+  verLead:"Bestätigen Sie, dass diese E-Mail zur Wiederherstellung Ihres Plans verwendet wird.", verGo:"Bestätigen", verDone:"Fertig! {e} ist jetzt Ihre Wiederherstellungs-E-Mail.", verBad:"Dieser Bestätigungslink ist abgelaufen oder wurde bereits benutzt. Fordern Sie unter „Zugriff & Support“ einen neuen an.",
+  accEmail:"Wiederherstellungs-E-Mail", accEmailHint:"Wenn Sie Ihren Link verlieren, fordern Sie mit dieser E-Mail auf takeaseat.gr einen neuen an.", accEmailNone:"Keine E-Mail hinterlegt — fügen Sie eine hinzu, damit Sie den Plan wiederherstellen können, wenn Sie den Link verlieren.",
+  accEmailChange:"Ändern", accEmailSet:"Speichern", accEmailSame:"Das ist bereits Ihre Wiederherstellungs-E-Mail.", tEmailSent:"Wir haben einen Bestätigungslink an {e} gesendet. Die Änderung gilt, sobald Sie ihn öffnen.",
+  atRecover:"öffnete den Plan mit einem Wiederherstellungslink (E-Mail)", atEmail:"änderte die Wiederherstellungs-E-Mail",
   accTitle:"Zugriff & Support", mAccess:"Zugriff & Support", theVenue:"der Veranstaltungsort",
   rbVenue:"🏛 Location", rbVenueTip:"Sie haben diese Hochzeit als Location geöffnet: Sie können alles ändern. Das Paar ändert nur, was Sie erlauben.", rbTemplate:"🏛 Raumvorlage", rbTemplateTip:"Das ist die Aufstellung Ihrer Location: jede neue Hochzeit beginnt hier (ohne Gäste). Bestehende Hochzeiten ändern sich nicht.", rbPreview:"👁 So sieht es das Paar",
   rbSupport:"🛟 Support · bis {t}", rbSupportTip:"Der Eigentümer hat Ihnen vorübergehend Zugriff gegeben. Nichts bleibt auf diesem Gerät.", rbViewer:"👁 Nur ansehen", rbViewerTip:"Sie sehen den Plan, können ihn aber nicht ändern.",
@@ -3538,6 +3562,7 @@ function adoptAccess(prof, d){
   if("support" in d) prof.supportInfo=d.support||null;
   if(d.audit) prof.audit=d.audit;
   if(d.supportExpires) prof.supportExpires=d.supportExpires;
+  if("email" in d){ prof.hasRecEmail=true; prof.recEmail=d.email||""; prof.mailOn=!!d.mail; }
   return before!==JSON.stringify([prof.role,prof.perms,prof.owner,prof.venueName,prof.template,prof.couplePerms,prof.supportInfo&&prof.supportInfo.expires]);
 }
 async function cloudFetch(id, prof){ if(!PLAN_ID_RE.test(String(id))) throw new Error("bad id");
@@ -3719,6 +3744,9 @@ async function openSharedFromURL(){
   const params=new URLSearchParams(location.search);
   const hp=k=>{ const m=location.hash.match(new RegExp("(?:^#|&)"+k+"=([^&]+)")); return m?decodeURIComponent(m[1]):""; };
   const claim=hp("claim")||params.get("claim"); if(claim) return await openClaimFromURL(claim);
+  const rtok=hp("recover"), vtok=hp("verify");
+  if(rtok||vtok||/(?:^#|&)recover(?:&|$)/.test(location.hash)){ try{ history.replaceState(null,"",location.origin+location.pathname); }catch(e){}
+    return openRecover(rtok?{step:"open", token:rtok, nonce:tokenNonce("rec",rtok)}:vtok?{step:"verify", token:vtok, nonce:tokenNonce("ver",vtok)}:{step:"ask"}); }
   const id=params.get("plan"); if(!id) return false;
   const key=hp("key")||hp("vkey"), view=hp("view"), sup=hp("support"), preview=hp("preview")==="1";
   try{ history.replaceState(null,"",location.origin+location.pathname); }catch(e){}
@@ -3759,11 +3787,13 @@ async function openSharedFromURL(){
 // A couple who bought TakeaSeat opens the link we sent: it works once and becomes their own private plan on this device.
 async function openClaimFromURL(token){
   try{ history.replaceState(null,"",location.origin+location.pathname); }catch(e){}
-  let nonce=""; const nk=PBASE+".claimNonce."+String(token).slice(0,10);
-  try{ nonce=sessionStorage.getItem(nk)||""; if(!nonce){ nonce=randCode(); sessionStorage.setItem(nk,nonce); } }catch(e){ nonce=randCode(); }
-  renderClaim({step:"start", token, nonce}); $("claimModal").classList.add("open");
+  renderClaim({step:"start", token, nonce:tokenNonce("claim",token)}); $("claimModal").classList.add("open");
   return true;
 }
+// One nonce per link and tab: a retry after a lost answer is recognised as the same device.
+function tokenNonce(kind, token){ let nonce=""; const nk=PBASE+"."+kind+"Nonce."+String(token).slice(0,10);
+  try{ nonce=sessionStorage.getItem(nk)||""; if(!nonce){ nonce=randCode(); sessionStorage.setItem(nk,nonce); } }catch(e){ nonce=randCode(); }
+  return nonce; }
 const inAppBrowser=()=>/FBAN|FBAV|FB_IAB|Instagram|Viber|Line\/|MicroMessenger|; wv\)/i.test(navigator.userAgent||"");
 function renderClaim(st){
   const b=$("claimBody"); const home=gatedVisitor();
@@ -3773,7 +3803,7 @@ function renderClaim(st){
     $("claimGo").onclick=()=>doClaim(st);
   } else if(st.step==="done"){
     const link=shareLink(st.prof,false);
-    b.innerHTML=`<p class="claim-lead">${escapeHtml(tr("claimDone",{n:st.prof.name}))}</p><div class="mhint" style="padding:6px 0 4px;font-weight:600">${escapeHtml(tr("claimKeep"))}</div>
+    b.innerHTML=`<p class="claim-lead">${escapeHtml(st.lead||tr("claimDone",{n:st.prof.name}))}</p><div class="mhint" style="padding:6px 0 4px;font-weight:600">${escapeHtml(tr("claimKeep"))}</div>
       <input id="claimLink" readonly value="${escapeHtml(link)}" style="width:100%;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--paper)">
       <div class="mrow"><button class="ibtn" id="claimCopy">${escapeHtml(tr("cCopyEdit"))}</button>${navigator.share?`<button class="ibtn" id="claimShare">${escapeHtml(tr("claimShare"))}</button>`:""}<button class="ibtn primary" id="claimOk">${escapeHtml(tr("claimContinue"))}</button></div>`;
     $("claimCopy").onclick=()=>copyText($("claimLink"));
@@ -3781,9 +3811,10 @@ function renderClaim(st){
     $("claimOk").onclick=()=>{ $("claimModal").classList.remove("open"); maybeWelcome(); };
   } else {
     const msg=st.step==="used"?tr("claimUsedAt",{t:fmtTime(st.at)}):st.step==="expired"?tr("claimExpired"):tr("claimFail");
-    b.innerHTML=`<p class="claim-lead">${escapeHtml(msg)}</p><div class="mrow">${st.step==="fail"?`<button class="ibtn primary" id="claimRetry">${escapeHtml(tr("claimRetry"))}</button>`:""}
+    b.innerHTML=`<p class="claim-lead">${escapeHtml(msg)}</p><div class="mrow">${st.step==="fail"?`<button class="ibtn primary" id="claimRetry">${escapeHtml(tr("claimRetry"))}</button>`:`<button class="ibtn primary" id="claimNew">${escapeHtml(tr("recAgain"))}</button>`}
       <a class="ibtn" href="mailto:info@takeaseat.gr?subject=${encodeURIComponent("TakeaSeat")}">${escapeHtml(tr("accMail"))}</a>${home?`<a class="ibtn" href="/">${escapeHtml(tr("claimHome"))}</a>`:`<button class="ibtn" id="claimClose">${escapeHtml(tr("close"))}</button>`}</div>`;
     const rt=$("claimRetry"); if(rt) rt.onclick=()=>doClaim(st);
+    const nw=$("claimNew"); if(nw) nw.onclick=()=>renderRecover({step:"ask"});
     const cl=$("claimClose"); if(cl) cl.onclick=()=>$("claimModal").classList.remove("open");
   }
 }
@@ -3796,10 +3827,69 @@ async function doClaim(st){
   let prof=profiles.profiles.find(p=>p.cloudId===d.id&&!p.support);
   if(!prof){ prof={ id:newProfileId(), name:d.name||tr("ourWedding"), cloudId:d.id, cloudUpdated:0 }; profiles.profiles.push(prof); }
   Object.assign(prof,{ editKey:d.editKey, viewKey:d.readKey||"", role:"couple", owner:"couple", readonly:false, _lostShown:false });
-  profiles.activeId=prof.id; saveProfilesIdx();
-  try{ const pd=await cloudFetch(d.id, prof); applyPulledPlan(prof,pd); }catch(e){ loadActive(); }
+  profiles.activeId=prof.id; saveProfilesIdx(); loadActive();
+  try{ const pd=await cloudFetch(d.id, prof); applyPulledPlan(prof,pd); }catch(e){}
   registerUnderCode(prof); setCloudDot("ok");
   renderClaim({step:"done", prof});
+}
+// ---- recovery by email: "send me my link", the link it sends, and confirming a new recovery email ----
+const EMAIL_OK=e=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e) && e.length<=200;
+function openRecover(st){ renderRecover(st); $("claimModal").classList.add("open"); return true; }
+function renderRecover(st){
+  const b=$("claimBody"), p=t=>`<p class="claim-lead">${escapeHtml(t)}</p>`;
+  const foot=gatedVisitor()?`<a class="ibtn" href="/">${escapeHtml(tr("claimHome"))}</a>`:`<button class="ibtn" id="recClose">${escapeHtml(tr("close"))}</button>`;
+  if(st.step==="ask"){
+    b.innerHTML=p(tr("recLead"))+`<input type="email" id="recEmail" autocomplete="email" inputmode="email" maxlength="200" placeholder="${escapeHtml(tr("recEmailPh"))}" value="${escapeHtml(st.email||"")}" style="width:100%;height:44px;border:1px solid var(--line);border-radius:10px;padding:0 12px;font-size:16px;background:var(--paper);color:inherit">
+      ${st.err?`<div class="mhint" style="color:#b3261e;padding:6px 0 0">${escapeHtml(st.err)}</div>`:""}
+      <div class="mrow"><button class="ibtn primary" id="recSend" style="flex:1;height:44px">${escapeHtml(tr("recSend"))}</button>${foot}</div>`;
+    const inp=$("recEmail"); setTimeout(()=>{ try{ inp.focus(); }catch(e){} },50);
+    const go=async()=>{ if($("recSend").disabled) return; const email=inp.value.trim(); if(!EMAIL_OK(email)){ renderRecover({step:"ask", email, err:tr("recBad")}); return; }
+      $("recSend").disabled=true; let r=null;
+      try{ r=await fetch(SYNC_URL+"/recover",{method:"POST",headers:{"Content-Type":"application/json","X-Client":"2"},body:JSON.stringify({email, lang:LANG})}); }catch(e){}
+      if(r&&r.ok) renderRecover({step:"sent", email});
+      else if(r&&r.status===503) renderRecover({step:"off"});
+      else renderRecover({step:"ask", email, err:tr(!r?"claimFail":r.status===429?"recRate":r.status===400?"recBad":"claimFail")}); };
+    $("recSend").onclick=go; inp.onkeydown=e=>{ if(e.key==="Enter") go(); };
+  } else if(st.step==="sent") b.innerHTML=p(tr("recSent",{e:st.email}))+`<div class="mrow">${foot}</div>`;
+  else if(st.step==="off") b.innerHTML=p(tr("recOff"))+`<div class="mrow"><a class="ibtn primary" href="mailto:info@takeaseat.gr?subject=${encodeURIComponent("TakeaSeat")}">${escapeHtml(tr("accMail"))}</a>${foot}</div>`;
+  else if(st.step==="open"){   // an explicit press: mail scanners that open links must not use it up
+    b.innerHTML=p(tr("recOpenLead"))+(inAppBrowser()?`<div class="acc-live" style="margin:10px 0">${escapeHtml(tr("claimInApp"))}</div>`:"")+`<div class="mrow"><button class="ibtn primary" id="recGo" style="flex:1;height:44px">${escapeHtml(tr("claimGo"))}</button></div>`;
+    $("recGo").onclick=()=>doRecover(st);
+  } else if(st.step==="verify"){
+    b.innerHTML=p(tr("verLead"))+`<div class="mrow"><button class="ibtn primary" id="verGo" style="flex:1;height:44px">${escapeHtml(tr("verGo"))}</button>${foot}</div>`;
+    $("verGo").onclick=()=>doVerify(st);
+  } else {   // a message, with "try again" / "send me a new link" when they help
+    b.innerHTML=p(st.text)+`<div class="mrow">${st.retry?`<button class="ibtn primary" id="recRetry">${escapeHtml(tr("claimRetry"))}</button>`:""}${st.again?`<button class="ibtn primary" id="recAgain">${escapeHtml(tr("recAgain"))}</button>`:""}${foot}</div>`;
+    const rt=$("recRetry"); if(rt) rt.onclick=st.retry;
+    const ag=$("recAgain"); if(ag) ag.onclick=()=>renderRecover({step:"ask"});
+  }
+  const cl=$("recClose"); if(cl) cl.onclick=()=>$("claimModal").classList.remove("open");
+}
+async function doRecover(st){
+  const go=$("recGo"); if(go) go.disabled=true;
+  let d=null, status=0;
+  try{ const r=await fetch(SYNC_URL+"/recover/couple",{method:"POST",headers:{"Content-Type":"application/json","X-Client":"2"},body:JSON.stringify({token:st.token, nonce:st.nonce})}); status=r.status; d=await r.json().catch(()=>null); }catch(e){}
+  const plans=(d&&Array.isArray(d.plans))?d.plans.filter(x=>x&&PLAN_ID_RE.test(String(x.id))&&x.editKey):[];
+  if(!plans.length){
+    if(d&&d.error==="token_expired") renderRecover({step:"msg", text:tr("recExpired"), again:true});
+    else if(status===404||status===410||(d&&d.plans)) renderRecover({step:"msg", text:tr("recUsed"), again:true});
+    else renderRecover({step:"msg", text:tr("claimFail"), retry:()=>doRecover(st)});
+    return; }
+  const fresh=new Set();
+  const profs=plans.map(x=>{ let prof=profiles.profiles.find(q=>q.cloudId===x.id&&!q.support);
+    if(!prof){ prof={ id:newProfileId()+"r"+x.id.slice(0,4), name:x.name||tr("ourWedding"), cloudId:x.id, cloudUpdated:0 }; profiles.profiles.push(prof); fresh.add(prof); }
+    Object.assign(prof,{ editKey:x.editKey, viewKey:x.readKey||"", role:"couple", owner:"couple", readonly:false, _lostShown:false });
+    return prof; });
+  const main=profs[0]; profiles.activeId=main.id; saveProfilesIdx(); loadActive();
+  try{ const pd=await cloudFetch(main.cloudId, main); applyPulledPlan(main,pd); }catch(e){}
+  profs.forEach(q=>{ if(fresh.has(q)) registerUnderCode(q); }); renderProfiles(); setCloudDot("ok");
+  renderClaim({step:"done", prof:main, lead:tr("recDone",{n:main.name})});
+}
+async function doVerify(st){
+  const go=$("verGo"); if(go) go.disabled=true;
+  let d=null, status=0; try{ const r=await fetch(SYNC_URL+"/verify",{method:"POST",headers:{"Content-Type":"application/json","X-Client":"2"},body:JSON.stringify({token:st.token, nonce:st.nonce})}); status=r.status; d=await r.json().catch(()=>null); }catch(e){}
+  if(d&&d.ok){ renderRecover({step:"msg", text:tr("verDone",{e:d.email||""})}); refreshAccess(); return; }
+  renderRecover((status===404||status===410)?{step:"msg", text:tr("verBad")}:{step:"msg", text:tr(status===429?"recRate":"claimFail"), retry:()=>doVerify(st)});
 }
 async function pullIfNewer(force){
   const cur=currentProfile(); if(!cur||!cur.cloudId){ setCloudDot(); return; }
@@ -3829,7 +3919,7 @@ async function openHistory(){
 $("histClose").addEventListener("click",()=>$("histModal").classList.remove("open"));
 $("histModal").addEventListener("click",e=>{ if(e.target.id==="histModal") e.currentTarget.classList.remove("open"); });
 function openCloud(){ if(IS_LAB){ toast(tr("labHint")); return; } renderCloudBody(); $("cloudModal").classList.add("open"); }
-window.addEventListener("hashchange",()=>{ if(!IS_LAB && /[#&](claim|key|vkey|view|support)=/.test(location.hash)) openSharedFromURL(); });
+window.addEventListener("hashchange",()=>{ if(!IS_LAB && /[#&]((claim|key|vkey|view|support|verify)=|recover(=|&|$))/.test(location.hash)) openSharedFromURL(); });
 
 // ============================================================
 //  ROLES & ACCESS — the server decides; this mirrors it so locked things don't look editable
@@ -3871,7 +3961,7 @@ function permListHtml(p){
 }
 function auditHtml(list){
   if(!list||!list.length) return `<div class="mhint" style="padding:4px 0 0">${escapeHtml(tr("accLogEmpty"))}</div>`;
-  const WHO={couple:"awCouple",venue:"awVenue",support:"awSupport",admin:"awAdmin"}, WHAT={invite:"atInvite",revoke:"atRevoke",open:"atOpen",save:"atSave",restore:"atRestore",reset:"atReset",claim:"atClaim",claim_reset:"atClaimReset",rotate:"atRotate"};
+  const WHO={couple:"awCouple",venue:"awVenue",support:"awSupport",admin:"awAdmin"}, WHAT={invite:"atInvite",revoke:"atRevoke",open:"atOpen",save:"atSave",restore:"atRestore",reset:"atReset",claim:"atClaim",claim_reset:"atClaimReset",rotate:"atRotate",recover:"atRecover",email:"atEmail"};
   return `<ul class="acc-log">${list.slice().reverse().map(e=>`<li><span class="t">${escapeHtml(fmtTime(e.t))}</span><span><b>${escapeHtml(WHO[e.who]?tr(WHO[e.who]):String(e.who))}</b> · ${escapeHtml(WHAT[e.what]?tr(WHAT[e.what],{h:e.h||""}):String(e.what))}</span></li>`).join("")}</ul>`;
 }
 async function refreshAccess(){ const cur=currentProfile(); if(!cur||!cur.cloudId) return;
@@ -3914,6 +4004,10 @@ function renderAccessBody(){
   }
   if(a.role==="couple" && cur.owner!=="venue" && cur.editKey){
     html+=sec(`<h4>${escapeHtml(tr("accLinks"))}</h4><div class="mhint" style="padding:0">${escapeHtml(tr("accLinksHint"))}</div><div class="acc-row"><button class="ibtn" id="accRotate">${escapeHtml(tr("accRotate"))}</button></div>`);
+    if(cur.hasRecEmail && cur.mailOn)
+      html+=sec(`<h4>${escapeHtml(tr("accEmail"))}</h4><div class="mhint" style="padding:0">${escapeHtml(tr(cur.recEmail?"accEmailHint":"accEmailNone"))}</div>
+        <div class="acc-row"><input type="email" id="accEmailIn" maxlength="200" autocomplete="email" value="${escapeHtml(cur.recEmail||"")}" placeholder="${escapeHtml(tr("recEmailPh"))}" style="flex:1;min-width:0;height:36px;border:1px solid var(--line);border-radius:8px;padding:0 10px;background:var(--paper);color:inherit">
+        <button class="ibtn" id="accEmailSave">${escapeHtml(tr(cur.recEmail?"accEmailChange":"accEmailSet"))}</button></div>`);
   }
   html+=sec(`<h4>${escapeHtml(tr("accLog"))}</h4>${auditHtml(cur.audit)}`);
   body.innerHTML=html;
@@ -3925,6 +4019,16 @@ function renderAccessBody(){
       await refreshAccess();
       $("accessModal").classList.remove("open"); openCloud(); toast(tr("tRotated"),6000); }
     catch(e){ toast(tr("accFail")); } };
+  const es=$("accEmailSave"); if(es) es.onclick=async()=>{ const email=$("accEmailIn").value.trim();
+    if(!EMAIL_OK(email)){ toast(tr("recBad")); return; }
+    if(email.toLowerCase()===(cur.recEmail||"").toLowerCase()){ toast(tr("accEmailSame")); return; }
+    es.disabled=true;
+    try{ const r=await fetch(planPath(cur.cloudId)+"/email",{method:"POST",headers:authHeaders(cur),body:JSON.stringify({email, lang:LANG})});
+      if(r.status===429||r.status===400){ toast(tr(r.status===429?"recRate":"recBad")); es.disabled=false; return; }
+      if(!r.ok){ const d=await r.json().catch(()=>({})); if(d.error==="mail_off"){ toast(tr("recOff"),8000); es.disabled=false; return; } throw 0; }
+      const d=await r.json(); toast(tr("tEmailSent",{e:d.pending||email}),8000); }
+    catch(e){ toast(tr("accFail")); }
+    es.disabled=false; };
   const pv=$("accPreview"); if(pv) pv.onchange=()=>{ cur.previewCouple=pv.checked; saveProfilesIdx(); applyAccess(); renderAll(); toast(pv.checked?tr("tPreviewOn"):tr("tPreviewOff"),3000); };
   const inv=$("accInvite"); if(inv) inv.onclick=async()=>{ inv.disabled=true;
     try{ const r=await fetch(planPath(cur.cloudId)+"/support",{method:"POST",headers:authHeaders(cur),body:JSON.stringify({hours:+$("accHours").value, message:$("accMsg").value.trim()})});

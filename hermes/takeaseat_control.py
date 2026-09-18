@@ -330,6 +330,8 @@ def takeaseat_new_venue(value: str = "", task: str = "", **_):
         today = _dt.date.today()
         lic = {"type": "seasonal", "seasonStart": today.isoformat(), "seasonEnd": (today + _dt.timedelta(days=365)).isoformat(), "cap": 0}
         r = _owner("/admin/venues", "POST", {"name": name, "contact": "", "license": lic})
+        if not r.get("key"):   # created with an email while mail is on: the venue sets its own key from the e-mailed link
+            return f"Δημιουργήθηκε το κτήμα «{name}». Ο σύνδεσμος ρύθμισης κωδικού στάλθηκε στο email του κτήματος."
         _clip(f"Κονσόλα: {BASE}/venue.html\nΚωδικός: {r.get('key', '')}")
         return (f"Δημιουργήθηκε το κτήμα «{name}» με εποχιακή άδεια έως {lic['seasonEnd']}. "
                 f"Ο κωδικός του είναι στο πρόχειρο του υπολογιστή — είναι πελάτης, δεν θα γράψω μέσα του.")

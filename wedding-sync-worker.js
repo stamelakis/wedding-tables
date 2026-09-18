@@ -25,6 +25,10 @@
 //   POST   /plans/:id/rotate      (couple of a couple-owned plan: new links, other devices signed out)
 //   POST   /plans/:id/legacy-off  (end the 14-day id-only grace early)
 //   POST   /claim {token, nonce}  (a couple opens the link TakeaSeat sent — once)
+//   POST   /recover {email, lang} · POST /recover/couple {token, nonce} · POST /recover/venue {token, secret?}
+//   POST   /verify {token} · POST /plans/:id/email {email} · POST /venues/:id/email {email}
+// Email (env.MAIL, optional): with mail on, every link and key goes straight to the couple's / venue's own email and the
+// admin API never returns one; people recover on their own. Without mail, links are shown to the admin as before.
 //   GET/POST/DELETE /codes/:code  (device linking; the code is a shared secret)
 //   /admin/venues[/:id[/reset-key]] · /admin/couples[/:id[/reset]] · GET /admin/support          (X-Owner-Key)
 //   /venues/:id · /rotate · /defaults · /template · /weddings[/:planId]                           (X-Venue-Key)
@@ -55,6 +59,124 @@ function normPerms(p, fallback) {
   return o;
 }
 
+// ---- email ----
+const EMAIL_RE = /^[^\s@<>()",;:\\]+@[^\s@<>()",;:\\]+\.[A-Za-z]{2,}$/;
+const normEmail = x => { x = String(x || "").trim().toLowerCase(); return (x.length <= 200 && EMAIL_RE.test(x)) ? x : ""; };
+const maskEmail = e => { const [u, d] = String(e || "").split("@"); return d ? (u.slice(0, 2) + "***@" + d) : ""; };
+const mailOn = env => !!(env.MAIL && env.MAIL.enabled && typeof env.MAIL.send === "function");
+const PLANNER_FILE = { el: "seating-planner-el.html", en: "seating-planner.html", de: "seating-planner-de.html" };
+const langOf = l => (typeof l === "string" && Object.prototype.hasOwnProperty.call(PLANNER_FILE, l)) ? l : "el";
+const baseUrl = env => String(env.PUBLIC_URL || "https://takeaseat.gr").replace(/\/+$/, "");   // never from the request's Host
+const plannerUrl = (env, lang) => baseUrl(env) + "/" + PLANNER_FILE[langOf(lang)];
+const RECOVER_TTL = 3600000, SETUP_TTL = 7 * 86400000, VERIFY_TTL = 86400000, TOKEN_RETRY = 15 * 60000;
+const MAILS_PER_HOUR = 3;
+// A JSON object body, or {} (never null / an array / a string).
+async function readBody(request) { const b = await request.json().catch(() => null); return (b && typeof b === "object" && !Array.isArray(b)) ? b : {}; }
+// Links sent by mail carry the record's link generation (lgen): a new email address, a new key or a newer mailed link
+// retires every link sent before it.
+const nextGen = o => { o.lgen = (o.lgen || 0) + 1; return o.lgen; };
+function send(env, to, msg) { if (!mailOn(env) || !to) return false; try { return env.MAIL.send({ to, subject: msg.subject, text: msg.text }) !== false; } catch (e) { return false; } }
+// Plain-text emails (names are user text: never HTML). {x} placeholders.
+const MAILS = {
+  el: {
+    claim: ["Το τραπεζολόγιό σας — TakeaSeat", "Γεια σας!\n\nΤο τραπεζολόγιο «{name}» σας περιμένει. Ανοίξτε τον σύνδεσμο στο Chrome ή στο Safari και πατήστε «Άνοιγμα του σχεδίου μου»:\n\n{link}\n\nΟ σύνδεσμος ανοίγει μία φορά και ισχύει 30 ημέρες. Μόνο εσείς βλέπετε το σχέδιό σας — ούτε η TakeaSeat.\nΑν χάσετε τον σύνδεσμο, ζητήστε νέο με αυτό το email: {recover}\n\nTakeaSeat"],
+    recover: ["Οι σύνδεσμοί σας — TakeaSeat", "Γεια σας!\n\nΖητήσατε πρόσβαση στο TakeaSeat με αυτό το email:\n\n{items}\n\nΚάθε σύνδεσμος ανοίγει μία φορά. Οι σύνδεσμοι ανάκτησης ισχύουν μία ώρα. Αν δεν το ζητήσατε εσείς, αγνοήστε αυτό το μήνυμα — τίποτα δεν αλλάζει.\n\nTakeaSeat"],
+    itemCouple: "Τραπεζολόγιο «{name}»: {link}", itemClaim: "Τραπεζολόγιο «{name}» (πρώτο άνοιγμα — ισχύει έως {until}): {link}", itemVenue: "Κονσόλα «{name}» — ορίστε νέο κωδικό: {link}",
+    relink: ["Ο σύνδεσμός σας — TakeaSeat", "Γεια σας!\n\nΚατόπιν αιτήματός σας, ορίστε σύνδεσμος για να ανοίξετε ξανά το τραπεζολόγιο «{name}» σε αυτή ή σε νέα συσκευή:\n\n{link}\n\nΙσχύει 7 ημέρες και ανοίγει μία φορά. Αν δεν το ζητήσατε εσείς, αγνοήστε αυτό το μήνυμα.\n\nTakeaSeat"],
+    venueReset: ["Νέος κωδικός κονσόλας — TakeaSeat", "Γεια σας,\n\nΟρίστε νέο κωδικό για την κονσόλα «{name}» εδώ (ο σύνδεσμος ισχύει 7 ημέρες και ανοίγει μία φορά):\n\n{link}\n\nΟ τωρινός κωδικός λειτουργεί μέχρι να χρησιμοποιήσετε τον σύνδεσμο. Αν δεν το ζητήσατε εσείς, γράψτε μας στο info@takeaseat.gr.\n\nTakeaSeat"],
+    setup: ["Η κονσόλα του κτήματός σας — TakeaSeat", "Καλώς ήρθατε στο TakeaSeat!\n\nΟρίστε τον κωδικό της κονσόλας για το «{name}» εδώ (ο σύνδεσμος ισχύει 7 ημέρες):\n\n{link}\n\nΜόνο εσείς θα γνωρίζετε τον κωδικό — ούτε η TakeaSeat. Αν τον ξεχάσετε, ζητήστε νέο με αυτό το email από την κονσόλα.\n\nTakeaSeat"],
+    verify: ["Επιβεβαίωση email — TakeaSeat", "Γεια σας!\n\nΕπιβεβαιώστε ότι αυτό το email θα χρησιμοποιείται για την ανάκτηση του «{name}» (ο σύνδεσμος ισχύει 24 ώρες):\n\n{link}\n\nΑν δεν το ζητήσατε εσείς, αγνοήστε αυτό το μήνυμα.\n\nTakeaSeat"],
+    changed: ["Το email ανάκτησης άλλαξε — TakeaSeat", "Γεια σας,\n\nΤο email ανάκτησης για το «{name}» άλλαξε σε {email} ({by}).\nΑν δεν το περιμένατε, γράψτε μας αμέσως στο info@takeaseat.gr.\n\nTakeaSeat"],
+    byOwner: "από εσάς", byAdmin: "από την TakeaSeat, κατόπιν αιτήματος",
+  },
+  en: {
+    claim: ["Your seating plan — TakeaSeat", "Hello!\n\nYour seating plan “{name}” is ready. Open the link in Chrome or Safari and press “Open my plan”:\n\n{link}\n\nThe link opens once and is valid for 30 days. Only you can see your plan — not even TakeaSeat.\nIf you lose the link, ask for a new one with this email: {recover}\n\nTakeaSeat"],
+    recover: ["Your links — TakeaSeat", "Hello!\n\nYou asked for access to TakeaSeat with this email:\n\n{items}\n\nEach link opens once. Recovery links are valid for one hour. If this was not you, ignore this message — nothing changes.\n\nTakeaSeat"],
+    itemCouple: "Seating plan “{name}”: {link}", itemClaim: "Seating plan “{name}” (first opening — valid until {until}): {link}", itemVenue: "Console “{name}” — set a new key: {link}",
+    relink: ["Your link — TakeaSeat", "Hello!\n\nAs you asked, here is a link to open your seating plan “{name}” again on this or a new device:\n\n{link}\n\nIt is valid for 7 days and opens once. If this was not you, ignore this message.\n\nTakeaSeat"],
+    venueReset: ["New console key — TakeaSeat", "Hello,\n\nSet a new key for the console “{name}” here (the link is valid for 7 days and opens once):\n\n{link}\n\nYour current key keeps working until you use the link. If this was not you, write to info@takeaseat.gr.\n\nTakeaSeat"],
+    setup: ["Your venue console — TakeaSeat", "Welcome to TakeaSeat!\n\nSet the key of the console for “{name}” here (the link is valid for 7 days):\n\n{link}\n\nOnly you will know the key — not even TakeaSeat. If you forget it, ask for a new one with this email from the console.\n\nTakeaSeat"],
+    verify: ["Confirm your email — TakeaSeat", "Hello!\n\nPlease confirm that this email will be used to recover “{name}” (the link is valid for 24 hours):\n\n{link}\n\nIf this was not you, ignore this message.\n\nTakeaSeat"],
+    changed: ["Your recovery email changed — TakeaSeat", "Hello,\n\nThe recovery email for “{name}” was changed to {email} ({by}).\nIf you did not expect this, write to info@takeaseat.gr right away.\n\nTakeaSeat"],
+    byOwner: "by you", byAdmin: "by TakeaSeat, on request",
+  },
+  de: {
+    claim: ["Ihr Sitzplan — TakeaSeat", "Hallo!\n\nIhr Sitzplan „{name}“ ist bereit. Öffnen Sie den Link in Chrome oder Safari und tippen Sie auf „Meinen Plan öffnen“:\n\n{link}\n\nDer Link öffnet einmal und gilt 30 Tage. Nur Sie sehen Ihren Plan — auch TakeaSeat nicht.\nWenn Sie den Link verlieren, fordern Sie mit dieser E-Mail einen neuen an: {recover}\n\nTakeaSeat"],
+    recover: ["Ihre Links — TakeaSeat", "Hallo!\n\nSie haben mit dieser E-Mail Zugang zu TakeaSeat angefordert:\n\n{items}\n\nJeder Link öffnet einmal. Wiederherstellungslinks gelten eine Stunde. Wenn Sie das nicht waren, ignorieren Sie diese Nachricht — nichts ändert sich.\n\nTakeaSeat"],
+    itemCouple: "Sitzplan „{name}“: {link}", itemClaim: "Sitzplan „{name}“ (erstes Öffnen — gültig bis {until}): {link}", itemVenue: "Konsole „{name}“ — neuen Schlüssel festlegen: {link}",
+    relink: ["Ihr Link — TakeaSeat", "Hallo!\n\nWie gewünscht, hier ein Link, um Ihren Sitzplan „{name}“ auf diesem oder einem neuen Gerät wieder zu öffnen:\n\n{link}\n\nEr gilt 7 Tage und öffnet einmal. Wenn Sie das nicht waren, ignorieren Sie diese Nachricht.\n\nTakeaSeat"],
+    venueReset: ["Neuer Konsolen-Schlüssel — TakeaSeat", "Hallo,\n\nLegen Sie hier einen neuen Schlüssel für die Konsole „{name}“ fest (der Link gilt 7 Tage und öffnet einmal):\n\n{link}\n\nIhr jetziger Schlüssel funktioniert, bis Sie den Link benutzen. Wenn Sie das nicht waren, schreiben Sie an info@takeaseat.gr.\n\nTakeaSeat"],
+    setup: ["Ihre Location-Konsole — TakeaSeat", "Willkommen bei TakeaSeat!\n\nLegen Sie hier den Schlüssel der Konsole für „{name}“ fest (der Link gilt 7 Tage):\n\n{link}\n\nNur Sie kennen den Schlüssel — auch TakeaSeat nicht. Wenn Sie ihn vergessen, fordern Sie in der Konsole mit dieser E-Mail einen neuen an.\n\nTakeaSeat"],
+    verify: ["E-Mail bestätigen — TakeaSeat", "Hallo!\n\nBitte bestätigen Sie, dass diese E-Mail zur Wiederherstellung von „{name}“ verwendet wird (der Link gilt 24 Stunden):\n\n{link}\n\nWenn Sie das nicht waren, ignorieren Sie diese Nachricht.\n\nTakeaSeat"],
+    changed: ["Ihre Wiederherstellungs-E-Mail wurde geändert — TakeaSeat", "Hallo,\n\nDie Wiederherstellungs-E-Mail für „{name}“ wurde auf {email} geändert ({by}).\nWenn Sie das nicht erwartet haben, schreiben Sie sofort an info@takeaseat.gr.\n\nTakeaSeat"],
+    byOwner: "von Ihnen", byAdmin: "von TakeaSeat, auf Anfrage",
+  },
+};
+const fmtDay = (t, lang) => { try { return new Date(t).toLocaleDateString(langOf(lang) === "de" ? "de-DE" : langOf(lang) === "en" ? "en-GB" : "el-GR", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Athens" }); } catch (e) { return new Date(t).toISOString().slice(0, 10); } };
+const fill = (t, v) => String(t).replace(/\{(\w+)\}/g, (m, k) => (v[k] != null ? String(v[k]) : m));
+function mailMsg(lang, kind, v) { const L = MAILS[langOf(lang)]; return { subject: L[kind][0], text: fill(L[kind][1], v) }; }
+async function indexEmail(env, email, kind, id, add) {
+  if (!email) return;
+  await kvUpdate(env, "email:" + email, ix => { ix = ix || {}; ix.couples = ix.couples || []; ix.venues = ix.venues || []; const k = kind === "venue" ? "venues" : "couples";
+    const has = (ix[k] || []).includes(id); if (add === has) return null;
+    ix[k] = add ? [...(ix[k] || []), id] : (ix[k] || []).filter(x => x !== id);
+    return (ix.couples.length || ix.venues.length) ? ix : { __del: true }; });
+}
+async function freshClaim(env, c, main, force) {
+  const gen = (main && main.keyGen) || 0;
+  if (c.claimToken && force) { await env.PLANS.delete("claim:" + c.claimToken); c.claimToken = null; }
+  if (c.claimToken) {
+    const cl = safeParse(await env.PLANS.get("claim:" + c.claimToken));
+    if (cl && cl.usedAt) return null;   // opened meanwhile
+    if (cl && Date.now() - (cl.createdAt || 0) < CLAIM_TTL - 86400000 && (cl.gen || 0) === gen) return c.claimToken;
+    if (cl) await env.PLANS.delete("claim:" + c.claimToken);
+  }
+  const token = rnd(32), now = Date.now();
+  await env.PLANS.put("claim:" + token, JSON.stringify({ cid: c.id, planId: c.planId, createdAt: now, gen, reset: gen > 0 }));
+  await kvUpdate(env, "couple:" + c.id, cp => { if (!cp) return null; cp.claimToken = token; cp.claimAt = now; cp.mailed = false; return cp; });
+  c.claimToken = token; c.claimAt = now; c.mailed = false;
+  return token;
+}
+async function mintToken(env, data, ttl) { const t = rnd(32); await env.PLANS.put("tok:" + t, JSON.stringify({ ...data, createdAt: Date.now(), ttl })); return t; }
+// One use; the same device (nonce) may retry for 15 minutes when a response got lost.
+async function takeToken(env, token, kinds, nonce) {
+  token = String(token || ""); if (token.length < 20) return { error: "token_invalid" };
+  const r = await kvUpdate(env, "tok:" + token, t => {
+    if (!t || !kinds.includes(t.kind)) return { __res: { error: "token_invalid" } };
+    if (Date.now() - t.createdAt > t.ttl) return { __res: { error: "token_expired" } };
+    if (t.usedAt) return (nonce && t.nonce === nonce && Date.now() - t.usedAt < TOKEN_RETRY) ? { __res: { data: t, again: true } } : { __res: { error: "token_used", at: t.usedAt } };
+    t.usedAt = Date.now(); t.nonce = String(nonce || "").slice(0, 64);
+    return { __obj: t, __res: { data: t } };
+  });
+  return r.res || { error: "token_invalid" };
+}
+async function mailAllowed(env, email, bucket) {   // at most MAILS_PER_HOUR recovery (or confirmation) mails per address
+  const r = await kvUpdate(env, "rlmail:" + bucket + ":" + email, a => { a = (Array.isArray(a) ? a : []).filter(t => Date.now() - t < 3600000);
+    if (a.length >= MAILS_PER_HOUR) return { __res: false }; a.push(Date.now()); return { __obj: a, __res: true }; });
+  return !!r.res;
+}
+async function markMailed(env, cid, email) { await kvUpdate(env, "couple:" + cid, cp => { if (!cp) return null; cp.mailed = true; cp.mailedTo = email; return cp; }); }
+// Housekeeping (the server runs it hourly): expired one-time links, old rate-limit rows, old claim rows.
+export async function sweep(env) {
+  const out = { tok: 0, rlmail: 0, claim: 0 };
+  if (typeof env.PLANS.list !== "function") return out;
+  const now = Date.now();
+  for (const k of (await env.PLANS.list("tok:")) || []) {
+    const t = safeParse(await env.PLANS.get(k));
+    const gone = t && ((t.cid && !(await env.PLANS.get("couple:" + t.cid))) || (t.vid && !(await env.PLANS.get("venue:" + t.vid))));
+    if (!t || gone || now - (t.createdAt || 0) > (t.ttl || 0) + TOKEN_RETRY) { await env.PLANS.delete(k); out.tok++; }
+  }
+  for (const k of (await env.PLANS.list("rlmail:")) || []) {
+    const a = safeParse(await env.PLANS.get(k));
+    if (!Array.isArray(a) || a.every(x => now - x > 3600000)) { await env.PLANS.delete(k); out.rlmail++; }
+  }
+  for (const k of (await env.PLANS.list("claim:")) || []) {
+    const c = safeParse(await env.PLANS.get(k));
+    if (!c || now - (c.createdAt || 0) > CLAIM_TTL + 86400000) { await env.PLANS.delete(k); out.claim++; }
+  }
+  return out;
+}
+async function forgetEmail(env, email) { if (email) { await env.PLANS.delete("rlmail:recover:" + email); await env.PLANS.delete("rlmail:verify:" + email); } }
 function json(obj, status = 200) {
   return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", ...CORS } });
 }
@@ -226,7 +348,7 @@ export default {
     try {
       if (parts[0] === "health" && parts.length === 1 && request.method === "GET") {
         await env.PLANS.get("meta:schema");
-        return json({ ok: true });
+        return json({ ok: true, mail: mailOn(env) });
       }
       // ---------------- plans ----------------
       if (parts[0] === "plans") {
@@ -271,6 +393,10 @@ export default {
           if (a.owner.type === "venue") {
             const v = safeParse(await env.PLANS.get("venue:" + a.owner.venueId));
             if (v) { out.owner.venueName = v.name; if (a.role === "couple") out.owner.venueContact = v.contact || ""; }
+          }
+          if (a.role === "couple" && a.owner.type === "couple" && rec.coupleId) {   // the couple's own recovery email
+            const c = safeParse(await env.PLANS.get("couple:" + rec.coupleId));
+            if (c && c.planId === id) { out.email = c.email || null; out.mail = mailOn(env); }
           }
           if (a.role === "couple" || a.role === "venue") { out.readKey = readKey || null; if (rec.legacyOpenUntil > Date.now()) out.legacyOpenUntil = rec.legacyOpenUntil; }
           if (a.role === "venue" && !rec.template) { out.couplePerms = normPerms(rec.perms, ALL_OPEN); out.layoutSet = a.layoutSet; }
@@ -383,6 +509,20 @@ export default {
             cur.editKey = rnd(28); cur.readKey = rnd(24); cur.keyGen = (cur.keyGen || 0) + 1; cur.legacyOpenUntil = null; addAudit(cur, "couple", "rotate"); return cur; });
           return json({ ok: true, editKey: r.obj.editKey, readKey: r.obj.readKey });
         }
+        if (parts.length === 3 && parts[2] === "email" && request.method === "POST") {   // the couple changes its recovery email (confirmed by mail)
+          if (!a) return denied(request, rec);
+          if (!(a.role === "couple" && a.owner.type === "couple" && rec.coupleId)) return json({ error: "unauthorized" }, 403);
+          const c = safeParse(await env.PLANS.get("couple:" + rec.coupleId));
+          if (!c || c.planId !== id) return json({ error: "unauthorized" }, 403);   // the licence's main plan only
+          if (!mailOn(env)) return json({ error: "mail_off" }, 503);
+          const b = await readBody(request);
+          const email = normEmail(b.email); if (!email) return json({ error: "bad_email" }, 400);
+          if (!(await mailAllowed(env, email, "verify"))) return json({ error: "rate_limited" }, 429);
+          const t = await mintToken(env, { kind: "verify-couple", cid: c.id, email }, VERIFY_TTL);
+          await kvUpdate(env, "couple:" + c.id, cp => { if (!cp) return null; cp.pendingVerify = t; return cp; });
+          if (!send(env, email, mailMsg(b.lang || c.lang, "verify", { name: c.name, link: plannerUrl(env, b.lang || c.lang) + "#verify=" + t }))) return json({ error: "mail_failed" }, 503);
+          return json({ ok: true, pending: maskEmail(email) });
+        }
         if (parts.length === 3 && parts[2] === "legacy-off" && request.method === "POST") {
           if (!a) return denied(request, rec);
           if (!(a.role === "couple" || a.role === "venue")) return json({ error: "unauthorized" }, 403);
@@ -414,8 +554,97 @@ export default {
           if (res.first) { addAudit(cur, "couple", c.reset ? "claim_reset" : "claim", 0, { d: device(request) }); return { __obj: cur, __res: out }; }
           return { __res: out }; });
         if (!done.res) return json({ error: "claim_used", at: c.usedAt || null }, 410);
-        if (res.first && c.cid) await kvUpdate(env, "couple:" + c.cid, cp => { if (!cp) return null; cp.claimedAt = Date.now(); cp.claimToken = null; return cp; });
+        if (res.first && c.cid) await kvUpdate(env, "couple:" + c.cid, cp => { if (!cp) return null; cp.claimedAt = Date.now(); cp.claimToken = null; if (cp.mailed && cp.mailedTo && cp.mailedTo === cp.email) cp.emailVerified = true; return cp; });
         return json(done.res);
+      }
+      // ---------------- email: self-service recovery and verified changes ----------------
+      if (parts[0] === "recover" && parts.length === 1 && request.method === "POST") {
+        if (!mailOn(env)) return json({ error: "mail_off" }, 503);
+        const b = await readBody(request);
+        const email = normEmail(b.email); if (!email) return json({ error: "bad_email" }, 400);
+        const lang = langOf(b.lang);
+        const ix = safeParse(await env.PLANS.get("email:" + email));
+        if (ix && await mailAllowed(env, email, "recover")) {   // the answer is the same whether or not the address is ours
+          const items = [];
+          for (const cid of (ix.couples || [])) {
+            const c = safeParse(await env.PLANS.get("couple:" + cid)); if (!c || c.email !== email) continue;
+            const main = safeParse(await env.PLANS.get("plan:" + c.planId)); if (!main || main.coupleId !== c.id) continue;
+            const cl = c.lang || lang;
+            const ct = c.claimToken ? await freshClaim(env, c, main) : null;
+            if (ct) { items.push(fill(MAILS[lang].itemClaim, { name: c.name, until: fmtDay((c.claimAt || c.resetAt || c.createdAt) + CLAIM_TTL, lang), link: plannerUrl(env, cl) + "#claim=" + ct }));
+              await markMailed(env, c.id, email); }
+            else { const t = await mintToken(env, { kind: "couple-recover", cid: c.id, gen: main.keyGen || 0, lg: c.lgen || 0, email }, RECOVER_TTL);
+              items.push(fill(MAILS[lang].itemCouple, { name: c.name, link: plannerUrl(env, cl) + "#recover=" + t })); }
+          }
+          for (const vid of (ix.venues || [])) {
+            const v = safeParse(await env.PLANS.get("venue:" + vid)); if (!v || v.email !== email) continue;
+            const t = await mintToken(env, { kind: "venue-recover", vid: v.id, lg: v.lgen || 0, email }, RECOVER_TTL);
+            items.push(fill(MAILS[lang].itemVenue, { name: v.name, link: baseUrl(env) + "/venue.html#recover=" + t }));
+          }
+          if (items.length) send(env, email, mailMsg(lang, "recover", { items: items.join("\n\n") }));
+        }
+        return json({ ok: true });
+      }
+      if (parts[0] === "recover" && parts[1] === "couple" && parts.length === 2 && request.method === "POST") {
+        const b = await readBody(request);
+        const t = await takeToken(env, b.token, ["couple-recover"], b.nonce);
+        if (t.error) return json({ error: t.error, at: t.at || null }, t.error === "token_invalid" ? 404 : 410);
+        const c = safeParse(await env.PLANS.get("couple:" + t.data.cid)); if (!c) return json({ error: "token_invalid" }, 404);
+        if ((c.lgen || 0) !== (t.data.lg || 0)) return json({ error: "token_used" }, 410);   // the address changed after this link was sent
+        const plans = [];
+        for (const pid of [c.planId, ...(c.plans || [])]) {
+          const r = await kvUpdate(env, "plan:" + pid, cur => { if (!cur || cur.coupleId !== c.id) return null;
+            if (pid === c.planId && (cur.keyGen || 0) !== (t.data.gen || 0)) return { __res: "stale" };   // keys changed since the mail was sent
+            const out = { id: pid, editKey: cur.editKey, readKey: cur.readKey, name: cur.name, updated: cur.updated };
+            if (!t.again) { addAudit(cur, "couple", "recover", 0, { d: device(request) }); return { __obj: cur, __res: out }; }
+            return { __res: out }; });
+          if (r.res === "stale") return json({ error: "token_used" }, 410);
+          if (r.res) plans.push(r.res);
+        }
+        return json({ plans });
+      }
+      if (parts[0] === "recover" && parts[1] === "venue" && parts.length === 2 && request.method === "POST") {
+        const b = await readBody(request);
+        const provided = b.secret != null && String(b.secret).trim() !== "";
+        let secret = provided ? String(b.secret).replace(/[^A-Za-z0-9]/g, "") : "";
+        if (provided && secret.length < 12) return json({ error: "too_short" }, 400);   // checked before the link is used up
+        const t = await takeToken(env, b.token, ["venue-recover", "venue-setup"], b.nonce);
+        if (t.error) return json({ error: t.error, at: t.at || null }, t.error === "token_invalid" ? 404 : 410);
+        const v = safeParse(await env.PLANS.get("venue:" + t.data.vid)); if (!v) return json({ error: "token_invalid" }, 404);
+        const mark = String(b.token).slice(0, 16);
+        if (t.again) return v.keyTok === mark ? json({ ok: true, key: v.key, venueId: v.id }) : json({ error: "token_used" }, 410);
+        if ((v.lgen || 0) !== (t.data.lg || 0)) return json({ error: "token_used" }, 410);   // a newer key, address or link retired this one
+        if (!provided) secret = rnd(28);
+        const newKey = v.id + "." + secret;
+        await rotateVenueCredentials(env, v.id, newKey, true);
+        await kvUpdate(env, "venue:" + v.id, cur => { if (!cur) return null; if (t.data.email && t.data.email === cur.email) cur.emailVerified = true; cur.keyPrivate = true; cur.keyTok = mark; return cur; });
+        return json({ ok: true, key: newKey, venueId: v.id });
+      }
+      if (parts[0] === "verify" && parts.length === 1 && request.method === "POST") {
+        const b = await readBody(request);
+        const t = await takeToken(env, b.token, ["verify-couple", "verify-venue"], b.nonce);
+        if (t.error) return json({ error: t.error }, t.error === "token_invalid" ? 404 : 410);
+        if (t.again) return json({ ok: true, email: t.data.email });
+        const email = normEmail(t.data.email); if (!email) return json({ error: "token_invalid" }, 404);
+        if (t.data.kind === "verify-couple") {
+          const tk = String(b.token);
+          const r = await kvUpdate(env, "couple:" + t.data.cid, c => { if (!c) return null; if (c.pendingVerify !== tk) return { __res: null };
+            const old = c.email || ""; c.email = email; c.emailVerified = true; c.pendingVerify = null; if (old !== email) nextGen(c); return { __obj: c, __res: old }; });
+          if (!r.obj) return json({ error: "token_invalid" }, 404);
+          if (r.res === null) return json({ error: "token_used" }, 410);   // a newer confirmation link replaced this one
+          const old = r.res; await indexEmail(env, old, "couple", t.data.cid, false); await indexEmail(env, email, "couple", t.data.cid, true);
+          await kvUpdate(env, "plan:" + r.obj.planId, cur => { if (!cur) return null; addAudit(cur, "couple", "email"); return cur; });
+          if (old && old !== email) send(env, old, mailMsg(r.obj.lang, "changed", { name: r.obj.name, email: maskEmail(email), by: MAILS[langOf(r.obj.lang)].byOwner }));
+          return json({ ok: true, email });
+        }
+        const tk = String(b.token);
+        const r = await kvUpdate(env, "venue:" + t.data.vid, v => { if (!v) return null; if (v.pendingVerify !== tk) return { __res: null };
+          const old = v.email || ""; v.email = email; v.emailVerified = true; v.pendingVerify = null; if (old !== email) nextGen(v); return { __obj: v, __res: old }; });
+        if (!r.obj) return json({ error: "token_invalid" }, 404);
+        if (r.res === null) return json({ error: "token_used" }, 410);
+        const old = r.res; await indexEmail(env, old, "venue", t.data.vid, false); await indexEmail(env, email, "venue", t.data.vid, true);
+        if (old && old !== email) send(env, old, mailMsg(r.obj.lang, "changed", { name: r.obj.name, email: maskEmail(email), by: MAILS[langOf(r.obj.lang)].byOwner }));
+        return json({ ok: true, email });
       }
       // ---------------- codes (device linking; the code is a shared secret) ----------------
       if (parts[0] === "codes" && parts.length === 2 && parts[1]) {
@@ -457,15 +686,29 @@ export default {
       if (parts[0] === "admin") {
         if (!env.OWNER_KEY) return json({ error: "admin disabled — set OWNER_KEY" }, 503);
         if (!eq(request.headers.get("X-Owner-Key") || "", env.OWNER_KEY)) return json({ error: "unauthorized" }, 403);
+        if (parts[1] === "mail" && parts.length === 2 && request.method === "GET") {
+          const st = (mailOn(env) && typeof env.MAIL.status === "function") ? env.MAIL.status() : {};
+          return json({ enabled: mailOn(env), from: mailOn(env) ? String(env.MAIL.from || "") : "", ...st });
+        }
         if (parts[1] === "venues") {
           if (parts.length === 2 && request.method === "POST") {
-            const b = await request.json().catch(() => ({}));
-            const id = rnd(10), key = id + "." + rnd(28);
-            const v = { id, name: String(b.name || "Venue").slice(0, 120), contact: String(b.contact || "").slice(0, 200),
+            const b = await readBody(request);
+            const id = rnd(10), key = id + "." + rnd(28), email = normEmail(b.email), lang = langOf(b.lang);
+            if (b.email && !email) return json({ error: "bad_email" }, 400);
+            const v = { id, name: String(b.name || "Venue").slice(0, 120), contact: String(b.contact || "").slice(0, 200), email, lang,
               key, keyRotated: false, license: normLicense(b.license), used: 0, weddings: [], active: true, createdAt: Date.now(), defaultPerms: { ...VENUE_DEFAULT } };
+            // With mail and an address, the venue sets its own key from the e-mailed link: the admin never sees one.
+            let mailed = false;
+            if (email && mailOn(env)) {
+              v.keyPrivate = true;
+              const t = await mintToken(env, { kind: "venue-setup", vid: id, lg: 0, email }, SETUP_TTL);
+              mailed = send(env, email, mailMsg(lang, "setup", { name: v.name, link: baseUrl(env) + "/venue.html#recover=" + t }));
+              if (!mailed) v.keyPrivate = false;
+            }
             await env.PLANS.put("venue:" + id, JSON.stringify(v));
             await addIndex(env, "venues:index", id);
-            return json({ id, key, venue: adminVenue(v) });
+            await indexEmail(env, email, "venue", id, true);
+            return json(mailed ? { id, venue: adminVenue(v), mailed: true } : { id, key, venue: adminVenue(v), mailed: false });
           }
           if (parts.length === 2 && request.method === "GET") {
             const ids = safeParse(await env.PLANS.get("venues:index")) || [];
@@ -475,24 +718,39 @@ export default {
           }
           if (parts.length === 3 && request.method === "GET") {
             const v = safeParse(await env.PLANS.get("venue:" + parts[2])); if (!v) return json({ error: "not found" }, 404);
-            // Once the venue has set its own key, only the venue knows it; the admin can only reset it (the venue notices).
-            return json({ venue: adminVenue(v), key: v.keyRotated ? null : v.key, keyRotated: !!v.keyRotated });
+            // Once the venue has its own key (set from an e-mailed link or changed in the console), only the venue knows it.
+            const hidden = !!(v.keyRotated || v.keyPrivate);
+            return json({ venue: adminVenue(v), key: hidden ? null : v.key, keyRotated: hidden });
           }
           if (parts.length === 4 && parts[3] === "reset-key" && request.method === "POST") {
             const v = safeParse(await env.PLANS.get("venue:" + parts[2])); if (!v) return json({ error: "not found" }, 404);
+            if (v.email && mailOn(env)) {   // the venue gets a link to set a new key; its current key keeps working until then
+              const g = await kvUpdate(env, "venue:" + v.id, cur => { if (!cur) return null; return { __obj: cur, __res: nextGen(cur) }; });   // older mailed links retire
+              const t = await mintToken(env, { kind: "venue-recover", vid: v.id, lg: g.res, email: v.email }, SETUP_TTL);
+              if (!send(env, v.email, mailMsg(v.lang, "venueReset", { name: v.name, link: baseUrl(env) + "/venue.html#recover=" + t }))) return json({ error: "mail_failed" }, 503);
+              return json({ ok: true, mailed: true, to: maskEmail(v.email) });
+            }
             const newKey = v.id + "." + rnd(28);
             await rotateVenueCredentials(env, v.id, newKey, false);
-            return json({ ok: true, key: newKey });
+            return json({ ok: true, key: newKey, mailed: false });
           }
           if (parts.length === 3 && (request.method === "PATCH" || request.method === "PUT")) {
-            const b = await request.json().catch(() => ({}));
-            const r = await kvUpdate(env, "venue:" + parts[2], v => { if (!v) return null;
+            const b = await readBody(request);
+            const email = b.email != null ? normEmail(b.email) : null;
+            if (b.email != null && String(b.email).trim() && !email) return json({ error: "bad_email" }, 400);
+            const r = await kvUpdate(env, "venue:" + parts[2], v => { if (!v) return null; const old = v.email || "";
               if (b.name != null) v.name = String(b.name).slice(0, 120);
               if (b.contact != null) v.contact = String(b.contact).slice(0, 200);
               if (b.active != null) v.active = !!b.active;
               if (b.license) v.license = normLicense(b.license);
-              return v; });
+              if (b.lang != null) v.lang = langOf(b.lang);
+              if (email != null && email !== old) { v.email = email; v.emailVerified = false; v.pendingVerify = null; nextGen(v); }   // links sent to the old address retire
+              return { __obj: v, __res: old }; });
             if (!r.obj) return json({ error: "not found" }, 404);
+            if (email != null && email !== r.res) {
+              await indexEmail(env, r.res, "venue", r.obj.id, false); await indexEmail(env, email, "venue", r.obj.id, true);
+              if (r.res) send(env, r.res, mailMsg(r.obj.lang, "changed", { name: r.obj.name, email: maskEmail(email) || "—", by: MAILS[langOf(r.obj.lang)].byAdmin }));
+            }
             return json({ venue: adminVenue(r.obj) });
           }
           if (parts.length === 3 && request.method === "DELETE") {   // erasure: the venue, its weddings and its template
@@ -500,6 +758,7 @@ export default {
             if (dv) {
               for (const w of (dv.weddings || [])) if (w && w.planId) await purgeVenuePlan(env, dv.id, w.planId);
               if (dv.templateId) await purgeVenuePlan(env, dv.id, dv.templateId);
+              await indexEmail(env, dv.email, "venue", dv.id, false); await forgetEmail(env, dv.email);
             }
             await env.PLANS.delete("venue:" + parts[2]);
             await removeIndex(env, "venues:index", parts[2]);
@@ -507,16 +766,23 @@ export default {
           }
         }
         if (parts[1] === "couples") {
+          // With mail and an address the claim link goes straight to the couple: the admin never sees it.
+          const mailClaim = (c, token) => send(env, c.email, mailMsg(c.lang, "claim", { name: c.name, link: plannerUrl(env, c.lang) + "#claim=" + token, recover: plannerUrl(env, c.lang) + "#recover" }));
           if (parts.length === 2 && request.method === "POST") {   // a couple bought TakeaSeat: a plan only they can open
-            const b = await request.json().catch(() => ({}));
+            const b = await readBody(request);
+            const email = normEmail(b.email), lang = langOf(b.lang);
+            if (b.email && !email) return json({ error: "bad_email" }, 400);
             const cid = rnd(10), planId = rnd(22), token = rnd(32);
             const name = String(b.name || "Wedding").slice(0, 120);
             await env.PLANS.put("plan:" + planId, JSON.stringify({ name, plan: null, editKey: rnd(28), readKey: rnd(24), owner: { type: "couple" }, coupleId: cid, keyGen: 0, updated: Date.now(), audit: [] }));
-            const c = { id: cid, name, contact: String(b.contact || "").slice(0, 200), createdAt: Date.now(), planId, claimToken: token, claimedAt: null };
+            const c = { id: cid, name, contact: String(b.contact || "").slice(0, 200), email, lang, createdAt: Date.now(), claimAt: Date.now(), planId, claimToken: token, claimedAt: null };
+            const mailed = !!(email && mailOn(env)) && mailClaim(c, token);
+            c.mailed = mailed; if (mailed) c.mailedTo = email;
             await env.PLANS.put("couple:" + cid, JSON.stringify(c));
             await env.PLANS.put("claim:" + token, JSON.stringify({ cid, planId, createdAt: Date.now(), gen: 0 }));
             await addIndex(env, "couples:index", cid);
-            return json({ couple: await adminCouple(env, c), claimToken: token });
+            await indexEmail(env, email, "couple", cid, true);
+            return json(mailed ? { couple: await adminCouple(env, c), mailed: true } : { couple: await adminCouple(env, c), claimToken: token, mailed: false });
           }
           if (parts.length === 2 && request.method === "GET") {
             const ids = safeParse(await env.PLANS.get("couples:index")) || [];
@@ -525,16 +791,44 @@ export default {
             return json({ couples: out });
           }
           if (parts.length === 3 && (request.method === "PATCH" || request.method === "PUT")) {
-            const b = await request.json().catch(() => ({}));
-            const r = await kvUpdate(env, "couple:" + parts[2], c => { if (!c) return null;
+            const b = await readBody(request);
+            const email = b.email != null ? normEmail(b.email) : null;
+            if (b.email != null && String(b.email).trim() && !email) return json({ error: "bad_email" }, 400);
+            const r = await kvUpdate(env, "couple:" + parts[2], c => { if (!c) return null; const old = c.email || "";
               if (b.name != null) c.name = String(b.name).slice(0, 120);
               if (b.contact != null) c.contact = String(b.contact).slice(0, 200);
-              return c; });
+              if (b.lang != null) c.lang = langOf(b.lang);
+              if (email != null && email !== old) { c.email = email; c.emailVerified = false; c.pendingVerify = null; nextGen(c); }   // links sent to the old address retire
+              return { __obj: c, __res: old }; });
             if (!r.obj) return json({ error: "not found" }, 404);
-            return json({ couple: await adminCouple(env, r.obj) });
+            let c = r.obj, mailed = null;
+            if (email != null && email !== r.res) {   // changing a couple's address is visible to them: old address told, access log entry
+              await indexEmail(env, r.res, "couple", c.id, false); await indexEmail(env, email, "couple", c.id, true);
+              if (r.res) send(env, r.res, mailMsg(c.lang, "changed", { name: c.name, email: maskEmail(email) || "—", by: MAILS[langOf(c.lang)].byAdmin }));
+              await kvUpdate(env, "plan:" + c.planId, cur => { if (!cur || cur.coupleId !== c.id) return null; addAudit(cur, "admin", "email"); return cur; });
+              if (c.claimToken) {   // a first-opening link that went to the old address stops; a new one goes to the new address
+                const main = safeParse(await env.PLANS.get("plan:" + c.planId));
+                const ct = await freshClaim(env, c, main, true);
+                mailed = !!(email && mailOn(env)) && mailClaim(c, ct);
+                if (mailed) await markMailed(env, c.id, email);
+                c = safeParse(await env.PLANS.get("couple:" + c.id)) || c;
+              }
+            }
+            return json({ couple: await adminCouple(env, c), mailed });
           }
-          // Lost link: new keys + a new claim link. Every old key, view link and linked device stops working, open
-          // support access ends, and the reset is in the access log the couple sees.
+          // Send the couple its link again (not opened yet) or a recovery link (already opened) — by mail, never to the admin.
+          if (parts.length === 4 && parts[3] === "send" && request.method === "POST") {
+            const c = safeParse(await env.PLANS.get("couple:" + parts[2])); if (!c) return json({ error: "not found" }, 404);
+            if (!c.email || !mailOn(env)) return json({ error: "mail_off" }, 503);
+            const main = safeParse(await env.PLANS.get("plan:" + c.planId)); if (!main || main.coupleId !== c.id) return json({ error: "plan_gone" }, 410);
+            const ct = c.claimToken ? await freshClaim(env, c, main) : null;
+            if (ct) { if (!mailClaim(c, ct)) return json({ error: "mail_failed" }, 503); await markMailed(env, c.id, c.email); return json({ ok: true, mailed: true, to: maskEmail(c.email) }); }
+            const t = await mintToken(env, { kind: "couple-recover", cid: c.id, gen: main.keyGen || 0, lg: c.lgen || 0, email: c.email }, SETUP_TTL);
+            if (!send(env, c.email, mailMsg(c.lang, "relink", { name: c.name, link: plannerUrl(env, c.lang) + "#recover=" + t }))) return json({ error: "mail_failed" }, 503);
+            return json({ ok: true, mailed: true, to: maskEmail(c.email) });
+          }
+          // New keys (a leaked link the couple cannot fix themselves): every old key, view link and linked device stops
+          // working, open support access ends; the new link goes to the couple's email (to the admin only without mail).
           if (parts.length === 4 && parts[3] === "reset" && request.method === "POST") {
             const c = safeParse(await env.PLANS.get("couple:" + parts[2])); if (!c) return json({ error: "not found" }, 404);
             const token = rnd(32), now = Date.now();
@@ -545,14 +839,16 @@ export default {
             await removeIndex(env, "support:index", c.planId);
             if (c.claimToken) await env.PLANS.delete("claim:" + c.claimToken);
             await env.PLANS.put("claim:" + token, JSON.stringify({ cid: c.id, planId: c.planId, createdAt: now, gen: r.obj.keyGen || 0, reset: true }));
-            await kvUpdate(env, "couple:" + c.id, cp => { if (!cp) return null; cp.claimToken = token; cp.claimedAt = null; cp.resetAt = now; return cp; });
-            return json({ ok: true, claimToken: token });
+            const mailed = !!(c.email && mailOn(env)) && mailClaim(c, token);
+            await kvUpdate(env, "couple:" + c.id, cp => { if (!cp) return null; cp.claimToken = token; cp.claimedAt = null; cp.resetAt = now; cp.claimAt = now; cp.mailed = mailed; cp.mailedTo = mailed ? c.email : null; nextGen(cp); return cp; });
+            return json(mailed ? { ok: true, mailed: true, to: maskEmail(c.email) } : { ok: true, claimToken: token, mailed: false });
           }
           if (parts.length === 3 && request.method === "DELETE") {   // erasure on request
             const c = safeParse(await env.PLANS.get("couple:" + parts[2]));
             if (c) {
               for (const pid of [c.planId, ...(c.plans || [])]) { const pr = safeParse(await env.PLANS.get("plan:" + pid)); if (pr && pr.coupleId === c.id) await purgePlan(env, pid); }
               if (c.claimToken) await env.PLANS.delete("claim:" + c.claimToken);
+              await indexEmail(env, c.email, "couple", c.id, false); await forgetEmail(env, c.email);
             }
             await env.PLANS.delete("couple:" + parts[2]);
             await removeIndex(env, "couples:index", parts[2]);
@@ -603,7 +899,7 @@ export default {
             if (t) template = { planId: v.templateId, venueKey: t.venueKey, updated: t.updated, tables: planStats(t.plan).tables, supportExpires: supportActive(t) ? t.support.expires : null }; }
           const gate = canCreateWedding(v);
           const live = x => (x && x > Date.now()) ? x : null;
-          return json({ venue: publicVenue(v), template, defaultPerms: normPerms(v.defaultPerms, ALL_OPEN), canCreate: gate.ok, reason: gate.reason,
+          return json({ venue: { ...publicVenue(v), email: v.email || "", emailVerified: !!v.emailVerified, mail: mailOn(env) }, template, defaultPerms: normPerms(v.defaultPerms, ALL_OPEN), canCreate: gate.ok, reason: gate.reason,
             weddings: (v.weddings || []).map(w => ({ planId: w.planId, label: w.label, createdAt: w.createdAt, editKey: w.editKey, venueKey: w.venueKey,
               perms: normPerms(w.perms, ALL_OPEN), layoutSet: w.layoutSet !== false, supportExpires: live(w.supportExpires) })) });
         }
@@ -618,9 +914,19 @@ export default {
           await rotateVenueCredentials(env, v.id, newKey, true);
           return json({ ok: true, key: newKey });
         }
+        if (parts.length === 3 && parts[2] === "email" && request.method === "POST") {   // the venue changes its recovery email (confirmed by mail)
+          if (!mailOn(env)) return json({ error: "mail_off" }, 503);
+          const b = await readBody(request);
+          const email = normEmail(b.email); if (!email) return json({ error: "bad_email" }, 400);
+          if (!(await mailAllowed(env, email, "verify"))) return json({ error: "rate_limited" }, 429);
+          const t = await mintToken(env, { kind: "verify-venue", vid: v.id, email }, VERIFY_TTL);
+          await kvUpdate(env, vkey, cur => { if (!cur) return null; cur.pendingVerify = t; return cur; });
+          if (!send(env, email, mailMsg(b.lang || v.lang, "verify", { name: v.name, link: baseUrl(env) + "/venue.html#verify=" + t }))) return json({ error: "mail_failed" }, 503);
+          return json({ ok: true, pending: maskEmail(email) });
+        }
         // What a couple may change in NEW weddings (and, if asked, in every existing one).
         if (parts.length === 3 && parts[2] === "defaults" && (request.method === "PUT" || request.method === "PATCH")) {
-          const b = await request.json().catch(() => ({}));
+          const b = await readBody(request);
           const perms = normPerms(b.perms, normPerms(v.defaultPerms, ALL_OPEN));
           let applied = 0;
           if (b.applyToAll) for (const w of (v.weddings || [])) {
@@ -633,7 +939,7 @@ export default {
         // The venue's default space: one template plan (outside the weddings list: never counted, never a couple link).
         if (parts.length === 3 && parts[2] === "template" && request.method === "POST") {
           if (v.templateId) { const t = await ownPlan(v.templateId); if (t) return json({ planId: v.templateId, venueKey: t.venueKey, updated: t.updated }); }
-          const b = await request.json().catch(() => ({}));
+          const b = await readBody(request);
           let plan = null;
           if (b.fromPlanId) {   // "start from one of my weddings": only a wedding of this venue, and only its space
             const src = (v.weddings || []).some(w => w.planId === b.fromPlanId) ? await ownPlan(b.fromPlanId) : null;
@@ -650,7 +956,7 @@ export default {
         if (parts.length === 3 && parts[2] === "weddings" && request.method === "POST") {
           const gate = canCreateWedding(v);
           if (!gate.ok) return json({ error: gate.reason }, 403);
-          const b = await request.json().catch(() => ({}));
+          const b = await readBody(request);
           let plan = null;
           if (v.templateId) { const t = await ownPlan(v.templateId); if (t) plan = layoutOnly(t.plan); }
           const id = rnd(22), editKey = rnd(28), venueKey = rnd(28);
@@ -667,7 +973,7 @@ export default {
         }
         // Rename a wedding and/or change what its couple may change.
         if (parts.length === 4 && parts[2] === "weddings" && (request.method === "PATCH" || request.method === "PUT")) {
-          const b = await request.json().catch(() => ({}));
+          const b = await readBody(request);
           const w = (v.weddings || []).find(x => x.planId === parts[3]);
           if (!w || !(await ownPlan(parts[3]))) return json({ error: "not found" }, 404);
           const label = b.label != null ? String(b.label).trim().slice(0, 120) : null;
@@ -772,7 +1078,8 @@ async function rotateVenueCredentials(env, venueId, newKey, byVenue) {
     if (r.res) fresh[pid] = r.res;
   }
   await kvUpdate(env, "venue:" + venueId, cur => { if (!cur) return null;
-    cur.key = newKey; cur.keyRotated = !!byVenue; if (!byVenue) cur.keyResetAt = Date.now();
+    cur.key = newKey; cur.keyRotated = !!byVenue; if (!byVenue) { cur.keyResetAt = Date.now(); delete cur.keyPrivate; }
+    delete cur.keyTok; nextGen(cur);
     (cur.weddings || []).forEach(w => { if (fresh[w.planId]) w.venueKey = fresh[w.planId]; }); return cur; });
 }
 async function markVenueLayout(env, venueId, planId) {
@@ -822,15 +1129,18 @@ function canCreateWedding(v) {
 }
 function publicVenue(v) {   // returned to the venue itself (no key)
   return { id: v.id, name: v.name, contact: v.contact, license: v.license, used: v.used || 0,
-    active: v.active, createdAt: v.createdAt, weddingCount: (v.weddings || []).length, keyRotated: !!v.keyRotated, hasTemplate: !!v.templateId };
+    active: v.active, createdAt: v.createdAt, weddingCount: (v.weddings || []).length, keyRotated: !!(v.keyRotated || v.keyPrivate), hasTemplate: !!v.templateId };
 }
 function adminVenue(v) {     // returned to the owner — counts only: no plan ids, no keys, no wedding names
-  return publicVenue(v);
+  return { ...publicVenue(v), email: v.email || "", emailVerified: !!v.emailVerified, lang: v.lang || "el" };
 }
 async function adminCouple(env, c) {   // licence metadata only — never the plan id, a key, or anything inside the plan
   const rec = safeParse(await env.PLANS.get("plan:" + c.planId));
-  return { id: c.id, name: c.name, contact: c.contact, createdAt: c.createdAt, claimedAt: c.claimedAt || null, resetAt: c.resetAt || null,
-    exists: !!rec, deletedAt: c.deletedAt || null, lastEdit: rec ? rec.updated : null, pendingClaim: !!c.claimToken, claimToken: c.claimToken || null,
+  return { id: c.id, name: c.name, contact: c.contact, email: c.email || "", emailVerified: !!c.emailVerified, lang: c.lang || "el", mailed: !!c.mailed,
+    createdAt: c.createdAt, claimedAt: c.claimedAt || null, resetAt: c.resetAt || null,
+    exists: !!rec, deletedAt: c.deletedAt || null, lastEdit: rec ? rec.updated : null, pendingClaim: !!c.claimToken,
+    claimToken: (c.claimToken && !c.mailed) ? c.claimToken : null,   // a link that went by mail is never shown to the admin
+    claimIssuedAt: c.claimToken ? (c.claimAt || c.resetAt || c.createdAt) : null,
     support: supportActive(rec) ? { expires: rec.support.expires } : null };
 }
 async function addIndex(env, key, id) { await kvUpdate(env, key, ids => { ids = Array.isArray(ids) ? ids : []; if (ids.includes(id)) return null; ids.push(id); return ids; }); }

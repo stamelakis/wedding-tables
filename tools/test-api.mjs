@@ -347,4 +347,211 @@ r = await call('DELETE', '/plans/' + C.id, undefined, { 'X-Edit-Key': C.editKey 
 ok(r.status === 200 && !m.has('plan:' + C.id), 'a couple can delete its own plan');
 r = await call('DELETE', '/admin/venues/' + V.id, undefined, OWN);
 ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' + V.id), 'deleting a venue erases its weddings and its template');
+
+// ---------- 8. email: links and keys go to the customer, never through the admin ----------
+{
+  ok((await call('POST', '/recover', { email: 'a@b.gr' })).status === 503 && (await call('GET', '/admin/mail', undefined, OWN)).d.enabled === false, 'without mail: recovery answers mail_off, admin sees mail off');
+  const noMail = (await call('POST', '/admin/couples', { name: 'NoMail', email: 'nm@example.com' }, OWN)).d;
+  ok(noMail.claimToken && noMail.mailed === false, 'without mail the admin still gets the claim link (today\'s flow)');
+  const sent = [];
+  env.MAIL = { enabled: true, from: 'TakeaSeat <hello@takeaseat.gr>', send: msg => { sent.push(msg); return true; } };
+  env.PUBLIC_URL = 'https://takeaseat.gr';
+  const last = () => sent[sent.length - 1];
+  const tok = (msg, kind) => { const x = new RegExp('#' + kind + '=([A-Za-z0-9]+)').exec(msg.text); return x && x[1]; };
+  ok((await call('GET', '/admin/mail', undefined, OWN)).d.enabled === true, 'admin sees mail on');
+  ok((await call('POST', '/admin/couples', { name: 'X', email: 'not an email' }, OWN)).status === 400, 'a malformed address is refused');
+
+  // couple: the claim link goes by mail only
+  let r = await call('POST', '/admin/couples', { name: 'Νίκος & Ελένη', email: ' Couple@Example.COM ', lang: 'en' }, OWN);
+  const cp = r.d.couple;
+  ok(r.status === 200 && r.d.mailed === true && !r.d.claimToken && !cp.claimToken && cp.pendingClaim && cp.email === 'couple@example.com', 'with mail: the claim link is e-mailed and never returned to the admin', r.d);
+  ok(last().to === 'couple@example.com' && last().text.includes('https://takeaseat.gr/seating-planner.html#claim=') && last().text.includes('Νίκος & Ελένη'), 'the mail carries the claim link on the public URL, in the couple\'s language', last());
+  ok(!(await call('GET', '/admin/couples', undefined, OWN)).d.couples.some(c => c.claimToken && c.id === cp.id), 'the admin list never shows a mailed claim link');
+  const claimT = tok(last(), 'claim');
+  r = await call('POST', '/claim', { token: claimT, nonce: 'n1' });
+  const cPlan = r.d.id, cKey = r.d.editKey;
+  ok(r.status === 200 && cKey && raw('couple:' + cp.id).emailVerified === true, 'the couple opens the mailed link; that proves the address');
+  ok(raw('email:couple@example.com').couples.includes(cp.id), 'the address is indexed for recovery');
+
+  // self-service recovery
+  let before = sent.length;
+  r = await call('POST', '/recover', { email: 'nobody@example.com' });
+  ok(r.status === 200 && sent.length === before, 'recovery answers the same for an unknown address and sends nothing');
+  ok((await call('POST', '/recover', { email: 'bad' })).status === 400, 'recovery refuses a malformed address');
+  r = await call('POST', '/recover', { email: 'COUPLE@example.com', lang: 'el' });
+  ok(r.status === 200 && sent.length === before + 1 && last().to === 'couple@example.com' && last().text.includes('#recover=') && last().subject.includes('σύνδεσμοί'), 'a known address gets one mail with a recovery link', last());
+  const recT = tok(last(), 'recover');
+  r = await call('POST', '/recover/couple', { token: recT, nonce: 'dev1' });
+  ok(r.status === 200 && r.d.plans.length === 1 && r.d.plans[0].id === cPlan && r.d.plans[0].editKey === cKey && r.d.plans[0].readKey, 'the recovery link gives the couple its keys back', r.d);
+  ok(raw('plan:' + cPlan).audit.some(e => e.what === 'recover'), 'recovery shows in the couple\'s access log');
+  ok((await call('POST', '/recover/couple', { token: recT, nonce: 'dev1' })).status === 200, 'the same device may retry a lost answer');
+  ok((await call('POST', '/recover/couple', { token: recT, nonce: 'other' })).status === 410, 'a recovery link opens once');
+  ok((await call('POST', '/recover/couple', { token: 'x'.repeat(32) })).status === 404, 'an unknown recovery link is refused');
+  before = sent.length;
+  for (let i = 0; i < 4; i++) await call('POST', '/recover', { email: 'couple@example.com' });
+  ok(sent.length === before + 2, 'at most 3 recovery mails an hour per address', sent.length - before);
+  m.delete('rlmail:recover:couple@example.com');
+  await call('POST', '/recover', { email: 'couple@example.com' });
+  const staleT = tok(last(), 'recover');
+  const rot = (await call('POST', '/plans/' + cPlan + '/rotate', {}, { 'X-Edit-Key': cKey })).d;
+  ok((await call('POST', '/recover/couple', { token: staleT, nonce: 'z' })).status === 410, 'a recovery link sent before "new links" no longer works');
+  m.delete('rlmail:recover:couple@example.com');
+  await call('POST', '/recover', { email: 'couple@example.com' });
+  const oldT = tok(last(), 'recover'); patchRaw('tok:' + oldT, o => { o.createdAt -= 2 * 3600000; });
+  r = await call('POST', '/recover/couple', { token: oldT, nonce: 'z' });
+  ok(r.status === 410 && r.d.error === 'token_expired', 'a recovery link expires after an hour');
+
+  // the couple changes its own recovery email (confirmed by mail; the old address is told)
+  const CK = { 'X-Edit-Key': rot.editKey };
+  r = await call('GET', '/plans/' + cPlan, undefined, CK);
+  ok(r.d.email === 'couple@example.com' && r.d.mail === true, 'the couple sees its recovery email');
+  ok(!('email' in (await call('GET', '/plans/' + cPlan, undefined, { 'X-View-Key': rot.readKey })).d), 'a view link never sees the email');
+  ok((await call('POST', '/plans/' + cPlan + '/email', { email: 'x@example.com' }, { 'X-View-Key': rot.readKey })).status === 403, 'a viewer cannot change the email');
+  r = await call('POST', '/plans/' + cPlan + '/email', { email: 'New@Example.com', lang: 'el' }, CK);
+  ok(r.status === 200 && r.d.pending === 'ne***@example.com' && last().to === 'new@example.com' && last().text.includes('seating-planner-el.html#verify='), 'a new address gets a confirmation link', r.d);
+  ok(raw('couple:' + cp.id).email === 'couple@example.com', 'nothing changes until the new address confirms');
+  const verT = tok(last(), 'verify'); before = sent.length;
+  r = await call('POST', '/verify', { token: verT, nonce: 'v' });
+  ok(r.status === 200 && raw('couple:' + cp.id).email === 'new@example.com' && !m.has('email:couple@example.com') && raw('email:new@example.com').couples.includes(cp.id), 'confirmed: the new address replaces the old one in the index');
+  ok(sent.length === before + 1 && sent[before].to === 'couple@example.com' && sent[before].text.includes('ne***@example.com'), 'the old address is told about the change');
+  ok(raw('plan:' + cPlan).audit.some(e => e.what === 'email' && e.who === 'couple'), 'the change shows in the access log');
+  ok((await call('POST', '/verify', { token: verT, nonce: 'other' })).status === 410, 'a confirmation link works once');
+
+  // admin changes the address (lost mailbox): visible to the couple
+  before = sent.length;
+  r = await call('PATCH', '/admin/couples/' + cp.id, { email: 'third@example.com' }, OWN);
+  ok(r.status === 200 && sent[before].to === 'new@example.com' && sent[before].text.includes('TakeaSeat'), 'an admin change of address is mailed to the old address');
+  ok(raw('plan:' + cPlan).audit.some(e => e.what === 'email' && e.who === 'admin'), 'and logged in the couple\'s access log');
+  r = await call('POST', '/admin/couples/' + cp.id + '/send', {}, OWN);
+  ok(r.status === 200 && r.d.mailed && !JSON.stringify(r.d).includes('#') && last().to === 'third@example.com' && tok(last(), 'recover'), 'admin "send link" e-mails a recovery link to an opened plan — the admin never sees it', r.d);
+
+  // an unopened link that expired is replaced when sent again
+  const c2 = (await call('POST', '/admin/couples', { name: 'Late', email: 'late@example.com' }, OWN)).d.couple;
+  const t1 = tok(last(), 'claim'); patchRaw('claim:' + t1, o => { o.createdAt -= 40 * 86400000; });
+  r = await call('POST', '/admin/couples/' + c2.id + '/send', {}, OWN);
+  const t2 = tok(last(), 'claim');
+  ok(r.d.mailed && t2 && t2 !== t1 && !m.has('claim:' + t1) && (await call('POST', '/claim', { token: t2, nonce: 'q' })).status === 200, 'an expired claim link is replaced by a fresh one when sent again');
+  const c3 = (await call('POST', '/admin/couples', { name: 'Unopened', email: 'unopened@example.com' }, OWN)).d.couple;
+  const t3 = tok(last(), 'claim');
+  await call('POST', '/recover', { email: 'unopened@example.com' });
+  ok(tok(last(), 'claim') === t3, 'recovery for a plan not opened yet re-sends its claim link');
+
+  // admin reset with mail: new link to the couple only
+  r = await call('POST', '/admin/couples/' + cp.id + '/reset', {}, OWN);
+  ok(r.status === 200 && r.d.mailed && !r.d.claimToken && last().to === 'third@example.com', 'a reset mails the new link to the couple, not to the admin', r.d);
+  ok((await call('GET', '/plans/' + cPlan, undefined, CK)).status === 403 && (await call('POST', '/claim', { token: tok(last(), 'claim'), nonce: 'r' })).status === 200, 'the old keys stop; the mailed link opens the plan');
+
+  // venues: the venue sets its own key from the mailed link
+  r = await call('POST', '/admin/venues', { name: 'Κτήμα Email', email: 'venue@example.com', lang: 'el' }, OWN);
+  const VE = r.d;
+  ok(r.status === 200 && VE.mailed && !VE.key && VE.venue.email === 'venue@example.com', 'with mail: a new venue gets a setup link by mail, the admin gets no key', r.d);
+  ok(last().to === 'venue@example.com' && last().text.includes('https://takeaseat.gr/venue.html#recover='), 'the setup mail links to the console');
+  ok((await call('GET', '/admin/venues/' + VE.id, undefined, OWN)).d.key === null, 'the admin cannot read the venue key');
+  const setT = tok(last(), 'recover');
+  ok((await call('POST', '/recover/venue', { token: setT, nonce: 'vv', secret: 'short' })).status === 400 && raw('tok:' + setT).usedAt === undefined, 'a too-short chosen key is refused without using up the link');
+  r = await call('POST', '/recover/venue', { token: setT, nonce: 'vv' });
+  const VK = r.d.key;
+  ok(r.status === 200 && VK && VK.startsWith(VE.id + '.') && (await call('GET', '/venues/' + VE.id, undefined, { 'X-Venue-Key': VK })).status === 200, 'the venue sets its key and signs in', r.d);
+  ok((await call('POST', '/recover/venue', { token: setT, nonce: 'vv' })).d.key === VK, 'the same device gets the same key if the answer was lost');
+  ok((await call('POST', '/recover/venue', { token: setT, nonce: 'other' })).status === 410, 'anyone else: the setup link is used');
+  r = await call('GET', '/venues/' + VE.id, undefined, { 'X-Venue-Key': VK });
+  ok(r.d.venue.email === 'venue@example.com' && r.d.venue.mail === true && r.d.venue.keyRotated === true, 'the console shows its recovery email and that its key is private', r.d.venue);
+  // forgot the key
+  await call('POST', '/recover', { email: 'venue@example.com' });
+  const vRec = tok(last(), 'recover');
+  ok(last().text.includes('venue.html#recover=') && (await call('GET', '/venues/' + VE.id, undefined, { 'X-Venue-Key': VK })).status === 200, 'a recovery request never locks out the current key');
+  const VK2 = (await call('POST', '/recover/venue', { token: vRec, nonce: 'w' })).d.key;
+  ok(VK2 && VK2 !== VK && (await call('GET', '/venues/' + VE.id, undefined, { 'X-Venue-Key': VK })).status === 403, 'a recovered venue key replaces the old one');
+  // admin "reset key" with mail: a link to the venue, nothing to the admin
+  r = await call('POST', '/admin/venues/' + VE.id + '/reset-key', {}, OWN);
+  ok(r.d.mailed && !r.d.key && (await call('GET', '/venues/' + VE.id, undefined, { 'X-Venue-Key': VK2 })).status === 200, 'admin reset-key mails a link; the current key keeps working until it is used', r.d);
+  // the venue changes its email
+  r = await call('POST', '/venues/' + VE.id + '/email', { email: 'office@example.com' }, { 'X-Venue-Key': VK2 });
+  ok(r.status === 200 && last().to === 'office@example.com' && last().text.includes('venue.html#verify='), 'the venue changes its email with a confirmation link');
+  before = sent.length;
+  ok((await call('POST', '/verify', { token: tok(last(), 'verify') })).status === 200 && raw('venue:' + VE.id).email === 'office@example.com' && sent[before].to === 'venue@example.com', 'confirmed; the old address is told');
+  ok((await call('POST', '/venues/' + VE.id + '/email', { email: 'x@example.com' }, { 'X-Venue-Key': 'nope' })).status === 403, 'only the venue can change its email');
+
+  // erasure clears the index
+  await call('DELETE', '/admin/couples/' + c3.id, undefined, OWN);
+  await call('DELETE', '/admin/venues/' + VE.id, undefined, OWN);
+  ok(!m.has('email:unopened@example.com') && !m.has('email:office@example.com'), 'erasure removes the addresses from the recovery index');
+  ok(sent.every(x => x.text.startsWith('http') === false && /https:\/\/takeaseat\.gr\//.test(x.text) || /TakeaSeat/.test(x.text)), 'every mail is plain text from the public site');
+
+  // ---- review fixes ----
+  { // only the newest confirmation link counts (a typo'd address cannot confirm later)
+    const k = (await call('POST', '/admin/couples', { name: 'Typo', email: 'typo-owner@example.com' }, OWN)).d.couple;
+    const e = (await call('POST', '/claim', { token: tok(last(), 'claim'), nonce: 't' })).d, H = { 'X-Edit-Key': e.editKey };
+    await call('POST', '/plans/' + e.id + '/email', { email: 'typo@exampel.com' }, H); const T1 = tok(last(), 'verify');
+    await call('POST', '/plans/' + e.id + '/email', { email: 'right@example.com' }, H); const T2 = tok(last(), 'verify');
+    ok((await call('POST', '/verify', { token: T1, nonce: 'a' })).status === 410 && raw('couple:' + k.id).email === 'typo-owner@example.com', 'an older confirmation link is dead once a newer one was sent');
+    ok((await call('POST', '/verify', { token: T2, nonce: 'b' })).status === 200 && raw('couple:' + k.id).email === 'right@example.com', 'the newest one confirms');
+    // a recovery link sent to the old address dies with the change
+    m.delete('rlmail:recover:right@example.com');
+    await call('POST', '/recover', { email: 'right@example.com' }); const R1 = tok(last(), 'recover');
+    await call('PATCH', '/admin/couples/' + k.id, { email: 'fourth@example.com' }, OWN);
+    ok((await call('POST', '/recover/couple', { token: R1, nonce: 'x' })).status === 410, 'a recovery link sent to the old address stops when the address changes');
+    // an extra plan's key never reaches the licence's email
+    const extra = (await call('POST', '/plans', { name: 'extra', plan: layout(), parentId: e.id }, H)).d;
+    const XH = { 'X-Edit-Key': extra.editKey };
+    ok(!('email' in (await call('GET', '/plans/' + extra.id, undefined, XH)).d) && (await call('POST', '/plans/' + extra.id + '/email', { email: 'x@example.com' }, XH)).status === 403, 'an extra plan\'s key neither sees nor changes the recovery email');
+  }
+  { // an admin address change stops an unopened link and sends a fresh one to the new address
+    const k = (await call('POST', '/admin/couples', { name: 'Moved', email: 'moved-old@example.com' }, OWN)).d.couple;
+    const oldT = tok(last(), 'claim');
+    const pr = await call('PATCH', '/admin/couples/' + k.id, { email: 'moved-new@example.com' }, OWN);
+    const newT = tok(last(), 'claim');
+    ok(pr.d.mailed === true && last().to === 'moved-new@example.com' && newT && newT !== oldT && !m.has('claim:' + oldT) && !pr.d.couple.claimToken, 'the old first-opening link stops; a new one goes to the new address', pr.d);
+    ok((await call('POST', '/claim', { token: newT, nonce: 'n' })).status === 200 && raw('couple:' + k.id).emailVerified === true, 'opening it proves the new address');
+  }
+  { // the verified mark only lands on the address the link went to
+    const k = (await call('POST', '/admin/couples', { name: 'Mark', email: 'mark-a@example.com' }, OWN)).d.couple;
+    const t1 = tok(last(), 'claim');
+    patchRaw('couple:' + k.id, o => { o.email = 'mark-b@example.com'; });   // changed without the admin route (old data)
+    await call('POST', '/claim', { token: t1, nonce: 'n' });
+    ok(raw('couple:' + k.id).emailVerified !== true, 'a link mailed to another address does not verify the current one');
+  }
+  { // /recover mailing a first-opening link hides it from the admin; the issue date is shown
+    const k = (await call('POST', '/admin/couples', { name: 'Hidden' }, OWN)).d.couple;   // no email: the admin sees the link
+    await call('PATCH', '/admin/couples/' + k.id, { email: 'hidden@example.com' }, OWN);
+    await call('POST', '/recover', { email: 'hidden@example.com' });
+    const row = (await call('GET', '/admin/couples', undefined, OWN)).d.couples.find(x => x.id === k.id);
+    ok(row && !row.claimToken && row.claimIssuedAt && last().text.includes('#claim='), 'a claim link that went by mail is hidden from the admin list; the list has the issue date', row);
+  }
+  { // venue: links sent before an address change / key change die; a replay never hands out a later key
+    const V = (await call('POST', '/admin/venues', { name: 'Gen', email: 'gen-old@example.com' }, OWN)).d;
+    const setup = tok(last(), 'recover');
+    const K1 = (await call('POST', '/recover/venue', { token: setup, nonce: 'n1' })).d.key, H1 = { 'X-Venue-Key': K1 };
+    const rs = await call('POST', '/admin/venues/' + V.id + '/reset-key', {}, OWN); const oldLink = tok(last(), 'recover');
+    ok(rs.d.mailed && last().subject.includes('κωδικός'), 'a key reset mail says what it is');
+    await call('POST', '/venues/' + V.id + '/email', { email: 'gen-new@example.com' }, H1);
+    await call('POST', '/verify', { token: tok(last(), 'verify') });
+    ok((await call('POST', '/recover/venue', { token: oldLink, nonce: 'z' })).status === 410 && (await call('GET', '/venues/' + V.id, undefined, H1)).status === 200, 'a key link sent to the old address stops when the address changes');
+    const K3 = (await call('POST', '/venues/' + V.id + '/rotate', {}, H1)).d.key;
+    const rep = await call('POST', '/recover/venue', { token: setup, nonce: 'n1' });
+    ok(rep.status === 410 && !JSON.stringify(rep.d).includes(K3), 'replaying a used link after a key change never returns the new key');
+    ok((await call('GET', '/venues/' + V.id, undefined, { 'X-Venue-Key': K3 })).status === 200, 'the venue\'s own new key works');
+    const rk = await call('POST', '/admin/venues/' + V.id + '/reset-key', {}, OWN);
+    delete env.MAIL;
+    const rk2 = await call('POST', '/admin/venues/' + V.id + '/reset-key', {}, OWN);
+    ok(rk.d.mailed && rk2.d.key && (await call('GET', '/admin/venues/' + V.id, undefined, OWN)).d.key === rk2.d.key, 'without mail, an admin reset makes the key admin-known again (not "private")');
+    env.MAIL = { enabled: true, from: 'x', send: () => false };
+    ok((await call('POST', '/admin/venues/' + V.id + '/reset-key', {}, OWN)).status === 503 && (await call('GET', '/venues/' + V.id, undefined, { 'X-Venue-Key': rk2.d.key })).status === 200, 'a mail that cannot go out is reported (503) and the key is not changed silently');
+    env.MAIL = { enabled: true, from: 'TakeaSeat <hello@takeaseat.gr>', send: msg => { sent.push(msg); return true; } };
+  }
+  { // odd input never 500s and never tells which addresses exist
+    ok((await call('POST', '/recover', { email: 'couple@example.com', lang: 'constructor' })).status === 200, 'a hostile language code is ignored');
+    const nb = await worker.fetch(new Request('http://t/recover', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: 'null' }), env);
+    ok(nb.status === 400, 'a null body is a bad request, not a crash');
+    ok((await call('POST', '/verify', null)).status === 404 && (await call('POST', '/recover/venue', [])).status === 404, 'null / array bodies are refused cleanly');
+    ok((await call('GET', '/health')).d.mail === true, 'health says whether mail is on');
+  }
+  { // housekeeping
+    const tk = 'tok:' + 'e'.repeat(32); m.set(tk, JSON.stringify({ kind: 'venue-recover', vid: 'nope', createdAt: 1, ttl: 1 }));
+    m.set('rlmail:recover:old@example.com', JSON.stringify([1]));
+    const sw = await mod.sweep(env);
+    ok(!m.has(tk) && !m.has('rlmail:recover:old@example.com') && sw.tok >= 1, 'the sweep removes expired links and old rate-limit rows', sw);
+  }
+  delete env.MAIL;
+}
 console.log(`\nall ${n} checks passed`);

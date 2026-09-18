@@ -168,7 +168,13 @@ async function call(method, path, body){
   if(r.status===403 && d.error==="unauthorized" && path.startsWith("/venues/")){ signedOut("Ο κωδικός δεν ισχύει πλέον — συνδεθείτε με τον νέο σας κωδικό."); return { ok:false, status:403, d, gone:true }; }
   return { ok:r.ok, status:r.status, d };
 }
-function copy(text, msg){ (navigator.clipboard?navigator.clipboard.writeText(text):Promise.reject()).then(()=>toast(msg||"Ο σύνδεσμος αντιγράφηκε")).catch(()=>{ prompt("Αντιγράψτε τον σύνδεσμο:", text); }); }
+// The public e-mail routes (/recover, /verify): no venue key is sent. → {ok, status, d}; status 0 = no connection.
+async function pub(path, body){
+  let r; try{ r=await fetch(SYNC_URL+path,{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body) }); }
+  catch(e){ return { ok:false, status:0, d:{} }; }
+  return { ok:r.ok, status:r.status, d:await r.json().catch(()=>({})) };
+}
+function copy(text, msg, label){ (navigator.clipboard?navigator.clipboard.writeText(text):Promise.reject()).then(()=>toast(msg||"Ο σύνδεσμος αντιγράφηκε")).catch(()=>{ prompt(label||"Αντιγράψτε τον σύνδεσμο:", text); }); }
 // A tab opened after an await is often blocked: open it during the click, point it at the planner once we know the link.
 function pendingTab(){ let w=null; try{ w=window.open("","_blank"); if(w){ w.document.title="TakeaSeat"; w.document.body.innerHTML='<p style="font-family:sans-serif;color:#6a6157;padding:24px">Φόρτωση…</p>'; } }catch(e){} return w; }
 function sendTab(w, url){ if(w && !w.closed){ try{ w.opener=null; w.location.replace(url); return true; }catch(e){} } return false; }
@@ -247,10 +253,11 @@ dlgBox.addEventListener("click",e=>{ if(e.target.closest("[data-close]")) closeM
 
 // ---- state ----
 let DATA=null, lastLoad=0, loadSeq=0;
-const UI={ keyOpen:false, newKey:"", def:null };
+const UI={ keyOpen:false, newKey:"", def:null, mailPending:null };
 const sortedWeddings=()=>(DATA&&DATA.weddings||[]).slice().sort((a,b)=>b.createdAt-a.createdAt);
 const findW=id=>(DATA&&DATA.weddings||[]).find(w=>w.planId===id);
-function signedOut(msg){ loadSeq++; setKey(""); DATA=null; UI.def=null; UI.keyOpen=false; UI.newKey=""; closeModal(); renderLogin(msg); }
+function resetUI(){ UI.def=null; UI.keyOpen=false; UI.newKey=""; UI.mailPending=null; }
+function signedOut(msg){ loadSeq++; setKey(""); DATA=null; resetUI(); closeModal(); renderLogin(msg); }
 
 // ---- views ----
 function renderLogin(err){
@@ -261,11 +268,148 @@ function renderLogin(err){
     <input id="key" placeholder="Κωδικός κτήματος" autocomplete="off">
     ${err?`<div class="hint" style="color:var(--danger);margin-top:8px">${esc(err)}</div>`:""}
     <div class="row"><button class="btn primary" id="go" style="flex:1">Σύνδεση</button></div>
-    <div class="hint" style="margin-top:14px">Δεν έχετε κωδικό; Επικοινωνήστε μαζί μας για πρόσβαση.</div>
+    <button class="btn quiet" id="forgot" style="margin-top:8px;font-size:13.5px">Ξεχάσατε τον κωδικό;</button>
+    <div class="hint" style="margin-top:8px">Δεν έχετε κωδικό; Επικοινωνήστε μαζί μας για πρόσβαση.</div>
   </div>`;
   const go=async()=>{ const k=document.getElementById("key").value.trim(); if(!k) return; setKey(k); load(); };
   document.getElementById("go").onclick=go;
   document.getElementById("key").addEventListener("keydown",e=>{ if(e.key==="Enter") go(); });
+  document.getElementById("forgot").onclick=()=>renderForgot({});
+}
+
+// ---- signed-out screens (the login card): a forgotten key, and the links we e-mail ----
+// venue.html#recover=<token> sets a new key (it is also the 7-day setup link of a new venue) · #verify=<token> confirms
+// a new recovery email · #recover alone opens "send me a link". The token leaves the address at once and is only used
+// on an explicit press (mail scanners open links).
+const EMAIL_OK=e=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e) && e.length<=200;
+const RATE_MSG="Πολλές αιτήσεις — δοκιμάστε ξανά σε λίγο.";
+function screen(html){ loadSeq++; DATA=null; app.innerHTML=`<div class="card login">${html}</div>`; }   // also drops a console load in flight
+const busy=()=>app.querySelectorAll("button").forEach(b=>b.disabled=true);
+// Back to the console when this device is signed in, else to sign-in.
+const backHTML=()=>`<button class="btn quiet" id="back" style="margin-top:10px">${getKey()?"← Στην κονσόλα":"← Σύνδεση με κωδικό"}</button>`;
+function bindBack(){ const b=document.getElementById("back"); if(b) b.onclick=()=>{ if(getKey()) load(); else renderLogin(); }; }
+// One nonce per link and tab: a retry after a lost answer is recognised as the same device.
+function tokenNonce(kind, token){
+  const nk="weddingVenue."+kind+"Nonce."+String(token).slice(0,10), fresh=()=>{ const a=new Uint8Array(16); crypto.getRandomValues(a); return [...a].map(x=>x.toString(16).padStart(2,"0")).join(""); };
+  let n=""; try{ n=sessionStorage.getItem(nk)||""; if(!n){ n=fresh(); sessionStorage.setItem(nk,n); } }catch(e){ n=n||fresh(); }
+  return n;
+}
+function linkFromHash(){
+  const h=location.hash, get=k=>{ const m=h.match(new RegExp("(?:^#|&)"+k+"=([^&]+)")); if(!m) return ""; try{ return decodeURIComponent(m[1]); }catch(e){ return m[1]; } };
+  const rtok=get("recover"), vtok=get("verify"), ask=/(?:^#|&)recover(?:&|$)/.test(h);
+  if(!rtok && !vtok && !ask) return false;
+  try{ history.replaceState(null,"",location.pathname+location.search); }catch(e){}
+  closeModal(); closeMenu();
+  if(rtok) renderRecoverKey({ token:rtok, nonce:tokenNonce("rec",rtok) });
+  else if(vtok) renderVerify({ token:vtok, nonce:tokenNonce("ver",vtok) });
+  else renderForgot({});
+  return true;
+}
+// A message about a link, with "try again" (same nonce) or "send me a new link" when they help.
+function linkMsg(title, text, o){
+  screen(`<h1>${esc(title)}</h1><p>${esc(text)}</p>
+    ${o.retry?`<div class="row"><button class="btn primary" id="lRetry" style="flex:1">Ξανά</button></div>`:""}
+    ${o.again?`<div class="row"><button class="btn primary" id="lAgain" style="flex:1">Στείλτε μου νέο σύνδεσμο</button></div>`:""}${backHTML()}`);
+  bindBack();
+  if(o.retry) document.getElementById("lRetry").onclick=o.retry;
+  if(o.again) document.getElementById("lAgain").onclick=()=>renderForgot({});
+}
+// What went wrong with a link → the message (null = no answer / server trouble: worth another try).
+function linkErr(r){
+  if(r.d.error==="token_used") return "Αυτός ο σύνδεσμος έχει ήδη χρησιμοποιηθεί"+(r.d.at?` (${fmtDT(r.d.at)})`:"")+".";
+  if(r.d.error==="token_expired") return "Ο σύνδεσμος έληξε.";
+  if(r.d.error==="token_invalid"||r.status===404) return "Ο σύνδεσμος δεν είναι έγκυρος — ίσως αντιγράφηκε μισός.";
+  return null;
+}
+
+function renderForgot(st){
+  if(st.step==="sent"){
+    screen(`<h1>Ελέγξτε το email σας</h1>
+      <p>Αν το email είναι καταχωρημένο, θα λάβετε σύνδεσμο σε λίγα λεπτά (δείτε και τα ανεπιθύμητα). Ισχύει μία ώρα.</p>${backHTML()}`);
+    bindBack(); return;
+  }
+  if(st.step==="off"){   // no mail on this server: a person sends the new key
+    const body=`Γεια σας,\n\nΧρειάζομαι νέο κωδικό για την κονσόλα του κτήματος${st.email?` (email: ${st.email})`:""}.\n\nΕυχαριστώ`;
+    const href="mailto:info@takeaseat.gr?subject="+encodeURIComponent("Νέος κωδικός κονσόλας")+"&body="+encodeURIComponent(body.replace(/\n/g,"\r\n"));
+    screen(`<h1>Ξεχάσατε τον κωδικό;</h1>
+      <p>Η αποστολή email δεν είναι διαθέσιμη αυτή τη στιγμή. Γράψτε μας στο <a href="${esc(href)}">info@takeaseat.gr</a> και θα σας στείλουμε νέο κωδικό.</p>
+      <div class="row"><a class="btn primary" href="${esc(href)}" style="flex:1">✉️ Email στην TakeaSeat</a></div>${backHTML()}`);
+    bindBack(); return;
+  }
+  screen(`<h1>Ξεχάσατε τον κωδικό;</h1>
+    <p>Γράψτε το email του κτήματος. Θα σας στείλουμε σύνδεσμο για να ορίσετε νέο κωδικό.</p>
+    <input id="remail" type="email" autocomplete="email" inputmode="email" maxlength="200" placeholder="Email κτήματος" value="${esc(st.email||"")}">
+    ${st.err?`<div class="hint" style="color:var(--danger);margin-top:8px">${esc(st.err)}</div>`:""}
+    <div class="row"><button class="btn primary" id="rSend" style="flex:1">Στείλτε μου σύνδεσμο</button></div>${backHTML()}`);
+  bindBack();
+  const inp=document.getElementById("remail"), btn=document.getElementById("rSend");
+  inp.focus(); if(inp.value){ const t=inp.value; inp.value=""; inp.value=t; }   // caret at the end (type=email has no setSelectionRange)
+  const go=async()=>{
+    if(btn.disabled) return;
+    const email=inp.value.trim(); if(!EMAIL_OK(email)){ renderForgot({ email, err:"Ελέγξτε το email." }); return; }
+    busy(); const my=loadSeq;
+    const r=await pub("/recover",{ email, lang:"el" });
+    if(my!==loadSeq) return;
+    if(r.ok) renderForgot({ step:"sent" });
+    else if(r.status===503) renderForgot({ step:"off", email });
+    else renderForgot({ email, err:r.status===429?RATE_MSG:r.status===400?"Ελέγξτε το email.":r.status?"Κάτι πήγε στραβά — δοκιμάστε ξανά.":"Σφάλμα σύνδεσης — δοκιμάστε ξανά." });
+  };
+  btn.onclick=go;
+  inp.addEventListener("keydown",e=>{ if(e.key==="Enter") go(); });
+}
+
+// #recover=<token>: a new random key for the console (the old one stops working). Shown once, then the console.
+function renderRecoverKey(st){
+  screen(`<h1>Νέος κωδικός κονσόλας</h1>
+    <p>Πατήστε «Δημιουργία κωδικού»: θα δημιουργηθεί ένας νέος, τυχαίος κωδικός για την κονσόλα σας και θα συνδεθείτε αμέσως. Αν είχατε ήδη κωδικό, ο παλιός παύει να ισχύει.</p>
+    <div class="row"><button class="btn primary" id="rGo" style="flex:1">Δημιουργία κωδικού</button></div>${backHTML()}`);
+  bindBack();
+  document.getElementById("rGo").onclick=()=>doRecoverKey(st);
+}
+async function doRecoverKey(st){
+  busy(); const my=loadSeq;
+  const r=await pub("/recover/venue",{ token:st.token, nonce:st.nonce });
+  const key=r.ok && typeof r.d.key==="string" ? r.d.key : "";
+  if(key){ setKey(key); resetUI(); showNewKey(key); return; }   // always, even if the page moved on: the old key no longer works
+  if(my!==loadSeq) return;
+  const err=linkErr(r);
+  if(err) linkMsg("Νέος κωδικός κονσόλας", err+" Ζητήστε νέο με το email σας.", { again:true });
+  else linkMsg("Νέος κωδικός κονσόλας", r.status===429?RATE_MSG:"Δεν ήταν δυνατή η σύνδεση — δοκιμάστε ξανά.", { retry:()=>doRecoverKey(st) });
+}
+function showNewKey(key){
+  screen(`<h1>Ο κωδικός σας</h1>
+    <div class="okbox"><div style="font-weight:700;margin-bottom:6px">✅ Συνδεθήκατε. Αυτός είναι ο νέος κωδικός της κονσόλας — τον βλέπετε μόνο τώρα:</div>
+      <div style="font-family:ui-monospace,monospace;font-size:14px;word-break:break-all;font-weight:700">${esc(key)}</div>
+      <button class="btn" id="copyFresh" style="margin-top:10px;padding:6px 12px;font-size:13px">📋 Αντιγραφή</button></div>
+    <div class="note">Κρατήστε τον κάπου ασφαλές (π.χ. password manager). Αν τον χάσετε, ζητήστε νέο με το email σας.</div>
+    <div class="row"><button class="btn primary" id="toConsole" style="flex:1">Συνέχεια στην κονσόλα</button></div>`);
+  document.getElementById("copyFresh").onclick=()=>copy(key,"Ο κωδικός αντιγράφηκε","Αντιγράψτε τον κωδικό:");
+  document.getElementById("toConsole").onclick=()=>load();
+}
+
+// #verify=<token>: the venue confirms a new recovery email (asked for in the console).
+function renderVerify(st){
+  screen(`<h1>Επιβεβαίωση email</h1>
+    <p>Επιβεβαιώστε ότι αυτό το email θα χρησιμοποιείται για την ανάκτηση του κωδικού της κονσόλας σας.</p>
+    <div class="row"><button class="btn primary" id="vGo" style="flex:1">Επιβεβαίωση email</button></div>${backHTML()}`);
+  bindBack();
+  document.getElementById("vGo").onclick=()=>doVerify(st);
+}
+async function doVerify(st){
+  busy(); const my=loadSeq;
+  const r=await pub("/verify",{ token:st.token, nonce:st.nonce });
+  if(my!==loadSeq) return;
+  if(r.ok && r.d.email){
+    const signed=!!getKey();
+    screen(`<h1>Επιβεβαίωση email</h1>
+      <div class="okbox">✓ Το email ανάκτησης είναι πλέον το <b style="overflow-wrap:anywhere">${esc(r.d.email)}</b></div>
+      <div class="row" style="margin-top:18px"><button class="btn primary" id="vNext" style="flex:1">${signed?"Συνέχεια στην κονσόλα":"Σύνδεση"}</button></div>`);
+    document.getElementById("vNext").onclick=()=>{ if(getKey()) load(); else renderLogin(); };
+    return;
+  }
+  const err=linkErr(r);
+  if(err) linkMsg("Επιβεβαίωση email", err+" Ζητήστε νέο από την κονσόλα: «🔑 Κωδικός» → Email ανάκτησης.", {});
+  else linkMsg("Επιβεβαίωση email", r.status===429?RATE_MSG:"Δεν ήταν δυνατή η σύνδεση — δοκιμάστε ξανά.", { retry:()=>doVerify(st) });
 }
 
 // Keep the defaults editor across refreshes unless the server value changed under an untouched editor.
@@ -317,11 +461,27 @@ function rowHTML(w){
       <div class="more"><button class="btn more-btn" data-a="more" aria-haspopup="menu" aria-expanded="false" aria-label="Περισσότερα" title="Περισσότερα">⋯</button></div>
     </div>`;
 }
+// The recovery email (in the key panel) — only when this server can send mail.
+function mailSecHTML(v){
+  if(!v.mail) return "";
+  const P=UI.mailPending;
+  return `<div style="border-top:1px solid var(--line);margin-top:18px;padding-top:16px">
+      <div style="font-weight:700;margin-bottom:4px;overflow-wrap:anywhere">Email ανάκτησης: ${v.email?esc(v.email)+(v.emailVerified?` <span style="color:var(--good)" title="Επιβεβαιωμένο">✓</span>`:"")
+        :`<span style="font-weight:400;color:var(--faint)">δεν έχει οριστεί</span>`}</div>
+      <div class="hint" style="margin-bottom:12px">Αν ξεχάσετε τον κωδικό, σας στέλνουμε εκεί σύνδεσμο για νέο. Ένα νέο email ισχύει αφού το επιβεβαιώσετε.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input id="newmailinput" type="email" autocomplete="email" inputmode="email" maxlength="200" placeholder="${v.email?"Νέο email":"Email κτήματος"}" style="flex:1;min-width:min(100%,220px)">
+        <button class="btn" id="setMailBtn">${v.email?"Αλλαγή":"Ορισμός"}</button>
+      </div>
+      ${P?`<div class="okbox">Στείλαμε σύνδεσμο επιβεβαίωσης στο <b style="overflow-wrap:anywhere">${esc(P.to)}</b>. Η αλλαγή γίνεται όταν τον ανοίξετε.</div>`:""}
+    </div>`;
+}
 
 function renderDashboard(){
   const v=DATA.venue, weddings=sortedWeddings();
   // Keep what the user is typing (and where) across a refresh.
-  const keep={}; ["newlabel","newkeyinput"].forEach(id=>{ const el=document.getElementById(id); if(el) keep[id]=el.value; });
+  const keep={}; ["newlabel","newkeyinput","newmailinput"].forEach(id=>{ const el=document.getElementById(id); if(el) keep[id]=el.value; });
+  const P=UI.mailPending; if(P && (P.was!==v.email || P.wasV!==v.emailVerified)) UI.mailPending=null;   // confirmed meanwhile
   const act=document.activeElement, actId=act&&act.id&&app.contains(act)?act.id:"";
   let selS=null, selE=null; try{ if(actId){ selS=act.selectionStart; selE=act.selectionEnd; } }catch(e){}
 
@@ -349,6 +509,7 @@ function renderDashboard(){
          <div style="font-weight:700;margin-bottom:6px">✅ Ο κωδικός άλλαξε. Αποθηκεύστε τον — είναι ο νέος σας κωδικός εισόδου:</div>
          <div style="font-family:ui-monospace,monospace;font-size:13px;word-break:break-all;font-weight:700">${esc(UI.newKey)}</div>
          <button class="btn" id="copyNewKey" style="margin-top:10px;padding:6px 12px;font-size:13px">📋 Αντιγραφή</button></div>`:""}</div>
+      ${mailSecHTML(v)}
     </div>
     <div class="grid2">${spaceCard()}${defaultsCard()}</div>
     <div class="list-h"><h2>Γάμοι</h2>${weddings.length?`<span class="n">${weddings.length}</span>`:""}</div>
@@ -382,7 +543,8 @@ function bindDashboard(v){
   $("setKeyBtn").onclick=()=>rotateKey(v.id, $("newkeyinput").value.trim());
   $("newkeyinput").addEventListener("keydown",e=>{ if(e.key==="Enter") rotateKey(v.id, e.target.value.trim()); });
   $("genKeyBtn").onclick=()=>rotateKey(v.id, "");
-  if($("copyNewKey")) $("copyNewKey").onclick=()=>copy(UI.newKey,"Ο κωδικός αντιγράφηκε");
+  if($("copyNewKey")) $("copyNewKey").onclick=()=>copy(UI.newKey,"Ο κωδικός αντιγράφηκε","Αντιγράψτε τον κωδικό:");
+  if($("setMailBtn")){ $("setMailBtn").onclick=()=>changeEmail(v.id); $("newmailinput").addEventListener("keydown",e=>{ if(e.key==="Enter") changeEmail(v.id); }); }
 
   // the space (template)
   if($("editSpace")) $("editSpace").onclick=()=>window.open(templateLink(DATA.template),"_blank");
@@ -575,6 +737,25 @@ async function rotateKey(vid, secret){
   await load();
 }
 
+// A new recovery email: nothing changes until the venue opens the confirmation link we send to it.
+let mailing=false;
+async function changeEmail(vid){
+  if(mailing) return;
+  const inp=document.getElementById("newmailinput"), email=inp?inp.value.trim():"";
+  if(!EMAIL_OK(email)){ toast("Ελέγξτε το email"); if(inp) inp.focus(); return; }
+  mailing=true; let r;
+  try{ const b=document.getElementById("setMailBtn"); if(b) b.disabled=true;
+    r=await call("POST","/venues/"+vid+"/email",{ email, lang:"el" }); }
+  finally{ mailing=false; const b=document.getElementById("setMailBtn"); if(b) b.disabled=false; }
+  if(r.gone || !DATA) return;
+  if(!r.ok){ if(!r.net) toast(r.status===429?RATE_MSG:r.status===400?"Ελέγξτε το email":r.status===503?"Η αποστολή email δεν είναι διαθέσιμη αυτή τη στιγμή.":"Αποτυχία — δοκιμάστε ξανά.",2600);
+    if(r.status===503) load(); return; }
+  const v=DATA.venue; UI.mailPending={ to:r.d.pending||email, was:v.email, wasV:v.emailVerified };
+  const cur=document.getElementById("newmailinput"); if(cur) cur.value="";
+  toast("Στείλαμε σύνδεσμο επιβεβαίωσης",2200);
+  renderDashboard();
+}
+
 async function load(){
   const key=getKey(); if(!key){ renderLogin(); return; }
   const my=++loadSeq, had=!!DATA;
@@ -600,7 +781,8 @@ function refreshOnReturn(){
 }
 window.addEventListener("focus",refreshOnReturn);
 document.addEventListener("visibilitychange",refreshOnReturn);
-load();
+window.addEventListener("hashchange",()=>linkFromHash());   // a link pasted into an open console
+if(!linkFromHash()) load();
 </script>
 </body>
 </html>

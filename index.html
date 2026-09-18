@@ -40,6 +40,10 @@
   .nav .links{ margin-left:auto; display:flex; align-items:center; gap:8px; }
   .nav .links a.txt{ padding:8px 12px; color:var(--soft); font-weight:600; font-size:14px; border-radius:8px; }
   .nav .links a.txt:hover{ color:var(--ink); background:var(--paper-2); }
+  /* returning couples: "Έχετε ήδη σχέδιο; Ανάκτηση" — header on wide screens, hero line below 1060px */
+  .nav .links a.back{ white-space:nowrap; }
+  .nav .links a.back span{ font-weight:400; color:var(--faint); }
+  .show-md{ display:none; }
 
   /* ---- hero ---- */
   .hero{ background:linear-gradient(150deg,var(--hero-1),var(--hero-2)); color:#f4eef7; padding:74px 0 84px; position:relative; overflow:hidden; }
@@ -50,6 +54,7 @@
   .hero .cta{ display:flex; gap:12px; flex-wrap:wrap; }
   .hero .tiny{ margin-top:16px; font-size:13px; color:#b9acc6; }
   .hero .tiny b{ color:#e7dcef; }
+  .hero .tiny a{ color:#e7dcef; text-decoration:underline; }
 
   /* seating illustration */
   .illo{ width:100%; height:auto; filter:drop-shadow(0 18px 40px rgba(0,0,0,.35)); }
@@ -112,6 +117,10 @@
   footer a:hover{ color:#fff; }
   footer .sp{ margin-left:auto; }
 
+  @media (max-width:1060px){
+    .nav .links a.back{ display:none; }
+    .show-md{ display:inline; }
+  }
   @media (max-width:820px){
     .hero .wrap{ grid-template-columns:1fr; gap:26px; }
     .hero .art{ order:-1; max-width:420px; }
@@ -129,6 +138,7 @@
       <a class="txt hide-sm" href="#how">Πώς δουλεύει</a>
       <a class="txt hide-sm" href="#features">Χαρακτηριστικά</a>
       <a class="txt hide-sm" href="#pricing">Τιμές</a>
+      <a class="txt back" href="/seating-planner-el.html#recover" title="Χάσατε τον σύνδεσμο του σχεδίου σας; Θα σας τον στείλουμε ξανά στο email σας."><span>Έχετε ήδη σχέδιο;</span> Ανάκτηση</a>
       <a class="txt" href="/venue.html">Είσοδος κτήματος</a>
       <a class="btn primary" href="#contact" style="padding:9px 16px">Ζητήστε demo</a>
     </nav>
@@ -145,7 +155,7 @@
         <a class="btn primary" href="#contact">Ζητήστε demo</a>
         <a class="btn ghost" href="/venue.html">Είσοδος κτήματος</a>
       </div>
-      <div class="tiny">Ένα εργαλείο για <b>όλους τους γάμους της σεζόν</b>. Πολύγλωσσο για ξένους καλεσμένους. Είστε ζευγάρι; <a href="#pricing" style="color:#e7dcef;text-decoration:underline">Υπάρχει επιλογή και για εσάς</a>.</div>
+      <div class="tiny">Ένα εργαλείο για <b>όλους τους γάμους της σεζόν</b>. Πολύγλωσσο για ξένους καλεσμένους. Είστε ζευγάρι; <a href="#pricing" style="color:#e7dcef;text-decoration:underline">Υπάρχει επιλογή και για εσάς</a>.<span class="show-md"> Έχετε ήδη σχέδιο; <a href="/seating-planner-el.html#recover">Ανάκτηση</a>.</span></div>
     </div>
     <div class="art">
       <svg class="illo" viewBox="0 0 460 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Κάτοψη τραπεζιών γάμου">
@@ -268,6 +278,7 @@
     <a href="#how">Πώς δουλεύει</a>
     <a href="#pricing">Τιμές</a>
     <a href="/venue.html">Είσοδος κτήματος</a>
+    <a href="/seating-planner-el.html#recover">Έχετε ήδη σχέδιο; Ανάκτηση</a>
     <a href="/privacy.html">Απόρρητο</a>
     <a href="/terms.html">Όροι</a>
     <a href="mailto:info@takeaseat.gr">Επικοινωνία</a>
