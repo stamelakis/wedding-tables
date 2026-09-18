@@ -4,43 +4,83 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script>if(location.hostname.endsWith("github.io"))location.replace("https://takeaseat.gr"+location.pathname+location.search+location.hash);</script>
-<title>Owner Admin — Wedding Venues</title>
+<title>Owner Admin — TakeaSeat</title>
 <style>
   :root{ --paper:#f6f4f1; --card:#fffdfb; --card2:#f2ece6; --ink:#25211c; --soft:#655c52; --faint:#968c7d;
          --line:#e5ddd4; --accent:#7d5a8c; --accent-ink:#5c3f68; --accent-soft:#efe6f2;
-         --good:#3f7a52; --good-soft:#e4efe6; --danger:#c0392b; --shadow:0 1px 2px rgba(40,30,20,.05),0 6px 20px rgba(40,30,20,.06); }
+         --good:#3f7a52; --good-soft:#e4efe6; --danger:#c0392b; --amber:#8a5a00; --amber-soft:#fbf0dc;
+         --sup:#1f5f7f; --sup-soft:#e2eff6; --shadow:0 1px 2px rgba(40,30,20,.05),0 6px 20px rgba(40,30,20,.06); }
   *{ box-sizing:border-box; }
   body{ margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.5; }
   .wrap{ max-width:920px; margin:0 auto; padding:24px 18px 80px; }
   h1{ font-family:"Iowan Old Style",Palatino,Georgia,serif; font-weight:600; font-size:25px; margin:0; }
   h2{ font-size:16px; margin:0 0 12px; }
   a{ color:var(--accent-ink); }
-  .btn{ font:inherit; font-size:14px; font-weight:600; border:1px solid var(--line); background:var(--card); color:var(--ink); padding:8px 13px; border-radius:9px; cursor:pointer; }
+  .btn{ font:inherit; font-size:14px; font-weight:600; border:1px solid var(--line); background:var(--card); color:var(--ink); padding:8px 13px; border-radius:9px; cursor:pointer; text-decoration:none; display:inline-block; white-space:nowrap; }
   .btn:hover{ background:#f2ece6; } .btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn.primary:hover{ filter:brightness(1.05); }
   .btn.danger{ color:var(--danger); border-color:#e3b4ac; background:#fbeeec; } .btn.sm{ padding:5px 9px; font-size:12.5px; }
+  .btn.ghost{ border-color:transparent; background:transparent; color:var(--soft); }
   .btn:disabled{ opacity:.5; cursor:not-allowed; }
   input,select{ font:inherit; font-size:14px; padding:9px 11px; border:1px solid var(--line); border-radius:9px; background:var(--card); color:var(--ink); width:100%; }
   label{ font-size:12px; font-weight:700; color:var(--soft); text-transform:uppercase; letter-spacing:.04em; display:block; margin-bottom:4px; }
   .card{ background:var(--card); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); padding:18px; }
   .login{ max-width:420px; margin:8vh auto 0; text-align:center; }
   .grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .grid3{ display:grid; grid-template-columns:1.3fr 1.3fr 1fr; gap:12px; }
   .full{ grid-column:1/-1; }
   .row{ display:flex; gap:8px; align-items:center; }
+  .row.between{ justify-content:space-between; }
+  .row.fw{ flex-wrap:wrap; }
   .mono{ font-family:ui-monospace,Menlo,Consolas,monospace; }
   .keybox{ background:var(--good-soft); border:1px solid #bcdcc6; border-radius:10px; padding:12px 14px; margin-top:12px; }
+  .keybox.note{ background:var(--card2); border-color:var(--line); }
   .keybox .k{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:13px; word-break:break-all; color:var(--ink); font-weight:700; }
+  .keybox select{ width:auto; padding:5px 8px; font-size:13px; }
   table{ width:100%; border-collapse:collapse; font-size:14px; }
   th,td{ text-align:left; padding:10px 8px; border-top:1px solid var(--line); vertical-align:middle; }
   th{ font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--faint); border-top:none; }
-  .badge{ font-size:11.5px; font-weight:700; padding:2px 8px; border-radius:20px; }
+  .badge{ display:inline-block; font-size:11.5px; font-weight:700; padding:2px 8px; border-radius:20px; white-space:nowrap; }
   .badge.season{ background:var(--accent-soft); color:var(--accent-ink); } .badge.per{ background:var(--good-soft); color:var(--good); }
   .badge.off{ background:#eee; color:#888; }
+  .badge.wait{ background:var(--accent-soft); color:var(--accent-ink); }
+  .badge.warn{ background:var(--amber-soft); color:var(--amber); }
+  .badge.sup{ background:var(--sup-soft); color:var(--sup); white-space:normal; }
+  .badge.tpl{ background:var(--card2); color:var(--soft); }
+  .mark{ font-size:12px; cursor:help; }
   .muted{ color:var(--faint); font-size:12.5px; }
-  .section{ margin-top:22px; }
-  #toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#25211c; color:#fff; padding:10px 16px; border-radius:10px; font-size:14px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:10; }
+  .lead{ color:var(--soft); font-size:14px; margin:4px 0 0; }
+  .section{ margin-top:30px; }
+  .section > h2{ display:flex; align-items:baseline; gap:6px; }
+  .sechead{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; }
+  .sechead h2{ margin:0; }
+  .acts{ gap:6px; flex-wrap:wrap; }
+  .empty{ color:var(--faint); font-size:14px; text-align:center; padding:18px 8px; }
+  /* support requests */
+  .sreq{ display:flex; gap:14px; align-items:flex-start; padding:12px 0; border-top:1px solid var(--line); }
+  .sreq:first-child{ border-top:none; padding-top:0; } .sreq:last-child{ padding-bottom:0; }
+  .sreq .grow{ flex:1; min-width:0; }
+  .sreq .who{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .sreq .msg{ white-space:pre-wrap; overflow-wrap:anywhere; background:var(--card2); border-radius:8px; padding:7px 10px; margin:6px 0 4px; font-size:14px; }
+  #toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#25211c; color:#fff; padding:10px 16px; border-radius:10px; font-size:14px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:10; max-width:calc(100% - 32px); }
   #toast.show{ opacity:1; }
   .tablewrap{ overflow-x:auto; }
-  @media (max-width:620px){ .grid{ grid-template-columns:1fr; } }
+  .stack{ display:flex; flex-direction:column; gap:12px; }
+  @media (max-width:720px){ .grid3{ grid-template-columns:1fr 1fr; } .grid3 .lang{ grid-column:1/-1; } }
+  @media (max-width:620px){
+    .grid,.grid3{ grid-template-columns:1fr; }
+    .card{ padding:14px; }
+    /* tables become stacked cards on a phone */
+    table.cards thead{ display:none; }
+    table.cards, table.cards tbody, table.cards tr, table.cards td{ display:block; width:100%; }
+    table.cards tr{ border-top:1px solid var(--line); padding:10px 0; }
+    table.cards tr:first-child{ border-top:none; padding-top:0; } table.cards tr:last-child{ padding-bottom:0; }
+    table.cards td{ border:none; padding:3px 0; }
+    table.cards td[data-l]{ display:flex; gap:10px; align-items:baseline; }
+    table.cards td[data-l]::before{ content:attr(data-l); flex:0 0 76px; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--faint); font-weight:700; }
+    table.cards td.acts-cell{ padding-top:8px; }
+    .sreq{ flex-direction:column; gap:8px; }
+  }
 </style>
 </head>
 <body>
@@ -49,16 +89,48 @@
 <script>
 const SYNC_URL = "";   // same-origin (self-hosted takeaseat.gr). The Cloudflare-worker fallback is retired.
 const KEY_STORE="weddingOwnerKey";
+const LANG_STORE="tasCoupleLinkLang";   // this browser remembers the link language chosen per couple (a convenience only)
+const PLANNER_FILE={ el:"seating-planner-el.html", en:"seating-planner.html", de:"seating-planner-de.html" };
+const LANG_NAME={ el:"Ελληνικά", en:"English", de:"Deutsch" };
+const CLAIM_DAYS=30;    // the server's CLAIM_TTL: an unused claim link expires 30 days after it was issued
 const app=document.getElementById("app");
-let venuesCache=[];
+let venuesCache=[], couplesCache=[], supportCache=[];
 const getKey=()=>{ try{ return sessionStorage.getItem(KEY_STORE)||""; }catch(e){ return ""; } };
 const setKey=k=>{ try{ k?sessionStorage.setItem(KEY_STORE,k):sessionStorage.removeItem(KEY_STORE); }catch(e){} };
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
-function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1900); }
-function fmtDate(iso){ if(!iso) return "—"; try{ return new Date(iso).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}); }catch(e){ return iso; } }
+function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2400); }
+function fmtDate(iso){ if(!iso) return "—"; try{ return new Date(iso).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}); }catch(e){ return String(iso); } }
+function fmtDateTime(t){ if(!t) return "—"; try{ return new Date(t).toLocaleString("en-GB",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}); }catch(e){ return String(t); } }
+function relTime(t){ const d=t-Date.now(); if(d<=0) return "expired";
+  const m=Math.round(d/60000); if(m<60) return `in ${Math.max(1,m)} min`;
+  const h=Math.round(d/3600000); if(h<48) return `in ${h} h`; return `in ${Math.round(h/24)} days`; }
 function venueConsoleLink(){ return new URL("venue.html", location.href).href; }
+function plannerUrl(lang){ return new URL(PLANNER_FILE[lang]||PLANNER_FILE.el, location.href).href; }
+// Keys and tokens only ever go in the fragment (never the query string), so they stay out of server logs.
+function claimLink(token, lang){ return plannerUrl(lang)+"#claim="+encodeURIComponent(token); }
+function supportLink(planId, key){ const u=new URL(PLANNER_FILE.el, location.href); u.search="?plan="+encodeURIComponent(planId); return u.href+"#support="+encodeURIComponent(key); }
+function claimMessage(link){
+  return "Γεια σας! Ο σύνδεσμος για το τραπεζολόγιό σας: "+link+"\n"
+    +"Ανοίξτε τον στο Chrome ή στο Safari (όχι μέσα από Viber/Messenger/Instagram) και πατήστε «Άνοιγμα του σχεδίου μου». "
+    +"Ο σύνδεσμος ανοίγει μία φορά· μετά θα δείτε τον προσωπικό σας σύνδεσμο — κρατήστε τον και στείλτε τον στον/στη σύντροφό σας.";
+}
+function langMap(){ try{ const m=JSON.parse(localStorage.getItem(LANG_STORE)||"{}"); return m&&typeof m==="object"?m:{}; }catch(e){ return {}; } }
+function coupleLang(cid){ const l=langMap()[cid]; return PLANNER_FILE[l]?l:"el"; }
+function rememberLang(cid, lang){ try{ const m=langMap(); m[cid]=lang; localStorage.setItem(LANG_STORE, JSON.stringify(m)); }catch(e){} }
+function forgetLang(cid){ try{ const m=langMap(); if(cid in m){ delete m[cid]; localStorage.setItem(LANG_STORE, JSON.stringify(m)); } }catch(e){} }
+function langOptions(sel){ return Object.keys(PLANNER_FILE).map(l=>`<option value="${l}"${l===sel?" selected":""}>${esc(LANG_NAME[l])}</option>`).join(""); }
 async function api(path, opts={}){ return fetch(SYNC_URL+path,{ ...opts, headers:{ "Content-Type":"application/json", "X-Owner-Key":getKey(), ...(opts.headers||{}) } }); }
+// api() + JSON; a 403 from /admin means the owner key is wrong → back to the sign-in screen.
+async function req(path, opts){
+  let r; try{ r=await api(path, opts); }catch(e){ return { ok:false, status:0, d:null }; }
+  let d=null; try{ d=await r.json(); }catch(e){}
+  if(r.status===403){ setKey(""); renderLogin("Wrong owner key."); }
+  return { ok:r.ok, status:r.status, d };
+}
+function failToast(res, msg){ if(res.status===403) return; toast(res.status===0?"Connection error — try again":msg); }
 function copy(t){ (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast("Copied")).catch(()=>prompt("Copy:",t)); }
+function copySilently(t, msg){ try{ if(navigator.clipboard) navigator.clipboard.writeText(t).then(()=>toast(msg)).catch(()=>{}); }catch(e){} }
+const byNewest=(a,b)=>(b.createdAt||0)-(a.createdAt||0);
 
 function licenseText(L){ L=L||{};
   return L.type==="per_wedding" ? `Per-wedding · quota ${L.quota||"∞"}`
@@ -67,11 +139,11 @@ function licenseText(L){ L=L||{};
 function renderLogin(err){
   app.innerHTML=`<div class="card login">
     <h1>Owner Admin</h1>
-    <p class="muted" style="margin:6px 0 16px">Create and manage the venues (κτήματα) that use the planner.</p>
+    <p class="muted" style="margin:6px 0 16px">Venues, couples and the support invitations they send.</p>
     <input id="ok" type="password" placeholder="Owner key" autocomplete="off">
     ${err?`<div class="muted" style="color:var(--danger);margin-top:8px">${esc(err)}</div>`:""}
     <div style="margin-top:12px"><button class="btn primary" id="go" style="width:100%">Sign in</button></div>
-    <div class="muted" style="margin-top:12px">The owner key is the <span class="mono">OWNER_KEY</span> secret set on the Cloudflare worker.</div>
+    <div class="muted" style="margin-top:12px">The owner key is the <span class="mono">OWNER_KEY</span> secret set on the server.</div>
   </div>`;
   const go=()=>{ const k=document.getElementById("ok").value.trim(); if(!k) return; setKey(k); load(); };
   document.getElementById("go").onclick=go;
@@ -105,85 +177,326 @@ function readLicense(prefix, scope){
     seasonEnd:scope.querySelector("#"+prefix+"end").value||null, cap:parseInt(scope.querySelector("#"+prefix+"cap").value)||0 };
 }
 
-function venuesSectionHtml(venues){
-  return `<h2>Venues <span class="muted">(${venues.length})</span></h2>
-    <div class="card tablewrap">
-      <table><thead><tr><th>Venue</th><th>License</th><th>Weddings</th><th>Status</th><th></th></tr></thead>
-      <tbody>${venues.length? venues.map(rowHtml).join("") : `<tr><td colspan="5" class="muted" style="padding:20px;text-align:center">No venues yet.</td></tr>`}</tbody></table>
-    </div>`;
-}
+// ---------------------------------------------------------------- dashboard
 function renderDashboard(venues){
   venuesCache=venues;
   app.innerHTML=`
-    <div class="row" style="justify-content:space-between;margin-bottom:18px">
-      <h1>Owner Admin</h1>
+    <div class="row between" style="align-items:flex-start;margin-bottom:6px">
+      <div><h1>Owner Admin</h1>
+        <p class="lead">You cannot open couples' plans. Couples and venues can invite support; their invitations appear below.</p></div>
       <button class="btn" id="logout">Sign out</button>
     </div>
-    <div class="card section" style="margin-top:0">
-      <h2>Add a venue</h2>
-      <div class="grid">
-        <div><label>Venue name</label><input id="nname" placeholder="e.g. Κτήμα Ηλιοβασίλεμα"></div>
-        <div><label>Contact (optional)</label><input id="ncontact" placeholder="email / phone"></div>
-      </div>
-      <div style="margin-top:12px" id="licwrap">${licenseFields("n")}</div>
-      <div style="margin-top:14px"><button class="btn primary" id="createV">Create venue</button></div>
-      <div id="newkey"></div>
+
+    <div class="section" id="supportSection">
+      <div class="sechead"><h2>Support requests <span class="muted" id="scount"></span></h2>
+        <button class="btn sm" id="supRefresh">Refresh</button></div>
+      <div class="card" id="supList"><div class="empty">Loading…</div></div>
     </div>
-    <div class="section" id="venuesSection">${venuesSectionHtml(venues)}</div>`;
+
+    <div class="section" id="couplesSection">
+      <h2>Couples (direct) <span class="muted" id="ccount"></span></h2>
+      <div class="stack">
+        <div class="card">
+          <h2>Add a couple</h2>
+          <div class="grid3">
+            <div><label>Couple name</label><input id="cname" placeholder="e.g. Μαρία & Νίκος"></div>
+            <div><label>Contact (optional)</label><input id="ccontact" placeholder="email / phone"></div>
+            <div class="lang"><label>Link language</label><select id="clang">${langOptions("el")}</select></div>
+          </div>
+          <div style="margin-top:14px"><button class="btn primary" id="createC">Create couple</button></div>
+          <div id="cpanel"></div>
+        </div>
+        <div class="card tablewrap" id="ctable"><div class="empty">Loading…</div></div>
+      </div>
+    </div>
+
+    <div class="section" id="venuesSection">
+      <h2>Venues <span class="muted" id="vcount">(${venues.length})</span></h2>
+      <div class="stack">
+        <div class="card">
+          <h2>Add a venue</h2>
+          <div class="grid">
+            <div><label>Venue name</label><input id="nname" placeholder="e.g. Κτήμα Ηλιοβασίλεμα"></div>
+            <div><label>Contact (optional)</label><input id="ncontact" placeholder="email / phone"></div>
+          </div>
+          <div style="margin-top:12px" id="licwrap">${licenseFields("n")}</div>
+          <div style="margin-top:14px"><button class="btn primary" id="createV">Create venue</button></div>
+          <div id="newkey"></div>
+        </div>
+        <div id="vpanel"></div>
+        <div class="card tablewrap" id="vtable">${venuesTableHtml(venues)}</div>
+      </div>
+    </div>`;
   document.getElementById("logout").onclick=()=>{ setKey(""); renderLogin(); };
   wireLicenseToggle("n", document.getElementById("licwrap"));
   document.getElementById("createV").onclick=createVenue;
-  document.getElementById("venuesSection").addEventListener("click", onRowAction());
+  document.getElementById("createC").onclick=createCouple;
+  document.getElementById("cname").addEventListener("keydown",e=>{ if(e.key==="Enter") createCouple(); });
+  document.getElementById("supRefresh").onclick=async e=>{ const b=e.currentTarget; b.disabled=true;
+    await Promise.all([refreshSupport(), refreshCouples()]); b.disabled=false; };
+  document.getElementById("vtable").addEventListener("click", onRowAction());
+  document.getElementById("ctable").addEventListener("click", onCoupleAction);
+  refreshSupport(); refreshCouples();
+}
+
+// ---------------------------------------------------------------- support requests
+function supportHtml(list){
+  if(!list.length) return `<div class="empty">No open invitations.</div>`;
+  return list.map(s=>{
+    const who = s.kind==="venue" ? `<span class="badge season">Venue: ${esc(s.venueName||"—")}</span>` : `<span class="badge per">Couple</span>`;
+    return `<div class="sreq">
+      <div class="grow">
+        <div class="who"><strong>${esc(s.name||"Untitled")}</strong>${who}${s.template?`<span class="badge tpl">template</span>`:""}</div>
+        ${s.message?`<div class="msg">${esc(s.message)}</div>`:`<div class="muted" style="margin:4px 0">No message.</div>`}
+        <div class="muted">Expires ${esc(fmtDateTime(s.expires))} (${esc(relTime(s.expires))})${s.createdAt?` · invited ${esc(fmtDateTime(s.createdAt))}`:""}</div>
+      </div>
+      <a class="btn sm primary" href="${esc(supportLink(s.planId, s.key))}" target="_blank" rel="noopener noreferrer">Open ↗</a>
+    </div>`; }).join("");
+}
+async function refreshSupport(){
+  const box=document.getElementById("supList"); if(!box) return;
+  const res=await req("/admin/support");
+  if(!res.ok || !res.d){ if(res.status!==403 && document.getElementById("supList")) document.getElementById("supList").innerHTML=`<div class="empty">Could not load the invitations — try Refresh.</div>`; return; }
+  supportCache=(res.d.requests||[]).slice().sort(byNewest);
+  const el=document.getElementById("supList"); if(!el) return;
+  el.innerHTML=supportHtml(supportCache);
+  document.getElementById("scount").textContent=supportCache.length?`(${supportCache.length})`:"";
+}
+
+// ---------------------------------------------------------------- couples (direct)
+function coupleGone(c){ return !!(c.deletedAt || !c.exists); }
+function coupleStatusHtml(c){
+  if(coupleGone(c)) return `<span class="badge off">Deleted by the couple</span>${c.deletedAt?`<div class="muted">${esc(fmtDate(c.deletedAt))}</div>`:""}`;
+  if(c.pendingClaim){
+    const exp=(c.resetAt||c.createdAt||0)+CLAIM_DAYS*86400000, expired=Date.now()>exp;
+    const head=c.resetAt ? `<span class="badge warn">Reset ${esc(fmtDate(c.resetAt))}, waiting</span>` : `<span class="badge wait">Waiting to be opened</span>`;
+    return head+`<div class="muted"${expired?' style="color:var(--danger)"':""}>${expired?"Link expired — make a new link":`Link valid until ${esc(fmtDate(exp))}`}</div>`;
+  }
+  if(c.claimedAt) return `<span class="badge per">Opened ${esc(fmtDate(c.claimedAt))}</span>${c.resetAt?`<div class="muted">after a reset on ${esc(fmtDate(c.resetAt))}</div>`:""}`;
+  return "—";
+}
+function coupleRowHtml(c){
+  const gone=coupleGone(c);
+  // The plan is stamped when it is created; only a later timestamp is a real edit by the couple.
+  const edited=!gone && c.lastEdit && c.lastEdit > (c.createdAt||0)+5000;
+  return `<tr data-id="${esc(c.id)}">
+    <td><strong>${esc(c.name)}</strong>${c.contact?`<div class="muted">${esc(c.contact)}</div>`:""}</td>
+    <td data-l="Created">${esc(fmtDate(c.createdAt))}</td>
+    <td data-l="Status"><div>${coupleStatusHtml(c)}${c.support?`<div style="margin-top:4px"><span class="badge sup">🛟 support until ${esc(fmtDateTime(c.support.expires))}</span></div>`:""}</div></td>
+    <td data-l="Last edit">${edited?esc(fmtDateTime(c.lastEdit)):`<span class="muted">—</span>`}</td>
+    <td class="acts-cell"><div class="row acts">
+      ${c.pendingClaim&&c.claimToken?`<button class="btn sm" data-a="copy">Copy link</button>`:""}
+      ${gone?"":`<button class="btn sm" data-a="reset">New link…</button>`}
+      <button class="btn sm danger" data-a="del">Delete…</button>
+    </div></td></tr>`;
+}
+function couplesTableHtml(list){
+  return `<table class="cards"><thead><tr><th>Couple</th><th>Created</th><th>Status</th><th>Last edit</th><th></th></tr></thead>
+    <tbody>${list.length? list.map(coupleRowHtml).join("") : `<tr><td colspan="5" class="empty">No couples yet.</td></tr>`}</tbody></table>`;
+}
+async function refreshCouples(){
+  if(!document.getElementById("ctable")) return;
+  const res=await req("/admin/couples");
+  const el=document.getElementById("ctable"); if(!el) return;
+  if(!res.ok || !res.d){ if(res.status!==403) el.innerHTML=`<div class="empty">Could not load the couples — try Refresh.</div>`; return; }
+  couplesCache=(res.d.couples||[]).slice().sort(byNewest);
+  el.innerHTML=couplesTableHtml(couplesCache);
+  document.getElementById("ccount").textContent=`(${couplesCache.length})`;
+}
+// The claim-link box (after creating a couple, after a reset, or «Copy link» on a waiting couple).
+function showClaimPanel(cid, name, token, kind){
+  const box=document.getElementById("cpanel"); if(!box) return;
+  let lang=coupleLang(cid);
+  const title = kind==="new" ? "✅ Couple created — send them this link:"
+    : kind==="reset" ? `✅ New link for ${esc(name)} — send it to the couple:`
+    : `Link for ${esc(name)} (not opened yet):`;
+  box.dataset.cid=cid;
+  box.innerHTML=`<div class="keybox">
+    <div class="row between" style="align-items:flex-start"><div style="font-weight:700">${title}</div>
+      <button class="btn sm ghost" data-close title="Close">✕</button></div>
+    <div class="row fw" style="margin:4px 0 8px"><span class="muted">Link language</span><select>${langOptions(lang)}</select></div>
+    <div class="k"></div>
+    <div class="row fw" style="margin-top:10px">
+      <button class="btn sm" data-c="link">Copy link</button>
+      <button class="btn sm" data-c="msg">Copy message</button>
+    </div>
+    <div class="muted" style="margin-top:8px">It opens once; then the couple gets their own personal link. An unused link expires ${CLAIM_DAYS} days after it was made.${kind==="reset"?" The couple's old links and devices have already stopped working.":""}</div>
+  </div>`;
+  const sel=box.querySelector("select"), k=box.querySelector(".k");
+  const upd=()=>{ k.textContent=claimLink(token, lang); };
+  upd();
+  sel.onchange=()=>{ lang=PLANNER_FILE[sel.value]?sel.value:"el"; rememberLang(cid, lang); upd(); };
+  box.querySelector('[data-c="link"]').onclick=()=>copy(claimLink(token, lang));
+  box.querySelector('[data-c="msg"]').onclick=()=>copy(claimMessage(claimLink(token, lang)));
+  box.querySelector("[data-close]").onclick=()=>closeClaimPanel();
+  box.scrollIntoView({ behavior:"smooth", block:"nearest" });
+}
+function closeClaimPanel(cid){
+  const box=document.getElementById("cpanel"); if(!box) return;
+  if(cid && box.dataset.cid!==cid) return;
+  box.innerHTML=""; delete box.dataset.cid;
+}
+async function createCouple(){
+  const nameEl=document.getElementById("cname"), btn=document.getElementById("createC");
+  const name=nameEl.value.trim(); if(!name){ toast("Enter the couple's name"); nameEl.focus(); return; }
+  if(btn.disabled) return;
+  const contact=document.getElementById("ccontact").value.trim();
+  const lang=document.getElementById("clang").value;
+  btn.disabled=true;
+  const res=await req("/admin/couples",{ method:"POST", body:JSON.stringify({ name, contact }) });
+  if(!document.getElementById("createC")) return;
+  btn.disabled=false;
+  if(!res.ok || !res.d || !res.d.claimToken || !res.d.couple){ failToast(res, "Create failed"); return; }
+  rememberLang(res.d.couple.id, PLANNER_FILE[lang]?lang:"el");
+  showClaimPanel(res.d.couple.id, res.d.couple.name, res.d.claimToken, "new");
+  nameEl.value=""; document.getElementById("ccontact").value="";
+  toast("Couple created"); refreshCouples();
+}
+async function onCoupleAction(e){
+  const btn=e.target.closest("button[data-a]"); if(!btn) return;
+  const tr=btn.closest("tr"); if(!tr) return;
+  const c=couplesCache.find(x=>x.id===tr.dataset.id); if(!c) return;
+  const a=btn.dataset.a, path="/admin/couples/"+encodeURIComponent(c.id);
+  if(a==="copy"){
+    if(!c.claimToken) return;
+    showClaimPanel(c.id, c.name, c.claimToken, "link");
+    copy(claimLink(c.claimToken, coupleLang(c.id)));
+  } else if(a==="reset"){
+    if(!confirm(`New link for "${c.name}"?\n\nEvery link and device the couple has stops working and any open support access ends. The couple will see that TakeaSeat reset their access. Continue?`)) return;
+    btn.disabled=true;
+    const res=await req(path+"/reset",{ method:"POST", body:"{}" });
+    btn.disabled=false;
+    if(!res.ok || !res.d || !res.d.claimToken){
+      if(res.status===410) toast("The couple has deleted their plan — there is nothing to reset.");
+      else failToast(res, res.status===404?"This couple no longer exists — refreshing":"Reset failed");
+      if(res.status!==403) refreshCouples();
+      return; }
+    showClaimPanel(c.id, c.name, res.d.claimToken, "reset");
+    toast("New link ready"); refreshCouples(); refreshSupport();
+  } else if(a==="del"){
+    if(!confirm(`${c.name}\n\nPermanently delete this couple's plan and history? This cannot be undone.`)) return;
+    btn.disabled=true;
+    const res=await req(path,{ method:"DELETE" });
+    btn.disabled=false;
+    if(!res.ok){ failToast(res, "Delete failed"); return; }
+    forgetLang(c.id); closeClaimPanel(c.id);
+    toast("Deleted"); refreshCouples(); refreshSupport();
+  }
+}
+
+// ---------------------------------------------------------------- venues
+function venuesTableHtml(venues){
+  return `<table class="cards"><thead><tr><th>Venue</th><th>License</th><th>Weddings</th><th>Status</th><th></th></tr></thead>
+      <tbody>${venues.length? venues.map(rowHtml).join("") : `<tr><td colspan="5" class="empty">No venues yet.</td></tr>`}</tbody></table>`;
 }
 async function refreshVenues(){
-  const r=await api("/admin/venues"); if(!r.ok) return;
-  const d=await r.json(); venuesCache=(d.venues||[]).sort((a,b)=>b.createdAt-a.createdAt);
-  const sec=document.getElementById("venuesSection"); if(sec) sec.innerHTML=venuesSectionHtml(venuesCache);
+  const res=await req("/admin/venues"); if(!res.ok || !res.d) return;
+  venuesCache=(res.d.venues||[]).sort(byNewest);
+  const t=document.getElementById("vtable"); if(t) t.innerHTML=venuesTableHtml(venuesCache);
+  const n=document.getElementById("vcount"); if(n) n.textContent=`(${venuesCache.length})`;
 }
 function rowHtml(v){
   const L=v.license||{};
   const usage = L.type==="per_wedding" ? `${v.used||0}/${L.quota||"∞"}` : `${v.weddingCount||0}${L.cap?`/${L.cap}`:""}`;
-  return `<tr data-id="${v.id}">
-    <td><strong>${esc(v.name)}</strong>${v.contact?`<div class="muted">${esc(v.contact)}</div>`:""}</td>
-    <td><span class="badge ${L.type==='per_wedding'?'per':'season'}">${L.type==='per_wedding'?'Per-wedding':'Seasonal'}</span><div class="muted">${esc(licenseText(L))}</div></td>
-    <td>${usage}</td>
-    <td>${v.active?`<span class="badge season">Active</span>`:`<span class="badge off">Off</span>`}</td>
-    <td><div class="row" style="gap:6px;flex-wrap:wrap">
+  return `<tr data-id="${esc(v.id)}">
+    <td><strong>${esc(v.name)}</strong>${v.keyRotated?` <span class="mark" title="The venue set its own key — only the venue knows it">🔒</span>`:""}${v.hasTemplate?` <span class="badge tpl" title="The venue has saved a default space">template ✓</span>`:""}${v.contact?`<div class="muted">${esc(v.contact)}</div>`:""}</td>
+    <td data-l="License"><div><span class="badge ${L.type==='per_wedding'?'per':'season'}">${L.type==='per_wedding'?'Per-wedding':'Seasonal'}</span><div class="muted">${esc(licenseText(L))}</div></div></td>
+    <td data-l="Weddings">${esc(usage)}</td>
+    <td data-l="Status">${v.active?`<span class="badge season">Active</span>`:`<span class="badge off">Off</span>`}</td>
+    <td class="acts-cell"><div class="row acts">
       <button class="btn sm" data-a="key">Key</button>
       <button class="btn sm" data-a="toggle">${v.active?"Disable":"Enable"}</button>
       <button class="btn sm danger" data-a="del">Delete</button>
     </div></td></tr>`;
 }
+// The console link + key box (after creating a venue, «Key», or «Reset key…»). `title` is trusted HTML (names escaped).
+function venueKeyBoxHtml(title, key, note, withReset){
+  const link=venueConsoleLink();
+  return `<div class="keybox">
+    <div class="row between" style="align-items:flex-start"><div style="font-weight:700;margin-bottom:6px">${title}</div>
+      <button class="btn sm ghost" data-close title="Close">✕</button></div>
+    <div class="muted">Console link</div><div class="k">${esc(link)}</div>
+    <div class="muted" style="margin-top:8px">Venue key</div><div class="k">${esc(key)}</div>
+    <div class="row fw" style="margin-top:10px">
+      <button class="btn sm" data-c="key">Copy key</button>
+      <button class="btn sm" data-c="both">Copy link + key</button>
+      ${withReset?`<button class="btn sm danger" data-c="reset">Reset key…</button>`:""}
+    </div>
+    ${note?`<div class="muted" style="margin-top:8px">${note}</div>`:""}
+  </div>`;
+}
+function wireKeyBox(box, key, v){
+  const link=venueConsoleLink();
+  const q=s=>box.querySelector(s);
+  if(q('[data-c="key"]')) q('[data-c="key"]').onclick=()=>copy(key);
+  if(q('[data-c="both"]')) q('[data-c="both"]').onclick=()=>copy("Κονσόλα: "+link+"\nΚωδικός: "+key);
+  if(q('[data-c="reset"]') && v) q('[data-c="reset"]').onclick=()=>resetVenueKey(v);
+  if(q("[data-close]")) q("[data-close]").onclick=()=>{ box.innerHTML=""; delete box.dataset.vid; };
+}
+function showVenuePanel(v, html, key){
+  const box=document.getElementById("vpanel"); if(!box) return;
+  box.dataset.vid=v.id; box.innerHTML=html; wireKeyBox(box, key, v);
+  box.scrollIntoView({ behavior:"smooth", block:"nearest" });
+}
+function showVenueKey(v, key, kind){
+  const html = kind==="reset"
+    ? venueKeyBoxHtml(`✅ New key for ${esc(v.name)} — give it to the venue:`, key,
+        "The old key and the venue's own planner links stopped working. Couples' links are not affected.", false)
+    : venueKeyBoxHtml(`Key for ${esc(v.name)}`, key, "", true);
+  showVenuePanel(v, html, key);
+}
+function showVenueOwnKey(v){
+  showVenuePanel(v, `<div class="keybox note">
+    <div class="row between" style="align-items:flex-start"><div style="font-weight:700">🔒 ${esc(v.name)}</div>
+      <button class="btn sm ghost" data-close title="Close">✕</button></div>
+    <div style="margin:2px 0 10px">This venue has set its own key — only the venue knows it.</div>
+    <div class="row fw"><button class="btn sm danger" data-c="reset">Reset key…</button>
+      <span class="muted">Only if the venue has lost it.</span></div>
+  </div>`, "");
+}
+async function resetVenueKey(v){
+  if(!confirm(`Reset the key of "${v.name}"?\n\nThe venue's current key stops working; give them the new one.`)) return;
+  const res=await req("/admin/venues/"+encodeURIComponent(v.id)+"/reset-key",{ method:"POST", body:"{}" });
+  if(!res.ok || !res.d || !res.d.key){ failToast(res, res.status===404?"This venue no longer exists":"Reset failed"); return; }
+  showVenueKey(v, res.d.key, "reset");
+  toast("New key ready"); refreshVenues();
+}
 async function createVenue(){
   const name=document.getElementById("nname").value.trim(); if(!name){ toast("Enter a venue name"); return; }
   const contact=document.getElementById("ncontact").value.trim();
   const license=readLicense("n", document.getElementById("licwrap"));
-  const btn=document.getElementById("createV"); btn.disabled=true;
-  const r=await api("/admin/venues",{method:"POST",body:JSON.stringify({name,contact,license})});
+  const btn=document.getElementById("createV"); if(btn.disabled) return; btn.disabled=true;
+  const res=await req("/admin/venues",{method:"POST",body:JSON.stringify({name,contact,license})});
+  if(!document.getElementById("createV")) return;
   btn.disabled=false;
-  if(!r.ok){ toast("Create failed"); return; }
-  const d=await r.json();
-  const link=venueConsoleLink();
-  document.getElementById("newkey").innerHTML=`<div class="keybox">
-    <div style="font-weight:700;margin-bottom:6px">✅ Venue created — give this to the venue:</div>
-    <div class="muted">Console link</div><div class="k">${esc(link)}</div>
-    <div class="muted" style="margin-top:8px">Venue key</div><div class="k" id="vkey">${esc(d.key)}</div>
-    <div class="row" style="margin-top:10px;gap:8px">
-      <button class="btn sm" id="copykey">Copy key</button>
-      <button class="btn sm" id="copyboth">Copy link + key</button>
-    </div></div>`;
-  document.getElementById("copykey").onclick=()=>copy(d.key);
-  document.getElementById("copyboth").onclick=()=>copy("Κονσόλα: "+link+"\nΚωδικός: "+d.key);
+  if(!res.ok || !res.d || !res.d.key){ failToast(res, "Create failed"); return; }
+  const box=document.getElementById("newkey");
+  box.innerHTML=venueKeyBoxHtml("✅ Venue created — give this to the venue:", res.d.key, "", false);
+  wireKeyBox(box, res.d.key, null);
   document.getElementById("nname").value=""; document.getElementById("ncontact").value="";
   toast("Venue created"); refreshVenues();
 }
 function onRowAction(){ return async e=>{
   const btn=e.target.closest("button[data-a]"); if(!btn) return;
-  const id=btn.closest("tr").dataset.id; const v=venuesCache.find(x=>x.id===id); if(!v) return;
-  if(btn.dataset.a==="key"){ const r=await api("/admin/venues/"+id); if(r.ok){ const d=await r.json(); copy(d.key); } else toast("Failed"); }
-  else if(btn.dataset.a==="toggle"){ const r=await api("/admin/venues/"+id,{method:"PATCH",body:JSON.stringify({active:!v.active})}); if(r.ok){ toast(v.active?"Disabled":"Enabled"); refreshVenues(); } else toast("Failed"); }
-  else if(btn.dataset.a==="del"){ if(!confirm(`Delete venue "${v.name}"? Its weddings' plans stay in the cloud but the venue can no longer manage them.`)) return;
-    const r=await api("/admin/venues/"+id,{method:"DELETE"}); if(r.ok){ toast("Deleted"); refreshVenues(); } else toast("Failed"); }
+  const tr=btn.closest("tr"); if(!tr) return;
+  const id=tr.dataset.id; const v=venuesCache.find(x=>x.id===id); if(!v) return;
+  const path="/admin/venues/"+encodeURIComponent(id);
+  if(btn.dataset.a==="key"){
+    btn.disabled=true; const res=await req(path); btn.disabled=false;
+    if(!res.ok || !res.d){ failToast(res, "Failed"); return; }
+    if(res.d.key){ showVenueKey(v, res.d.key, "current"); copySilently(res.d.key, "Key copied"); }
+    else showVenueOwnKey(v);
+  }
+  else if(btn.dataset.a==="toggle"){
+    btn.disabled=true; const res=await req(path,{method:"PATCH",body:JSON.stringify({active:!v.active})}); btn.disabled=false;
+    if(res.ok){ toast(v.active?"Disabled":"Enabled"); refreshVenues(); } else failToast(res, "Failed"); }
+  else if(btn.dataset.a==="del"){
+    const n=v.weddingCount||0;
+    if(!confirm(`Permanently delete venue "${v.name}"?\n\nThe venue, all its weddings (${n}) and its template are erased — plans, guest lists and history. Nothing stays and this cannot be undone.`)) return;
+    btn.disabled=true; const res=await req(path,{method:"DELETE"}); btn.disabled=false;
+    if(res.ok){ const p=document.getElementById("vpanel"); if(p && p.dataset.vid===id){ p.innerHTML=""; delete p.dataset.vid; }
+      toast("Deleted"); refreshVenues(); refreshSupport(); }
+    else failToast(res, "Failed"); }
 }; }
 
 async function load(silent){
@@ -191,10 +504,12 @@ async function load(silent){
   if(!silent) app.innerHTML=`<div class="muted" style="text-align:center;padding:40px">Loading…</div>`;
   let r; try{ r=await api("/admin/venues"); }catch(e){ renderLogin("Connection error."); return; }
   if(r.status===403){ setKey(""); renderLogin("Wrong owner key."); return; }
-  if(r.status===503){ renderLogin("Admin is disabled — set the OWNER_KEY secret on the worker first."); return; }
+  if(r.status===503){ renderLogin("Admin is disabled — set the OWNER_KEY secret on the server first."); return; }
   if(!r.ok){ renderLogin("Something went wrong."); return; }
-  const d=await r.json(); renderDashboard((d.venues||[]).sort((a,b)=>b.createdAt-a.createdAt));
+  const d=await r.json(); renderDashboard((d.venues||[]).sort(byNewest));
 }
+// New invitations may arrive while the tab is in the background.
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && getKey() && document.getElementById("supList")) refreshSupport(); });
 load();
 </script>
 </body>

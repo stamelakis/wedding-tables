@@ -3,7 +3,7 @@
 > Read this first. It maps the whole system so a new agent (or developer) can pick it up cold.
 > **This repo is PUBLIC — never commit secrets here.** Real keys live in `ACCESS.local.md`
 > (git-ignored, on Andreas's PC), in the server's env files, and in Andreas's password manager.
-> Last updated: 2026-09-01.
+> Last updated: 2026-09-18 (roles & access — §1b).
 
 ## 1. What this is
 
@@ -23,7 +23,52 @@ their guests at tables. Live at **https://takeaseat.gr**.
 **Pricing on the site (2026-09-08):** venues season **129 €/season** (unlimited weddings), venues per wedding **9 €**,
 couples **19 € one-off** (the "expensive" tier — never called that; venues simply get the partner price). All three
 numbers live only in the pricing section of `index.html`. Couples currently sign up by e-mail (the CTA is a mailto);
-fulfil by creating a wedding for them under a "Direct couples" venue in `admin.html` and sending the couple link.
+fulfil in `admin.html` → **Couples (direct)** → create → send the **claim link** (§1b). Never again as a wedding under a
+"Direct couples" venue: those weddings are venue-owned, so the admin could open them.
+
+## 1b. Roles & access (2026-09-18) — who can see and change what
+
+| role | how they get in | what they can do |
+|---|---|---|
+| **Admin** (Andreas) | `OWNER_KEY` in `admin.html` | venues + licences, sell plans to couples (claim links), see **support invitations**. **Cannot open any couple plan** — no API route returns a couple plan, id or key to the owner key. Two admin powers over a couple plan, both visible to the couple: **reset the access link** (lost link) and **erasure**. |
+| **Venue** | console key in `venue.html`; per-wedding venue link `#vkey=` | builds its **space once (template)**, decides **what couples may change** (default + per wedding), creates weddings (copied from the template, no guests), full rights on its weddings, can invite support for a wedding. |
+| **Couple** | edit link `#key=` (from the venue, or claimed from TakeaSeat) | couple-owned plan: everything, incl. inviting support and making new links. Venue plan: guests, seating, groups, invitations, print — plus whatever the venue allows. |
+| **Support** | `#support=` link from the admin's support list, only while the owner's invitation lasts (24 h / 3 d / 7 d) | opens **view-only**, "Ενεργοποίηση επεξεργασίας" to fix things; nothing is stored in the helper's browser; cannot delete, rename, copy, extend, or keep access via sync codes. Every open/save is in the owner's access log. |
+| **Viewer** | view link `#view=` | read only. |
+
+- **Server is the authority** (`wedding-sync-worker.js`): reads need a credential (a plan id alone is not enough);
+  couple edits on venue plans pass through `enforcePerms` (locked parts are copied back from the stored plan and the
+  fixed plan is returned `{enforced, plan}`; an old planner gets a 409 carrying it). The planner only mirrors the locks
+  (`can(perm)`, `ACCESS`, body `lock-*` classes) so nothing locked looks editable.
+- **Permissions** (couple rights on venue plans): `floor` (size + material), `decor` (the *venue's* items — couples may
+  always add and move their own photo booth etc.; items carry `by: venue|couple`), `layout` (table x/y/rot), `tables`
+  (add/delete/merge), `seats` (+ `maxSeats` per table), `labels` (table names). **Locks apply only after the venue put
+  its layout in** (`rec.layoutAt`: set by a template copy or the venue's first save) — before that the couple arranges
+  the space. Default for venues created after 2026-09-18: only guests/seats/seat count; venues that existed before
+  keep "all open" until they save their permissions card.
+- **Credentials & generations**: every plan has `editKey` (couple), `readKey` (view), and for venue plans `venueKey`.
+  Sync-code device links record the key generation (`keyGen` couple / `venueGen` venue): a reset, the couple's "Νέοι
+  σύνδεσμοι", or the venue changing its console key retire older device links. A venue changing its console key also
+  renews every per-wedding venue link; after that the admin can no longer read the venue key (only reset it).
+- **Claim links** (`#claim=<token>`, fragment only): one-time, explicit button in the planner, 30-day TTL, the same
+  device may retry for 15 min (lost response), a second device is told when it was used.
+- **POST /plans** now needs proof of purchase (owner key, or the edit key of a couple-owned plan): nobody gets a free,
+  unmanaged plan from the ☁ panel any more.
+- **Migration**: `migrate(env)` runs once at server start (guarded by `meta:schema`): owner/readKey/venueKey/perms for
+  every existing plan, code roles, and a **14-day id-only read grace** for plans that existed before (old tabs, old
+  view links, the old Hermes). Owners can end it early from ☁.
+- **Lost-link reset is an admin power** (decision for Andreas): «New link…» gives the admin a claim link he *could*
+  open himself before the couple. It is logged as «άνοιξε τον νέο σύνδεσμο που έδωσε η TakeaSeat» in the couple's access
+  log and every old link/device stops working, so it is visible — but not impossible. Closing it fully needs the new
+  link to go straight to the couple (e-mail from the server to the licence contact). The same holds for the very first
+  claim link: whoever opens it first becomes the couple.
+- **Hermes after a deploy of this change**: the running `takeaseat_control.py` keeps the old code in memory and a new
+  launch exits silently while it runs (single-instance guard). End the running pythonw process, then start it again.
+- **Honest limit**: this is enforced by the software (API, consoles, planner). Root on the server can still read the
+  SQLite file, because the server itself must read plans (wipe guard, history, lock enforcement). End-to-end
+  encryption would be a separate project (lost link = lost plan).
+- **Tests**: `node tools/test-api.mjs` (139 checks: every role, migration, legacy, races guards). The build now also
+  fails on duplicate dictionary keys (a later key silently overrides the earlier one).
 
 ## 2. Architecture
 
@@ -84,8 +129,10 @@ Andreas's password manager. Summary of *what exists*:
 - **The server**: SSH as root to `178.104.158.125` with the key `~/.ssh/hetzner`.
 - **Owner console** `admin.html`: needs the `OWNER_KEY` (also set in `/opt/takeaseat/server/server.env` on the box).
 - **Venue console** `venue.html`: needs a venue key `<venueId>.<secret>`. The owner's own venue is **Jockey**.
-- **Seat editor**: no password — the couple link *is* the credential (`...?plan=<id>#key=<editKey>`). The
-  edit key lives in the URL `#fragment` so it's never sent to the server or logs.
+- **Seat editor**: no password — the link *is* the credential, always in the URL `#fragment` (never sent to the
+  server or logs): couple `?plan=<id>#key=<editKey>`, venue `?plan=<id>#vkey=<venueKey>` (`&preview=1` = as the couple
+  sees it), view-only `?plan=<id>#view=<readKey>`, support `?plan=<id>#support=<key>`, new couple `#claim=<token>`.
+  Reading a plan needs one of these (or a linked sync code); the plan id alone is not enough since 2026-09-18.
 - **Andreas's private quick-access page** (phone-friendly, tap-to-open editor + venue key):
   a private Claude artifact — URL is in `ACCESS.local.md`.
 - **Domain/DNS**: takeaseat.gr at **Papaki** (apex + www A-records → the server IP).
@@ -102,7 +149,9 @@ sqlite3 "$DB" "select json_extract(value,'\$.key') from kv where key='venue:<ven
 # list everything:
 sqlite3 "$DB" "select key from kv;"
 ```
-A venue can also self-rotate its key in the 🔑 panel of `venue.html` (old key dies immediately).
+A venue can also self-rotate its key in the 🔑 panel of `venue.html` (old key dies immediately; after that the owner
+API returns `key:null` for it — use **Reset key** in `admin.html` for a venue that lost it). **Do not use the DB to open
+a couple-owned plan**: the promise to couples is that TakeaSeat only enters by their invitation (§1b).
 
 ## 5. Deploy / update
 

@@ -15,7 +15,12 @@ Config — a git-ignored .env beside this file (see .env.example):
   TAKEASEAT_OWN_VENUES     comma-separated venue ids we own (new weddings may be created there)
   TAKEASEAT_OWN_VENUE      the default venue for "new wedding" (must be in OWN_VENUES)
   TAKEASEAT_PLAN_ID        the plan the seating questions are about (Andreas & Lina)
-  TAKEASEAT_PLAN_EDIT_KEY  its edit key (only used to open the editor with edit rights on this PC)
+  TAKEASEAT_PLAN_EDIT_KEY  its edit key (reads the plan; also opens the editor with edit rights on this PC)
+  TAKEASEAT_VENUE_KEY      optional: our venue's console key, needed once that venue has set its own key
+                           (the admin API stops revealing a venue key after the venue changes it)
+
+Since 2026-09-18 reading a plan needs a credential (the plan id alone is not enough): the plan is read
+with TAKEASEAT_PLAN_EDIT_KEY, else with our own venue's key.
 
 Run it (and keep it running so Hermes can see it):
   C:\\Users\\andre\\hermes\\.venv\\Scripts\\python takeaseat_control.py
@@ -64,6 +69,7 @@ OWN_VENUES = [v.strip() for v in os.environ.get("TAKEASEAT_OWN_VENUES", "").spli
 OWN_VENUE = os.environ.get("TAKEASEAT_OWN_VENUE", OWN_VENUES[0] if OWN_VENUES else "")
 PLAN_ID = os.environ.get("TAKEASEAT_PLAN_ID", "")
 PLAN_EDIT_KEY = os.environ.get("TAKEASEAT_PLAN_EDIT_KEY", "")
+VENUE_KEY = os.environ.get("TAKEASEAT_VENUE_KEY", "")
 
 try:  # the system CA bundle here misreads a valid Let's Encrypt chain — use certifi's roots
     import certifi
@@ -108,14 +114,27 @@ def _owner(path: str, method: str = "GET", body: dict | None = None):
 
 
 def _venue_key(vid: str) -> str:
+    if VENUE_KEY and VENUE_KEY.split(".")[0] == vid:
+        return VENUE_KEY
     d = _owner(f"/admin/venues/{vid}")
-    return d.get("key") or ""
+    if not d.get("key"):
+        raise RuntimeError("Το κτήμα έχει ορίσει δικό του κωδικό — βάλτε τον στο TAKEASEAT_VENUE_KEY του .env.")
+    return d["key"]
+
+
+def _plan_headers() -> dict:
+    """Reading a plan needs a credential: its edit key, else our own venue's key."""
+    if PLAN_EDIT_KEY:
+        return {"X-Edit-Key": PLAN_EDIT_KEY}
+    if OWN_VENUE:
+        return {"X-Venue-Key": _venue_key(OWN_VENUE)}
+    raise RuntimeError("Λείπει το TAKEASEAT_PLAN_EDIT_KEY για να διαβάσω τον γάμο.")
 
 
 def _plan():
     if not PLAN_ID:
         raise RuntimeError("Δεν έχει οριστεί ποιον γάμο να κοιτάω (TAKEASEAT_PLAN_ID).")
-    d = _api(f"/plans/{PLAN_ID}")
+    d = _api(f"/plans/{PLAN_ID}", headers=_plan_headers())
     p = d.get("plan") or {}
     tables = p.get("tables") or []
     guests = p.get("guests") or {}
@@ -206,10 +225,9 @@ def takeaseat_site_health(**_):
     except Exception:
         problems.append("η σελίδα δεν απαντά")
     try:
-        _api(f"/plans/{PLAN_ID}" if PLAN_ID else "/plans/none")
-    except RuntimeError as e:
-        if "404" not in str(e) or PLAN_ID:
-            problems.append("η βάση δεν απαντά")
+        _api("/health")   # needs no key: a missing or stale plan key is reported by the seating questions instead
+    except RuntimeError:
+        problems.append("η βάση δεν απαντά")
     if problems:
         raise RuntimeError("Πρόβλημα στο TakeaSeat: " + " και ".join(problems) + ".")
     return "Το TakeaSeat λειτουργεί κανονικά — σελίδα και βάση απαντούν."
@@ -266,7 +284,7 @@ def takeaseat_empty_tables(**_):
 
 
 def takeaseat_last_change(**_):
-    d = _api(f"/plans/{PLAN_ID}") if PLAN_ID else {}
+    d = _api(f"/plans/{PLAN_ID}", headers=_plan_headers()) if PLAN_ID else {}
     return f"Το πλάνο «{d.get('name', '')}» άλλαξε τελευταία φορά {_when(d.get('updated'))}."
 
 

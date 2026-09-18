@@ -27,6 +27,27 @@ const src = lf(fs.readFileSync(path.join(root, 'planner.src.html'), 'utf8'));
   }
   const used = new Set([...src.matchAll(/\btr\("([A-Za-z0-9_]+)"/g)].map(m => m[1]).concat([...src.matchAll(/data-t(?:-title|-ph)?="([A-Za-z0-9_]+)"/g)].map(m => m[1])));
   for (const k of used) if (!(k in T_ALL.el)) problems.push(`used but undefined: ${k}`);
+  // Duplicate keys inside one language: the later definition silently wins and the earlier text never shows
+  // (happened twice: tMerged, pmFloor). Scan the source text, skipping string literals.
+  {
+    const txt = src.slice(a + 'const T_ALL='.length, b); const seen = {};
+    let depth = 0, lang = null, q = null;
+    for (let i = 0; i < txt.length;) {
+      const c = txt[i];
+      if (q) { if (c === '\\') { i += 2; continue; } if (c === q) q = null; i++; continue; }
+      if (c === '"' || c === "'" || c === '`') { q = c; i++; continue; }
+      if (c === '{' || c === '[') { depth++; i++; continue; }
+      if (c === '}' || c === ']') { depth--; i++; continue; }
+      const m = /^([A-Za-z_$][\w$]*)\s*:/.exec(txt.slice(i, i + 80));
+      if (m && /[\s,{]/.test(txt[i - 1] || ' ')) {
+        if (depth === 1) lang = m[1];
+        else if (depth === 2 && lang) { const k = lang + '.' + m[1]; if (seen[k]) problems.push(`duplicate key ${k}`); seen[k] = 1; }
+        i += m[0].length; continue;
+      }
+      i++;
+    }
+    if (!['el', 'en', 'de'].every(l => Object.keys(seen).some(k => k.startsWith(l + '.')))) problems.push('duplicate-key scan could not read the dictionaries');
+  }
   if (problems.length) { console.error('i18n problems:\n  ' + problems.join('\n  ')); process.exit(1); }
 }
 

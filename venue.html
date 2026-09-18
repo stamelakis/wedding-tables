@@ -12,15 +12,21 @@
   *{ box-sizing:border-box; }
   body{ margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; }
   .wrap{ max-width:860px; margin:0 auto; padding:24px 18px 80px; }
-  h1{ font-family:"Iowan Old Style",Palatino,Georgia,serif; font-weight:600; font-size:26px; margin:0; }
+  h1{ font-family:"Iowan Old Style",Palatino,Georgia,serif; font-weight:600; font-size:26px; margin:0; overflow-wrap:anywhere; }
+  h2,h3{ font-family:"Iowan Old Style",Palatino,Georgia,serif; font-weight:600; margin:0; }
+  h2{ font-size:19px; } h3{ font-size:18px; }
   a{ color:var(--accent-ink); }
-  .btn{ font:inherit; font-size:14px; font-weight:600; border:1px solid var(--line); background:var(--card); color:var(--ink); padding:9px 14px; border-radius:9px; cursor:pointer; }
+  .btn{ font:inherit; font-size:14px; font-weight:600; border:1px solid var(--line); background:var(--card); color:var(--ink); padding:9px 14px; border-radius:9px; cursor:pointer; text-decoration:none; display:inline-block; text-align:center; }
   .btn:hover{ background:#f2ece6; }
   .btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
   .btn.primary:hover{ filter:brightness(1.05); }
   .btn.danger{ color:var(--danger); border-color:#e3b4ac; background:#fbeeec; }
+  .btn.quiet{ border-color:transparent; background:transparent; color:var(--accent-ink); padding-left:8px; padding-right:8px; }
+  .btn.quiet:hover{ background:var(--accent-soft); }
   .btn:disabled{ opacity:.5; cursor:not-allowed; }
-  input{ font:inherit; font-size:15px; padding:10px 12px; border:1px solid var(--line); border-radius:9px; width:100%; background:var(--card); color:var(--ink); }
+  input,textarea,select{ font:inherit; font-size:15px; padding:10px 12px; border:1px solid var(--line); border-radius:9px; width:100%; background:var(--card); color:var(--ink); }
+  textarea{ resize:vertical; min-height:74px; }
+  input[type=checkbox],input[type=radio]{ width:auto; padding:0; margin:0; accent-color:var(--accent); flex:none; }
   .card{ background:var(--card); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); }
   /* login */
   .login{ max-width:440px; margin:8vh auto 0; padding:28px; text-align:center; }
@@ -35,56 +41,220 @@
   .badge.season{ background:var(--accent-soft); color:var(--accent-ink); }
   .badge.per{ background:var(--good-soft); color:var(--good); }
   .badge.warn{ background:#fbeeec; color:var(--danger); }
-  .toolbar{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
-  .newform{ display:flex; gap:8px; flex:1; min-width:240px; }
-  .w-list{ display:flex; flex-direction:column; gap:10px; }
+  .badge.sup{ background:#e3eef8; color:#285d8a; }
+  .badge.own{ background:#f3ece3; color:#7a5a2e; }
+  .banner{ display:flex; align-items:center; gap:10px 14px; flex-wrap:wrap; background:#fff5e2; border:1px solid #efd7a6; color:#5e4613; border-radius:12px; padding:12px 14px; margin-bottom:16px; font-size:14px; }
+  .banner .txt{ flex:1 1 240px; }
+  .grid2{ display:grid; grid-template-columns:minmax(0,1fr); gap:14px; margin-bottom:26px; }
+  @media (min-width:780px){ .grid2{ grid-template-columns:minmax(0,1fr) minmax(0,1fr); align-items:start; } }
+  .sec{ padding:18px; min-width:0; }
+  .sec-h{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .sec .sub{ color:var(--soft); font-size:13px; margin-top:2px; }
+  .sec p{ margin:8px 0 14px; font-size:14px; color:var(--soft); }
+  .note{ font-size:12.5px; color:var(--soft); background:#f6f1ec; border-radius:8px; padding:8px 10px; margin:12px 0 14px; }
+  .warnline{ font-size:13px; color:#7a5a2e; margin:10px 0 0; }
+  .btns{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .btns.end{ justify-content:flex-end; margin-top:14px; }
+  .chk{ display:flex; align-items:flex-start; gap:9px; font-size:13.5px; color:var(--soft); margin-top:14px; cursor:pointer; }
+  .chk input{ margin-top:3px; }
+  .list-h{ display:flex; align-items:baseline; gap:8px; margin:0 0 12px; }
+  .list-h .n{ color:var(--faint); font-size:14px; }
+  .toolbar{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:6px; }
+  .newform{ display:flex; gap:8px; flex:1; min-width:min(100%,240px); }
+  .newform input{ min-width:0; }
+  .newform .btn{ flex:none; }
+  .langsel{ display:flex; align-items:center; gap:6px; font-size:13px; color:var(--soft); }
+  .langsel select{ width:auto; padding:7px 9px; font-size:13px; }
+  .under{ font-size:12.5px; color:var(--soft); margin:4px 0 0; }
+  .under.bad{ color:var(--danger); }
+  .w-list{ display:flex; flex-direction:column; gap:10px; margin-top:14px; }
   .w{ display:flex; align-items:center; gap:12px; padding:14px 16px; }
-  .w .nm{ font-weight:700; font-size:16px; }
-  .w .dt{ color:var(--faint); font-size:12.5px; margin-top:1px; }
   .w .grow{ flex:1; min-width:0; }
+  .w .nm{ font-weight:700; font-size:16px; overflow-wrap:anywhere; }
+  .w .dt{ color:var(--faint); font-size:12.5px; margin-top:1px; }
+  .w-badges{ display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
   .w .acts{ display:flex; gap:7px; flex-wrap:wrap; }
+  .more{ position:relative; flex:none; }
+  .btn.more-btn{ padding:7px 11px; font-size:18px; line-height:1.2; letter-spacing:1px; }
+  .menu{ position:absolute; right:0; top:calc(100% + 4px); background:var(--card); border:1px solid var(--line); border-radius:11px; box-shadow:0 12px 32px rgba(40,30,20,.16); padding:5px; min-width:224px; z-index:6; }
+  .menu button{ display:block; width:100%; text-align:left; font:inherit; font-size:14px; background:none; border:0; padding:9px 12px; border-radius:7px; cursor:pointer; color:var(--ink); }
+  .menu button:hover,.menu button:focus-visible{ background:#f2ece6; outline:none; }
+  .menu button.danger{ color:var(--danger); }
+  .menu hr{ border:0; border-top:1px solid var(--line); margin:4px 6px; }
   .empty{ text-align:center; color:var(--faint); padding:40px 10px; }
   .hint{ font-size:12.5px; color:var(--faint); margin-top:4px; }
-  #toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#2a2620; color:#fff; padding:10px 16px; border-radius:10px; font-size:14px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:10; }
+  /* permissions editor */
+  .pe{ margin-top:12px; }
+  .pe .always{ color:var(--good); font-size:13.5px; font-weight:600; margin-bottom:8px; }
+  .opt{ display:flex; align-items:center; gap:10px; padding:9px 12px; border:1px solid var(--line); border-radius:10px; margin-top:6px; cursor:pointer; font-size:14.5px; background:var(--card); }
+  .opt.on{ border-color:var(--accent); background:var(--accent-soft); }
+  .opt span{ min-width:0; overflow-wrap:anywhere; }
+  .opt small{ display:block; color:var(--faint); font-size:12px; font-weight:400; }
+  .pe .maxnote{ font-size:12.5px; color:var(--soft); margin:6px 2px 0; }
+  .sws{ margin-top:8px; border:1px solid var(--line); border-radius:10px; padding:2px 12px; }
+  .sw{ display:flex; align-items:center; gap:12px; padding:10px 0; border-top:1px solid var(--line); cursor:pointer; font-size:14px; }
+  .sws > .sw:first-child{ border-top:0; }
+  .sw > span{ flex:1; min-width:0; }
+  .sw small{ display:block; color:var(--faint); font-size:12px; }
+  input.tog[type=checkbox]{ -webkit-appearance:none; appearance:none; width:40px; height:24px; border-radius:12px; background:#d6ccc2; position:relative; flex:none; cursor:pointer; transition:background .15s; border:0; }
+  input.tog[type=checkbox]::after{ content:""; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.25); transition:left .15s; }
+  input.tog[type=checkbox]:checked{ background:var(--accent); }
+  input.tog[type=checkbox]:checked::after{ left:19px; }
+  .tog:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .maxrow{ display:flex; align-items:center; gap:6px 8px; flex-wrap:wrap; font-size:13px; color:var(--soft); padding:0 0 10px; }
+  .maxrow input{ width:68px; padding:6px 8px; font-size:14px; }
+  .maxrow input:disabled{ opacity:.5; }
+  /* dialogs */
+  #modal{ position:fixed; inset:0; background:rgba(30,22,15,.4); display:none; align-items:center; justify-content:center; padding:12px; z-index:20; }
+  #modal.show{ display:flex; }
+  .dlg{ background:var(--card); border-radius:14px; box-shadow:0 20px 60px rgba(30,20,10,.3); width:100%; max-width:480px; max-height:calc(100vh - 24px); max-height:calc(100dvh - 24px); overflow:auto; padding:20px; }
+  .dlg .msub{ color:var(--soft); font-size:13.5px; margin-top:2px; overflow-wrap:anywhere; }
+  .dlg .lead{ font-size:14px; color:var(--ink); margin:14px 0; }
+  .dlg .foot{ display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:18px; }
+  .dlg .fld{ margin-top:14px; }
+  .dlg .lbl{ display:block; font-size:13px; font-weight:600; color:var(--soft); margin-bottom:6px; }
+  .info{ font-size:13px; background:#fff5e2; border:1px solid #efd7a6; color:#5e4613; border-radius:10px; padding:9px 12px; margin-top:12px; }
+  .okbox{ font-size:14px; background:var(--good-soft); border:1px solid #bcdcc6; border-radius:10px; padding:11px 13px; margin-top:14px; }
+  .seg{ display:flex; gap:6px; flex-wrap:wrap; }
+  .seg .opt{ margin-top:0; flex:1 1 auto; justify-content:center; padding:8px 10px; font-size:14px; }
+  .picklist{ max-height:46vh; overflow:auto; margin-top:10px; padding-right:2px; }
+  .prev{ margin-top:14px; font-size:14px; }
+  #toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#2a2620; color:#fff; padding:10px 16px; border-radius:10px; font-size:14px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:30; max-width:calc(100vw - 32px); text-align:center; }
   #toast.show{ opacity:1; }
-  @media (max-width:560px){ .w{ flex-direction:column; align-items:flex-start; } }
+  @media (max-width:560px){
+    .wrap{ padding:18px 14px 80px; }
+    .sec{ padding:16px 14px; }
+    .w{ flex-wrap:wrap; align-items:flex-start; padding:13px 14px; }
+    .w .grow{ flex:1 1 0; }
+    .w .acts{ order:2; flex:1 1 100%; }
+    .w .acts .btn{ flex:1 1 auto; padding:8px 10px; font-size:13.5px; }
+    .dlg{ padding:18px 16px; }
+  }
 </style>
 </head>
 <body>
 <div class="wrap" id="app"></div>
-<div id="toast"></div>
+<div id="modal" role="presentation"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="mTitle"></div></div>
+<div id="toast" role="status" aria-live="polite"></div>
 <script>
 const SYNC_URL = "";   // same-origin (self-hosted takeaseat.gr). The Cloudflare-worker fallback is retired.
-const KEY_STORE="weddingVenueKey";
+const KEY_STORE="weddingVenueKey", LANG_STORE="weddingVenueLinkLang";
 const app=document.getElementById("app");
 const getKey=()=>{ try{ return localStorage.getItem(KEY_STORE)||""; }catch(e){ return ""; } };
 const setKey=k=>{ try{ k?localStorage.setItem(KEY_STORE,k):localStorage.removeItem(KEY_STORE); }catch(e){} };
 const vidOf=k=>(k||"").split(".")[0];
 function esc(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
-function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1800); }
+function toast(m,ms){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),ms||1800); }
 function fmtDate(ms){ try{ return new Date(ms).toLocaleDateString("el-GR",{day:"2-digit",month:"short",year:"numeric"}); }catch(e){ return ""; } }
+function fmtDT(ms,withYear){ try{ return new Date(ms).toLocaleString("el-GR",{day:"numeric",month:"short",...(withYear?{year:"numeric"}:{}),hour:"2-digit",minute:"2-digit",hourCycle:"h23"}); }catch(e){ return ""; } }
+
+// ---- planner links (keys only ever in the #fragment) ----
 const PLANNER_FILE={ el:"seating-planner-el.html", en:"seating-planner.html", de:"seating-planner-de.html" };
-function linkLang(){ const s=document.getElementById("linklang"); return (s&&PLANNER_FILE[s.value])?s.value:"el"; }
-function coupleLink(planId, editKey){ return new URL(PLANNER_FILE[linkLang()]+"?plan="+planId+"#key="+editKey, location.href).href; }
+let LINK_LANG=(()=>{ try{ const v=localStorage.getItem(LANG_STORE); return PLANNER_FILE[v]?v:"el"; }catch(e){ return "el"; } })();
+function plannerURL(lang, planId, frag){ return new URL(PLANNER_FILE[PLANNER_FILE[lang]?lang:"el"]+"?plan="+encodeURIComponent(planId)+"#"+frag, location.href).href; }
+function coupleLink(w){ return plannerURL(LINK_LANG, w.planId, "key="+w.editKey); }
+function venueLink(w, preview){ return w.venueKey ? plannerURL(LINK_LANG, w.planId, "vkey="+w.venueKey+(preview?"&preview=1":"")) : coupleLink(w); }
+function templateLink(t){ return plannerURL("el", t.planId, "vkey="+t.venueKey); }   // the venue's own space: always the Greek planner
+
+// ---- API ----
 async function api(path, opts={}){
   return fetch(SYNC_URL+path, { ...opts, headers:{ "Content-Type":"application/json", "X-Venue-Key":getKey(), ...(opts.headers||{}) } });
 }
-function copy(text){ (navigator.clipboard?navigator.clipboard.writeText(text):Promise.reject()).then(()=>toast("Ο σύνδεσμος αντιγράφηκε")).catch(()=>{ prompt("Αντιγράψτε τον σύνδεσμο:", text); }); }
+// → {ok, status, d, gone}. gone = our venue key no longer works (rotated elsewhere or reset by TakeaSeat): back to login.
+async function call(method, path, body){
+  let r; try{ r=await api(path,{ method, ...(body===undefined?{}:{ body:JSON.stringify(body) }) }); }
+  catch(e){ toast("Σφάλμα σύνδεσης — δοκιμάστε ξανά."); return { ok:false, status:0, d:{}, net:true }; }
+  const d=await r.json().catch(()=>({}));
+  if(r.status===403 && d.error==="unauthorized" && path.startsWith("/venues/")){ signedOut("Ο κωδικός δεν ισχύει πλέον — συνδεθείτε με τον νέο σας κωδικό."); return { ok:false, status:403, d, gone:true }; }
+  return { ok:r.ok, status:r.status, d };
+}
+function copy(text, msg){ (navigator.clipboard?navigator.clipboard.writeText(text):Promise.reject()).then(()=>toast(msg||"Ο σύνδεσμος αντιγράφηκε")).catch(()=>{ prompt("Αντιγράψτε τον σύνδεσμο:", text); }); }
+// A tab opened after an await is often blocked: open it during the click, point it at the planner once we know the link.
+function pendingTab(){ let w=null; try{ w=window.open("","_blank"); if(w){ w.document.title="TakeaSeat"; w.document.body.innerHTML='<p style="font-family:sans-serif;color:#6a6157;padding:24px">Φόρτωση…</p>'; } }catch(e){} return w; }
+function sendTab(w, url){ if(w && !w.closed){ try{ w.opener=null; w.location.replace(url); return true; }catch(e){} } return false; }
+function dropTab(w){ try{ if(w && !w.closed) w.close(); }catch(e){} }
 
-// ---- license status text ----
+// ---- licence status text ----
 function licenseBadge(v){
   const L=v.license||{};
   if(L.type==="per_wedding"){ const left=(L.quota||0)-(v.used||0);
     return `<span class="badge ${left<=0?'warn':'per'}">Ανά γάμο · ${v.used||0}/${L.quota||"∞"} · απομένουν ${Math.max(0,left)}</span>`; }
   const end=L.seasonEnd?fmtDate(Date.parse(L.seasonEnd)):"—";
-  return `<span class="badge season">Σεζόν έως ${end}${L.cap?` · μέχρι ${L.cap} ταυτόχρονα`:""}</span>`;
+  return `<span class="badge season">Σεζόν έως ${esc(end)}${L.cap?` · μέχρι ${L.cap} ταυτόχρονα`:""}</span>`;
 }
 const REASON={ inactive:"Ο λογαριασμός είναι ανενεργός — επικοινωνήστε μαζί μας.",
   before_season:"Η σεζόν δεν έχει ξεκινήσει ακόμη.", after_season:"Η σεζόν έχει λήξει — ανανεώστε για να συνεχίσετε.",
   quota_reached:"Εξαντλήθηκε το όριο γάμων — ανανεώστε για περισσότερους.", cap_reached:"Έχετε φτάσει το όριο ταυτόχρονων γάμων." };
 
+// ---- couple permissions (true = the couple may change it; maxSeats 0 = no limit) ----
+const PERM_KEYS=["floor","decor","layout","tables","seats","labels"];
+const ALL_OPEN={ floor:true, decor:true, layout:true, tables:true, seats:true, labels:true, maxSeats:0 };
+const PERM_ROWS=[
+  ["floor","Δάπεδο & μέγεθος χώρου"],
+  ["decor","Στοιχεία του κτήματος (πίστα, μπαρ, μπουφέδες, WC…)","Τα δικά τους στοιχεία (photo booth, candy bar…) τα προσθέτουν πάντα."],
+  ["layout","Θέσεις τραπεζιών"],
+  ["tables","Προσθήκη / διαγραφή τραπεζιών"],
+  ["seats","Αριθμός θέσεων ανά τραπέζι"],
+  ["labels","Ονόματα τραπεζιών"] ];
+const PRESETS=[
+  ["guests","Μόνο καλεσμένους & θέσεις",{ floor:false, decor:false, layout:false, tables:false, seats:true, labels:false }],
+  ["labels","+ ονόματα τραπεζιών",      { floor:false, decor:false, layout:false, tables:false, seats:true, labels:true }],
+  ["free","Ελεύθερα",                   { floor:true, decor:true, layout:true, tables:true, seats:true, labels:true }] ];
+const SUMMARY={ guests:"καλεσμένοι & θέσεις", labels:"καλεσμένοι, θέσεις & ονόματα τραπεζιών", free:"ελεύθερα" };
+function normP(p){
+  const o={}; for(const k of PERM_KEYS) o[k]=(p && typeof p[k]==="boolean")?p[k]:ALL_OPEN[k];
+  const m=(p && p.maxSeats!=null && Number.isFinite(+p.maxSeats))?Math.round(+p.maxSeats):0;
+  o.maxSeats=Math.max(0,Math.min(30,m||0)); return o;
+}
+const samePerms=(a,b)=>PERM_KEYS.every(k=>a[k]===b[k]) && a.maxSeats===b.maxSeats;
+const matchPreset=p=>{ const m=PRESETS.find(([,,q])=>PERM_KEYS.every(k=>q[k]===p[k])); return m?m[0]:null; };   // maxSeats ignored
+function permsSummary(p){ p=normP(p); const m=matchPreset(p); return (m?SUMMARY[m]:"προσαρμοσμένα")+(p.seats&&p.maxSeats?` · έως ${p.maxSeats} καρέκλες`:""); }
+function peState(p){ const perms=normP(p); return { orig:{...perms}, perms, mode:matchPreset(perms)||"custom" }; }
+function peHTML(pfx, st){
+  const p=st.perms;
+  const opt=(id,label)=>`<label class="opt ${st.mode===id?"on":""}"><input type="radio" name="${pfx}-mode" value="${id}" ${st.mode===id?"checked":""}><span>${esc(label)}</span></label>`;
+  const sws=st.mode!=="custom"?"":`<div class="sws">${PERM_ROWS.map(([k,label,hint])=>`
+      <label class="sw"><span>${esc(label)}${hint?`<small>${esc(hint)}</small>`:""}</span><input type="checkbox" class="tog" role="switch" data-k="${k}" ${p[k]?"checked":""}></label>
+      ${k==="seats"?`<div class="maxrow"><span>Έως</span><input type="number" min="0" max="30" step="1" inputmode="numeric" data-max value="${p.maxSeats}" ${p.seats?"":"disabled"} aria-label="Μέγιστες καρέκλες ανά τραπέζι"><span>καρέκλες ανά τραπέζι (0 = χωρίς όριο)</span></div>`:""}`).join("")}</div>`;
+  return `<div class="always">✓ Καλεσμένοι, ποιος κάθεται πού, ομάδες, προσκλητήρια, εκτύπωση</div>
+    ${PRESETS.map(([id,label])=>opt(id,label)).join("")}${opt("custom","Προσαρμογή…")}
+    ${st.mode!=="custom"&&p.seats&&p.maxSeats?`<div class="maxnote">Έως ${p.maxSeats} καρέκλες ανά τραπέζι</div>`:""}${sws}`;
+}
+function bindPE(root, pfx, st, onChange){
+  const redraw=focusSel=>{ root.innerHTML=peHTML(pfx,st); onChange(); if(focusSel){ const el=root.querySelector(focusSel); if(el) el.focus(); } };
+  const clampMax=v=>Math.max(0,Math.min(30,Math.round(+v)||0));
+  root.onchange=e=>{
+    const t=e.target;
+    if(t.type==="radio"){
+      const id=t.value, pr=PRESETS.find(x=>x[0]===id);
+      if(pr){ Object.assign(st.perms, pr[2]); if(id==="free") st.perms.maxSeats=0; }
+      st.mode=id; redraw(`input[value="${id}"]`);
+    } else if(t.dataset.k){ st.perms[t.dataset.k]=t.checked; redraw(`input[data-k="${t.dataset.k}"]`); }
+    else if(t.hasAttribute("data-max")){ st.perms.maxSeats=clampMax(t.value); t.value=st.perms.maxSeats; onChange(); }
+  };
+  root.oninput=e=>{ if(e.target.hasAttribute("data-max")){ st.perms.maxSeats=clampMax(e.target.value); onChange(); } };
+}
+
+// ---- dialogs ----
+const modal=document.getElementById("modal"), dlgBox=modal.querySelector(".dlg");
+let modalReturn=null;
+function openModal(html){ if(!modal.classList.contains("show")) modalReturn=document.activeElement; dlgBox.innerHTML=html; modal.classList.add("show"); dlgBox.scrollTop=0;
+  const f=dlgBox.querySelector("[autofocus]")||dlgBox.querySelector("input,textarea,button:not([disabled])"); if(f) f.focus(); return dlgBox; }
+function closeModal(){ if(!modal.classList.contains("show")) return; modal.classList.remove("show"); dlgBox.innerHTML="";
+  if(modalReturn && document.body.contains(modalReturn)) try{ modalReturn.focus(); }catch(e){} modalReturn=null; }
+modal.addEventListener("mousedown",e=>{ if(e.target===modal) closeModal(); });
+dlgBox.addEventListener("click",e=>{ if(e.target.closest("[data-close]")) closeModal(); });
+
+// ---- state ----
+let DATA=null, lastLoad=0, loadSeq=0;
+const UI={ keyOpen:false, newKey:"", def:null };
+const sortedWeddings=()=>(DATA&&DATA.weddings||[]).slice().sort((a,b)=>b.createdAt-a.createdAt);
+const findW=id=>(DATA&&DATA.weddings||[]).find(w=>w.planId===id);
+function signedOut(msg){ loadSeq++; setKey(""); DATA=null; UI.def=null; UI.keyOpen=false; UI.newKey=""; closeModal(); renderLogin(msg); }
+
 // ---- views ----
 function renderLogin(err){
+  DATA=null;
   app.innerHTML=`<div class="card login">
     <h1>Κονσόλα Κτήματος</h1>
     <p>Διαχειριστείτε τους γάμους σας και μοιραστείτε το τραπεζολόγιο με κάθε ζευγάρι.</p>
@@ -98,8 +268,63 @@ function renderLogin(err){
   document.getElementById("key").addEventListener("keydown",e=>{ if(e.key==="Enter") go(); });
 }
 
-function renderDashboard(data){
-  const v=data.venue, weddings=(data.weddings||[]).slice().sort((a,b)=>b.createdAt-a.createdAt);
+// Keep the defaults editor across refreshes unless the server value changed under an untouched editor.
+function syncDefEditor(){
+  const p=normP(DATA.defaultPerms), d=UI.def;
+  if(d && (!samePerms(d.perms,d.orig) || samePerms(d.orig,p))){ d.orig=p; return; }
+  UI.def={ ...peState(p), applyAll:d?d.applyAll:false };
+}
+const supBadge=exp=>`<span class="badge sup" title="Η TakeaSeat έχει πρόσβαση μέχρι τότε — τη διακόπτετε όποτε θέλετε">🛟 Υποστήριξη έως ${esc(fmtDT(exp))}</span>`;
+const tablesText=n=>n===0?"χωρίς τραπέζια ακόμη":n===1?"1 τραπέζι":`${n} τραπέζια`;
+
+function spaceCard(){
+  const T=DATA.template, n=(DATA.weddings||[]).length;
+  if(T) return `<section class="card sec">
+      <div class="sec-h"><h2>Ο χώρος σας</h2>${T.supportExpires?supBadge(T.supportExpires):""}</div>
+      <div class="sub">Τελευταία αλλαγή ${esc(fmtDT(T.updated,true))} · ${tablesText(T.tables||0)}</div>
+      ${T.tables?"":`<div class="warnline">Ανοίξτε τον, στήστε πίστα, μπαρ, μπουφέδες και τραπέζια και αποθηκεύστε — οι νέοι γάμοι ξεκινούν από ό,τι έχετε αποθηκεύσει.</div>`}
+      <div class="note">Αλλαγές εδώ ισχύουν για τους νέους γάμους· οι υπάρχοντες δεν αλλάζουν.</div>
+      <div class="btns"><button class="btn primary" id="editSpace">Επεξεργασία χώρου</button><button class="btn quiet" id="tplSupport">Υποστήριξη TakeaSeat…</button></div>
+    </section>`;
+  return `<section class="card sec">
+      <h2>Ο χώρος σας</h2>
+      <p>Στήστε μία φορά τον χώρο σας (πίστα, μπαρ, μπουφέδες, τραπέζια) — κάθε νέος γάμος θα ξεκινά από εκεί.</p>
+      <div class="btns"><button class="btn primary" id="makeSpace">Δημιουργία χώρου</button>${n?`<button class="btn" id="fromWedding">Από υπάρχοντα γάμο…</button>`:""}</div>
+    </section>`;
+}
+function defaultsCard(){
+  const d=UI.def, n=(DATA.weddings||[]).length;
+  return `<section class="card sec">
+      <h2>Τι μπορεί να αλλάξει το ζευγάρι</h2>
+      <div class="sub">Για τους νέους γάμους</div>
+      <div class="pe" id="defPE">${peHTML("def",d)}</div>
+      ${n?`<label class="chk"><input type="checkbox" id="applyAll" ${d.applyAll?"checked":""}><span>${n===1?"Εφαρμογή και στον υπάρχοντα γάμο":`Εφαρμογή και στους ${n} υπάρχοντες γάμους`}</span></label>`:""}
+      <div class="btns end"><button class="btn primary" id="saveDef" disabled>Αποθήκευση</button></div>
+    </section>`;
+}
+function rowHTML(w){
+  const b=[];
+  if(w.supportExpires) b.push(supBadge(w.supportExpires));
+  if(!w.layoutSet) b.push(`<span class="badge own" title="Ο γάμος ξεκίνησε χωρίς τον χώρο σας: το ζευγάρι στήνει τον χώρο μέχρι να τον αποθηκεύσετε εσείς (Άνοιγμα)">Χώρος από το ζευγάρι</span>`);
+  return `<div class="card w" data-id="${esc(w.planId)}">
+      <div class="grow"><div class="nm">${esc(w.label)}</div>
+        <div class="dt">Δημιουργήθηκε ${esc(fmtDate(w.createdAt))} · Ζευγάρι: ${esc(permsSummary(w.perms))}</div>
+        ${b.length?`<div class="w-badges">${b.join("")}</div>`:""}</div>
+      <div class="acts">
+        <button class="btn" data-a="open" title="Ανοίγει τον γάμο με πλήρη δικαιώματα κτήματος">Άνοιγμα</button>
+        <button class="btn" data-a="link" title="Αντιγραφή του συνδέσμου που στέλνετε στο ζευγάρι">Σύνδεσμος ζευγαριού</button>
+      </div>
+      <div class="more"><button class="btn more-btn" data-a="more" aria-haspopup="menu" aria-expanded="false" aria-label="Περισσότερα" title="Περισσότερα">⋯</button></div>
+    </div>`;
+}
+
+function renderDashboard(){
+  const v=DATA.venue, weddings=sortedWeddings();
+  // Keep what the user is typing (and where) across a refresh.
+  const keep={}; ["newlabel","newkeyinput"].forEach(id=>{ const el=document.getElementById(id); if(el) keep[id]=el.value; });
+  const act=document.activeElement, actId=act&&act.id&&app.contains(act)?act.id:"";
+  let selS=null, selE=null; try{ if(actId){ selS=act.selectionStart; selE=act.selectionEnd; } }catch(e){}
+
   app.innerHTML=`
     <header class="top">
       <div class="meta">
@@ -107,96 +332,274 @@ function renderDashboard(data){
         <div class="sub">${licenseBadge(v)}</div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn" id="keyBtn">🔑 Κωδικός</button>
+        <button class="btn" id="keyBtn" aria-expanded="${UI.keyOpen}">🔑 Κωδικός</button>
         <button class="btn" id="logout">Αποσύνδεση</button>
       </div>
     </header>
-    <div id="keyPanel" class="card" style="display:none;padding:18px;margin-bottom:16px">
+    ${v.keyRotated?"":`<div class="banner" role="note"><div class="txt">Ο κωδικός σας δόθηκε από την TakeaSeat. Ορίστε δικό σας, ώστε μόνο εσείς να ανοίγετε τους γάμους σας.</div><button class="btn primary" id="bannerKey">Ορισμός κωδικού</button></div>`}
+    <div id="keyPanel" class="card" style="display:${UI.keyOpen?"block":"none"};padding:18px;margin-bottom:16px">
       <div style="font-weight:700;margin-bottom:4px">Αλλαγή κωδικού πρόσβασης</div>
-      <div class="hint" style="margin-bottom:12px">Ορίστε δικό σας κωδικό, ώστε μόνο εσείς να τον γνωρίζετε. Ο παλιός κωδικός παύει να ισχύει αμέσως.</div>
+      <div class="hint" style="margin-bottom:12px">Ορίστε δικό σας κωδικό, ώστε μόνο εσείς να τον γνωρίζετε. Ο παλιός κωδικός παύει να ισχύει αμέσως· οι σύνδεσμοι των ζευγαριών δεν αλλάζουν.</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <input id="newkeyinput" type="text" autocomplete="off" placeholder="Νέος κωδικός (τουλάχ. 12 χαρακτήρες)" style="flex:1;min-width:220px">
+        <input id="newkeyinput" type="text" autocomplete="off" placeholder="Νέος κωδικός (τουλάχ. 12 χαρακτήρες)" style="flex:1;min-width:min(100%,220px)">
         <button class="btn primary" id="setKeyBtn">Ορισμός</button>
         <button class="btn" id="genKeyBtn" title="Δημιουργία ισχυρού τυχαίου κωδικού">🎲 Τυχαίος</button>
       </div>
-      <div id="keyResult"></div>
+      <div id="keyResult">${UI.newKey?`<div style="margin-top:12px;background:var(--good-soft);border:1px solid #bcdcc6;border-radius:10px;padding:12px 14px">
+         <div style="font-weight:700;margin-bottom:6px">✅ Ο κωδικός άλλαξε. Αποθηκεύστε τον — είναι ο νέος σας κωδικός εισόδου:</div>
+         <div style="font-family:ui-monospace,monospace;font-size:13px;word-break:break-all;font-weight:700">${esc(UI.newKey)}</div>
+         <button class="btn" id="copyNewKey" style="margin-top:10px;padding:6px 12px;font-size:13px">📋 Αντιγραφή</button></div>`:""}</div>
     </div>
+    <div class="grid2">${spaceCard()}${defaultsCard()}</div>
+    <div class="list-h"><h2>Γάμοι</h2>${weddings.length?`<span class="n">${weddings.length}</span>`:""}</div>
     <div class="toolbar">
       <div class="newform">
-        <input id="newlabel" placeholder="Όνομα ζευγαριού (π.χ. Μαρία &amp; Νίκος)" ${data.canCreate?"":"disabled"}>
-        <button class="btn primary" id="create" ${data.canCreate?"":"disabled"}>+ Νέος γάμος</button>
+        <input id="newlabel" placeholder="Όνομα ζευγαριού (π.χ. Μαρία &amp; Νίκος)" ${DATA.canCreate?"":"disabled"}>
+        <button class="btn primary" id="create" ${DATA.canCreate?"":"disabled"}>+ Νέος γάμος</button>
       </div>
-      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--soft)" title="Γλώσσα του τραπεζολογίου στους συνδέσμους που ανοίγετε ή αντιγράφετε">Γλώσσα ζευγαριού
-        <select id="linklang" style="width:auto;padding:7px 9px;font-size:13px"><option value="el">Ελληνικά</option><option value="en">English</option><option value="de">Deutsch</option></select>
+      <label class="langsel" title="Γλώσσα του τραπεζολογίου στους συνδέσμους που ανοίγετε ή αντιγράφετε">Γλώσσα ζευγαριού
+        <select id="linklang">${[["el","Ελληνικά"],["en","English"],["de","Deutsch"]].map(([k,n])=>`<option value="${k}" ${LINK_LANG===k?"selected":""}>${n}</option>`).join("")}</select>
       </label>
     </div>
-    ${data.canCreate?"":`<div class="hint" style="color:var(--danger);margin:-8px 0 14px">${esc(REASON[data.reason]||"Δεν είναι δυνατή η δημιουργία νέου γάμου αυτή τη στιγμή.")}</div>`}
+    ${DATA.canCreate?"":`<div class="under bad">${esc(REASON[DATA.reason]||"Δεν είναι δυνατή η δημιουργία νέου γάμου αυτή τη στιγμή.")}</div>`}
+    ${DATA.template?"":`<div class="under">Χωρίς χώρο-πρότυπο, το ζευγάρι στήνει μόνο του τον χώρο μέχρι να τον αποθηκεύσετε εσείς.</div>`}
     <div class="w-list" id="list">
-      ${weddings.length? weddings.map(w=>`
-        <div class="card w" data-id="${w.planId}">
-          <div class="grow"><div class="nm">${esc(w.label)}</div><div class="dt">Δημιουργήθηκε ${fmtDate(w.createdAt)}</div></div>
-          <div class="acts">
-            <button class="btn" data-a="open">Άνοιγμα</button>
-            <button class="btn" data-a="link">Σύνδεσμος ζευγαριού</button>
-            <button class="btn" data-a="rename" title="Μετονομασία">✎</button>
-            <button class="btn danger" data-a="del">Διαγραφή</button>
-          </div>
-        </div>`).join("")
+      ${weddings.length? weddings.map(rowHTML).join("")
       : `<div class="empty">Δεν υπάρχουν γάμοι ακόμη.<br>Προσθέστε τον πρώτο σας παραπάνω ↑</div>`}
     </div>`;
-  document.getElementById("logout").onclick=()=>{ setKey(""); renderLogin(); };
-  document.getElementById("keyBtn").onclick=()=>{ const p=document.getElementById("keyPanel"); p.style.display=p.style.display==="none"?"block":"none"; };
-  document.getElementById("setKeyBtn").onclick=()=>rotateKey(v.id, document.getElementById("newkeyinput").value.trim());
-  document.getElementById("genKeyBtn").onclick=()=>rotateKey(v.id, "");
-  const create=document.getElementById("create");
-  if(create) create.onclick=async()=>{
-    const label=document.getElementById("newlabel").value.trim(); if(!label){ toast("Γράψτε το όνομα του ζευγαριού"); return; }
-    create.disabled=true;
-    const r=await api("/venues/"+v.id+"/weddings",{method:"POST",body:JSON.stringify({label})});
-    if(r.ok){ toast("Ο γάμος δημιουργήθηκε"); load(); }
-    else{ const d=await r.json().catch(()=>({})); toast(REASON[d.error]||"Αποτυχία δημιουργίας"); create.disabled=false; }
+
+  Object.entries(keep).forEach(([id,val])=>{ const el=document.getElementById(id); if(el) el.value=val; });
+  if(actId){ const el=document.getElementById(actId); if(el){ el.focus(); try{ if(selS!=null) el.setSelectionRange(selS,selE); }catch(e){} } }
+  bindDashboard(v);
+}
+
+function bindDashboard(v){
+  const $=id=>document.getElementById(id);
+  $("logout").onclick=()=>signedOut();
+  const showKey=open=>{ UI.keyOpen=open; if(!open) UI.newKey=""; $("keyPanel").style.display=open?"block":"none"; $("keyBtn").setAttribute("aria-expanded",open); if(!open) $("keyResult").innerHTML=""; };
+  $("keyBtn").onclick=()=>showKey(!UI.keyOpen);
+  if($("bannerKey")) $("bannerKey").onclick=()=>{ showKey(true); $("keyPanel").scrollIntoView({behavior:"smooth",block:"center"}); $("newkeyinput").focus({preventScroll:true}); };
+  $("setKeyBtn").onclick=()=>rotateKey(v.id, $("newkeyinput").value.trim());
+  $("newkeyinput").addEventListener("keydown",e=>{ if(e.key==="Enter") rotateKey(v.id, e.target.value.trim()); });
+  $("genKeyBtn").onclick=()=>rotateKey(v.id, "");
+  if($("copyNewKey")) $("copyNewKey").onclick=()=>copy(UI.newKey,"Ο κωδικός αντιγράφηκε");
+
+  // the space (template)
+  if($("editSpace")) $("editSpace").onclick=()=>window.open(templateLink(DATA.template),"_blank");
+  if($("tplSupport")) $("tplSupport").onclick=()=>{ const T=DATA.template; supportDialog({ planId:T.planId, label:"Ο χώρος σας (πρότυπο)", kind:"template", expires:T.supportExpires }); };
+  if($("makeSpace")) $("makeSpace").onclick=e=>createTemplate({}, e.currentTarget);
+  if($("fromWedding")) $("fromWedding").onclick=fromWeddingDialog;
+
+  // default permissions for new weddings
+  const d=UI.def, save=$("saveDef");
+  const refresh=()=>{ save.disabled=samePerms(d.perms,d.orig) && !d.applyAll; };
+  bindPE($("defPE"),"def",d,refresh); refresh();
+  if($("applyAll")) $("applyAll").onchange=e=>{ d.applyAll=e.target.checked; refresh(); };
+  save.onclick=async()=>{
+    const n=(DATA.weddings||[]).length, all=!!(d.applyAll&&n);
+    if(all && !confirm(n===1?"Τα δικαιώματα θα αλλάξουν και στον υπάρχοντα γάμο. Συνέχεια;":`Τα δικαιώματα θα αλλάξουν και στους ${n} υπάρχοντες γάμους — και σε όσους είχατε ρυθμίσει ξεχωριστά. Συνέχεια;`)) return;
+    save.disabled=true;
+    const r=await call("PUT","/venues/"+v.id+"/defaults",{ perms:d.perms, applyToAll:all });
+    if(r.gone) return;
+    if(!r.ok){ toast("Αποτυχία αποθήκευσης"); refresh(); return; }
+    UI.def=null; DATA.defaultPerms=r.d.defaultPerms;
+    toast(!all?"Αποθηκεύτηκε — ισχύει για τους νέους γάμους":r.d.applied===1?"Αποθηκεύτηκε — ισχύει για τους νέους γάμους και για τον υπάρχοντα":`Αποθηκεύτηκε — ισχύει για τους νέους γάμους και για ${r.d.applied} υπάρχοντες`,2600);
+    load();
   };
-  document.getElementById("list").addEventListener("click",async e=>{
+
+  // new wedding
+  const create=$("create"), newlabel=$("newlabel");
+  const doCreate=async()=>{
+    if(create.disabled) return;
+    const label=newlabel.value.trim(); if(!label){ toast("Γράψτε το όνομα του ζευγαριού"); newlabel.focus(); return; }
+    create.disabled=true;
+    const r=await call("POST","/venues/"+v.id+"/weddings",{label});
+    if(r.gone) return;
+    if(r.ok){ newlabel.value=""; toast(r.d.fromTemplate?"Ο γάμος δημιουργήθηκε από τον χώρο σας":"Ο γάμος δημιουργήθηκε"); load(); }
+    else{ toast(REASON[r.d.error]||"Αποτυχία δημιουργίας"); create.disabled=false; }
+  };
+  create.onclick=doCreate;
+  newlabel.addEventListener("keydown",e=>{ if(e.key==="Enter") doCreate(); });
+  $("linklang").onchange=e=>{ LINK_LANG=PLANNER_FILE[e.target.value]?e.target.value:"el"; try{ localStorage.setItem(LANG_STORE,LINK_LANG); }catch(err){} };
+
+  // wedding rows
+  $("list").addEventListener("click",async e=>{
     const btn=e.target.closest("button[data-a]"); if(!btn) return;
-    const row=btn.closest(".w"); const id=row.dataset.id;
-    const w=weddings.find(x=>x.planId===id); if(!w) return;
-    const link=coupleLink(w.planId, w.editKey);
-    if(btn.dataset.a==="open") window.open(link,"_blank");
-    else if(btn.dataset.a==="link") copy(link);
-    else if(btn.dataset.a==="rename"){ const nm=prompt("Νέο όνομα ζευγαριού:", w.label); if(nm===null||!nm.trim()||nm.trim()===w.label) return;
-      const r=await api("/venues/"+v.id+"/weddings/"+id,{method:"PATCH",body:JSON.stringify({label:nm.trim()})});
-      if(r.ok){ toast("Μετονομάστηκε"); load(); } else toast("Αποτυχία μετονομασίας"); }
-    else if(btn.dataset.a==="del"){ if(!confirm(`Διαγραφή του γάμου «${w.label}»; Το τραπεζολόγιο θα χαθεί οριστικά.`)) return;
-      const r=await api("/venues/"+v.id+"/weddings/"+id,{method:"DELETE"});
-      if(r.ok){ toast("Διαγράφηκε"); load(); } else toast("Αποτυχία διαγραφής"); }
+    const row=btn.closest(".w"); const w=row&&findW(row.dataset.id); if(!w) return;
+    const a=btn.dataset.a;
+    if(a!=="more") closeMenu();
+    if(a==="open") window.open(venueLink(w),"_blank");
+    else if(a==="link") copy(coupleLink(w));
+    else if(a==="more") toggleMenu(btn);
+    else if(a==="rename"){ const nm=prompt("Νέο όνομα ζευγαριού:", w.label); if(nm===null||!nm.trim()||nm.trim()===w.label) return;
+      const r=await call("PATCH","/venues/"+v.id+"/weddings/"+encodeURIComponent(w.planId),{label:nm.trim()});
+      if(r.gone) return; if(r.ok){ toast("Μετονομάστηκε"); load(); } else toast("Αποτυχία μετονομασίας"); }
+    else if(a==="perms") permsDialog(w);
+    else if(a==="support") supportDialog({ planId:w.planId, label:w.label, kind:"wedding", expires:w.supportExpires });
+    else if(a==="del"){ if(!confirm(`Διαγραφή του γάμου «${w.label}»; Το τραπεζολόγιο θα χαθεί οριστικά.`)) return;
+      const r=await call("DELETE","/venues/"+v.id+"/weddings/"+encodeURIComponent(w.planId));
+      if(r.gone) return; if(r.ok){ toast("Διαγράφηκε"); load(); } else toast("Αποτυχία διαγραφής"); }
   });
 }
 
-// Venue sets its own key (custom passphrase, or random) — the old one stops working immediately.
+// ---- the ⋯ menu of a wedding row ----
+function closeMenu(){ document.querySelectorAll(".menu").forEach(m=>{ const b=m.parentElement.querySelector(".more-btn"); if(b) b.setAttribute("aria-expanded","false"); m.remove(); }); }
+function toggleMenu(btn){
+  const box=btn.parentElement, open=box.querySelector(".menu");
+  closeMenu(); if(open) return;
+  const m=document.createElement("div"); m.className="menu"; m.setAttribute("role","menu");
+  m.innerHTML=`<button role="menuitem" data-a="rename">Μετονομασία</button>
+    <button role="menuitem" data-a="perms">Δικαιώματα ζευγαριού</button>
+    <button role="menuitem" data-a="support">Υποστήριξη TakeaSeat</button><hr>
+    <button role="menuitem" data-a="del" class="danger">Διαγραφή</button>`;
+  box.appendChild(m); btn.setAttribute("aria-expanded","true"); m.querySelector("button").focus();
+  m.addEventListener("keydown",e=>{
+    const items=[...m.querySelectorAll("button")], i=items.indexOf(document.activeElement);
+    if(e.key==="ArrowDown"){ e.preventDefault(); items[(i+1)%items.length].focus(); }
+    else if(e.key==="ArrowUp"){ e.preventDefault(); items[(i-1+items.length)%items.length].focus(); }
+    else if(e.key==="Escape"){ e.preventDefault(); closeMenu(); btn.focus(); }
+    else if(e.key==="Tab") closeMenu();
+  });
+}
+document.addEventListener("click",e=>{ if(!e.target.closest(".more")) closeMenu(); });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape" && modal.classList.contains("show")) closeModal(); });
+
+// ---- the space: create (empty, or from one of the weddings) and open it ----
+async function createTemplate(body, btn){
+  const tab=pendingTab();
+  if(btn) btn.disabled=true;
+  const r=await call("POST","/venues/"+DATA.venue.id+"/template",body);
+  if(r.gone){ dropTab(tab); return; }
+  if(!r.ok){ dropTab(tab); if(btn) btn.disabled=false; toast(r.status===404?"Ο γάμος δεν βρέθηκε":"Αποτυχία δημιουργίας χώρου"); return; }
+  closeModal();
+  if(!sendTab(tab, templateLink(r.d))) toast("Ο χώρος δημιουργήθηκε — πατήστε «Επεξεργασία χώρου».",3000);
+  load();
+}
+function fromWeddingDialog(){
+  const ws=sortedWeddings(); if(!ws.length) return;
+  const st={ pick:ws[0].planId };
+  const dlg=openModal(`<h3 id="mTitle">Χώρος από υπάρχοντα γάμο</h3>
+    <div class="lead">Διαλέξτε έναν γάμο: αντιγράφονται μόνο ο χώρος και τα τραπέζια — ποτέ οι καλεσμένοι.</div>
+    <div class="picklist" id="mPick">${ws.map(w=>`<label class="opt ${w.planId===st.pick?"on":""}"><input type="radio" name="mFrom" value="${esc(w.planId)}" ${w.planId===st.pick?"checked":""}>
+      <span><b>${esc(w.label)}</b><small>${esc(fmtDate(w.createdAt))}${w.layoutSet?"":" · Χώρος από το ζευγάρι"}</small></span></label>`).join("")}</div>
+    <div class="foot"><button class="btn" data-close>Άκυρο</button><button class="btn primary" id="mGo">Δημιουργία χώρου</button></div>`);
+  dlg.querySelector("#mPick").onchange=e=>{ st.pick=e.target.value; dlg.querySelectorAll("#mPick .opt").forEach(o=>o.classList.toggle("on",o.querySelector("input").checked)); };
+  dlg.querySelector("#mGo").onclick=e=>createTemplate({ fromPlanId:st.pick }, e.currentTarget);
+}
+
+// ---- couple permissions of ONE wedding ----
+function permsDialog(w){
+  const st=peState(w.perms);
+  const dlg=openModal(`<h3 id="mTitle">Δικαιώματα ζευγαριού</h3><div class="msub">${esc(w.label)}</div>
+    ${w.layoutSet?"":`<div class="info">Αυτός ο γάμος ξεκίνησε χωρίς τον χώρο σας, οπότε το ζευγάρι στήνει ακόμη μόνο του τον χώρο. Οι περιορισμοί ισχύουν μόλις αποθηκεύσετε εσείς τον χώρο (Άνοιγμα).</div>`}
+    <div class="pe" id="mPE">${peHTML("m",st)}</div>
+    <div class="prev"><a id="mPrev" href="${esc(venueLink(w,true))}" target="_blank" rel="noopener">👁 Δείτε το όπως το ζευγάρι</a>
+      <div class="hint" id="mPrevHint" hidden>Η προβολή δείχνει τα αποθηκευμένα δικαιώματα — πατήστε πρώτα «Αποθήκευση».</div></div>
+    <div class="foot"><button class="btn" data-close>Άκυρο</button><button class="btn primary" id="mSave" disabled>Αποθήκευση</button></div>`);
+  const save=dlg.querySelector("#mSave"), hint=dlg.querySelector("#mPrevHint");
+  bindPE(dlg.querySelector("#mPE"),"m",st,()=>{ const dirty=!samePerms(st.perms,st.orig); save.disabled=!dirty; hint.hidden=!dirty; });
+  save.onclick=async()=>{
+    save.disabled=true;
+    const r=await call("PATCH","/venues/"+DATA.venue.id+"/weddings/"+encodeURIComponent(w.planId),{ perms:st.perms });
+    if(r.gone) return;
+    if(!r.ok){ toast("Αποτυχία αποθήκευσης"); save.disabled=false; return; }
+    st.orig={...st.perms}; hint.hidden=true;
+    toast("Αποθηκεύτηκε"); closeModal(); load();
+  };
+}
+
+// ---- TakeaSeat support: the venue lets us into ONE wedding (or its space) for a while ----
+function supportMail(t){
+  const v=DATA.venue, what=t.kind==="template"?"στον χώρο μας (πρότυπο)":`στον γάμο «${t.label}»`;
+  const subj=t.kind==="template"?`Υποστήριξη — ${v.name} — χώρος`:`Υποστήριξη — ${v.name} — ${t.label}`;
+  const body=`Γεια σας,\n\nΔώσαμε στην TakeaSeat πρόσβαση ${what} (${v.name})${t.expires?` έως ${fmtDT(t.expires,true)}`:""}.\n`
+    +(t.message?`\n${t.message}\n`:"")+`\nΕυχαριστούμε`;
+  return "mailto:info@takeaseat.gr?subject="+encodeURIComponent(subj)+"&body="+encodeURIComponent(body.replace(/\n/g,"\r\n"));
+}
+function supportDialog(t){
+  const tpl=t.kind==="template";
+  let hours=72;
+  const draw=()=>{
+    const active=!!(t.expires && t.expires>Date.now());
+    const head=`<h3 id="mTitle">Υποστήριξη TakeaSeat</h3><div class="msub">${esc(t.label)}</div>`;
+    if(active){
+      openModal(`${head}
+        <div class="okbox">✓ Η TakeaSeat έχει πρόσβαση ${tpl?"στον χώρο σας":"σε αυτόν τον γάμο"} έως <b>${esc(fmtDT(t.expires,true))}</b>.</div>
+        <div class="lead">${t.invited?"Θα δούμε την πρόσκλησή σας. Αν βιάζεστε, στείλτε μας και ένα email:":"Θέλετε να μας πείτε τι χρειάζεστε; Στείλτε μας email:"}</div>
+        <a class="btn" href="${esc(supportMail(t))}">✉️ Email στην TakeaSeat</a>
+        <div class="hint">Το email περιέχει μόνο το όνομα ${tpl?"του κτήματος":"του γάμου"} και το μήνυμά σας — κανέναν κωδικό.</div>
+        <div class="foot"><button class="btn danger" id="mRevoke">Τερματισμός πρόσβασης</button><button class="btn" data-close>Κλείσιμο</button></div>`);
+      dlgBox.querySelector("#mRevoke").onclick=async e=>{
+        const b=e.currentTarget; b.disabled=true;
+        const r=await call("DELETE","/plans/"+encodeURIComponent(t.planId)+"/support");
+        if(!r.ok){ if(!r.net) toast("Αποτυχία — δοκιμάστε ξανά."); b.disabled=false; return; }
+        t.expires=null; t.invited=false; toast("Η πρόσβαση της TakeaSeat τερματίστηκε"); draw(); load();
+      };
+      return;
+    }
+    openModal(`${head}
+      <div class="lead">${tpl?"Η TakeaSeat δεν ανοίγει τον χώρο ή τους γάμους σας. Δώστε μας πρόσβαση στον χώρο σας για λίγο — τη διακόπτετε όποτε θέλετε."
+        :"Η TakeaSeat δεν ανοίγει τους γάμους σας. Δώστε μας πρόσβαση σε αυτόν τον γάμο για λίγο — τη διακόπτετε όποτε θέλετε."}</div>
+      <div class="fld"><span class="lbl">Διάρκεια</span>
+        <div class="seg" id="mHours">${[[24,"24 ώρες"],[72,"3 ημέρες"],[168,"7 ημέρες"]].map(([h,l])=>`<label class="opt ${h===hours?"on":""}"><input type="radio" name="mHours" value="${h}" ${h===hours?"checked":""}><span>${l}</span></label>`).join("")}</div></div>
+      <div class="fld"><label class="lbl" for="mMsg">Μήνυμα (προαιρετικό)</label>
+        <textarea id="mMsg" maxlength="500" rows="3" placeholder="Τι χρειάζεστε; π.χ. «δεν μπορώ να μετακινήσω την πίστα»">${esc(t.message||"")}</textarea></div>
+      <div class="foot"><button class="btn" data-close>Άκυρο</button><button class="btn primary" id="mInvite">Πρόσκληση</button></div>`);
+    dlgBox.querySelector("#mHours").onchange=e=>{ hours=+e.target.value; dlgBox.querySelectorAll("#mHours .opt").forEach(o=>o.classList.toggle("on",o.querySelector("input").checked)); };
+    dlgBox.querySelector("#mInvite").onclick=async e=>{
+      const b=e.currentTarget, message=dlgBox.querySelector("#mMsg").value.trim();
+      b.disabled=true;
+      const r=await call("POST","/plans/"+encodeURIComponent(t.planId)+"/support",{ hours, message });
+      if(!r.ok){ if(!r.net) toast("Αποτυχία πρόσκλησης — δοκιμάστε ξανά."); b.disabled=false; return; }
+      t.expires=r.d.expires; t.message=message; t.invited=true;
+      toast("Η TakeaSeat έχει πρόσβαση έως "+fmtDT(t.expires),2600); draw(); load();
+    };
+  };
+  draw();
+}
+
+// Venue sets its own key (custom passphrase, or random) — the old one stops working immediately, and every
+// per-wedding venue link is renewed, so the dashboard reloads its data.
+let rotating=false;   // one key change at a time: a double click must not sign the venue out with the new key lost
 async function rotateKey(vid, secret){
+  if(rotating) return;
   if(secret && secret.replace(/[^A-Za-z0-9]/g,"").length<12){ toast("Τουλάχ. 12 γράμματα/αριθμοί"); return; }
-  const r=await api("/venues/"+vid+"/rotate",{method:"POST",body:JSON.stringify(secret?{secret}:{})});
-  if(!r.ok){ const d=await r.json().catch(()=>({})); toast(d.error==="too_short"?"Τουλάχ. 12 χαρακτήρες":"Αποτυχία αλλαγής"); return; }
-  const d=await r.json();
-  setKey(d.key);
-  const res=document.getElementById("keyResult");
-  if(res) res.innerHTML=`<div style="margin-top:12px;background:var(--good-soft);border:1px solid #bcdcc6;border-radius:10px;padding:12px 14px">
-     <div style="font-weight:700;margin-bottom:6px">✅ Ο κωδικός άλλαξε. Αποθηκεύστε τον — είναι ο νέος σας κωδικός εισόδου:</div>
-     <div style="font-family:ui-monospace,monospace;font-size:13px;word-break:break-all;font-weight:700">${esc(d.key)}</div>
-     <button class="btn" id="copyNewKey" style="margin-top:10px;padding:6px 12px;font-size:13px">📋 Αντιγραφή</button></div>`;
-  const c=document.getElementById("copyNewKey"); if(c) c.onclick=()=>copy(d.key);
+  rotating=true; let r;
+  try{ r=await call("POST","/venues/"+vid+"/rotate",secret?{secret}:{}); } finally{ rotating=false; }
+  if(r.gone) return;
+  if(!r.ok){ if(!r.net) toast(r.d.error==="too_short"?"Τουλάχ. 12 χαρακτήρες":"Αποτυχία αλλαγής"); return; }
+  setKey(r.d.key);
+  UI.keyOpen=true; UI.newKey=r.d.key;
   const inp=document.getElementById("newkeyinput"); if(inp) inp.value="";
   toast("Ο κωδικός άλλαξε");
+  await load();
 }
+
 async function load(){
   const key=getKey(); if(!key){ renderLogin(); return; }
-  const vid=vidOf(key);
-  app.innerHTML=`<div class="empty">Φόρτωση…</div>`;
-  let r; try{ r=await api("/venues/"+vid); }catch(e){ renderLogin("Σφάλμα σύνδεσης — δοκιμάστε ξανά."); return; }
-  if(r.status===403||r.status===404){ setKey(""); renderLogin("Ο κωδικός δεν είναι έγκυρος."); return; }
-  if(!r.ok){ renderLogin("Κάτι πήγε στραβά — δοκιμάστε ξανά."); return; }
-  renderDashboard(await r.json());
+  const my=++loadSeq, had=!!DATA;
+  if(!had) app.innerHTML=`<div class="empty">Φόρτωση…</div>`;
+  let r; try{ r=await api("/venues/"+encodeURIComponent(vidOf(key))); }
+  catch(e){ if(my!==loadSeq) return; if(had) toast("Σφάλμα σύνδεσης — δοκιμάστε ξανά."); else renderLogin("Σφάλμα σύνδεσης — δοκιμάστε ξανά."); return; }
+  if(my!==loadSeq) return;
+  if(r.status===403||r.status===404){ signedOut("Ο κωδικός δεν είναι έγκυρος."); return; }
+  if(!r.ok){ if(had) toast("Κάτι πήγε στραβά — δοκιμάστε ξανά."); else renderLogin("Κάτι πήγε στραβά — δοκιμάστε ξανά."); return; }
+  const d=await r.json().catch(()=>null);
+  if(my!==loadSeq) return;
+  if(!d||!d.venue){ if(!had) renderLogin("Κάτι πήγε στραβά — δοκιμάστε ξανά."); return; }
+  DATA=d; lastLoad=Date.now();
+  syncDefEditor();
+  closeMenu();
+  renderDashboard();
 }
+// Back from the planner tab (the space or a wedding was edited there): refresh quietly.
+function refreshOnReturn(){
+  if(!DATA || document.hidden || Date.now()-lastLoad<5000) return;
+  if(modal.classList.contains("show") || document.querySelector(".menu")) return;
+  load();
+}
+window.addEventListener("focus",refreshOnReturn);
+document.addEventListener("visibilitychange",refreshOnReturn);
 load();
 </script>
 </body>

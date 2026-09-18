@@ -2,7 +2,7 @@
 // Reuses the EXACT Cloudflare Worker logic (../wedding-sync-worker.js -> copied to ./worker.mjs in Docker),
 // but backs its KV with SQLite on disk and also serves the static app. Same API, same behaviour.
 //
-//   API paths (/plans, /codes, /venues, /admin) -> worker.fetch(request, env)
+//   API paths (/plans, /codes, /venues, /admin, /claim) -> worker.fetch(request, env)
 //   everything else                              -> static files from PUBLIC_DIR
 //
 // Env: PORT, DB_PATH, PUBLIC_DIR, OWNER_KEY, KV_BACKEND ("sqlite" default, "memory" for tests).
@@ -11,7 +11,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import worker from './worker.mjs';
+import worker, { migrate } from './worker.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.PORT || '8080', 10);
@@ -22,7 +22,10 @@ const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'data', 'wedding.db'
 let PLANS;
 if (process.env.KV_BACKEND === 'memory') {
   const m = new Map();
-  PLANS = { get: async k => (m.has(k) ? m.get(k) : null), put: async (k, v) => { m.set(k, v); }, delete: async k => { m.delete(k); } };
+  PLANS = { get: async k => (m.has(k) ? m.get(k) : null), put: async (k, v) => { m.set(k, v); }, delete: async k => { m.delete(k); },
+    // atomic read-modify-write: fn(current string|null) -> {value?, del?, result?}; runs in one synchronous step
+    update: async (k, fn) => { const out = fn(m.has(k) ? m.get(k) : null) || {}; if (out.del) m.delete(k); else if (out.value != null) m.set(k, out.value); return out.result; },
+    list: async prefix => [...m.keys()].filter(k => k.startsWith(prefix)) };
   console.log('KV backend: memory (non-persistent)');
 } else {
   fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
@@ -34,20 +37,31 @@ if (process.env.KV_BACKEND === 'memory') {
   const sGet = db.prepare('SELECT value FROM kv WHERE key = ?');
   const sPut = db.prepare('INSERT INTO kv(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
   const sDel = db.prepare('DELETE FROM kv WHERE key = ?');
+  const sList = db.prepare("SELECT key FROM kv WHERE key >= ? AND key < ? ORDER BY key");
   PLANS = {
     get: async k => { const r = sGet.get(k); return r ? r.value : null; },
     put: async (k, v) => { sPut.run(k, v); },
     delete: async k => { sDel.run(k); },
+    // atomic read-modify-write (better-sqlite3 is synchronous, so nothing can interleave between the read and the write):
+    // fn(current string|null) -> {value?, del?, result?}
+    update: async (k, fn) => { const r = sGet.get(k); const out = fn(r ? r.value : null) || {}; if (out.del) sDel.run(k); else if (out.value != null) sPut.run(k, out.value); return out.result; },
+    list: async prefix => sList.all(prefix, prefix + '￿').map(r => r.key),
   };
   console.log('KV backend: sqlite at ' + DB_PATH);
 }
 const env = { OWNER_KEY: process.env.OWNER_KEY || '', PLANS };
+// One-time data migration for roles & access (idempotent; the nightly backup runs before any deploy that needs it).
+try { const r = await migrate(env); console.log('migration: ' + JSON.stringify(r)); }
+catch (e) { console.error('migration failed', e); process.exit(1); }   // never serve half-migrated data
+// API requests run one at a time: every read-modify-write in the worker sees a consistent store.
+let chain = Promise.resolve();
+const serial = fn => { const p = chain.then(fn, fn); chain = p.catch(() => {}); return p; };
 
 // ---- static files ----
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png',
   '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.ico': 'image/x-icon', '.webp': 'image/webp', '.txt': 'text/plain; charset=utf-8' };
-const API_PREFIXES = ['/plans', '/codes', '/venues', '/admin'];
+const API_PREFIXES = ['/plans', '/codes', '/venues', '/admin', '/claim', '/health'];
 const isApiPath = p => API_PREFIXES.some(pre => p === pre || p.startsWith(pre + '/'));
 
 function serveStatic(req, res, urlPath) {
@@ -89,7 +103,7 @@ async function diskLow() {
   try { const s = await fs.promises.statfs(path.dirname(DB_PATH)); return (s.bavail * s.bsize) < 300 * 1024 * 1024; }
   catch (e) { return false; }   // fail-open if statfs is unavailable
 }
-const clientIp = req => (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+const clientIp = req => (req.headers['x-forwarded-for'] || '').split(',').pop().trim() || req.socket.remoteAddress || 'unknown';   // the entry the proxy added
 
 http.createServer(async (req, res) => {
   const urlPath = req.url.split('?')[0];
@@ -105,6 +119,12 @@ http.createServer(async (req, res) => {
       res.writeHead(507, { 'Content-Type': 'application/json' }); res.end('{"error":"storage_full"}'); return;
     }
   }
+  // ---- failed-key guessing: 60 refused requests a minute per IP, any method ----
+  // A slot is reserved BEFORE the request runs (so a burst cannot all pass the check) and given back if it did not fail.
+  const failKey = clientIp(req) + ':authfail';
+  if (!rateOk(failKey, 60, 60000)) { res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '60' }); res.end('{"error":"rate_limited"}'); return; }
+  const slot = RL.get(failKey)[RL.get(failKey).length - 1];
+  let failed = true;
   // ---- API: hand off to the worker ----
   try {
     const chunks = []; for await (const c of req) chunks.push(c);
@@ -113,7 +133,8 @@ http.createServer(async (req, res) => {
       method: req.method, headers: req.headers,
       body: ['GET', 'HEAD', 'OPTIONS'].includes(req.method) ? undefined : body,
     });
-    const r = await worker.fetch(request, env);
+    const r = await serial(() => worker.fetch(request, env));
+    failed = r.status === 401 || r.status === 403;
     const buf = Buffer.from(await r.arrayBuffer());
     const headers = {}; r.headers.forEach((v, k) => { headers[k] = v; });
     res.writeHead(r.status, headers);
@@ -121,5 +142,7 @@ http.createServer(async (req, res) => {
   } catch (e) {
     res.writeHead(500, { 'Content-Type': 'application/json' });
     res.end('{"error":"server error"}');
+  } finally {
+    if (!failed) { const a = RL.get(failKey); const i = a ? a.lastIndexOf(slot) : -1; if (i >= 0) a.splice(i, 1); }
   }
 }).listen(PORT, process.env.HOST || '0.0.0.0', () => console.log(`TakeaSeat server on ${process.env.HOST || '0.0.0.0'}:${PORT}  (static: ${PUBLIC_DIR})`));

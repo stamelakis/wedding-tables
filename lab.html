@@ -14,7 +14,8 @@
   if(location.hostname.endsWith("github.io")){ location.replace("https://takeaseat.gr"+location.pathname+location.search+location.hash); return; }
   if(!/(^|\.)takeaseat\.gr$/i.test(location.hostname)) return;   // only gate the live product
   try{
-    if(new URLSearchParams(location.search).get("plan")) return;              // has a plan/couple link
+    var qs=new URLSearchParams(location.search);
+    if(qs.get("plan")||qs.get("claim")||/[#&]claim=/.test(location.hash)) return;   // a plan/couple link, or a claim link
     if(localStorage.getItem("weddingVenueKey")) return;                       // signed-in venue
     var idx=JSON.parse(localStorage.getItem("weddingSeatingPlanner.profiles")||"null");
     if(idx&&idx.profiles&&idx.profiles.some(function(x){return x.cloudId;})) return;  // returning couple
@@ -86,6 +87,28 @@
   .langsel a.on{ color:var(--accent-ink); background:var(--accent-soft); }
   #labBadge{ display:none; font-size:11px; font-weight:700; background:#fff3c4; color:#7a5a00; border:1px solid #f0d78a; border-radius:20px; padding:3px 9px; white-space:nowrap; cursor:help; }
   body.mode-lab #labBadge{ display:inline-block; }
+  #roleBadge{ font:inherit; font-size:11.5px; font-weight:700; border-radius:20px; padding:3px 10px; white-space:nowrap; cursor:pointer; border:1px solid var(--line); background:var(--card); color:var(--soft); max-width:220px; overflow:hidden; text-overflow:ellipsis; }
+  #roleBadge.r-venue{ background:var(--accent-soft); color:var(--accent-ink); border-color:#d9c7e2; }
+  #roleBadge.r-support{ background:#fff1d6; color:#8a5a00; border-color:#f0cf8a; }
+  #roleBadge.r-locked{ background:#eef3ef; color:#2f6b45; border-color:#cfe2d5; }
+  #roleBadge.r-viewer{ background:#eef1f5; color:#44536a; border-color:#d3dbe6; }
+  .acc-sec{ border-top:1px solid var(--line); padding:12px 0 4px; margin-top:12px; }
+  .acc-sec:first-child{ border-top:none; margin-top:0; padding-top:0; }
+  .acc-sec h4{ font-size:13px; margin:0 0 6px; }
+  .acc-perms{ list-style:none; margin:6px 0 0; padding:0; font-size:13px; line-height:1.7; }
+  .acc-perms .no{ color:var(--faint); }
+  .acc-log{ list-style:none; margin:6px 0 0; padding:0; font-size:12.5px; line-height:1.55; max-height:180px; overflow:auto; }
+  .acc-log li{ display:flex; gap:8px; } .acc-log .t{ color:var(--faint); flex:none; min-width:108px; }
+  .acc-row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px; }
+  .acc-row select, .acc-sec textarea{ font:inherit; font-size:13px; border:1px solid var(--line); border-radius:8px; padding:7px 9px; background:var(--card); }
+  .acc-sec textarea{ width:100%; min-height:60px; resize:vertical; margin-top:8px; }
+  .acc-live{ background:#fff7e6; border:1px solid #f0d49a; border-radius:10px; padding:10px 12px; font-size:13px; }
+  .claim-lead{ font-size:15px; line-height:1.5; margin:0 0 6px; }
+  .feature.flocked{ cursor:default; }
+  body.lock-floor #stageResize{ display:none !important; }
+  body.lock-tables #addTableBtn, body.lock-tables #addHeadBtn, body.lock-tables #menuDelete{ display:none !important; }
+  #tablemenu .caps button:disabled, #menuCapCustom:disabled{ opacity:.45; cursor:not-allowed; }
+  #menuLabel[readonly]{ background:var(--paper); color:var(--soft); }
   body.mode-lab #langsel{ display:none; }
   #navBtn{ display:none; }
 
@@ -631,6 +654,7 @@
   <button id="navBtn" class="ibtn" data-t-title="guestsTools"><svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg></button>
   <span class="brand">Take<em>a</em>Seat</span>
   <span id="labBadge" data-t="labBadge" data-t-title="labHint"></span>
+  <button id="roleBadge" type="button" hidden></button>
   <div class="planpick">
     <span class="planname" id="planName" aria-hidden="true"><span class="txt"></span><svg class="ic" aria-hidden="true"><use href="#i-down"/></svg></span>
     <select id="profileSelect" data-t-title="switchPlan"></select>
@@ -714,7 +738,7 @@
 
 <div id="tablemenu" class="popover">
   <h3 id="menuTitle"></h3>
-  <div class="row"><input type="text" id="menuLabel" data-t-ph="labelPh"></div>
+  <div class="row"><input type="text" id="menuLabel" maxlength="60" data-t-ph="labelPh"></div>
   <div class="row" style="flex-direction:column;align-items:flex-start;">
     <label id="menuCapLabel"></label>
     <div class="caps" id="menuCaps">
@@ -812,6 +836,18 @@
     <div id="cloudBody" class="mbody"></div>
   </div>
 </div>
+<div id="claimModal" class="modal-back">
+  <div class="modal narrow">
+    <div class="modal-head"><strong data-t="claimTitle"></strong></div>
+    <div id="claimBody" class="mbody"></div>
+  </div>
+</div>
+<div id="accessModal" class="modal-back">
+  <div class="modal narrow">
+    <div class="modal-head"><strong data-t="accTitle"></strong><button class="mx" id="accessClose">✕</button></div>
+    <div id="accessBody" class="mbody"></div>
+  </div>
+</div>
 <div id="histModal" class="modal-back">
   <div class="modal">
     <div class="modal-head"><strong data-t="histTitle"></strong><button class="mx" id="histClose">✕</button></div>
@@ -854,6 +890,33 @@ if(!document.querySelector('meta[name=viewport]')){
 const T_ALL={
 el:{
   title:"Οργάνωση Τραπεζιών Γάμου", guestsTools:"Καλεσμένοι & εργαλεία",
+  openedAsVenue:"Ανοίξατε ως κτήμα (αυτή η συσκευή έχει τον σύνδεσμο του κτήματος). Για να το δείτε όπως το ζευγάρι: Πρόσβαση & υποστήριξη.", accResetBy:"Η TakeaSeat έδωσε νέο σύνδεσμο πρόσβασης στις {t} — ανοίξτε τον νέο σύνδεσμο.", accGone:"Αυτό το σχέδιο δεν υπάρχει πια στο cloud.",
+  cUploadNone:"Αυτό το σχέδιο είναι μόνο σε αυτή τη συσκευή. Τα σχέδια online τα δίνει το κτήμα σας ή η TakeaSeat.", cLegacyNote:"Παλιοί σύνδεσμοι προβολής και παράθυρα που άνοιξαν πριν από την ενημέρωση συγχρονίζονται έως {t}. Ανανεώστε το TakeaSeat στις άλλες συσκευές σας πριν το απενεργοποιήσετε.", cLegacyOff:"Απενεργοποίηση τώρα", cLegacyOffDone:"Οι παλιοί σύνδεσμοι δεν λειτουργούν πια.",
+  claimTitle:"Το τραπεζολόγιό σας", claimLead:"Καλώς ήρθατε! Ο σύνδεσμος ανοίγει το σχέδιό σας μία φορά, σε αυτή τη συσκευή· μετά θα δείτε τον προσωπικό σας σύνδεσμο.", claimInApp:"Είστε μέσα σε εφαρμογή (Viber, Messenger, Instagram…). Ανοίξτε τον σύνδεσμο στο Chrome ή στο Safari, αλλιώς το σχέδιο θα μείνει μόνο εδώ.", claimGo:"Άνοιγμα του σχεδίου μου",
+  claimDone:"Το «{n}» είναι δικό σας — μόνο εσείς το βλέπετε.", claimKeep:"Κρατήστε αυτόν τον προσωπικό σύνδεσμο και στείλτε τον στον/στη σύντροφό σας:", claimShare:"Αποστολή…", claimShareText:"Το τραπεζολόγιό μας «{n}»", claimContinue:"Συνέχεια",
+  claimUsedAt:"Αυτός ο σύνδεσμος άνοιξε ήδη ({t}). Αν τον άνοιξε ο/η σύντροφός σας, ζητήστε του/της τον «Σύνδεσμο επεξεργασίας» (☁). Αλλιώς γράψτε μας.", claimExpired:"Ο σύνδεσμος έληξε — γράψτε μας για νέο.", claimFail:"Δεν ήταν δυνατή η σύνδεση — δοκιμάστε ξανά.", claimRetry:"Ξανά", claimHome:"Αρχική σελίδα",
+  accAskVenue:"Για αλλαγές στον χώρο επικοινωνήστε με το κτήμα: {c}", accSupportView:"Βλέπετε το σχέδιο χωρίς να το αλλάζετε. Για διορθώσεις, ενεργοποιήστε την επεξεργασία.", accSupportEdit:"Ενεργοποίηση επεξεργασίας", tSupportEditOn:"Επεξεργασία ενεργή — οι αλλαγές αποθηκεύονται στο σχέδιο του πελάτη.", rbSupportView:"🛟 Υποστήριξη (προβολή) · έως {t}",
+  accLinks:"Οι σύνδεσμοί σας", accLinksHint:"Αν ο σύνδεσμός σας έφτασε σε κάποιον που δεν θέλετε, φτιάξτε νέους: οι παλιοί και όλες οι άλλες συσκευές σταματούν να έχουν πρόσβαση.", accRotate:"Νέοι σύνδεσμοι", accRotateConfirm:"Οι παλιοί σύνδεσμοι και οι άλλες συσκευές σας θα σταματήσουν να έχουν πρόσβαση. Συνέχεια;", tRotated:"Νέοι σύνδεσμοι έτοιμοι — στείλτε τον νέο στον/στη σύντροφό σας.", atRotate:"έφτιαξε νέους συνδέσμους (οι παλιοί σταμάτησαν)",
+  rbSupportOnVenue:"Το κτήμα έδωσε πρόσβαση στην υποστήριξη TakeaSeat έως {t}.", tRenameVenue:"Το όνομα του γάμου το ορίζει {v}.", tNoCopySupport:"Σε λειτουργία υποστήριξης δεν γίνονται αντίγραφα του σχεδίου.",
+  featLockedTip:"Στοιχείο του χώρου — το ορίζει {v}", tMaxSeats:"Έως {n} καρέκλες ανά τραπέζι ({v}).", tResetKeepSpace:"Τα ονόματα και οι θέσεις διαγράφηκαν· ο χώρος του {v} έμεινε ως είχε.", tipFullLocked:"Γέμισε! Για περισσότερες καρέκλες ή τραπέζι, ρωτήστε το κτήμα.",
+  accTitle:"Πρόσβαση & υποστήριξη", mAccess:"Πρόσβαση & υποστήριξη", theVenue:"το κτήμα",
+  rbVenue:"🏛 Κτήμα", rbVenueTip:"Ανοίξατε τον γάμο ως κτήμα: αλλάζετε τα πάντα. Το ζευγάρι αλλάζει μόνο ό,τι του επιτρέπετε.", rbTemplate:"🏛 Πρότυπο χώρου", rbTemplateTip:"Αυτή είναι η διάταξη του χώρου σας: κάθε νέος γάμος ξεκινά από εδώ (χωρίς καλεσμένους). Οι γάμοι που υπάρχουν ήδη δεν αλλάζουν.", rbPreview:"👁 Όπως το βλέπει το ζευγάρι",
+  rbSupport:"🛟 Υποστήριξη · έως {t}", rbSupportTip:"Ο ιδιοκτήτης σάς έδωσε προσωρινή πρόσβαση. Τίποτα δεν μένει σε αυτή τη συσκευή.", rbViewer:"👁 Μόνο προβολή", rbViewerTip:"Βλέπετε το σχέδιο· δεν μπορείτε να το αλλάξετε.",
+  rbLocked:"🔒 Χώρος: {v}", rbLockedTip:"Το κτήμα έχει στήσει τον χώρο — πατήστε για να δείτε τι μπορείτε να αλλάξετε.", rbSupportOn:"🛟 Η TakeaSeat έχει πρόσβαση", rbSupportOnTip:"Έχετε δώσει πρόσβαση στην υποστήριξη έως {t} — πατήστε για να τη διακόψετε.",
+  permFloor:"Δάπεδο & μέγεθος χώρου", permDecor:"Στοιχεία του κτήματος (πίστα, μπαρ, μπουφέδες, WC…)", permLayout:"Θέσεις τραπεζιών στον χώρο", permTables:"Προσθήκη / διαγραφή τραπεζιών", permSeats:"Αριθμός θέσεων ανά τραπέζι", permLabels:"Ονόματα τραπεζιών", permMax:"έως {n} ανά τραπέζι", permAlways:"Καλεσμένοι, θέσεις, ομάδες, προσκλητήρια, εκτύπωση",
+  tLockedPart:"Αυτό το ορίζει το κτήμα ({w}).", tLockedByVenue:"Ο χώρος μένει όπως τον έστησε {v} — κρατήθηκαν οι δικές σας αλλαγές (ονόματα, θέσεις).",
+  accSpace:"Ο χώρος σας — από {v}", accSpaceHint:"Το κτήμα έχει στήσει τον χώρο. Εσείς μπορείτε:", accCouplePerms:"Τι μπορεί να αλλάξει το ζευγάρι", accCouplePermsHint:"Αλλάζει από την κονσόλα του κτήματος (Δικαιώματα).", accPreview:"Δείτε το όπως το ζευγάρι", tPreviewOn:"Βλέπετε όσα βλέπει το ζευγάρι.", tPreviewOff:"Πλήρης προβολή κτήματος.",
+  accSupport:"Υποστήριξη TakeaSeat", accSupportHint:"Η TakeaSeat δεν μπορεί να ανοίξει το σχέδιό σας. Αν χρειαστείτε βοήθεια, δώστε μας πρόσβαση για λίγο — τη διακόπτετε όποτε θέλετε και βλέπετε παρακάτω τι κάναμε.", accSupportHintVenue:"Η TakeaSeat δεν ανοίγει τους γάμους σας. Για βοήθεια, δώστε μας πρόσβαση σε αυτόν τον γάμο για λίγο — τη διακόπτετε όποτε θέλετε.",
+  accMsgPh:"Τι χρειάζεστε; (προαιρετικό)", accH24:"για 24 ώρες", accH72:"για 3 ημέρες", accH168:"για 7 ημέρες", accInvite:"Πρόσκληση υποστήριξης", accSupportLive:"Η υποστήριξη έχει πρόσβαση έως {t}.", accRevoke:"Τερματισμός πρόσβασης", accRevokeConfirm:"Να σταματήσει τώρα η πρόσβαση της υποστήριξης;",
+  accMail:"Ενημερώστε μας με email", accMailSubject:"Υποστήριξη TakeaSeat — {n}", accMailBody:"Γεια σας, σας δώσαμε πρόσβαση στο σχέδιό μας (έως {t}). Χρειαζόμαστε βοήθεια με: ",
+  tSupportInvited:"Η πρόσκληση στάλθηκε — πατήστε «Ενημερώστε μας με email» για να το δούμε αμέσως.", tSupportEnded:"Η πρόσβαση της υποστήριξης σταμάτησε.", accFail:"Δεν έγινε — δοκιμάστε ξανά.",
+  accLog:"Ιστορικό πρόσβασης", accLogEmpty:"Κανείς άλλος δεν έχει ανοίξει το σχέδιο.", accLocal:"Το σχέδιο είναι μόνο σε αυτή τη συσκευή — κανείς άλλος δεν έχει πρόσβαση.",
+  accSupportYou:"Πρόσβαση υποστήριξης έως {t}.", accSupportYouHint:"Ό,τι αλλάζετε αποθηκεύεται στο σχέδιο του πελάτη και φαίνεται στο ιστορικό πρόσβασής του. Τίποτα δεν μένει σε αυτή τη συσκευή.",
+  awCouple:"Ζευγάρι", awVenue:"Κτήμα", awSupport:"Υποστήριξη TakeaSeat", awAdmin:"TakeaSeat",
+  atInvite:"έδωσε πρόσβαση στην υποστήριξη ({h} ώρες)", atRevoke:"σταμάτησε την πρόσβαση της υποστήριξης", atOpen:"άνοιξε το σχέδιο", atSave:"έκανε αλλαγές", atRestore:"επανέφερε παλαιότερη έκδοση", atReset:"έδωσε νέο σύνδεσμο πρόσβασης (ο παλιός δεν ισχύει)", atClaim:"άνοιξε το σχέδιο για πρώτη φορά", atClaimReset:"άνοιξε τον νέο σύνδεσμο που έδωσε η TakeaSeat",
+  supOpened:"Υποστήριξη: «{n}» — η πρόσβαση είναι προσωρινή.", supEnded:"Η πρόσβαση υποστήριξης έληξε ή σταμάτησε.", accLost:"Αυτή η συσκευή δεν έχει πια πρόσβαση στο σχέδιο — ανοίξτε τον πιο πρόσφατο σύνδεσμο.", accViewExpired:"Αυτός ο σύνδεσμος δεν ισχύει πια — ζητήστε νέο από το ζευγάρι ή το κτήμα.",
+  claimUsed:"Αυτός ο σύνδεσμος έχει ήδη ανοιχτεί. Ανοίξτε το σχέδιο από τη συσκευή που το ανοίξατε πρώτη φορά, ή γράψτε μας στο info@takeaseat.gr.", claimWelcome:"Καλώς ήρθατε! Το «{n}» είναι δικό σας — μόνο εσείς το βλέπετε. Κρατήστε τον σύνδεσμο (☁) για τις άλλες συσκευές σας.",
+  cVenueLinks:"Είστε συνδεδεμένοι ως κτήμα. Τον σύνδεσμο του ζευγαριού τον αντιγράφετε από την κονσόλα του κτήματος.", cSupportNoLinks:"Προσωρινή πρόσβαση υποστήριξης — χωρίς συνδέσμους κοινής χρήσης.",
   labBadge:"🧪 Εργαστήριο", labHint:"Δοκιμαστικός χώρος — ό,τι αλλάζετε εδώ μένει μόνο σε αυτή τη συσκευή.",
   switchPlan:"Αλλαγή ζευγαριού / εκδήλωσης", newPlan:"Νέο σχέδιο (ζευγάρι / εκδήλωση)", planMore:"Μετονομασία · αντιγραφή · διαγραφή",
   shareTitle:"Κοινή χρήση & συγχρονισμός", fontDown:"Μικρότερα ονόματα", fontUp:"Μεγαλύτερα ονόματα", fit:"Προσαρμογή", zoomIn:"Μεγέθυνση", zoomOut:"Σμίκρυνση", print:"Εκτύπωση", more:"Περισσότερα",
@@ -872,6 +935,7 @@ el:{
     dGuests:["Καλεσμένοι","Γράψτε ονόματα στο <b>Προσθήκη ονομάτων</b>, ένα ανά γραμμή."],
     dTables:["Ονόματα στα τραπέζια","<b>Πατήστε ένα τραπέζι</b>, γράψτε όνομα, <b>Enter</b>. Η κουκκίδα = ομάδα."],
     dFloor:["Η κάτοψη","<b>Σύρετε</b> τραπέζια και διακόσμηση. Ctrl+Z για αναίρεση."],
+    dFloorLocked:["Η κάτοψη","Τον χώρο τον έχει στήσει το κτήμα. <b>Πατήστε</b> ένα τραπέζι για να γράψετε ονόματα. Ctrl+Z για αναίρεση."],
     dSave:["Αποθήκευση","Το σύννεφο δείχνει ότι όλα είναι συγχρονισμένα. <b>Ο σύνδεσμός σας είναι το κλειδί.</b>"],
     mTables:["Τα τραπέζια","<b>Πατήστε ένα τραπέζι</b> για να ανοίξουν οι θέσεις του."],
     mNames:["Ονόματα","Γράψτε όνομα, <b>Enter</b> → επόμενη θέση. Η κουκκίδα = ομάδα."],
@@ -936,6 +1000,33 @@ el:{
 },
 en:{
   title:"Wedding Seating Planner", guestsTools:"Guests & tools",
+  openedAsVenue:"Opened as the venue (this device has the venue's link). To see it as the couple does: Access & support.", accResetBy:"TakeaSeat issued a new access link on {t} — open the new link.", accGone:"This plan no longer exists in the cloud.",
+  cUploadNone:"This plan is only on this device. Online plans come from your venue or from TakeaSeat.", cLegacyNote:"Old view-only links, and app windows opened before the update, keep syncing until {t}. Reload TakeaSeat on your other devices before turning this off.", cLegacyOff:"Turn them off now", cLegacyOffDone:"Old links no longer work.",
+  claimTitle:"Your seating plan", claimLead:"Welcome! This link opens your plan once, on this device; after that you will see your personal link.", claimInApp:"You are inside an app (Viber, Messenger, Instagram…). Open the link in Chrome or Safari, otherwise the plan will only stay here.", claimGo:"Open my plan",
+  claimDone:"“{n}” is yours — only you can see it.", claimKeep:"Keep this personal link and send it to your partner:", claimShare:"Send…", claimShareText:"Our seating plan “{n}”", claimContinue:"Continue",
+  claimUsedAt:"This link was already opened ({t}). If your partner opened it, ask them for the “Edit link” (☁). Otherwise write to us.", claimExpired:"This link has expired — write to us for a new one.", claimFail:"Could not connect — please try again.", claimRetry:"Try again", claimHome:"Home page",
+  accAskVenue:"For changes to the space, contact the venue: {c}", accSupportView:"You are viewing the plan without changing it. To fix something, turn on editing.", accSupportEdit:"Turn on editing", tSupportEditOn:"Editing is on — changes are saved to the customer's plan.", rbSupportView:"🛟 Support (view) · until {t}",
+  accLinks:"Your links", accLinksHint:"If your link reached someone you did not intend, make new links: the old ones and all your other devices lose access.", accRotate:"New links", accRotateConfirm:"The old links and your other devices will lose access. Continue?", tRotated:"New links are ready — send the new one to your partner.", atRotate:"made new links (the old ones stopped working)",
+  rbSupportOnVenue:"The venue gave TakeaSeat support access until {t}.", tRenameVenue:"The wedding's name is set by {v}.", tNoCopySupport:"In support mode the plan cannot be copied.",
+  featLockedTip:"Part of the space — set by {v}", tMaxSeats:"Up to {n} chairs per table ({v}).", tResetKeepSpace:"Names and seating were cleared; the space of {v} stayed as it was.", tipFullLocked:"Full! For more chairs or another table, ask the venue.",
+  accTitle:"Access & support", mAccess:"Access & support", theVenue:"the venue",
+  rbVenue:"🏛 Venue", rbVenueTip:"You opened this wedding as the venue: you can change everything. The couple changes only what you allow.", rbTemplate:"🏛 Venue template", rbTemplateTip:"This is your venue layout: every new wedding starts from here (without guests). Existing weddings do not change.", rbPreview:"👁 As the couple sees it",
+  rbSupport:"🛟 Support · until {t}", rbSupportTip:"The owner gave you temporary access. Nothing stays on this device.", rbViewer:"👁 View only", rbViewerTip:"You can see the plan but not change it.",
+  rbLocked:"🔒 Space: {v}", rbLockedTip:"The venue has set up the space — tap to see what you can change.", rbSupportOn:"🛟 TakeaSeat has access", rbSupportOnTip:"You gave support access until {t} — tap to end it.",
+  permFloor:"Floor & size of the space", permDecor:"The venue's elements (dance floor, bar, buffets, WC…)", permLayout:"Table positions", permTables:"Add / delete tables", permSeats:"Number of seats per table", permLabels:"Table names", permMax:"up to {n} per table", permAlways:"Guests, seats, groups, invitations, printing",
+  tLockedPart:"The venue sets this ({w}).", tLockedByVenue:"The space stays as {v} set it up — your own changes (names, seats) were kept.",
+  accSpace:"Your space — by {v}", accSpaceHint:"The venue has set up the space. You can:", accCouplePerms:"What the couple may change", accCouplePermsHint:"Changed from the venue console (Permissions).", accPreview:"See it as the couple does", tPreviewOn:"You now see what the couple sees.", tPreviewOff:"Full venue view.",
+  accSupport:"TakeaSeat support", accSupportHint:"TakeaSeat cannot open your plan. If you need help, give us access for a while — end it whenever you like and see below what we did.", accSupportHintVenue:"TakeaSeat does not open your weddings. For help, give us access to this wedding for a while — end it whenever you like.",
+  accMsgPh:"What do you need? (optional)", accH24:"for 24 hours", accH72:"for 3 days", accH168:"for 7 days", accInvite:"Invite support", accSupportLive:"Support has access until {t}.", accRevoke:"End access", accRevokeConfirm:"End support access now?",
+  accMail:"Let us know by e-mail", accMailSubject:"TakeaSeat support — {n}", accMailBody:"Hello, we gave you access to our plan (until {t}). We need help with: ",
+  tSupportInvited:"Invitation sent — tap “Let us know by e-mail” so we see it right away.", tSupportEnded:"Support access has ended.", accFail:"That did not work — please try again.",
+  accLog:"Access log", accLogEmpty:"Nobody else has opened this plan.", accLocal:"This plan is only on this device — nobody else has access.",
+  accSupportYou:"Support access until {t}.", accSupportYouHint:"What you change is saved to the customer's plan and shown in their access log. Nothing stays on this device.",
+  awCouple:"Couple", awVenue:"Venue", awSupport:"TakeaSeat support", awAdmin:"TakeaSeat",
+  atInvite:"gave support access ({h} hours)", atRevoke:"ended support access", atOpen:"opened the plan", atSave:"made changes", atRestore:"restored an older version", atReset:"issued a new access link (the old one stopped working)", atClaim:"opened the plan for the first time", atClaimReset:"opened the new link TakeaSeat issued",
+  supOpened:"Support: “{n}” — access is temporary.", supEnded:"Support access has expired or was ended.", accLost:"This device no longer has access to the plan — open the latest link.", accViewExpired:"This link no longer works — ask the couple or the venue for a new one.",
+  claimUsed:"This link has already been opened. Open the plan on the device you first used, or write to info@takeaseat.gr.", claimWelcome:"Welcome! “{n}” is yours — only you can see it. Keep the link (☁) for your other devices.",
+  cVenueLinks:"You are signed in as the venue. Copy the couple's link from the venue console.", cSupportNoLinks:"Temporary support access — no sharing links.",
   labBadge:"🧪 Lab", labHint:"Sandbox — whatever you change here stays on this device only.",
   switchPlan:"Switch couple / event", newPlan:"New plan (couple / event)", planMore:"Rename · duplicate · delete",
   shareTitle:"Share & sync", fontDown:"Smaller names", fontUp:"Larger names", fit:"Fit", zoomIn:"Zoom in", zoomOut:"Zoom out", print:"Print", more:"More",
@@ -954,6 +1045,7 @@ en:{
     dGuests:["Guests","Type names under <b>Add names</b>, one per line."],
     dTables:["Names at the tables","<b>Click a table</b>, type a name, <b>Enter</b>. The dot = group."],
     dFloor:["The floor","<b>Drag</b> tables and decor. Ctrl+Z undoes."],
+    dFloorLocked:["The floor","The venue has set up the space. <b>Click</b> a table to write names. Ctrl+Z undoes."],
     dSave:["Saving","The cloud shows everything is in sync. <b>Your link is the key.</b>"],
     mTables:["The tables","<b>Tap a table</b> to open its seats."],
     mNames:["Names","Type a name, <b>Enter</b> → next seat. The dot = group."],
@@ -1018,6 +1110,33 @@ en:{
 },
 de:{
   title:"Hochzeits-Sitzplan", guestsTools:"Gäste & Werkzeuge",
+  openedAsVenue:"Als Location geöffnet (dieses Gerät hat den Link der Location). So ansehen wie das Paar: Zugriff & Support.", accResetBy:"TakeaSeat hat am {t} einen neuen Zugangslink ausgegeben — öffnen Sie den neuen Link.", accGone:"Dieser Plan existiert nicht mehr in der Cloud.",
+  cUploadNone:"Dieser Plan ist nur auf diesem Gerät. Online-Pläne gibt es von Ihrer Location oder von TakeaSeat.", cLegacyNote:"Alte Ansichtslinks und Fenster, die vor dem Update geöffnet wurden, synchronisieren bis {t}. Laden Sie TakeaSeat auf Ihren anderen Geräten neu, bevor Sie das abschalten.", cLegacyOff:"Jetzt abschalten", cLegacyOffDone:"Alte Links funktionieren nicht mehr.",
+  claimTitle:"Ihr Sitzplan", claimLead:"Willkommen! Dieser Link öffnet Ihren Plan einmal, auf diesem Gerät; danach sehen Sie Ihren persönlichen Link.", claimInApp:"Sie sind in einer App (Viber, Messenger, Instagram…). Öffnen Sie den Link in Chrome oder Safari, sonst bleibt der Plan nur hier.", claimGo:"Meinen Plan öffnen",
+  claimDone:"„{n}“ gehört Ihnen — nur Sie sehen ihn.", claimKeep:"Bewahren Sie diesen persönlichen Link auf und senden Sie ihn Ihrem Partner:", claimShare:"Senden…", claimShareText:"Unser Sitzplan „{n}“", claimContinue:"Weiter",
+  claimUsedAt:"Dieser Link wurde bereits geöffnet ({t}). Wenn Ihr Partner ihn geöffnet hat, fragen Sie nach dem „Bearbeitungslink“ (☁). Sonst schreiben Sie uns.", claimExpired:"Dieser Link ist abgelaufen — schreiben Sie uns für einen neuen.", claimFail:"Keine Verbindung — bitte erneut versuchen.", claimRetry:"Erneut", claimHome:"Startseite",
+  accAskVenue:"Für Änderungen am Raum wenden Sie sich an die Location: {c}", accSupportView:"Sie sehen den Plan, ohne ihn zu ändern. Zum Korrigieren schalten Sie das Bearbeiten ein.", accSupportEdit:"Bearbeiten einschalten", tSupportEditOn:"Bearbeiten ist an — Änderungen werden im Plan des Kunden gespeichert.", rbSupportView:"🛟 Support (Ansicht) · bis {t}",
+  accLinks:"Ihre Links", accLinksHint:"Wenn Ihr Link bei jemandem gelandet ist, den Sie nicht wollten, erstellen Sie neue Links: die alten und alle anderen Geräte verlieren den Zugriff.", accRotate:"Neue Links", accRotateConfirm:"Die alten Links und Ihre anderen Geräte verlieren den Zugriff. Fortfahren?", tRotated:"Neue Links sind bereit — senden Sie den neuen an Ihren Partner.", atRotate:"erstellte neue Links (die alten gelten nicht mehr)",
+  rbSupportOnVenue:"Die Location hat dem TakeaSeat-Support bis {t} Zugriff gegeben.", tRenameVenue:"Den Namen der Hochzeit legt {v} fest.", tNoCopySupport:"Im Support-Modus kann der Plan nicht kopiert werden.",
+  featLockedTip:"Teil des Raums — festgelegt von {v}", tMaxSeats:"Bis zu {n} Stühle pro Tisch ({v}).", tResetKeepSpace:"Namen und Sitzordnung wurden geleert; der Raum von {v} blieb, wie er war.", tipFullLocked:"Voll! Für mehr Stühle oder einen weiteren Tisch fragen Sie die Location.",
+  accTitle:"Zugriff & Support", mAccess:"Zugriff & Support", theVenue:"der Veranstaltungsort",
+  rbVenue:"🏛 Location", rbVenueTip:"Sie haben diese Hochzeit als Location geöffnet: Sie können alles ändern. Das Paar ändert nur, was Sie erlauben.", rbTemplate:"🏛 Raumvorlage", rbTemplateTip:"Das ist die Aufstellung Ihrer Location: jede neue Hochzeit beginnt hier (ohne Gäste). Bestehende Hochzeiten ändern sich nicht.", rbPreview:"👁 So sieht es das Paar",
+  rbSupport:"🛟 Support · bis {t}", rbSupportTip:"Der Eigentümer hat Ihnen vorübergehend Zugriff gegeben. Nichts bleibt auf diesem Gerät.", rbViewer:"👁 Nur ansehen", rbViewerTip:"Sie sehen den Plan, können ihn aber nicht ändern.",
+  rbLocked:"🔒 Raum: {v}", rbLockedTip:"Die Location hat den Raum eingerichtet — antippen, um zu sehen, was Sie ändern können.", rbSupportOn:"🛟 TakeaSeat hat Zugriff", rbSupportOnTip:"Sie haben dem Support bis {t} Zugriff gegeben — antippen zum Beenden.",
+  permFloor:"Boden & Größe des Raums", permDecor:"Elemente der Location (Tanzfläche, Bar, Buffets, WC…)", permLayout:"Position der Tische", permTables:"Tische hinzufügen / löschen", permSeats:"Anzahl der Plätze pro Tisch", permLabels:"Tischnamen", permMax:"bis {n} pro Tisch", permAlways:"Gäste, Plätze, Gruppen, Einladungen, Druck",
+  tLockedPart:"Das legt die Location fest ({w}).", tLockedByVenue:"Der Raum bleibt, wie {v} ihn eingerichtet hat — Ihre eigenen Änderungen (Namen, Plätze) wurden übernommen.",
+  accSpace:"Ihr Raum — von {v}", accSpaceHint:"Die Location hat den Raum eingerichtet. Sie können:", accCouplePerms:"Was das Paar ändern darf", accCouplePermsHint:"Wird in der Location-Konsole geändert (Rechte).", accPreview:"So ansehen, wie es das Paar sieht", tPreviewOn:"Sie sehen jetzt, was das Paar sieht.", tPreviewOff:"Volle Ansicht der Location.",
+  accSupport:"TakeaSeat-Support", accSupportHint:"TakeaSeat kann Ihren Plan nicht öffnen. Wenn Sie Hilfe brauchen, geben Sie uns kurz Zugriff — Sie beenden ihn jederzeit und sehen unten, was wir getan haben.", accSupportHintVenue:"TakeaSeat öffnet Ihre Hochzeiten nicht. Für Hilfe geben Sie uns kurz Zugriff auf diese Hochzeit — Sie beenden ihn jederzeit.",
+  accMsgPh:"Wobei brauchen Sie Hilfe? (optional)", accH24:"für 24 Stunden", accH72:"für 3 Tage", accH168:"für 7 Tage", accInvite:"Support einladen", accSupportLive:"Der Support hat bis {t} Zugriff.", accRevoke:"Zugriff beenden", accRevokeConfirm:"Den Support-Zugriff jetzt beenden?",
+  accMail:"Per E-Mail Bescheid geben", accMailSubject:"TakeaSeat-Support — {n}", accMailBody:"Hallo, wir haben Ihnen Zugriff auf unseren Plan gegeben (bis {t}). Wir brauchen Hilfe bei: ",
+  tSupportInvited:"Einladung gesendet — tippen Sie auf „Per E-Mail Bescheid geben“, damit wir es sofort sehen.", tSupportEnded:"Der Support-Zugriff wurde beendet.", accFail:"Das hat nicht geklappt — bitte erneut versuchen.",
+  accLog:"Zugriffsprotokoll", accLogEmpty:"Niemand sonst hat diesen Plan geöffnet.", accLocal:"Dieser Plan ist nur auf diesem Gerät — niemand sonst hat Zugriff.",
+  accSupportYou:"Support-Zugriff bis {t}.", accSupportYouHint:"Was Sie ändern, wird im Plan des Kunden gespeichert und in seinem Zugriffsprotokoll angezeigt. Nichts bleibt auf diesem Gerät.",
+  awCouple:"Paar", awVenue:"Location", awSupport:"TakeaSeat-Support", awAdmin:"TakeaSeat",
+  atInvite:"gab dem Support Zugriff ({h} Stunden)", atRevoke:"beendete den Support-Zugriff", atOpen:"öffnete den Plan", atSave:"hat Änderungen gemacht", atRestore:"stellte eine ältere Version wieder her", atReset:"gab einen neuen Zugangslink aus (der alte gilt nicht mehr)", atClaim:"öffnete den Plan zum ersten Mal", atClaimReset:"öffnete den neuen Link von TakeaSeat",
+  supOpened:"Support: „{n}“ — der Zugriff ist vorübergehend.", supEnded:"Der Support-Zugriff ist abgelaufen oder wurde beendet.", accLost:"Dieses Gerät hat keinen Zugriff mehr auf den Plan — öffnen Sie den neuesten Link.", accViewExpired:"Dieser Link gilt nicht mehr — bitten Sie das Paar oder die Location um einen neuen.",
+  claimUsed:"Dieser Link wurde bereits geöffnet. Öffnen Sie den Plan auf dem Gerät, das Sie zuerst benutzt haben, oder schreiben Sie an info@takeaseat.gr.", claimWelcome:"Willkommen! „{n}“ gehört Ihnen — nur Sie sehen ihn. Bewahren Sie den Link (☁) für Ihre anderen Geräte auf.",
+  cVenueLinks:"Sie sind als Location angemeldet. Den Link des Paares kopieren Sie in der Location-Konsole.", cSupportNoLinks:"Vorübergehender Support-Zugriff — keine Freigabelinks.",
   labBadge:"🧪 Labor", labHint:"Sandbox — alles, was Sie hier ändern, bleibt nur auf diesem Gerät.",
   switchPlan:"Paar / Veranstaltung wechseln", newPlan:"Neuer Plan (Paar / Veranstaltung)", planMore:"Umbenennen · duplizieren · löschen",
   shareTitle:"Teilen & synchronisieren", fontDown:"Kleinere Namen", fontUp:"Größere Namen", fit:"Einpassen", zoomIn:"Vergrößern", zoomOut:"Verkleinern", print:"Drucken", more:"Mehr",
@@ -1036,6 +1155,7 @@ de:{
     dGuests:["Gäste","Namen unter <b>Namen hinzufügen</b> eingeben, einen pro Zeile."],
     dTables:["Namen an den Tischen","<b>Tisch anklicken</b>, Namen eingeben, <b>Enter</b>. Der Punkt = Gruppe."],
     dFloor:["Die Fläche","Tische und Deko <b>ziehen</b>. Strg+Z macht rückgängig."],
+    dFloorLocked:["Die Fläche","Die Location hat den Raum eingerichtet. Einen Tisch <b>anklicken</b>, um Namen einzutragen. Strg+Z macht rückgängig."],
     dSave:["Speichern","Die Wolke zeigt, dass alles synchron ist. <b>Ihr Link ist der Schlüssel.</b>"],
     mTables:["Die Tische","<b>Einen Tisch antippen</b>, um seine Plätze zu öffnen."],
     mNames:["Namen","Namen eingeben, <b>Enter</b> → nächster Platz. Der Punkt = Gruppe."],
@@ -1253,8 +1373,13 @@ function labState(){
 // ---------- persistence (multiple named profiles / couples) ----------
 function planKey(id){ return PBASE+".plan."+id; }
 function newProfileId(){ return "prof"+Date.now()+Math.floor(Math.random()*1000); }
-function loadProfilesIdx(){ try{ const p=JSON.parse(localStorage.getItem(PROFILES_KEY)); if(p&&Array.isArray(p.profiles)&&p.profiles.length) return p; }catch(e){} return null; }
-function saveProfilesIdx(){ try{ localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles)); }catch(e){} }
+function loadProfilesIdx(){ try{ const p=JSON.parse(localStorage.getItem(PROFILES_KEY)); if(p&&Array.isArray(p.profiles)&&p.profiles.length){
+  p.profiles=p.profiles.filter(x=>x&&!x.support); if(!p.profiles.length) return null;
+  if(!p.profiles.some(x=>x.id===p.activeId)) p.activeId=p.profiles[0].id; return p; } }catch(e){} return null; }
+// A support session (TakeaSeat helping a couple) lives only in memory: nothing of the couple's plan stays on the helper's device.
+function saveProfilesIdx(){ try{ const keep=profiles.profiles.filter(p=>!p.support); if(!keep.length) return;
+  let act=profiles.activeId; if(!keep.some(p=>p.id===act)) act=keep.some(p=>p.id===profiles.lastRealId)?profiles.lastRealId:keep[0].id;
+  localStorage.setItem(PROFILES_KEY, JSON.stringify({...profiles, activeId:act, profiles:keep})); }catch(e){} }
 function loadPlan(id){
   try{ const raw=localStorage.getItem(planKey(id)); if(raw==null){ loadError="no local copy"; return null; }
     const s=JSON.parse(raw);
@@ -1281,7 +1406,8 @@ function save(opts){
   const now=JSON.stringify(state);
   if(lastJSON!==null && now!==lastJSON && !(opts&&opts.noHistory)){ undoStack.push(lastJSON); if(undoStack.length>60) undoStack.shift(); redoStack.length=0; }
   lastJSON=now;
-  try{ localStorage.setItem(planKey(profiles.activeId), now); }catch(e){}
+  const sp=(profiles&&profiles.profiles)?profiles.profiles.find(p=>p.id===profiles.activeId):null;
+  if(sp&&sp.support) sp._mem=now; else { try{ localStorage.setItem(planKey(profiles.activeId), now); }catch(e){} }
   scheduleCloudPush(); updateUndoButtons();
 }
 function resetHistory(){ undoStack=[]; redoStack=[]; lastJSON=JSON.stringify(state); updateUndoButtons(); }
@@ -1366,6 +1492,13 @@ function safeIcon(s){ s=String(s==null?"📦":s).replace(/[<>&"'`]/g,""); return
 // A plan from a shared link / imported file is attacker-controlled: every field that reaches the DOM,
 // a CSS class, an attribute or a render loop is clamped here, on ingest.
 function sanitizePlan(s){ if(!s||typeof s!=="object") return s;
+  if(s._uid!=null && !(Number.isSafeInteger(+s._uid) && +s._uid>=0 && +s._uid<=1e9)){   // a broken id counter would make every new id the same
+    let mx=2001; const num=x=>{ const m=/(\d+)$/.exec(String(x)); const v=m?+m[1]:0; return v<=1e9?v:0; };
+    (Array.isArray(s.tables)?s.tables:[]).forEach(t=>{ if(t) mx=Math.max(mx,num(t.id)); });
+    Object.keys((s.guests&&typeof s.guests==="object")?s.guests:{}).forEach(k=>{ mx=Math.max(mx,num(k)); });
+    ["features","groups","parties"].forEach(k=>(Array.isArray(s[k])?s[k]:[]).forEach(o=>{ if(o) mx=Math.max(mx,num(o.id)); }));
+    s._uid=mx+1;
+  }
     if(!Array.isArray(s.tables)) s.tables=[];
     if(!s.guests||typeof s.guests!=="object"||Array.isArray(s.guests)) s.guests={};
     if(!Array.isArray(s.groups)) s.groups=[];
@@ -1442,6 +1575,11 @@ function renderFeatures(){
       el.textContent=f.label||"";
     }
     el.style.transform=`translate(-50%,-50%) rotate(${f.rot||0}deg)`;
+    if(featLocked(f)){   // the venue's element: shown, not editable
+      el.classList.add("flocked"); el.title=tr("featLockedTip",{v:ACCESS.venueName||tr("theVenue")});
+      el.addEventListener("contextmenu",e=>{ e.preventDefault(); e.stopPropagation(); lockedToast("decor"); });
+      stage.appendChild(el); return;
+    }
     const rz=document.createElement("div"); rz.className="rz"; el.appendChild(rz);
     makeResizable(rz, el, f);
     const roth=document.createElement("div"); roth.className="rot-h"; roth.style.left="50%"; roth.style.top="-24px"; roth.style.transform="translateX(-50%)"; el.appendChild(roth);
@@ -1978,12 +2116,14 @@ function paintSwatches(menu){ menu.querySelectorAll(".sw").forEach(sw=>applyMate
 function closeFeatureMenu(){ $("featuremenu").style.display="none"; }
 // Re-order a feature within the stack (array order = paint order; first = back, last = front).
 function moveFeature(f, dir){
+  if(featLocked(f)){ lockedToast("decor"); return; }
   const arr=state.features, i=arr.indexOf(f); if(i<0) return;
   arr.splice(i,1);
   const j = dir==="back"?0 : dir==="front"?arr.length : dir==="backward"?Math.max(0,i-1) : Math.min(arr.length,i+1);
   arr.splice(j,0,f); save(); renderFeatures();
 }
 function openFeatureMenu(f, evt){
+  if(featLocked(f)){ lockedToast("decor"); return; }
   const menu=$("featuremenu");
   let html="";
   if(f.kind==="zone") html+=`<div class="gm-cap">${escapeHtml(tr("fmSurface"))}</div>`+matSwatchesHtml(f.material||"grass");
@@ -1994,7 +2134,7 @@ function openFeatureMenu(f, evt){
   menu.innerHTML=html; paintSwatches(menu);
   menu.querySelectorAll(".fm-mat").forEach(m=>m.onclick=()=>{ f.material=m.dataset.mat; save(); renderFeatures(); closeFeatureMenu(); });
   ["back","backward","forward","front"].forEach(dir=>{ const el=menu.querySelector(`[data-act="${dir}"]`); if(el) el.onclick=()=>{ moveFeature(f,dir); closeFeatureMenu(); }; });
-  menu.querySelector('[data-act="rename"]').onclick=()=>{ const nm=prompt(tr("fmLabelPrompt"), f.label||""); if(nm!==null){ f.label=nm; save(); renderFeatures(); } closeFeatureMenu(); };
+  menu.querySelector('[data-act="rename"]').onclick=()=>{ const nm=prompt(tr("fmLabelPrompt"), f.label||""); if(nm!==null){ f.label=nm.slice(0,80); save(); renderFeatures(); } closeFeatureMenu(); };
   menu.querySelector('[data-act="delete"]').onclick=()=>deleteFeature(f);
   showPopover(menu,evt);
 }
@@ -2005,12 +2145,12 @@ function openStageMenu(evt){
   menu.querySelectorAll(".fm-mat").forEach(m=>m.onclick=()=>{ state.stageMaterial=m.dataset.mat; $("stageFloor").value=m.dataset.mat; applyStage(); save(); closeFeatureMenu(); });
   showPopover(menu,evt);
 }
-stage.addEventListener("contextmenu",e=>{ if(e.target===stage){ e.preventDefault(); openStageMenu(e); } });
+stage.addEventListener("contextmenu",e=>{ if(e.target===stage){ e.preventDefault(); if(can("floor")) openStageMenu(e); } });
 function initFloorSelect(){
   const sel=$("stageFloor");
   sel.innerHTML=Object.keys(MATERIALS).map(k=>`<option value="${k}">${escapeHtml(matName(k))}</option>`).join("");
   sel.value=state.stageMaterial||"grass";
-  sel.addEventListener("change",()=>{ state.stageMaterial=sel.value; applyStage(); save(); });
+  sel.addEventListener("change",()=>{ if(!can("floor")){ sel.value=state.stageMaterial||"grass"; lockedToast("floor"); return; } state.stageMaterial=sel.value; applyStage(); save(); });
 }
 function visibleCenter(){   // centre of the visible part of the canvas, in stage coordinates
   const m=isNarrow()?12:24, box=visibleBox();
@@ -2020,7 +2160,8 @@ function addDecor(item){
   const c=visibleCenter();
   state.features.push({ id:"f"+nextId(), kind:item.kind||"prop",
     x:clamp(c.x,60,state.stage.w-60), y:clamp(c.y,60,state.stage.h-60),
-    w:item.w, h:item.h, label:item.label, icon:item.icon||null, material:item.material||null });
+    w:item.w, h:item.h, label:item.label, icon:item.icon||null, material:item.material||null,
+    ...(ACCESS.owner==="venue"?{by:ACCESS.role==="venue"?"venue":"couple"}:{}) });   // who placed it decides who may move it later
   save(); renderFeatures(); toast(tr("decorAdded",{n:item.label}));
 }
 function initDecor(){
@@ -2046,7 +2187,10 @@ function renderProfiles(){
 }
 function loadActive(){
   unfocusTable();
-  state=loadPlan(profiles.activeId)||defaultState(); uid=state._uid||2001; fontScale=state.seatFontScale||1;
+  const lp=currentProfile();
+  let st=null; if(lp&&lp.support&&lp._mem){ try{ st=JSON.parse(lp._mem); sanitizePlan(st); if(st.layoutVersion!==LAYOUT_VERSION) migrateLayout(st); }catch(e){ st=null; } }
+  state=st||loadPlan(profiles.activeId)||defaultState(); uid=state._uid||2001; fontScale=state.seatFontScale||1;
+  applyAccess();
   applyStage(); $("stageFloor").value=state.stageMaterial||"grass";
   renderProfiles(); renderAll(); resetHistory();
   setTimeout(()=>{ zoom=initialZoom(); applyZoom(); },30);
@@ -2091,8 +2235,9 @@ function importPlanAsProfile(s, suggestedName){
 function openProfileMenu(evt){
   const menu=$("profilemenu");
   menu.innerHTML=`<div class="gm-item" data-act="rename">${ICON("edit")}${escapeHtml(tr("pRename"))}</div><div class="gm-item" data-act="dup">${ICON("copy")}${escapeHtml(tr("pDup"))}</div><div class="gm-sep"></div><div class="gm-item danger" data-act="del">${ICON("trash")}${escapeHtml(tr("pDel"))}</div>`;
-  menu.querySelector('[data-act="rename"]').onclick=()=>{ closeProfileMenu(); renameProfile(); };
-  menu.querySelector('[data-act="dup"]').onclick=()=>{ closeProfileMenu(); duplicateProfile(); };
+  const pc=currentProfile()||{};
+  menu.querySelector('[data-act="rename"]').onclick=()=>{ closeProfileMenu(); if(ACCESS.restricted){ toast(tr("tRenameVenue",{v:ACCESS.venueName||tr("theVenue")}),4000); return; } renameProfile(); };
+  menu.querySelector('[data-act="dup"]').onclick=()=>{ closeProfileMenu(); if(pc.support){ toast(tr("tNoCopySupport"),4000); return; } duplicateProfile(); };
   menu.querySelector('[data-act="del"]').onclick=()=>{ closeProfileMenu(); deleteProfile(); };
   showPopover(menu,evt);
 }
@@ -2134,7 +2279,7 @@ function hintHold(){ if(!isTouch || seenHint(HINT_HOLD)) return; markHint(HINT_H
 // Tips: one card at a time, each shown once per device, only at the moment the action becomes useful (see checkTips).
 const TIP_KEY="weddingSeatingPlanner.tips"; let tipsSeen={}, tipTimer=null, tipPending=null;
 try{ tipsSeen=JSON.parse(localStorage.getItem(TIP_KEY)||"{}")||{}; }catch(e){ tipsSeen={}; }
-function tipText(k){ const t={ move:isTouch?tr("tipMoveTouch"):tr("tipMove"), pick:isTouch?tr("tipPickTouch"):tr("tipPick"), groups:tr("tipGroups"), full:tr("tipFull"), print:tr("tipPrint") }; return t[k]||""; }
+function tipText(k){ const t={ move:isTouch?tr("tipMoveTouch"):tr("tipMove"), pick:isTouch?tr("tipPickTouch"):tr("tipPick"), groups:tr("tipGroups"), full:can("seats")?tr("tipFull"):tr("tipFullLocked"), print:tr("tipPrint") }; return t[k]||""; }
 function showTip(key){
   if(tipsSeen[key]) return false;
   const el=$("tip"); if(!el || !el.hidden || tour || document.querySelector(".modal-back.open")) return false;   // not now — the trigger will come round again
@@ -2456,7 +2601,8 @@ function makeDraggable(handleEl, moveEl, obj, onEnd, onTap, hooks){   // hooks: 
     else stage.querySelectorAll(".feature.hsel").forEach(x=>x.classList.remove("hsel"));   // grabbing a table un-chooses the decor, so Delete hits the thing chosen last   // decor keeps its handles while the mouse travels to them (tables: hover / focus)
     const sx=e.clientX, sy=e.clientY, ox=obj.x, oy=obj.y, t0=performance.now();
     let moved=false, lifted=false, done=false, holdTimer=null;
-    const unblock=touch?blockCtxMenu():null; if(touch) holdArmed=true;
+    const lockedMove=!!(hooks&&hooks.canMove&&!hooks.canMove());   // the venue fixed where this table stands
+    const unblock=touch?blockCtxMenu():null; if(touch&&!lockedMove) holdArmed=true;
     const slop=touch?10:4;
     const maxX=(state.stage?state.stage.w:1700)-20, maxY=(state.stage?state.stage.h:1360)-20;
     function lift(){ if(done||lifted) return; if(!handleEl.isConnected){ finish(null,true); return; } lifted=true; pointerGesture=true; try{ handleEl.setPointerCapture(e.pointerId); }catch(x){} moveEl.classList.add("lifted");
@@ -2477,7 +2623,8 @@ function makeDraggable(handleEl, moveEl, obj, onEnd, onTap, hooks){   // hooks: 
       handleEl.removeEventListener("pointermove",mv); handleEl.removeEventListener("pointerup",up); handleEl.removeEventListener("pointercancel",up); handleEl.removeEventListener("touchmove",tm);
       if(hooks&&hooks.clear) hooks.clear();
       if(cancelled){ if(lifted&&moved){ obj.x=ox; obj.y=oy; moveEl.style.left=ox+"px"; moveEl.style.top=oy+"px"; } return; }
-      if(touch && !lifted && (moved || (ev && ev.type==="pointercancel"))) hintHold();   // tried to drag, the floor panned instead (iOS often cancels before a >10px move is seen)
+      if(lockedMove){ if(moved && !touch) lockedToast("layout"); }
+      else if(touch && !lifted && (moved || (ev && ev.type==="pointercancel"))) hintHold();   // tried to drag, the floor panned instead (iOS often cancels before a >10px move is seen)
       if(touch && lifted && moved) markHint(HINT_HOLD);                                  // already knows the gesture
       if(lifted&&moved){ if(hooks&&hooks.drop&&hooks.drop(obj,ox,oy)) return; save(); if(onEnd)onEnd(); }
       else if(!moved && onTap && ev && ev.type!=="pointercancel") onTap();
@@ -2485,7 +2632,8 @@ function makeDraggable(handleEl, moveEl, obj, onEnd, onTap, hooks){   // hooks: 
     function up(ev){ finish(ev,false); }
     activeDragCancel=()=>finish(null,true);
     handleEl.addEventListener("pointermove",mv); handleEl.addEventListener("pointerup",up); handleEl.addEventListener("pointercancel",up); handleEl.addEventListener("touchmove",tm,{passive:false});
-    if(touch) holdTimer=setTimeout(lift, 320); else lift();
+    if(lockedMove){ /* a tap still focuses the table; a finger pans the floor */ }
+    else if(touch) holdTimer=setTimeout(lift, 320); else lift();
   });
 }
 // Resize a feature from its bottom-right corner, keeping the top-left corner fixed (x/y are the centre).
@@ -2531,6 +2679,7 @@ function addTableRotateHandle(wrap, t, offset){
     wrap.querySelectorAll(".tnum,.tcount").forEach(x=>{ x.style.display="inline-block"; x.style.transform=`rotate(${-(t.rot||0)}deg)`; });
   };
   apply();
+  if(!can("layout")){ h.remove(); return; }   // the rotation is shown, but only the venue changes it
   makeRotatable(h, wrap, t, apply, ()=>renderTables([t.id]));   // the name layout depends on the rotation
 }
 // The whole space: size + floor material, plus a drag-to-resize corner handle.
@@ -2541,6 +2690,7 @@ function applyStage(){
 function makeStageResizable(h){
   h.addEventListener("pointerdown",e=>{
     if(e.button!==0) return;
+    if(!can("floor")){ lockedToast("floor"); return; }
     e.preventDefault(); e.stopPropagation(); h.setPointerCapture(e.pointerId); pointerGesture=true;
     const sx=e.clientX, sy=e.clientY, ow=state.stage.w, oh=state.stage.h;
     function mv(ev){ state.stage.w=Math.max(700,Math.round(ow+(ev.clientX-sx)/zoom)); state.stage.h=Math.max(600,Math.round(oh+(ev.clientY-sy)/zoom)); stage.style.width=state.stage.w+"px"; stage.style.height=state.stage.h+"px"; }
@@ -2559,13 +2709,14 @@ function openMenu(tableId, evt){
   const t=state.tables.find(x=>x.id===tableId); if(!t) return;
   $("menuTitle").textContent = t.shape==="head" ? tr("menuTitleHead") : tr("menuTitle");
   $("menuCapLabel").textContent = t.shape==="head" ? tr("capLabelHead") : tr("capLabel");
-  $("menuLabel").value=t.label;
+  $("menuLabel").value=t.label; $("menuLabel").readOnly=!can("labels");
   $("menuCapCustom").value=[8,10,12].includes(t.capacity)?"":t.capacity;
-  menu.querySelectorAll(".caps button").forEach(b=>b.classList.toggle("active",+b.dataset.cap===t.capacity));
+  const mx=maxSeatsFor(t); $("menuCapCustom").max=mx; $("menuCapCustom").disabled=!can("seats");
+  menu.querySelectorAll(".caps button").forEach(b=>{ b.classList.toggle("active",+b.dataset.cap===t.capacity); b.disabled=!can("seats") || (+b.dataset.cap>mx && +b.dataset.cap>t.capacity); });
   showPopover(menu,evt);
 }
 function closeMenu(){ menu.style.display="none"; activeMenuTableId=null; }
-$("menuLabel").addEventListener("input",e=>{ const t=state.tables.find(x=>x.id===activeMenuTableId); if(!t)return; t.label=e.target.value; save(); renderTables([t.id]); });
+$("menuLabel").addEventListener("input",e=>{ const t=state.tables.find(x=>x.id===activeMenuTableId); if(!t)return; if(!can("labels")){ e.target.value=t.label; lockedToast("labels"); return; } t.label=e.target.value; save(); renderTables([t.id]); });
 $("menuLabel").addEventListener("keydown",e=>{ e.stopPropagation(); if(e.key==="Enter"||e.key==="Escape") closeMenu(); });
 menu.querySelectorAll(".caps button").forEach(b=>b.addEventListener("click",()=>setCapacity(+b.dataset.cap)));
 $("menuCapCustom").addEventListener("change",e=>{ const v=parseInt(e.target.value,10); if(v>=1&&v<=30) setCapacity(v); });
@@ -2576,6 +2727,8 @@ function resizeSeats(t,n){   // keeps everyone seated who fits; returns how many
 }
 function setCapacity(n){
   const t=state.tables.find(x=>x.id===activeMenuTableId); if(!t)return;
+  if(!can("seats")){ lockedToast("seats"); return; }
+  if(n>maxSeatsFor(t) && n>t.capacity){ toast(tr("tMaxSeats",{n:maxSeatsFor(t), v:ACCESS.venueName||tr("theVenue")}),4000); n=Math.max(t.capacity, maxSeatsFor(t)); }
   if(t.shape==="head") n=Math.max(3,n);
   const bumped=resizeSeats(t,n); save(); renderTables([t.id]);
   menu.querySelectorAll(".caps button").forEach(bt=>bt.classList.toggle("active",+bt.dataset.cap===n));
@@ -2601,17 +2754,20 @@ function markMergeTarget(src,dst){
   tag.textContent=tr("dragMerge",{b:dst.label}); tag.className="merge"; tag.hidden=false;
 }
 function tableHooks(){ return {
-  move:t=>markMergeTarget(t, mergeTargetFor(t)),
+  canMove:()=>can("layout"),
+  move:t=>{ if(can("tables")) markMergeTarget(t, mergeTargetFor(t)); },
   clear:()=>markMergeTarget(null,null),
-  drop:(t,ox,oy)=>{ const dst=mergeTargetFor(t); markMergeTarget(null,null); if(!dst) return false;
+  drop:(t,ox,oy)=>{ if(!can("tables")) return false; const dst=mergeTargetFor(t); markMergeTarget(null,null); if(!dst) return false;
     flushLiveRow();   // a name still being typed in the sheet joins the merge
     t.x=ox; t.y=oy; renderTables([t.id]);   // back where it was: the merge is the outcome, not the overlap
     const n=tableSeated(t).length, c=Math.max(dst.capacity, tableSeated(dst).length+n);
     if(c>30){ toast(tr("tMergeTooBig",{b:dst.label,c}),3500); return true; }   // 30 = the sanitizer's clamp: a bigger table would lose chairs on reload
+    if(c>dst.capacity && (!can("seats") || c>maxSeatsFor(dst))){ lockedToast("seats"); return true; }
     confirmAction(tr("confirmMerge",{a:t.label,b:dst.label,n,c}), ()=>mergeTables(t,dst), {key:MERGE_SKIP_KEY, title:tr("mergeTitle"), ok:tr("mergeOk")});
     return true; }
 }; }
 function mergeTables(src,dst){
+  if(!can("tables")) return;
   if(!state.tables.includes(src)||!state.tables.includes(dst)) return;   // gone meanwhile (undo, a pull)
   const ids=tableSeated(src); const need=tableSeated(dst).length+ids.length;
   if(need>dst.capacity) resizeSeats(dst, dst.shape==="head"?Math.max(3,need):need);
@@ -2640,6 +2796,7 @@ function confirmAction(text, onYes, opts){   // the same small modal for every "
 }
 $("delModal").addEventListener("click",e=>{ e.stopPropagation(); if(e.target===e.currentTarget&&e.currentTarget._close) e.currentTarget._close(); });   // a click inside must not close the menu underneath
 function deleteTable(id){
+  if(!can("tables")){ lockedToast("tables"); return; }
   const t=state.tables.find(x=>x.id===id); if(!t) return;
   confirmDelete(tr("confirmDeleteTable",{n:t.label}), ()=>{
     if(!state.tables.some(x=>x.id===id)) return;   // gone meanwhile (undo, a pull)
@@ -2650,6 +2807,7 @@ function deleteTable(id){
   });
 }
 function deleteFeature(f){
+  if(featLocked(f)){ lockedToast("decor"); return; }
   const name=f.label||tr("decor");
   confirmDelete(tr("confirmDeleteFeature",{n:name}), ()=>{
     const i=(state.features||[]).indexOf(f); if(i<0) return;   // gone meanwhile
@@ -2979,7 +3137,7 @@ const TOUR_KEY="weddingSeatingPlanner.tour.v1", WELCOME_KEY="weddingSeatingPlann
 let tour=null;
 // First visit: one centred card with the three things that matter, "Ξεκινάω" or "Δείξτε μου τα βήματα" (the spotlight tour).
 function startWelcome(){
-  if(tour) return;
+  if(tour || $("claimModal").classList.contains("open")) return;
   setPick(null); hideSug(); document.querySelectorAll(".modal-back.open").forEach(m=>m.classList.remove("open"));
   tour={ steps:[{key:"welcome",target:null,welcome:true}], i:0 }; $("tour").hidden=false; document.body.classList.add("touring");
   try{ localStorage.setItem(WELCOME_KEY,"1"); }catch(e){}
@@ -3038,7 +3196,8 @@ function placeTour(){
   const visible=!!(r&&r.width>0&&r.height>0);
   if(visible){ spot.style.left=(r.left-6)+"px"; spot.style.top=(r.top-6)+"px"; spot.style.width=(r.width+12)+"px"; spot.style.height=(r.height+12)+"px"; spot.style.outlineWidth="2px"; }
   else { spot.style.left=(vw/2)+"px"; spot.style.top=(vh/2)+"px"; spot.style.width="0px"; spot.style.height="0px"; spot.style.outlineWidth="0"; }
-  const tx=(T.tour&&T.tour[st.key])||T_ALL.el.tour[st.key];
+  const tk=(st.key==="dFloor"&&!can("layout"))?"dFloorLocked":st.key;
+  const tx=(T.tour&&T.tour[tk])||T_ALL.el.tour[tk];
   const last=tour.i===tour.steps.length-1;
   card.innerHTML=`<button class="tour-x" data-a="skip" title="${escapeHtml(tr("tourSkip"))}">✕</button><div class="tour-step">${tour.i+1} / ${tour.steps.length}</div><h3>${escapeHtml(tx[0])}</h3><p>${tx[1]}</p>
     <div class="tour-btns">${last?"":`<button class="ibtn" data-a="skip">${escapeHtml(tr("tourSkip"))}</button>`}<span class="spacer"></span>${tour.i>0?`<button class="ibtn" data-a="back">${escapeHtml(tr("tourBack"))}</button>`:""}<button class="ibtn primary" data-a="next">${escapeHtml(last?tr("tourDone"):tr("tourNext"))}</button></div>`;
@@ -3068,13 +3227,15 @@ $("searchClear").addEventListener("click",()=>{ searchInp.value=""; searchQ=""; 
 //  TOOLBAR · MORE MENU
 // ============================================================
 function addRoundTable(){
+  if(!can("tables")){ lockedToast("tables"); return; }
   const id=nextId(); const c=visibleCenter();
   const roundCount=state.tables.filter(t=>t.shape!=="head").length;
-  state.tables.push({id, label:String(roundCount+1), shape:"round", x:clamp(c.x,120,state.stage.w-120), y:clamp(c.y,120,state.stage.h-120), capacity:10, seats:Array(10).fill(null)});
+  const cap=Math.min(10, maxSeatsFor({shape:"round"}));
+  state.tables.push({id, label:String(roundCount+1), shape:"round", x:clamp(c.x,120,state.stage.w-120), y:clamp(c.y,120,state.stage.h-120), capacity:cap, seats:Array(cap).fill(null)});
   save(); renderTables(); setNav(false); toast(tr("tTableAdded")); focusTable(id,{row:isTouch?null:0});
 }
 $("addTableBtn").addEventListener("click",addRoundTable);
-$("addHeadBtn").addEventListener("click",()=>{ const c=visibleCenter(); const t=makeHeadTable(nextId()); t.x=clamp(c.x,200,state.stage.w-200); t.y=clamp(c.y,100,state.stage.h-100); state.tables.push(t); save(); renderTables(); setNav(false); toast(tr("tHeadAdded")); focusTable(t.id); });
+$("addHeadBtn").addEventListener("click",()=>{ if(!can("tables")){ lockedToast("tables"); return; } const c=visibleCenter(); const t=makeHeadTable(nextId()); t.x=clamp(c.x,200,state.stage.w-200); t.y=clamp(c.y,100,state.stage.h-100); state.tables.push(t); save(); renderTables(); setNav(false); toast(tr("tHeadAdded")); focusTable(t.id); });
 $("addGuestBtn").addEventListener("click",()=>{
   const ta=$("guestInput");
   // "Οικ. Παπαδόπουλου:" on its own line names an invitation; the names under it belong to it until a blank line or the next such line
@@ -3123,7 +3284,13 @@ function resetPlan(){
   wipeAllowedUntil=Date.now()+60000;
   if(!IS_LAB){ try{ localStorage.removeItem(STORE_KEY); }catch(e){} }   // the lab must never touch the real app's legacy save
   setPick(null); unfocusTable();
-  state=IS_LAB?labState():defaultState(); uid=state._uid; fontScale=1; applyStage(); $("stageFloor").value=state.stageMaterial; save(); renderAll();
+  if(!PERM_KEYS.every(k=>can(k))){   // a venue plan: names, seating and invitations go — the venue's space stays
+    state.guests={}; state.parties=[]; state.activeGroupId=null; state.tables.forEach(t=>{ t.seats=t.seats.map(()=>null); });
+    save(); renderAll(); toast(tr("tResetKeepSpace",{v:ACCESS.venueName||tr("theVenue")}),4500); return;
+  }
+  state=IS_LAB?labState():defaultState(); uid=state._uid; fontScale=1;
+  state.tables.forEach(t=>{ const m=maxSeatsFor(t); if(t.capacity>m){ t.capacity=m; t.seats=t.seats.slice(0,m); } });
+  applyStage(); $("stageFloor").value=state.stageMaterial; save(); renderAll();
   toast((cur&&cur.cloudId)?tr("tResetHist"):tr("tReset"),3500);
 }
 function planJSON(){ const cur=currentProfile(); return JSON.stringify({...state, _profileName:cur.name}, null, 2); }
@@ -3157,6 +3324,7 @@ function doImportData(s, suggested){
 // Merge a plan file INTO the current plan. "names" = guests + their groups / invitations (matched by name, so colours are kept);
 // "tables" = who sits with whom. The layout (space, decor, table positions) only changes with replaceAll.
 function mergePlanInto(src, mode){
+  if((mode==="replaceAll" && !PERM_KEYS.every(k=>can(k))) || (mode==="appendAll" && !can("tables"))){ lockedToast(mode==="appendAll"?"tables":"layout"); return; }
   sanitizePlan(src); if(src.layoutVersion!==LAYOUT_VERSION) migrateLayout(src);
   if(mode==="replaceAll"){
     delete src._profileName; src._uid=Math.max(src._uid||0, uid);
@@ -3173,7 +3341,8 @@ function mergePlanInto(src, mode){
     state.guests[nid]={ name:sg.name, groupId:(sg.groupId&&gmap[sg.groupId])||null, partyId:(sg.partyId&&pmap[sg.partyId])||null, ...(sg.status?{status:sg.status}:{}), ...(sg.note?{note:sg.note}:{}) };
     idmap[sid]=nid; gCount++; });
   const remap=seats=>seats.map(x=>(x&&idmap[x])||null);
-  const addTable=st=>{ const t={...st, id:nextId(), seats:remap(st.seats)};   // a new table steps aside if the spot is taken (a file exported from this very plan lands on top of it)
+  const addTable=st=>{ const t={...st, id:nextId(), seats:remap(st.seats)};
+    if(t.shape!=="head"){ const m=maxSeatsFor(t); if(t.capacity>m){ t.capacity=m; t.seats=t.seats.slice(0,m); } }   // the venue's seat maximum: extra guests stay visibly unseated   // a new table steps aside if the spot is taken (a file exported from this very plan lands on top of it)
     let k=0; while(k<20 && state.tables.some(x=>Math.hypot(x.x-t.x,x.y-t.y)<40)){ t.x+=40; t.y+=40; k++; } state.tables.push(t); };
   let tCount=0, added=0, grown=0;
   if(mode==="appendAll"){   // their tables come in as new tables, where they were, with their people
@@ -3183,8 +3352,8 @@ function mergePlanInto(src, mode){
     const used=new Set(), pairs=src.tables.map(st=>{ const t=state.tables.find(x=>!used.has(x.id)&&x.shape===st.shape&&norm(x.label)===norm(st.label)); if(t) used.add(t.id); return [st,t||null]; });
     pairs.forEach(p=>{ if(p[1]) return; const t=state.tables.find(x=>!used.has(x.id)&&x.shape===p[0].shape); if(t){ used.add(t.id); p[1]=t; } });   // never a round table onto the head table
     pairs.forEach(([st,t])=>{
-      if(!t){ addTable(st); tCount++; added++; return; }
-      const seats=remap(st.seats), need=seats.reduce((m,x,i)=>x?i+1:m,0); if(need>t.capacity){ t.capacity=Math.min(30,need); grown++; }
+      if(!t){ if(can("tables")){ addTable(st); tCount++; added++; } return; }   // no new tables when the venue fixed them: those guests stay in the list
+      const seats=remap(st.seats), need=seats.reduce((m,x,i)=>x?i+1:m,0); if(need>t.capacity && can("seats")){ t.capacity=Math.min(30,need,Math.max(t.capacity,maxSeatsFor(t))); grown++; }
       t.seats=Array(t.capacity).fill(null); seats.forEach((x,i)=>{ if(i<t.capacity) t.seats[i]=x; }); tCount++; });
   }
   pruneParties(); sanitizePlan(state); save(); renderAll();
@@ -3198,7 +3367,11 @@ function pickImportFile(){
     r.readAsText(f); };
   inp.click();
 }
-function openImport(){ $("importText").value=""; const r=document.querySelector('input[name="imode"][value="new"]'); if(r) r.checked=true; $("importModal").classList.add("open"); }
+function openImport(){ $("importText").value=""; const r=document.querySelector('input[name="imode"][value="new"]'); if(r) r.checked=true;
+  const allOpen=PERM_KEYS.every(k=>can(k));
+  const hide={appendAll:!can("tables"), replaceAll:!allOpen};
+  document.querySelectorAll('input[name="imode"]').forEach(x=>{ const l=x.closest("label"); if(l) l.hidden=!!hide[x.value]; });
+  $("importModal").classList.add("open"); }
 $("importPaste").addEventListener("click",()=>{
   const txt=$("importText").value.trim(); if(!txt){ toast(tr("tPasteFirst")); return; }
   try{ doImportData(JSON.parse(txt), tr("pastedPlan")); $("importModal").classList.remove("open"); }
@@ -3240,14 +3413,15 @@ $("moreBtn").addEventListener("click",e=>{
   const m=$("moremenu"); m.classList.remove("expanded");
   const primary=[]; if(!IS_LAB) primary.push(["share",tr("mShare")]);
   primary.push(["groups",tr("mGroups")],["print",tr("mPrint")],["tour",tr("mTour")]);
+  { const cp=currentProfile(); if(!IS_LAB && cp && cp.cloudId) primary.push(["access",tr("mAccess")]); }
   const more=[];
-  if(isNarrow()) more.push(["cap",tr("capPlan")],["newplan",tr("newPlan")],["planmore",tr("planMore")],["cap",tr("tools")],["round",tr("mRound")],["head",tr("mHead")],["decor",tr("mDecor")],["auto",tr("mAuto")]);
+  if(isNarrow()) more.push(["cap",tr("capPlan")],["newplan",tr("newPlan")],["planmore",tr("planMore")],["cap",tr("tools")],...(can("tables")?[["round",tr("mRound")],["head",tr("mHead")]]:[]),["decor",tr("mDecor")],["auto",tr("mAuto")]);
   more.push(["cap",tr("capFiles")],["guests",tr("mImportGuests")],["export",tr("mExport")],["import",tr("mImport")]);
   if(!IS_LAB) more.push(["history",tr("mHistory")]);
   if(skipDeleteConfirm()) more.push(["askdel",tr("mAskDel")]);
   more.push(["reset",tr("mReset")]);
   if(!IS_LAB) more.push(["cap",tr("mLang")],["lang-el","ΕΛ · Ελληνικά"],["lang-en","EN · English"],["lang-de","DE · Deutsch"]);
-  const MI={share:"cloud",groups:"people",print:"print",tour:"help",askdel:"help",newplan:"plus",planmore:"edit",round:"table",head:"heart",decor:"decor",auto:"spark",guests:"dl",export:"up",import:"dl",history:"clock"};
+  const MI={share:"cloud",groups:"people",print:"print",tour:"help",askdel:"help",access:"people",newplan:"plus",planmore:"edit",round:"table",head:"heart",decor:"decor",auto:"spark",guests:"dl",export:"up",import:"dl",history:"clock"};
   const row=([a,l])=>a==="cap"?`<div class="gm-cap">${escapeHtml(l)}</div>`:`<div class="gm-item${a==="reset"?" danger":""}${a==="lang-"+LANG?" on":""}" data-act="${a}">${MI[a]?ICON(MI[a]):'<span class="ic"></span>'}${escapeHtml(l)}</div>`;
   m.innerHTML=primary.map(row).join("")+`<div class="gm-sep"></div><div class="gm-item more" data-act="more"><span class="ic"></span>${escapeHtml(tr("mMore"))} ›</div><div class="gm-more">${more.map(row).join("")}</div>`;
   m.querySelectorAll(".gm-item").forEach(it=>it.onclick=ev=>{ ev.stopPropagation(); const a=it.dataset.act;
@@ -3255,8 +3429,9 @@ $("moreBtn").addEventListener("click",e=>{
     m.style.display="none";
     if(a==="share") openCloud(); else if(a==="guests") importGuestList(); else if(a==="head") $("addHeadBtn").click(); else if(a==="decor") openDecor();
     else if(a==="newplan") newProfile(); else if(a==="planmore") openProfileMenu(anchorOf($("moreBtn")));
+    else if(a==="access") openAccess();
     else if(a==="round") addRoundTable(); else if(a==="history") openHistory(); else if(a==="groups") openGroupsModal(); else if(a==="tour") startTour();
-    else if(a==="auto") autoSeat(); else if(a==="export") openExport(); else if(a==="import") openImport(); else if(a==="print") openPrint(); else if(a==="reset") resetPlan();
+    else if(a==="auto") autoSeat(); else if(a==="export"){ if((currentProfile()||{}).support){ toast(tr("tNoCopySupport"),4000); return; } openExport(); } else if(a==="import") openImport(); else if(a==="print") openPrint(); else if(a==="reset") resetPlan();
     else if(a==="askdel"){ try{ localStorage.removeItem(DEL_SKIP_KEY); localStorage.removeItem(MERGE_SKIP_KEY); }catch(e){} toast(tr("tAskDel"),2500); }
     else if(a.startsWith("lang-")){ const l=a.slice(5); location.href=({el:"seating-planner-el.html",en:"seating-planner.html",de:"seating-planner-de.html"})[l]; } });
   showPopover(m, anchorOf(e.currentTarget));
@@ -3267,19 +3442,27 @@ $("moreBtn").addEventListener("click",e=>{
 // ============================================================
 let cloudTimer=null, pushInFlight=false, pendingSnap=null, pointerGesture=false, conflictTimer=null;
 function planPayload(){ const cur=currentProfile(); return { name:cur.name, plan:{...state, _profileName:cur.name} }; }
-// Edit key rides in the URL #fragment (never sent to servers / logs); omit it for a view-only link.
+// Keys ride in the URL #fragment (never sent to servers / logs). #key = edit (couple) · #view = view only.
+// A venue's own key is never offered as a share link (couple links come from the venue console).
 function shareLink(cur, viewOnly){ const base=location.origin+location.pathname+"?plan="+cur.cloudId;
-  return (viewOnly||!cur.editKey)? base : base+"#key="+cur.editKey; }
+  if(viewOnly) return cur.viewKey? base+"#view="+cur.viewKey : "";
+  return (cur.editKey && cur.role!=="venue")? base+"#key="+cur.editKey : ""; }
 function setCloudDot(st){ const b=$("cloudBtn"); if(!b) return;
   $("cloudTxt").textContent={ok:tr("cloudOk"),pending:tr("cloudPending"),err:tr("cloudErr")}[st]||tr("cloudIdle");
   b.classList.toggle("on", st==="ok"); b.classList.toggle("err", st==="err"); b.classList.toggle("pending", st==="pending"); }
 function fmtTime(ms){ try{ return ms? new Date(ms).toLocaleString(LANG):"—"; }catch(e){ return "—"; } }
-function canPush(prof){ return !IS_LAB && !!(prof && prof.cloudId && !prof.readonly && !prof.unsynced && (prof.editKey || getSyncCode())); }
+function canPush(prof){ return !IS_LAB && !!(prof && prof.cloudId && !prof.readonly && !prof.unsynced && prof.role!=="viewer" && (!prof.support || prof.supportEdit) && (prof.editKey || prof.supportKey || getSyncCode())); }
 let wipeAllowedUntil=0;   // set by deliberate wipes (reset / undo / redo) so the server accepts an empty plan
 const PLAN_ID_RE=/^[A-Za-z0-9_-]{8,64}$/;   // plan ids are opaque handles — never let one rewrite an API path
 function planPath(id){ return SYNC_URL+"/plans/"+encodeURIComponent(id); }
-function authHeaders(prof){ const h={"Content-Type":"application/json"};
-  if(prof.editKey) h["X-Edit-Key"]=prof.editKey; else if(getSyncCode()) h["X-Sync-Code"]=getSyncCode(); return h; }
+// Every request carries this device's credential for the plan: edit key · support key · sync code · view key.
+function authHeaders(prof){ const h={"Content-Type":"application/json","X-Client":"2"}; prof=prof||{}; const code=getSyncCode();
+  if(prof.editKey) h["X-Edit-Key"]=prof.editKey;
+  else if(prof.supportKey) h["X-Support-Key"]=prof.supportKey;
+  else if(code && !prof.readonly) h["X-Sync-Code"]=code;
+  else if(prof.viewKey) h["X-View-Key"]=prof.viewKey;
+  else if(code) h["X-Sync-Code"]=code;
+  return h; }
 // True while the user is mid-interaction — used to defer a cloud pull so it can't clobber live edits.
 function interactionBusy(){
   if(dragData||pick||pointerGesture||holdArmed||viewAnim||tour) return true;
@@ -3289,17 +3472,20 @@ function interactionBusy(){
   for(const id of ["groupmenu","guesteditor","tablemenu","featuremenu","profilemenu","moremenu","fillmenu","viewmenu","palette","placemenu"]){ const el=$(id); if(el && el.style.display==="block") return true; }
   return false;
 }
+// A new cloud plan needs proof of purchase: this device's own couple plan (plans come from TakeaSeat or a venue).
+function uploadParent(){ return profiles.profiles.find(p=>p.cloudId&&p.editKey&&!p.support&&!p.readonly&&p.owner!=="venue"&&p.role!=="venue"&&p.role!=="viewer")||null; }
 async function cloudCreate(){
-  const r=await fetch(SYNC_URL+"/plans",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(planPayload())});
+  const par=uploadParent(); if(!par) throw new Error("not_allowed");
+  const r=await fetch(SYNC_URL+"/plans",{method:"POST",headers:{"Content-Type":"application/json","X-Client":"2","X-Edit-Key":par.editKey},body:JSON.stringify({...planPayload(), parentId:par.cloudId})});
   const d=await r.json(); if(!r.ok||!d.id) throw new Error(d.error||"upload failed");
-  const cur=currentProfile(); cur.cloudId=d.id; cur.editKey=d.editKey; cur.cloudUpdated=d.updated; cur.readonly=false; saveProfilesIdx(); registerUnderCode(cur); return d;
+  const cur=currentProfile(); cur.cloudId=d.id; cur.editKey=d.editKey; cur.viewKey=d.readKey||""; cur.role="couple"; cur.owner="couple"; cur.perms=null;
+  cur.cloudUpdated=d.updated; cur.readonly=false; saveProfilesIdx(); registerUnderCode(cur); applyAccess(); return d;
 }
-function snapshotFor(prof){ return { profId:prof.id, cloudId:prof.cloudId, editKey:prof.editKey||"", name:prof.name,
+function snapshotFor(prof){ return { profId:prof.id, cloudId:prof.cloudId, editKey:prof.editKey||"", headers:authHeaders(prof), name:(prof.support||(ACCESS.restricted&&prof.id===profiles.activeId))?undefined:prof.name,
   planJSON:JSON.stringify({...state, _profileName:prof.name}), baseUpdated:prof.cloudUpdated||0, allowWipe:Date.now()<wipeAllowedUntil, guests:Object.keys(state.guests).length }; }
 async function cloudPush(snap){
   const prof=profiles.profiles.find(p=>p.id===snap.profId); if(!prof||!prof.cloudId) return;
-  const headers={"Content-Type":"application/json"};
-  if(snap.editKey) headers["X-Edit-Key"]=snap.editKey; else if(getSyncCode()) headers["X-Sync-Code"]=getSyncCode();
+  const headers={...snap.headers};
   const r=await fetch(planPath(snap.cloudId),{method:"PUT",headers,
     body:JSON.stringify({ name:snap.name, plan:JSON.parse(snap.planJSON), baseUpdated:snap.baseUpdated, allowWipe:snap.allowWipe })});
   if(r.status===422){   // the server refused to wipe a full plan with this empty one — refill from the server instead
@@ -3316,10 +3502,47 @@ async function cloudPush(snap){
     else { setCloudDot("pending"); clearTimeout(conflictTimer); conflictTimer=setTimeout(()=>{ pullIfNewer(); },4000); }   // busy right now — try again shortly
     return;
   }
+  if(r.status===401||r.status===403){
+    if(prof.editKey && prof.editKey!==snap.editKey) return cloudPush({...snap, editKey:prof.editKey, headers:authHeaders(prof)});   // new links made here while this save waited
+    const d=await r.json().catch(()=>({})); accessLost(prof, d.error, d.at); return; }
+  if(r.status===404){ accessLost(prof, "gone"); return; }   // deleted (venue console / erasure): stop retrying
   const d=await r.json(); if(!r.ok) throw new Error(d.error||"update failed");
-  prof.cloudUpdated=d.updated; prof.cloudGuests=snap.guests; saveProfilesIdx(); registerUnderCode(prof); return d;
+  prof.cloudUpdated=d.updated; prof.cloudGuests=snap.guests; saveProfilesIdx(); registerUnderCode(prof);
+  if(d.enforced && d.plan && prof.id===profiles.activeId){   // the venue locked part of that change: show what was kept
+    const newer=pendingSnap && pendingSnap!==snap && pendingSnap.profId===prof.id;
+    if(newer) pendingSnap.baseUpdated=d.updated;   // a newer save is waiting: it will come back fixed too, without losing what was typed meanwhile
+    else if(!interactionBusy()) applyPulledPlan(prof,{plan:d.plan, updated:d.updated, name:prof.name});
+    else { clearTimeout(conflictTimer); conflictTimer=setTimeout(()=>pullIfNewer(true),4000); }
+    if(Date.now()-(prof._enfToast||0)>60000){ prof._enfToast=Date.now(); toast(tr("tLockedByVenue",{v:prof.venueName||tr("theVenue")}),4500); }
+  }
+  return d;
 }
-async function cloudFetch(id){ if(!PLAN_ID_RE.test(String(id))) throw new Error("bad id"); const r=await fetch(planPath(id)); const d=await r.json(); if(!r.ok) throw new Error(d.error||"not found"); return d; }
+// The server refused this device (a support session ended, the couple's link was reset, a view link expired…).
+function accessLost(prof, code, at){
+  if(!prof) return;
+  if(code==="locked"){ toast(tr("tLockedByVenue",{v:prof.venueName||tr("theVenue")}),4500); pullIfNewer(true); return; }
+  if(prof.readonly && prof._lostShown) return;
+  prof.readonly=true; prof._lostShown=true; pendingSnap=null; clearTimeout(cloudTimer); cloudTimer=null;
+  saveProfilesIdx(); setCloudDot("err");
+  toast(prof.support?tr("supEnded"):code==="key_required"?tr("accViewExpired"):code==="key_reset"?tr("accResetBy",{t:fmtTime(at)}):code==="gone"?tr("accGone"):tr("accLost"),9000);
+  if(prof.id===profiles.activeId) applyAccess();
+}
+// What the server says about this device's rights on the plan → remembered on the profile.
+function adoptAccess(prof, d){
+  if(!prof||!d||!d.role) return false;
+  const before=JSON.stringify([prof.role,prof.perms,prof.owner,prof.venueName,prof.template,prof.couplePerms,prof.supportInfo&&prof.supportInfo.expires]);
+  prof.role=d.role; prof.perms=d.perms||null; prof.owner=(d.owner&&d.owner.type)||"couple"; prof.venueName=(d.owner&&d.owner.venueName)||"";
+  prof.template=!!d.template; prof.couplePerms=d.couplePerms||null; prof.venueContact=(d.owner&&d.owner.venueContact)||""; prof.legacyOpenUntil=d.legacyOpenUntil||0; prof.layoutSet=d.layoutSet!==false;
+  if(d.readKey) prof.viewKey=d.readKey;
+  if(d.role==="viewer") prof.readonly=true; else if(!prof._lostShown && !prof.support) prof.readonly=false;
+  if("support" in d) prof.supportInfo=d.support||null;
+  if(d.audit) prof.audit=d.audit;
+  if(d.supportExpires) prof.supportExpires=d.supportExpires;
+  return before!==JSON.stringify([prof.role,prof.perms,prof.owner,prof.venueName,prof.template,prof.couplePerms,prof.supportInfo&&prof.supportInfo.expires]);
+}
+async function cloudFetch(id, prof){ if(!PLAN_ID_RE.test(String(id))) throw new Error("bad id");
+  const r=await fetch(planPath(id),{headers:authHeaders(prof)}); const d=await r.json().catch(()=>({}));
+  if(!r.ok){ const e=new Error(d.error||"not found"); e.status=r.status; e.code=d.error; throw e; } return d; }
 async function cloudDelete(prof){
   if(!prof||!prof.cloudId) return;
   try{ await fetch(planPath(prof.cloudId),{method:"DELETE",headers:authHeaders(prof)}); }catch(e){}
@@ -3334,20 +3557,21 @@ function randCode(){ const c="abcdefghijkmnpqrstuvwxyz23456789"; let s="";
   const a=(window.crypto&&crypto.getRandomValues)?crypto.getRandomValues(new Uint8Array(16)):null;
   for(let i=0;i<16;i++) s+=c[(a?a[i]:Math.floor(Math.random()*256))%c.length]; return s; }
 function codeUrl(){ return SYNC_URL+"/codes/"+encodeURIComponent(getSyncCode()); }
-async function registerUnderCode(prof){ const code=getSyncCode(); prof=prof||currentProfile(); if(!code||!prof||!prof.cloudId) return;
+async function registerUnderCode(prof){ const code=getSyncCode(); prof=prof||currentProfile(); if(!code||!prof||!prof.cloudId||prof.support||prof.readonly||prof.codeOff) return;
   const headers={"Content-Type":"application/json"}; if(prof.editKey) headers["X-Edit-Key"]=prof.editKey;
   try{ await fetch(codeUrl(),{method:"POST",headers,body:JSON.stringify({id:prof.cloudId,name:prof.name,updated:prof.cloudUpdated})}); }catch(e){} }
-async function registerAllUnderCode(){ const code=getSyncCode(); if(!code) return; for(const p of profiles.profiles){ if(p.cloudId) await registerUnderCode(p); } }
+async function registerAllUnderCode(){ const code=getSyncCode(); if(!code) return; for(const p of profiles.profiles){ if(p.cloudId&&!p.support&&!p.readonly) await registerUnderCode(p); } }
 async function syncFromCode(){ const code=getSyncCode(); if(!code) return 0;
   let plans; try{ const r=await fetch(codeUrl()); plans=(await r.json()).plans||[]; }catch(e){ return 0; }
   let added=0;
   for(const p of plans){ if(profiles.profiles.some(x=>x.cloudId===p.id)) continue;
-    try{ const d=await cloudFetch(p.id); const s=d.plan||{}; if(!s.tables) continue; delete s._profileName;
+    try{ const d=await cloudFetch(p.id,{}); const s=d.plan||{}; if(!s.tables) continue; delete s._profileName;
       sanitizePlan(s); if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s);
       const pid=newProfileId();
       let stored=true; try{ localStorage.setItem(planKey(pid), JSON.stringify(s)); }catch(e){ stored=false; }
       if(!stored) continue;
-      profiles.profiles.push({ id:pid, name:d.name||p.name||tr("sharedPlan"), cloudId:p.id, editKey:p.editKey||"", cloudUpdated:d.updated }); added++;
+      const np={ id:pid, name:d.name||p.name||tr("sharedPlan"), cloudId:p.id, editKey:p.editKey||"", cloudUpdated:d.updated }; adoptAccess(np,d); np.readonly=false;
+      profiles.profiles.push(np); added++;
     }catch(e){}
   }
   if(added){ saveProfilesIdx(); renderProfiles(); }
@@ -3359,10 +3583,11 @@ function startCloudPoll(){ if(cloudPoll) return;
     if(pushInFlight||cloudTimer||pendingSnap) return;
     if(interactionBusy()) return;
     if(getSyncCode()) await syncFromCode();
-    const cur=currentProfile(); if(cur&&cur.cloudId){
-      try{ const d=await cloudFetch(cur.cloudId);
+    const cur=currentProfile(); if(cur&&cur.cloudId&&!(cur.readonly&&cur._lostShown)){
+      try{ const d=await cloudFetch(cur.cloudId, cur);
         if(d.updated && (!cur.cloudUpdated||d.updated>cur.cloudUpdated) && !interactionBusy() && !cloudTimer){ applyPulledPlan(cur,d); toast(tr("cUpdated")); }
-      }catch(e){}
+        else if(adoptAccess(cur,d)){ saveProfilesIdx(); applyAccess(); renderAll(); resetHistory(); }   // the venue changed what the couple may do: no undo across it
+      }catch(e){ if(e.status===401||e.status===403) accessLost(cur, e.code); else if(e.status===404) accessLost(cur,"gone"); }
     }
   }, 15000);
 }
@@ -3379,8 +3604,12 @@ function scheduleCloudPush(){
 }
 async function runPush(){
   cloudTimer=null; const snap=pendingSnap; if(!snap) return;
+  if(pushInFlight){ cloudTimer=setTimeout(runPush, 800); return; }   // one save at a time (a slow network must not send two with the same base)
   pushInFlight=true;
-  try{ await cloudPush(snap); pendingSnap=null; setCloudDot("ok"); }
+  try{ const res=await cloudPush(snap);
+    if(pendingSnap===snap) pendingSnap=null;
+    else if(pendingSnap && res && res.updated) pendingSnap.baseUpdated=res.updated;   // edits made meanwhile go up on top of this save
+    if(res) setCloudDot("ok"); }
   catch(e){ setCloudDot("err"); if(navigator.onLine!==false){ clearTimeout(cloudTimer); cloudTimer=setTimeout(runPush, 8000); } }
   finally{ pushInFlight=false; }
 }
@@ -3388,8 +3617,7 @@ function flushCloudPush(){
   if(cloudTimer){ clearTimeout(cloudTimer); cloudTimer=null; }
   const snap=pendingSnap; if(!snap) return; pendingSnap=null;
   try{
-    const headers={"Content-Type":"application/json"};
-    if(snap.editKey) headers["X-Edit-Key"]=snap.editKey; else if(getSyncCode()) headers["X-Sync-Code"]=getSyncCode();
+    const headers={...snap.headers};
     fetch(planPath(snap.cloudId),{method:"PUT",headers,keepalive:true,
       body:JSON.stringify({ name:snap.name, plan:JSON.parse(snap.planJSON), baseUpdated:snap.baseUpdated })});
   }catch(e){}
@@ -3398,15 +3626,28 @@ window.addEventListener("pagehide",flushCloudPush);
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") flushCloudPush(); });
 function applyPulledPlan(cur, d){
   closePlaceMenu();
+  adoptAccess(cur, d);
   const s=d.plan||{}; delete s._profileName;
-  if(!s.tables){ cur.cloudUpdated=d.updated; saveProfilesIdx(); return; }
+  if(!s.tables){   // a new, still empty plan (fresh wedding, template, a couple's claimed plan): start from the starter layout
+    cur.cloudUpdated=d.updated; if(d.name) cur.name=d.name;
+    let hasLocal=false; try{ hasLocal=cur.support?!!cur._mem:!!localStorage.getItem(planKey(cur.id)); }catch(e){}
+    if(!hasLocal && cur.id===profiles.activeId){   // never show (or upload) another plan under this plan's name
+      setPick(null); dragData=null; state=defaultState(); uid=state._uid||2001; fontScale=state.seatFontScale||1;
+      applyStage(); $("stageFloor").value=state.stageMaterial||"grass"; renderProfiles(); applyAccess(); renderAll(); resetHistory();
+      // kept on this device only: the starter goes online with the first real edit (an untouched template stays empty,
+      // so new weddings never inherit — and lock — a layout nobody designed)
+      if(cur.support) cur._mem=JSON.stringify(state); else { try{ localStorage.setItem(planKey(cur.id), JSON.stringify(state)); }catch(e){} }
+      setTimeout(()=>{ zoom=initialZoom(); applyZoom(); },30);
+    }
+    saveProfilesIdx(); applyAccess(); return; }
   sanitizePlan(s); if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s);
   setPick(null); dragData=null;
   state=s; uid=state._uid||2001; fontScale=state.seatFontScale||1;
   if(d.name) cur.name=d.name; cur.cloudUpdated=d.updated; cur.cloudGuests=Object.keys(state.guests).length; cur.unsynced=false; saveProfilesIdx();
-  try{ localStorage.setItem(planKey(cur.id), JSON.stringify(state)); }catch(e){ toast(tr("cLocalErr",{e:String(e&&e.message||e)}),6000); }
+  if(cur.support) cur._mem=JSON.stringify(state);
+  else { try{ localStorage.setItem(planKey(cur.id), JSON.stringify(state)); }catch(e){ toast(tr("cLocalErr",{e:String(e&&e.message||e)}),6000); } }
   applyStage(); $("stageFloor").value=state.stageMaterial||"grass";
-  renderProfiles(); renderAll(); resetHistory();
+  renderProfiles(); applyAccess(); renderAll(); resetHistory();
   if(focusId!=null && focusedTable()) requestAnimationFrame(()=>focusTable(focusId));   // keep the open table in view
   else setTimeout(()=>{ zoom=initialZoom(); applyZoom(); },30);
 }
@@ -3434,6 +3675,10 @@ function renderCloudBody(){
     const rf=$("syncCodeRefresh"); if(rf) rf.onclick=async(e)=>{ e.preventDefault(); const n=await syncFromCode(); toast(n?tr("cAdded",{n}):tr("cUpToDate")); };
     const dc=$("syncCodeDisconnect"); if(dc) dc.onclick=(e)=>{ e.preventDefault(); if(!confirm(tr("cDisconnectConfirm"))) return; setSyncCode(""); toast(tr("cDisconnected")); renderCloudBody(); };
   };
+  if(!cur.cloudId && !uploadParent()){
+    body.innerHTML=codeHtml+`<div class="mhint" style="padding:0 0 8px">${escapeHtml(tr("cUploadNone"))}</div>`;
+    wire(); return;
+  }
   if(!cur.cloudId){
     body.innerHTML=codeHtml+`<div class="mhint" style="padding:0 0 8px">${escapeHtml(tr("cUploadHint"))}</div>
       <button class="ibtn primary" id="cloudUpload" style="width:100%;height:40px">${escapeHtml(tr("cUpload"))}</button>`;
@@ -3442,22 +3687,27 @@ function renderCloudBody(){
       try{ await cloudCreate(); setCloudDot("ok"); renderCloudBody(); toast(tr("cOnline")); }
       catch(e){ b.disabled=false; b.textContent=tr("cUpload"); toast(tr("cUploadFail")); } };
   } else {
-    const editLink=shareLink(cur,false), viewLink=shareLink(cur,true), canEdit=canPush(cur)||!!cur.editKey;
+    const editLink=shareLink(cur,false), viewLink=shareLink(cur,true), canEdit=canPush(cur);
+    const canRemove=!cur.support && cur.role!=="venue" && cur.owner!=="venue" && !!cur.editKey;
     const linkStyle='style="width:100%;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--paper)"';
-    body.innerHTML=codeHtml+`
-      ${cur.editKey?`<div class="mhint" style="padding:0 0 4px;font-weight:600">${escapeHtml(tr("cEditLink"))}</div><input id="cloudLink" readonly value="${escapeHtml(editLink)}" ${linkStyle}>`:""}
-      <div class="mhint" style="padding:8px 0 4px;font-weight:600">${escapeHtml(tr("cViewLink"))}</div><input id="cloudViewLink" readonly value="${escapeHtml(viewLink)}" ${linkStyle}>
-      <div class="mrow">${cur.editKey?`<button class="ibtn primary" id="cloudCopy">${escapeHtml(tr("cCopyEdit"))}</button>`:""}<button class="ibtn" id="cloudCopyView">${escapeHtml(tr("cCopyView"))}</button></div>
-      <div class="mrow"><button class="ibtn" id="cloudPushNow">${escapeHtml(tr("cPushNow"))}</button><button class="ibtn" id="cloudPullNow">${escapeHtml(tr("cPullNow"))}</button><button class="ibtn danger" id="cloudRemove">${escapeHtml(tr("cRemove"))}</button></div>
-      <div class="mhint" style="padding:8px 0 0">${escapeHtml(tr("cLast",{t:fmtTime(cur.cloudUpdated)}))}${canEdit?"":tr("cViewOnlyHere")}</div>`;
-    wire();
+    const roleHint=cur.support?tr("cSupportNoLinks"):cur.role==="venue"?tr("cVenueLinks"):"";
+    body.innerHTML=(cur.support?"":codeHtml)+`
+      ${roleHint?`<div class="mhint" style="padding:0 0 8px">${escapeHtml(roleHint)}</div>`:""}
+      ${editLink?`<div class="mhint" style="padding:0 0 4px;font-weight:600">${escapeHtml(tr("cEditLink"))}</div><input id="cloudLink" readonly value="${escapeHtml(editLink)}" ${linkStyle}>`:""}
+      ${viewLink?`<div class="mhint" style="padding:8px 0 4px;font-weight:600">${escapeHtml(tr("cViewLink"))}</div><input id="cloudViewLink" readonly value="${escapeHtml(viewLink)}" ${linkStyle}>`:""}
+      <div class="mrow">${editLink?`<button class="ibtn primary" id="cloudCopy">${escapeHtml(tr("cCopyEdit"))}</button>`:""}${viewLink?`<button class="ibtn" id="cloudCopyView">${escapeHtml(tr("cCopyView"))}</button>`:""}</div>
+      <div class="mrow"><button class="ibtn" id="cloudPushNow">${escapeHtml(tr("cPushNow"))}</button><button class="ibtn" id="cloudPullNow">${escapeHtml(tr("cPullNow"))}</button>${canRemove?`<button class="ibtn danger" id="cloudRemove">${escapeHtml(tr("cRemove"))}</button>`:""}</div>
+      <div class="mhint" style="padding:8px 0 0">${escapeHtml(tr("cLast",{t:fmtTime(cur.cloudUpdated)}))}${canEdit?"":tr("cViewOnlyHere")}</div>
+      ${(cur.legacyOpenUntil>Date.now() && (cur.role==="couple"||cur.role==="venue"))?`<div class="mhint" style="padding:8px 0 0">${escapeHtml(tr("cLegacyNote",{t:fmtTime(cur.legacyOpenUntil)}))} <a href="#" id="cloudLegacyOff">${escapeHtml(tr("cLegacyOff"))}</a></div>`:""}`;
+    if(!cur.support) wire();
+    const lo=$("cloudLegacyOff"); if(lo) lo.onclick=async e=>{ e.preventDefault(); try{ const r=await fetch(planPath(cur.cloudId)+"/legacy-off",{method:"POST",headers:authHeaders(cur)}); if(!r.ok) throw 0; cur.legacyOpenUntil=0; saveProfilesIdx(); renderCloudBody(); toast(tr("cLegacyOffDone")); }catch(x){ toast(tr("accFail")); } };
     const cc=$("cloudCopy"); if(cc) cc.onclick=()=>copyText($("cloudLink"));
-    $("cloudCopyView").onclick=()=>copyText($("cloudViewLink"));
+    const cv=$("cloudCopyView"); if(cv) cv.onclick=()=>copyText($("cloudViewLink"));
     $("cloudPushNow").onclick=async()=>{ const c2=currentProfile(); if(!canPush(c2)){ toast(tr("cViewOnly")); return; }
       try{ await cloudPush(snapshotFor(c2)); setCloudDot("ok"); renderCloudBody(); toast(tr("cPushed")); }catch(e){ toast(tr("cPushFail")); } };
     $("cloudPullNow").onclick=async()=>{ if(!confirm(tr("cPullConfirm"))) return;
-      try{ const d=await cloudFetch(cur.cloudId); applyPulledPlan(cur,d); renderCloudBody(); toast(tr("cPulled")); }catch(e){ toast(tr("cPullFail")); } };
-    $("cloudRemove").onclick=async()=>{ if(!confirm(tr("cRemoveConfirm"))) return;
+      try{ const d=await cloudFetch(cur.cloudId, cur); applyPulledPlan(cur,d); renderCloudBody(); toast(tr("cPulled")); }catch(e){ toast(tr("cPullFail")); } };
+    const crm=$("cloudRemove"); if(crm) crm.onclick=async()=>{ if(!confirm(tr("cRemoveConfirm"))) return;
       await cloudDelete(currentProfile()); setCloudDot(); renderCloudBody(); toast(tr("cRemoved")); };
   }
 }
@@ -3466,31 +3716,102 @@ function renderCloudBody(){
 function gatedVisitor(){ return !IS_LAB && /(^|\.)takeaseat\.gr$/i.test(location.hostname) && !localStorage.getItem("weddingVenueKey") && !profiles.profiles.some(p=>p.cloudId); }
 async function openSharedFromURL(){
   if(IS_LAB) return false;
-  const params=new URLSearchParams(location.search); const id=params.get("plan"); if(!id) return false;
-  const key=(location.hash.match(/(?:^#|&)key=([^&]+)/)||[])[1] || "";
+  const params=new URLSearchParams(location.search);
+  const hp=k=>{ const m=location.hash.match(new RegExp("(?:^#|&)"+k+"=([^&]+)")); return m?decodeURIComponent(m[1]):""; };
+  const claim=hp("claim")||params.get("claim"); if(claim) return await openClaimFromURL(claim);
+  const id=params.get("plan"); if(!id) return false;
+  const key=hp("key")||hp("vkey"), view=hp("view"), sup=hp("support"), preview=hp("preview")==="1";
   try{ history.replaceState(null,"",location.origin+location.pathname); }catch(e){}
   if(!PLAN_ID_RE.test(id)){ if(gatedVisitor()){ location.replace("/"); return true; } toast(tr("cOpenFail")); return true; }
   try{
-    const d=await cloudFetch(id);
-    let prof=profiles.profiles.find(p=>p.cloudId===id);
-    if(prof){ profiles.activeId=prof.id; if(key&&!prof.editKey){ prof.editKey=key; prof.readonly=false; } saveProfilesIdx();
+    if(sup){   // TakeaSeat support, invited by the plan's owner: an in-memory session only
+      const d=await cloudFetch(id,{supportKey:sup});
+      let prof=profiles.profiles.find(p=>p.support&&p.cloudId===id);
+      if(!profiles.profiles.some(p=>p.id===profiles.activeId&&p.support)) profiles.lastRealId=profiles.activeId;
+      if(prof){ prof.supportKey=sup; prof.readonly=false; prof._lostShown=false; prof._mem=""; }
+      else { prof={ id:"sup"+Date.now(), name:d.name||tr("sharedPlan"), cloudId:id, supportKey:sup, support:true, cloudUpdated:d.updated }; profiles.profiles.push(prof); }
+      profiles.activeId=prof.id; saveProfilesIdx();
+      applyPulledPlan(prof,d); renderProfiles(); setCloudDot("ok"); toast(tr("supOpened",{n:d.name||""}),5000);
+      return true;
+    }
+    let prof=profiles.profiles.find(p=>p.cloudId===id&&!p.support);
+    const strong=!!(prof && !prof._lostShown && (prof.editKey || getSyncCode()));
+    const probe=key?{editKey:key}:(view&&!strong)?{viewKey:view,readonly:true}:(prof||{readonly:true});
+    let d, keepStored=false;
+    try{ d=await cloudFetch(id, probe); }
+    catch(e){ if(prof && (key||view) && probe!==prof){ d=await cloudFetch(id, prof); keepStored=true; } else throw e; }   // an old link — this device's own key still works
+    if(prof && key && !keepStored && prof.role==="venue" && d.role==="couple" && prof.editKey && prof.editKey!==key){   // a venue device opening a couple link keeps venue rights
+      try{ d=await cloudFetch(id, prof); keepStored=true; toast(tr("openedAsVenue"),5000); }catch(e){}
+    }
+    if(prof){ profiles.activeId=prof.id;
+      if(key&&!keepStored&&d.role!=="viewer"){ prof.editKey=key; prof.readonly=false; prof._lostShown=false; }
+      if(key) prof.previewCouple=preview;
+      if(!key && view && !strong){ prof.viewKey=view; prof.readonly=true; }
+      saveProfilesIdx();
       try{ applyPulledPlan(prof,d); }catch(e){ toast(tr("cLoadErr",{e:String(e&&e.message||e)}),8000); throw e; }
-      setCloudDot("ok"); toast((prof.editKey||key)?tr("cOpenedSync"):tr("cOpenedView")); }
-    else{ const pid=newProfileId(); prof={ id:pid, name:d.name||tr("sharedPlan"), cloudId:id, editKey:key, cloudUpdated:d.updated, readonly:!key };
+      setCloudDot("ok"); if(!keepStored) toast(prof.readonly?tr("cOpenedView"):tr("cOpenedSync")); }
+    else{ const pid=newProfileId(); prof={ id:pid, name:d.name||tr("sharedPlan"), cloudId:id, editKey:key, viewKey:view, cloudUpdated:d.updated, readonly:!key, previewCouple:preview };
       profiles.profiles.push(prof); profiles.activeId=pid; saveProfilesIdx();
       applyPulledPlan(prof,d); setCloudDot("ok"); toast(key?tr("cOpenedNamed",{n:d.name||""}):tr("cOpenedNamedView",{n:d.name||""})); }
-  }catch(e){ if(gatedVisitor()){ location.replace("/"); return true; } toast(tr("cOpenFail")); }
+  }catch(e){ if(gatedVisitor()){ if(e.code==="key_required") alert(tr("accViewExpired")); location.replace("/"); return true; } toast(e.code==="key_required"?tr("accViewExpired"):tr("cOpenFail"),6000); }
   return true;
+}
+// A couple who bought TakeaSeat opens the link we sent: it works once and becomes their own private plan on this device.
+async function openClaimFromURL(token){
+  try{ history.replaceState(null,"",location.origin+location.pathname); }catch(e){}
+  let nonce=""; const nk=PBASE+".claimNonce."+String(token).slice(0,10);
+  try{ nonce=sessionStorage.getItem(nk)||""; if(!nonce){ nonce=randCode(); sessionStorage.setItem(nk,nonce); } }catch(e){ nonce=randCode(); }
+  renderClaim({step:"start", token, nonce}); $("claimModal").classList.add("open");
+  return true;
+}
+const inAppBrowser=()=>/FBAN|FBAV|FB_IAB|Instagram|Viber|Line\/|MicroMessenger|; wv\)/i.test(navigator.userAgent||"");
+function renderClaim(st){
+  const b=$("claimBody"); const home=gatedVisitor();
+  if(st.step==="start"){
+    b.innerHTML=`<p class="claim-lead">${escapeHtml(tr("claimLead"))}</p>${inAppBrowser()?`<div class="acc-live" style="margin:10px 0">${escapeHtml(tr("claimInApp"))}</div>`:""}
+      <div class="mrow"><button class="ibtn primary" id="claimGo" style="flex:1;height:44px">${escapeHtml(tr("claimGo"))}</button></div>`;
+    $("claimGo").onclick=()=>doClaim(st);
+  } else if(st.step==="done"){
+    const link=shareLink(st.prof,false);
+    b.innerHTML=`<p class="claim-lead">${escapeHtml(tr("claimDone",{n:st.prof.name}))}</p><div class="mhint" style="padding:6px 0 4px;font-weight:600">${escapeHtml(tr("claimKeep"))}</div>
+      <input id="claimLink" readonly value="${escapeHtml(link)}" style="width:100%;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--paper)">
+      <div class="mrow"><button class="ibtn" id="claimCopy">${escapeHtml(tr("cCopyEdit"))}</button>${navigator.share?`<button class="ibtn" id="claimShare">${escapeHtml(tr("claimShare"))}</button>`:""}<button class="ibtn primary" id="claimOk">${escapeHtml(tr("claimContinue"))}</button></div>`;
+    $("claimCopy").onclick=()=>copyText($("claimLink"));
+    const sh=$("claimShare"); if(sh) sh.onclick=()=>{ navigator.share({title:"TakeaSeat", text:tr("claimShareText",{n:st.prof.name}), url:link}).catch(()=>{}); };
+    $("claimOk").onclick=()=>{ $("claimModal").classList.remove("open"); maybeWelcome(); };
+  } else {
+    const msg=st.step==="used"?tr("claimUsedAt",{t:fmtTime(st.at)}):st.step==="expired"?tr("claimExpired"):tr("claimFail");
+    b.innerHTML=`<p class="claim-lead">${escapeHtml(msg)}</p><div class="mrow">${st.step==="fail"?`<button class="ibtn primary" id="claimRetry">${escapeHtml(tr("claimRetry"))}</button>`:""}
+      <a class="ibtn" href="mailto:info@takeaseat.gr?subject=${encodeURIComponent("TakeaSeat")}">${escapeHtml(tr("accMail"))}</a>${home?`<a class="ibtn" href="/">${escapeHtml(tr("claimHome"))}</a>`:`<button class="ibtn" id="claimClose">${escapeHtml(tr("close"))}</button>`}</div>`;
+    const rt=$("claimRetry"); if(rt) rt.onclick=()=>doClaim(st);
+    const cl=$("claimClose"); if(cl) cl.onclick=()=>$("claimModal").classList.remove("open");
+  }
+}
+async function doClaim(st){
+  const go=$("claimGo")||$("claimRetry"); if(go) go.disabled=true;
+  let d=null, status=0;
+  try{ const r=await fetch(SYNC_URL+"/claim",{method:"POST",headers:{"Content-Type":"application/json","X-Client":"2"},body:JSON.stringify({token:st.token, nonce:st.nonce})}); status=r.status; d=await r.json().catch(()=>null); }catch(e){}
+  if(!d||!d.id||!PLAN_ID_RE.test(String(d.id))){
+    renderClaim({...st, step:(d&&d.error==="claim_used")?"used":(d&&d.error==="claim_expired")?"expired":(status===404?"used":"fail"), at:d&&d.at}); return; }
+  let prof=profiles.profiles.find(p=>p.cloudId===d.id&&!p.support);
+  if(!prof){ prof={ id:newProfileId(), name:d.name||tr("ourWedding"), cloudId:d.id, cloudUpdated:0 }; profiles.profiles.push(prof); }
+  Object.assign(prof,{ editKey:d.editKey, viewKey:d.readKey||"", role:"couple", owner:"couple", readonly:false, _lostShown:false });
+  profiles.activeId=prof.id; saveProfilesIdx();
+  try{ const pd=await cloudFetch(d.id, prof); applyPulledPlan(prof,pd); }catch(e){ loadActive(); }
+  registerUnderCode(prof); setCloudDot("ok");
+  renderClaim({step:"done", prof});
 }
 async function pullIfNewer(force){
   const cur=currentProfile(); if(!cur||!cur.cloudId){ setCloudDot(); return; }
   force=force||cur.unsynced;   // an unsynced profile takes the server's copy whatever the timestamps say
-  try{ const d=await cloudFetch(cur.cloudId);
+  if(cur.readonly && cur._lostShown){ setCloudDot("err"); return; }
+  try{ const d=await cloudFetch(cur.cloudId, cur);
+    if(adoptAccess(cur,d)){ saveProfilesIdx(); applyAccess(); }
     if(d.updated && (force || !cur.cloudUpdated || d.updated>cur.cloudUpdated)){
       if(interactionBusy()){ clearTimeout(conflictTimer); conflictTimer=setTimeout(()=>pullIfNewer(force),4000); return; }   // never apply under the user's fingers — retry
       applyPulledPlan(cur,d); toast(tr("cUpdated")); }
     setCloudDot("ok");
-  }catch(e){ setCloudDot("err"); if(cur.unsynced) toast(tr("cLoadErr",{e:String(e&&e.message||e)}),7000); }
+  }catch(e){ setCloudDot("err"); if(e.status===401||e.status===403){ accessLost(cur, e.code); return; } if(cur.unsynced) toast(tr("cLoadErr",{e:String(e&&e.message||e)}),7000); }
 }
 // ---- version history (kept on the server on every save) ----
 async function openHistory(){
@@ -3502,12 +3823,119 @@ async function openHistory(){
   body.innerHTML+=`<div class="hist">`+vs.map(v=>`<div class="hrow"><div><b>${escapeHtml(fmtTime(v.updated))}</b><div class="muted">${escapeHtml(tr("histRow",{g:v.guests,s:v.seated,n:v.tables}))}</div></div><button class="ibtn" data-u="${v.updated}">${escapeHtml(tr("histRestore"))}</button></div>`).join("")+`</div>`;
   body.querySelectorAll("[data-u]").forEach(b=>b.onclick=async()=>{ const u=+b.dataset.u; if(!confirm(tr("histConfirm",{t:fmtTime(u)}))) return;
     try{ const r=await fetch(planPath(cur.cloudId)+"/restore",{method:"POST",headers:authHeaders(cur),body:JSON.stringify({updated:u})}); if(!r.ok) throw 0;
-      const dd=await cloudFetch(cur.cloudId); setPick(null); unfocusTable(); applyPulledPlan(cur,dd); $("histModal").classList.remove("open"); toast(tr("histRestored",{t:fmtTime(u)}),3000); }
+      const dd=await cloudFetch(cur.cloudId, cur); setPick(null); unfocusTable(); applyPulledPlan(cur,dd); $("histModal").classList.remove("open"); toast(tr("histRestored",{t:fmtTime(u)}),3000); }
     catch(e){ toast(tr("histFail")); } });
 }
 $("histClose").addEventListener("click",()=>$("histModal").classList.remove("open"));
 $("histModal").addEventListener("click",e=>{ if(e.target.id==="histModal") e.currentTarget.classList.remove("open"); });
 function openCloud(){ if(IS_LAB){ toast(tr("labHint")); return; } renderCloudBody(); $("cloudModal").classList.add("open"); }
+window.addEventListener("hashchange",()=>{ if(!IS_LAB && /[#&](claim|key|vkey|view|support)=/.test(location.hash)) openSharedFromURL(); });
+
+// ============================================================
+//  ROLES & ACCESS — the server decides; this mirrors it so locked things don't look editable
+// ============================================================
+const PERM_KEYS=["floor","decor","layout","tables","seats","labels"];
+const PERM_LABEL={floor:"permFloor",decor:"permDecor",layout:"permLayout",tables:"permTables",seats:"permSeats",labels:"permLabels"};
+let ACCESS={role:"couple", restricted:false, preview:false, perms:null};
+function can(k){ return IS_LAB || !ACCESS.perms || ACCESS.perms[k]!==false; }
+function applyAccess(){
+  const cur=(profiles&&profiles.profiles)?currentProfile():null;
+  const role=(IS_LAB||!cur||!cur.cloudId)?"local":(cur.support?"support":(cur.role||(cur.readonly?"viewer":"couple")));
+  const restricted=role==="couple" && cur.owner==="venue" && !!cur.perms;
+  const preview=role==="venue" && !!cur.previewCouple && !cur.template && !!cur.couplePerms;
+  const perms=restricted?cur.perms:preview?cur.couplePerms:null;
+  ACCESS={role, restricted, preview, perms:perms?{...perms}:null, venueName:(cur&&cur.venueName)||"", template:!!(cur&&cur.template), owner:(cur&&cur.owner)||"couple"};
+  PERM_KEYS.forEach(k=>document.body.classList.toggle("lock-"+k, !can(k)));
+  const fl=$("stageFloor"); if(fl) fl.disabled=!can("floor");
+  ["venue","support","viewer"].forEach(r=>document.body.classList.toggle("role-"+r, role===r));
+  renderRoleBadge();
+}
+function renderRoleBadge(){
+  const b=$("roleBadge"); if(!b) return; const cur=currentProfile()||{}; const a=ACCESS;
+  let cls="", txt="", tip="";
+  if(a.role==="venue"){ cls="r-venue"; txt=a.template?tr("rbTemplate"):a.preview?tr("rbPreview"):tr("rbVenue"); tip=a.template?tr("rbTemplateTip"):tr("rbVenueTip"); }
+  else if(a.role==="support"){ cls="r-support"; txt=tr(cur.supportEdit?"rbSupport":"rbSupportView",{t:fmtTime(cur.supportExpires)}); tip=tr("rbSupportTip"); }
+  else if(a.role==="viewer"){ cls="r-viewer"; txt=tr("rbViewer"); tip=tr("rbViewerTip"); }
+  else if(a.role==="couple" && cur.supportInfo && cur.supportInfo.expires>Date.now()){ cls="r-support"; txt=tr("rbSupportOn"); tip=tr(cur.supportInfo.by==="venue"?"rbSupportOnVenue":"rbSupportOnTip",{t:fmtTime(cur.supportInfo.expires)}); }
+  else if(a.restricted){ cls="r-locked"; txt=tr("rbLocked",{v:a.venueName||tr("theVenue")}); tip=tr("rbLockedTip"); }
+  b.hidden=!txt; b.className=cls; b.textContent=txt; b.title=tip;
+}
+$("roleBadge").addEventListener("click",()=>openAccess());
+let lockedToastAt=0;
+function lockedToast(k){ if(Date.now()-lockedToastAt<2500) return; lockedToastAt=Date.now(); toast(tr("tLockedPart",{v:ACCESS.venueName||tr("theVenue"), w:tr(PERM_LABEL[k])}),3500); }
+function maxSeatsFor(t){ const m=(ACCESS.perms&&ACCESS.perms.maxSeats)||0; return (m && t && t.shape!=="head")? m : 30; }
+// Decor items the venue placed stay the venue's; what the couple adds (photo booth, candy bar…) is theirs to move.
+function featLocked(f){ return !can("decor") && !!f && (f.by==="venue" || (f.by===undefined && ACCESS.owner==="venue")); }
+function permListHtml(p){
+  return `<ul class="acc-perms">${PERM_KEYS.map(k=>`<li class="${p[k]?"yes":"no"}">${p[k]?"✓":"🔒"} ${escapeHtml(tr(PERM_LABEL[k]))}${(k==="seats"&&p[k]&&p.maxSeats)?` <span class="no">(${escapeHtml(tr("permMax",{n:p.maxSeats}))})</span>`:""}</li>`).join("")}<li class="yes">✓ ${escapeHtml(tr("permAlways"))}</li></ul>`;
+}
+function auditHtml(list){
+  if(!list||!list.length) return `<div class="mhint" style="padding:4px 0 0">${escapeHtml(tr("accLogEmpty"))}</div>`;
+  const WHO={couple:"awCouple",venue:"awVenue",support:"awSupport",admin:"awAdmin"}, WHAT={invite:"atInvite",revoke:"atRevoke",open:"atOpen",save:"atSave",restore:"atRestore",reset:"atReset",claim:"atClaim",claim_reset:"atClaimReset",rotate:"atRotate"};
+  return `<ul class="acc-log">${list.slice().reverse().map(e=>`<li><span class="t">${escapeHtml(fmtTime(e.t))}</span><span><b>${escapeHtml(WHO[e.who]?tr(WHO[e.who]):String(e.who))}</b> · ${escapeHtml(WHAT[e.what]?tr(WHAT[e.what],{h:e.h||""}):String(e.what))}</span></li>`).join("")}</ul>`;
+}
+async function refreshAccess(){ const cur=currentProfile(); if(!cur||!cur.cloudId) return;
+  try{ const d=await cloudFetch(cur.cloudId, cur); if(adoptAccess(cur,d)){ saveProfilesIdx(); applyAccess(); } else { cur.audit=d.audit||cur.audit; } }catch(e){} }
+function openAccess(){ if(IS_LAB){ toast(tr("labHint")); return; } renderAccessBody(); $("accessModal").classList.add("open"); refreshAccess().then(()=>{ if($("accessModal").classList.contains("open")) renderAccessBody(); }); }
+$("accessClose").addEventListener("click",()=>$("accessModal").classList.remove("open"));
+$("accessModal").addEventListener("click",e=>{ if(e.target.id==="accessModal") e.currentTarget.classList.remove("open"); });
+function renderAccessBody(){
+  const cur=currentProfile()||{}; const body=$("accessBody"); const a=ACCESS; const sec=h=>`<div class="acc-sec">${h}</div>`;
+  let html="";
+  if(!cur.cloudId){ body.innerHTML=`<div class="mhint" style="padding:0">${escapeHtml(tr("accLocal"))}</div>`; return; }
+  if(a.role==="support"){
+    body.innerHTML=sec(`<div class="acc-live">${escapeHtml(tr("accSupportYou",{t:fmtTime(cur.supportExpires)}))}</div><div class="mhint" style="padding:8px 0 0">${escapeHtml(tr(cur.supportEdit?"accSupportYouHint":"accSupportView"))}</div>
+      ${cur.supportEdit?"":`<div class="acc-row"><button class="ibtn primary" id="accSupEdit">${escapeHtml(tr("accSupportEdit"))}</button></div>`}`);
+    const se=$("accSupEdit"); if(se) se.onclick=async()=>{ se.disabled=true;
+      try{ const d=await cloudFetch(cur.cloudId, cur); pendingSnap=null; clearTimeout(cloudTimer); cloudTimer=null; applyPulledPlan(cur,d); }   // whatever was tried while viewing is dropped
+      catch(e){ se.disabled=false; toast(tr("accFail")); return; }
+      cur.supportEdit=true; renderAccessBody(); renderRoleBadge(); toast(tr("tSupportEditOn"),4000); };
+    return; }
+  if(a.role==="viewer"){ body.innerHTML=sec(`<div class="mhint" style="padding:0">${escapeHtml(tr("rbViewerTip"))}</div>`); return; }
+  if(cur.owner==="venue" && a.role==="couple"){
+    html+=sec(`<h4>${escapeHtml(tr("accSpace",{v:cur.venueName||tr("theVenue")}))}</h4><div class="mhint" style="padding:0">${escapeHtml(tr("accSpaceHint"))}</div>${permListHtml(cur.perms||{})}${cur.venueContact?`<div class="mhint" style="padding:8px 0 0">${escapeHtml(tr("accAskVenue",{c:cur.venueContact}))}</div>`:""}`);
+  }
+  if(a.role==="venue" && !cur.template && cur.couplePerms){
+    html+=sec(`<h4>${escapeHtml(tr("accCouplePerms"))}</h4>${permListHtml(cur.couplePerms)}<div class="mhint" style="padding:6px 0 0">${escapeHtml(tr("accCouplePermsHint"))}</div>
+      <label class="delskip" style="margin-top:8px"><input type="checkbox" id="accPreview" ${cur.previewCouple?"checked":""}><span>${escapeHtml(tr("accPreview"))}</span></label>`);
+  }
+  if(a.role==="venue" && cur.template) html+=sec(`<h4>${escapeHtml(tr("rbTemplate"))}</h4><div class="mhint" style="padding:0">${escapeHtml(tr("rbTemplateTip"))}</div>`);
+  const canInvite=a.role==="venue" || (a.role==="couple" && cur.owner!=="venue");
+  const live=cur.supportInfo && cur.supportInfo.expires>Date.now();
+  if(canInvite){
+    html+=sec(`<h4>${escapeHtml(tr("accSupport"))}</h4><div class="mhint" style="padding:0">${escapeHtml(tr(cur.owner==="venue"?"accSupportHintVenue":"accSupportHint"))}</div>`+
+      (live?`<div class="acc-live" style="margin-top:8px">${escapeHtml(tr("accSupportLive",{t:fmtTime(cur.supportInfo.expires)}))}${cur.supportInfo.message?`<div class="mhint" style="padding:4px 0 0">“${escapeHtml(cur.supportInfo.message)}”</div>`:""}</div>
+        <div class="acc-row"><button class="ibtn danger" id="accRevoke">${escapeHtml(tr("accRevoke"))}</button><a class="ibtn" id="accMail" href="#">${escapeHtml(tr("accMail"))}</a></div>`
+      :`<textarea id="accMsg" maxlength="500" placeholder="${escapeHtml(tr("accMsgPh"))}"></textarea>
+        <div class="acc-row"><select id="accHours"><option value="24">${escapeHtml(tr("accH24"))}</option><option value="72" selected>${escapeHtml(tr("accH72"))}</option><option value="168">${escapeHtml(tr("accH168"))}</option></select>
+        <button class="ibtn primary" id="accInvite">${escapeHtml(tr("accInvite"))}</button></div>`));
+  } else if(live){
+    html+=sec(`<h4>${escapeHtml(tr("accSupport"))}</h4><div class="acc-live">${escapeHtml(tr("accSupportLive",{t:fmtTime(cur.supportInfo.expires)}))}</div>`);
+  }
+  if(a.role==="couple" && cur.owner!=="venue" && cur.editKey){
+    html+=sec(`<h4>${escapeHtml(tr("accLinks"))}</h4><div class="mhint" style="padding:0">${escapeHtml(tr("accLinksHint"))}</div><div class="acc-row"><button class="ibtn" id="accRotate">${escapeHtml(tr("accRotate"))}</button></div>`);
+  }
+  html+=sec(`<h4>${escapeHtml(tr("accLog"))}</h4>${auditHtml(cur.audit)}`);
+  body.innerHTML=html;
+  const ro=$("accRotate"); if(ro) ro.onclick=async()=>{ if(!confirm(tr("accRotateConfirm"))) return;
+    try{ const r=await fetch(planPath(cur.cloudId)+"/rotate",{method:"POST",headers:authHeaders(cur)}); if(!r.ok) throw 0; const d=await r.json();
+      cur.editKey=d.editKey; cur.viewKey=d.readKey; cur.legacyOpenUntil=0; cur.codeOff=true; saveProfilesIdx();
+      if(pendingSnap&&pendingSnap.profId===cur.id){ pendingSnap.editKey=cur.editKey; pendingSnap.headers=authHeaders(cur); }
+      if(getSyncCode()){ try{ await fetch(codeUrl(),{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:cur.cloudId})}); }catch(x){} }
+      await refreshAccess();
+      $("accessModal").classList.remove("open"); openCloud(); toast(tr("tRotated"),6000); }
+    catch(e){ toast(tr("accFail")); } };
+  const pv=$("accPreview"); if(pv) pv.onchange=()=>{ cur.previewCouple=pv.checked; saveProfilesIdx(); applyAccess(); renderAll(); toast(pv.checked?tr("tPreviewOn"):tr("tPreviewOff"),3000); };
+  const inv=$("accInvite"); if(inv) inv.onclick=async()=>{ inv.disabled=true;
+    try{ const r=await fetch(planPath(cur.cloudId)+"/support",{method:"POST",headers:authHeaders(cur),body:JSON.stringify({hours:+$("accHours").value, message:$("accMsg").value.trim()})});
+      if(!r.ok) throw 0; const d=await r.json(); cur.supportInfo={expires:d.expires, message:$("accMsg").value.trim()}; saveProfilesIdx(); await refreshAccess(); renderAccessBody(); renderRoleBadge(); toast(tr("tSupportInvited"),5000); }
+    catch(e){ inv.disabled=false; toast(tr("accFail")); } };
+  const rv=$("accRevoke"); if(rv) rv.onclick=async()=>{ if(!confirm(tr("accRevokeConfirm"))) return;
+    try{ const r=await fetch(planPath(cur.cloudId)+"/support",{method:"DELETE",headers:authHeaders(cur)}); if(!r.ok) throw 0;
+      cur.supportInfo=null; saveProfilesIdx(); await refreshAccess(); renderAccessBody(); renderRoleBadge(); toast(tr("tSupportEnded")); }
+    catch(e){ toast(tr("accFail")); } };
+  const ml=$("accMail"); if(ml) ml.href="mailto:info@takeaseat.gr?subject="+encodeURIComponent(tr("accMailSubject",{n:(cur.name||"").replace(/^🛟 /,"")}))+"&body="+encodeURIComponent(tr("accMailBody",{t:fmtTime(cur.supportInfo&&cur.supportInfo.expires)}));
+}
 $("cloudBtn").addEventListener("click",openCloud);
 $("cloudClose").addEventListener("click",()=>$("cloudModal").classList.remove("open"));
 $("cloudModal").addEventListener("click",e=>{ if(e.target.id==="cloudModal") e.currentTarget.classList.remove("open"); });
@@ -3607,7 +4035,7 @@ applyStage();
 const _stageResize=document.createElement("div"); _stageResize.id="stageResize"; _stageResize.title=tr("stageResizeTip");
 stage.appendChild(_stageResize); makeStageResizable(_stageResize);
 initFloorSelect(); initDecor(); renderProfiles();
-renderAll(); resetHistory();
+applyAccess(); renderAll(); resetHistory();
 setTimeout(()=>{ zoom=initialZoom(); applyZoom(); },50);
 // Turn each SVG texture into a plain bitmap once (canvas → JPEG data URI). Browsers re-render the SVG noise
 // filters at every zoom step, which is what made pinch-zoom crawl on phones; a bitmap just gets resampled.
