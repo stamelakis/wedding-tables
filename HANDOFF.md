@@ -226,6 +226,9 @@ bash /opt/takeaseat/server/deploy.sh
 `tools/test-api.mjs` and the stale-planner check — a failure deploys nothing), starts, and waits up to 60 s for
 `https://takeaseat.gr/health` `{"ok":true}`. If it never gets healthy it puts `:prev` back, mails an alert and exits 1.
 It ends with the startup log (migration / mail / pdf) and a list of host files that differ from the repo.
+- **First run** (done 2026-09-19, commit e75b1e8): deploy.sh was not on the box yet, so it ran as
+  `git fetch && git show origin/main:server/deploy.sh > /root/deploy-first.sh && REPO_DIR=/opt/takeaseat bash /root/deploy-first.sh --force`.
+  The new host scripts + cron files were installed the same day; the previous copies are in `/root/host-backup-20260919/`.
 - **Host files** are copies, not deployed by deploy.sh. Install `alert.sh` first (the others call it):
   `install -m 755 server/alert.sh /opt/takeaseat-alert.sh`, then `backup.sh` → `/opt/takeaseat-backup.sh`,
   `uptime-check.sh` → `/opt/takeaseat-uptime.sh`, `offsite-push.sh` → `/opt/offsite-push.sh`, and
@@ -310,7 +313,9 @@ cascade-purges its plans; venues can rotate their own key; backups encrypted at 
    (PDF floor plan, keepsake, Excel) — the right ends at the first download with express consent (recommended);
    **B** keep the paid plan as is (compliant, weak); **C** 14-day free trial converting to 19€ (card up front).
    Online sales will also need the new withdrawal button (ν. 5317/2026, art. 3ζα). Needs Andreas's choice + a lawyer.
-7. **Season length** for venue licences: not decided yet (renewal = same dates next year). Note: creating weddings is
+7. **Renewals need mail**: a season renews automatically only after the 30/7-day reminder mail went out; while mail is
+   off (or a venue has no email) the licence is flagged `renewSkipped` in admin.html and must be renewed by hand.
+7b. **Season length** for venue licences: not decided yet (renewal = same dates next year). Note: creating weddings is
    blocked before `seasonStart` — revisit when the season is defined (venues book next season's weddings in winter).
 8. **Monitoring**: a free GitHub Actions monitor (`.github/workflows/monitor.yml`, every 10 min, opens an issue → email)
    runs until Andreas picks a dedicated service (UptimeRobot / Better Stack) — to discuss.
