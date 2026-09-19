@@ -192,24 +192,41 @@ for _i, _names in enumerate([
 _ACCENTS = str.maketrans("άέήίόύώϊϋΐΰ", "αεηιουωιυιυ")
 
 
+_STOP_TAIL = {"στις", "στη", "στην", "την", "τη", "τις", "το", "στο", "για", "του", "με", "ημερομηνια", "on", "the", "am", "of", "at",
+              "δευτερα", "τριτη", "τεταρτη", "πεμπτη", "παρασκευη", "σαββατο", "κυριακη",
+              "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"}
+
+
+def _clean_name(name: str) -> str:
+    """Drop the words that belonged to the date («… για τις», «… το Σάββατο», "on") from the end of the couple's name."""
+    toks = [t for t in (name or "").split() if not re.fullmatch(r"\d{1,2}[:.]\d{2}(?:μμ|πμ|am|pm)?", t.lower())]   # a time is not part of a name
+    while toks and toks[-1].lower().strip(" ,.;").translate(_ACCENTS) in _STOP_TAIL:
+        toks.pop()
+    return " ".join(toks).strip(" ,.;")[:80]
+
+
 def _date_from(task: str):
     """The wedding date in his sentence → ("YYYY-MM-DD", the matched text) or (None, "").
-    «στις 12 Σεπτεμβρίου», «12/9», «12.09.2027», "on 12 September 2027"; no year → the next such day."""
+    «στις 12 Σεπτεμβρίου (του) 2028», «12/9», «12.09.2027», "2027-09-12", "on 12 September 2027"; no year → the next such
+    day. A month name wins over digits (so a time like 21:30 or a phone number never becomes the date)."""
     t = (task or "")
     low = t.lower().translate(_ACCENTS)
     today = _dt.date.today()
-    m = re.search(r"\b(\d{1,2})[/.\-](\d{1,2})(?:[/.\-](\d{2,4}))?\b", low)
-    day = mon = yr = None
-    if m:
-        day, mon = int(m.group(1)), int(m.group(2))
-        yr = int(m.group(3)) if m.group(3) else None
-    else:
-        m = re.search(r"\b(\d{1,2})\s+([a-zα-ω]+)\.?(?:\s+(\d{4}))?\b", low)
-        if m and m.group(2) in _MONTHS:
-            day, mon = int(m.group(1)), _MONTHS[m.group(2)]
-            yr = int(m.group(3)) if m.group(3) else None
-    if not day:
+    found = None
+    for m in re.finditer(r"\b(\d{1,2})\s+([a-zα-ω]+)\.?(?:\s*,?\s+(?:του\s+|of\s+)?(\d{4}))?\b", low):
+        if m.group(2) in _MONTHS:
+            found = (m, int(m.group(1)), _MONTHS[m.group(2)], int(m.group(3)) if m.group(3) else None); break
+    if not found:
+        m = re.search(r"(?<![\d:])(\d{4})-(\d{1,2})-(\d{1,2})(?![\d:])", low)
+        if m:
+            found = (m, int(m.group(3)), int(m.group(2)), int(m.group(1)))
+    if not found:
+        for m in re.finditer(r"(?<![\d:/.\-])(\d{1,2})[/.\-](\d{1,2})(?:[/.\-](\d{2,4}))?(?![\d:])", low):
+            if 1 <= int(m.group(1)) <= 31 and 1 <= int(m.group(2)) <= 12:
+                found = (m, int(m.group(1)), int(m.group(2)), int(m.group(3)) if m.group(3) else None); break
+    if not found:
         return None, ""
+    m, day, mon, yr = found
     if yr is not None and yr < 100:
         yr += 2000
     try:
@@ -352,10 +369,9 @@ def takeaseat_new_wedding(value: str = "", task: str = "", **_):
     date, said = _date_from(task or value)
     if not date:   # the server needs the date: it decides when the couple can arrange the tables and when the plan closes
         raise RuntimeError("Πείτε μου και την ημερομηνία του γάμου, π.χ. «νέος γάμος Μαρία και Νίκος στις 12 Σεπτεμβρίου».")
-    spoken = (task or "").replace(said, " ") if said else (task or "")
-    spoken = re.sub(r"\s+(στις|την|on|am)\s*$", "", re.sub(r"\s+", " ", spoken)).strip()
-    name = ((value or "").replace(said, " ").strip(" ,.")[:80] if value else "") or _name_from(spoken) or ("Νέος γάμος " + _dt.datetime.now().strftime("%d/%m %H:%M"))
-    name = re.sub(r"\s+(στις|την|on|am)$", "", name).strip(" ,.")
+    spoken = re.sub(r"\s+", " ", (task or "").replace(said, " ") if said else (task or "")).strip()
+    name = _clean_name((value or "").replace(said, " ") if value else "") or _clean_name(_name_from(spoken)) \
+        or ("Νέος γάμος " + _dt.datetime.now().strftime("%d/%m %H:%M"))
 
     def make():
         key = _venue_key(OWN_VENUE)

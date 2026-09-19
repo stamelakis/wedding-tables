@@ -606,21 +606,24 @@ function closeClaimPanel(cid){
   if(cid && box.dataset.cid!==cid) return;
   box.innerHTML=""; delete box.dataset.cid;
 }
-// A couple's planner opens 14 days after purchase (their withdrawal period) — or at once with «Start now», which the server
-// accepts only for a wedding less than 3 weeks away. Tables, floor and decor unlock 30 days before the wedding.
-const START_NOW_DAYS=21;
+// A couple's planner opens at 00:00 Athens on day 15 after purchase (after their 14-day withdrawal period) — or at once with
+// «Start now», which the server accepts only for a wedding less than 3 weeks away; a sale whose planner would open only on or
+// after the wedding day is refused (never_opens). Tables, floor and decor unlock 30 days before the wedding.
+const START_NOW_DAYS=21, OPEN_DAYS=15;
+const NEVER_OPENS="The planner would only open after the wedding — tick Start now (the wedding must be less than 3 weeks away) or check the date.";
 const daysUntil=s=>isYmd(s)?Math.round((Date.parse(s+"T00:00:00Z")-Date.parse(todayYmd()+"T00:00:00Z"))/86400000):NaN;
 function syncStartNow(){
   const dateEl=document.getElementById("cdate"), box=document.getElementById("cstart"), when=document.getElementById("cwhen"); if(!dateEl || !box || !when) return;
   const d=dateEl.value, n=daysUntil(d), ok=n>=0 && n<START_NOW_DAYS;
   box.disabled=!ok; if(!ok) box.checked=false;
-  when.style.color=ok && !box.checked && n<=14 ? "var(--danger)" : "";
-  when.textContent=!(n>=0) ? "The planner opens 14 days after purchase (the couple's withdrawal period); tables, floor and decor unlock 30 days before the wedding."
+  const OPENS="The planner opens on day 15 after purchase (after the couple's 14-day withdrawal period)";
+  when.style.color=n>=0 && !box.checked && n<=OPEN_DAYS ? "var(--danger)" : "";
+  when.textContent=!(n>=0) ? OPENS+"; tables, floor and decor unlock 30 days before the wedding."
     : box.checked ? "The planner opens at once, with the full editor."
-    : n<=14 ? `The wedding is ${n===0?"today":n===1?"tomorrow":`in ${n} days`} — without «Start now» the planner would not open before it.`
-    : n<START_NOW_DAYS ? `The wedding is in ${n} days — without «Start now» the planner opens only ${daysText(n-14)} before it.`
-    : n>44 ? `The planner opens 14 days after purchase (the couple's withdrawal period); tables, floor and decor unlock on ${fmtYmd(ymdPlus(d,-30))}.`
-    : "The planner opens 14 days after purchase (the couple's withdrawal period), with the full editor.";
+    : n<=OPEN_DAYS ? `The wedding is ${n===0?"today":n===1?"tomorrow":`in ${n} days`} — without «Start now» the planner would not open before it.`
+    : n<START_NOW_DAYS ? `The wedding is in ${n} days — without «Start now» the planner opens only ${daysText(n-OPEN_DAYS)} before it.`
+    : n>OPEN_DAYS+30 ? `${OPENS}; tables, floor and decor unlock on ${fmtYmd(ymdPlus(d,-30))}.`
+    : OPENS+", with the full editor.";
 }
 async function createCouple(){
   const nameEl=document.getElementById("cname"), btn=document.getElementById("createC");
@@ -637,6 +640,7 @@ async function createCouple(){
   if(!weddingDate){ invalid(dateEl, NO_DATE); return; }
   if(weddingDate<todayYmd()){ invalid(dateEl, PAST_DATE); return; }
   const startNow=!!(startEl.checked && !startEl.disabled);
+  if(!startNow && daysUntil(weddingDate)<=OPEN_DAYS){ invalid(dateEl, NEVER_OPENS); return; }
   btn.disabled=true;
   const res=await req("/admin/couples",{ method:"POST", body:JSON.stringify({ name, contact, email, lang, weddingDate, ...(startNow?{ startNow:true }:{}) }) });
   if(!document.getElementById("createC")) return;
@@ -647,6 +651,7 @@ async function createCouple(){
     if(err==="past_date"){ invalid(dateEl, PAST_DATE); return; }
     if(err==="missing_date"){ invalid(dateEl, NO_DATE); return; }
     if(err==="start_now_too_early"){ syncStartNow(); invalid(dateEl, TOO_EARLY); return; }
+    if(err==="never_opens"){ syncStartNow(); invalid(dateEl, NEVER_OPENS); return; }
     failToast(res, badEmail(res)?BAD_EMAIL:err==="bad_date"?"That wedding date isn't valid":"Create failed"); return; }
   rememberLang(c.id, lang);
   if(res.d.mailed) showCoupleSent(c.id, `✅ Couple created — link sent to ${esc(c.email||email)}`, CLAIM_NOTE);
@@ -742,7 +747,7 @@ function openCoupleEdit(c){
         <div class="full"><label for="ce_name">Couple name</label><input id="ce_name" maxlength="120" value="${esc(c.name)}"></div>
         <div class="full"><label for="ce_date">Wedding date</label>
           <div class="row"><input type="date" id="ce_date" value="${esc(isYmd(c.weddingDate)?c.weddingDate:"")}" style="max-width:220px"><button type="button" class="linkbtn" id="ce_clear">Clear date</button></div>
-          <div class="muted" style="margin-top:4px">You can set any date, or clear it, as often as needed — your change never freezes the plan. The couple can change it only once (today up to two years ahead); their plan is then view-only until 14 days before the new date.</div>
+          <div class="muted" style="margin-top:4px">You can set any date, or clear it, as often as needed — your change never freezes the plan and clears any freeze. The couple can change it only once (today up to two years ahead); their plan is then view-only until 14 days before the new date.</div>
           ${couplePhaseHtml(c.life)?`<div class="muted" style="margin-top:6px">Now: ${couplePhaseHtml(c.life)}</div>`:""}
           ${lifeLineHtml(c.life)}</div>
         <div class="full"><label for="ce_notes">Private notes <span class="hint">— only you see this</span></label><textarea id="ce_notes" maxlength="200" rows="2">${esc(c.contact||"")}</textarea></div>
@@ -1163,6 +1168,7 @@ async function load(silent){
   if(r.status===503){ renderLogin("Admin is disabled — set the OWNER_KEY secret on the server first."); return; }
   if(!r.ok){ renderLogin("Something went wrong."); return; }
   const d=await r.json(); mailInfo=await mailP; renderDashboard((d.venues||[]).sort(byNewest));
+  try{ localStorage.setItem("weddingOwnerDevice","1"); }catch(e){}   // not a secret: this device's own plans skip the free 8-table limit (the lab stays capped)
 }
 // New invitations may arrive while the tab is in the background.
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && getKey() && document.getElementById("supList")) refreshSupport(); });

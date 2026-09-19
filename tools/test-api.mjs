@@ -760,6 +760,24 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     ok(r.status === 200 && r.d.editKey && r.d.editKey !== VW.editKey && (await call('GET', '/plans/' + VW.planId, undefined, { 'X-Edit-Key': VW.editKey })).status === 403
       && (await call('GET', '/plans/' + VW.planId, undefined, { 'X-Edit-Key': r.d.editKey })).status === 200 && raw('plan:' + VW.planId).audit.some(e => e.what === 'rotate' && e.who === 'venue'), 'the venue issues a new couple link; the old one stops; it is logged');
     ok((await call('POST', '/venues/' + V9.id + '/weddings/' + VW.planId + '/couple-link', {}, { 'X-Venue-Key': 'nope' })).status === 403, 'only the venue can');
+    // review fixes: no extra plans before the room opens; the first upload keeps the starting room; admin changes unfreeze
+    const Q = (await call('POST', '/admin/couples', { name: 'Loophole', weddingDate: day(60), startNow: false }, OWN)).d.couple;
+    const QC = (await call('POST', '/claim', { token: raw('couple:' + Q.id).claimToken, nonce: 'n' })).d, HQ = { 'X-Edit-Key': QC.editKey };
+    const big = n => { const p = layout(); p.tables = Array.from({ length: n }, (_, i) => ({ id: i + 1, shape: 'round', x: 100 + i * 10, y: 100, label: String(i + 1), capacity: 8, seats: Array(8).fill(null) })); return p; };
+    ok((await call('POST', '/plans', { name: 'extra', plan: big(30), parentId: QC.id }, HQ)).d.error === 'not_open', 'no extra plan while waiting');
+    patchRaw('plan:' + QC.id, o => { o.opensAt = Date.now() - 1000; });
+    ok((await call('POST', '/plans', { name: 'extra', plan: big(30), parentId: QC.id }, HQ)).d.error === 'not_open', 'nor in the names phase');
+    const firstUp = big(40); firstUp.tables.push({ id: 99, shape: 'head', x: 900, y: 1200, label: 'H', capacity: 4, seats: Array(4).fill(null) });
+    r = await call('PUT', '/plans/' + QC.id, { plan: firstUp, baseUpdated: raw('plan:' + QC.id).updated }, HQ);
+    ok(r.d.enforced && raw('plan:' + QC.id).plan.tables.length === 9 && raw('plan:' + QC.id).plan.tables.some(t => t.shape === 'head'), 'a first upload in the names phase keeps only the starting 8 tables + head table', raw('plan:' + QC.id).plan.tables.length);
+    const dec = JSON.parse(JSON.stringify(raw('plan:' + QC.id).plan)); dec.features = [{ id: 'f9', kind: 'prop', x: 400, y: 400, w: 80, h: 80, label: 'Photo booth' }];
+    r = await call('PUT', '/plans/' + QC.id, { plan: dec, baseUpdated: raw('plan:' + QC.id).updated }, HQ);
+    ok(!r.d.enforced && raw('plan:' + QC.id).plan.features.some(f => f.id === 'f9'), 'decor stays open in the names phase (owner decision)');
+    await call('POST', '/plans/' + QC.id + '/date', { date: day(80) }, HQ);
+    ok(raw('plan:' + QC.id).frozenUntil, 'the couple\'s change froze it');
+    await call('PATCH', '/admin/couples/' + Q.id, { weddingDate: day(40) }, OWN);
+    ok(!raw('plan:' + QC.id).frozenUntil && (await call('GET', '/plans/' + QC.id, undefined, HQ)).d.life.phase === 'names', 'an admin date change lifts the freeze');
+    ok((await call('POST', '/admin/couples', { name: 'Late', weddingDate: day(10), startNow: false }, OWN)).d.error === 'never_opens', 'a plan that would open only after the wedding is not sold without "start now"');
   }
   // renewal reminders: 30 and 7 days before, once each
   const VM = (await call('POST', '/admin/venues', { name: 'Remind', license: { type: 'seasonal', seasonStart: day(-200), seasonEnd: day(20) } }, OWN)).d;

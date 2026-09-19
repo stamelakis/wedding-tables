@@ -132,15 +132,19 @@ not serve other couples' weddings. Owner decisions (Andreas):
   (`plan.opensAt`, phase `waiting`: read-only + countdown). **Start now** (admin tick, only when the wedding is < 21 days
   away; the couple consents that a withdrawal then costs the days used) skips the wait.
 - **Phases** (server `life.phase`, couple role only — venue, support, admin never limited): `names` until 00:00 Athens
-  **30 days before the wedding** (guests, groups, invitations, seating on existing tables, chair counts, table labels;
-  NOT add/delete/merge/move tables, floor, decor — enforced server-side, the plan comes back `{enforced}`), then `full`,
+  **30 days before the wedding** (guests, groups, invitations, seating on existing tables, chair counts, table labels, the
+  couple's own decor; NOT add/delete/merge/move tables or the floor — enforced server-side, the plan comes back
+  `{enforced}`; a first upload while nothing is stored keeps only the starting 8 guest tables + head table), then `full`,
   then `locked` from the day after the wedding. GET returns the couple's EFFECTIVE `perms` (phase ∩ venue perms).
 - **One date change** for a direct couple; it freezes the plan (`frozen`, `plan.frozenUntil`) until 00:00 Athens 14 days
   before the new date. The admin can move dates without a freeze and unfreeze (`PATCH /admin/couples/:id {unfreeze}`).
 - **Venues**: season deal only (the 9€/wedding tier is gone from site and admin; old per-wedding licences still work);
   every wedding needs a date (`missing_date`); venue couples have no waiting phase, same names/full phases; venues keep
   3 date changes; **new couple link** `POST /venues/:id/weddings/:planId/couple-link` (old link + devices stop, logged).
-- **New plans start with 8 round tables + the head table**; **lab.html is a free public demo** limited to 8 guest tables.
+- **New plans start with 8 round tables + the head table**; **lab.html is a free public demo** limited to 8 guest tables;
+  the same 8-table cap applies to any plan kept only on a device (no cloudId), except on devices where the owner signed in
+  to admin.html (`localStorage.weddingOwnerDevice`, a non-secret flag). A couple's **extra plans** (POST /plans with
+  parentId) can only be put online once the main plan is in the `full` phase (`not_open` otherwise).
 - **Invitations editor** in the planner (list, members, rename, delete, add/remove/move people, seat all).
 - Hermes «νέος γάμος …» must include the date («… στις 12 Σεπτεμβρίου»); it asks for it otherwise.
 

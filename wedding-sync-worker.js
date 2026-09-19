@@ -85,7 +85,8 @@ const DEFAULT_RETENTION = { keepDays: 7, lockAfter: true, keep: false };
 // planner opens at 00:00 on day 15); everyone
 // arranges the room only in the last 30 days; a couple's one date change freezes the plan until 14 days before the new date.
 const OPEN_DELAY_DAYS = 15, FULL_WINDOW_DAYS = 30, START_NOW_MAX_DAYS = 21, COUPLE_DATE_CHANGES = 1, FREEZE_BEFORE_DAYS = 14;
-const NAMES_PERMS = { floor: false, decor: false, layout: false, tables: false, seats: true, labels: true, maxSeats: 0 };
+const NAMES_PERMS = { floor: false, decor: true, layout: false, tables: false, seats: true, labels: true, maxSeats: 0 };   // decor: the couple's own items (venue items follow the venue's permission)
+const STARTER_GUEST_TABLES = 8;   // a new plan starts with 8 guest tables + the head table
 const andPerms = (p, q) => { const o = {}; for (const k of PERM_KEYS) o[k] = !!(p[k] && q[k]); o.maxSeats = p.maxSeats || 0; return o; };
 const ymdOk = s => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && (d => !isNaN(d) && d.toISOString().slice(0, 10) === s)(new Date(s + "T00:00:00Z"));
 const addDays = (ymd, n) => new Date(Date.parse(ymd + "T00:00:00Z") + n * DAY).toISOString().slice(0, 10);
@@ -590,7 +591,9 @@ export default {
           if (!ok && body.parentId) {
             const parent = safeParse(await env.PLANS.get("plan:" + String(body.parentId)));
             if (parent && ownerOf(parent).type === "couple" && eq(request.headers.get("X-Edit-Key") || "", parent.editKey)) {
-              if ((await planLife(env, parent, String(body.parentId))).over) return json({ error: "wedding_over" }, 403);   // no new plans after the wedding
+              const PL = await planLife(env, parent, String(body.parentId));
+              if (PL.over) return json({ error: "wedding_over" }, 403);   // no new plans after the wedding
+              if (PL.phase !== "full") return json({ error: "not_open", life: lifeOut(PL, parent, false) }, 403);   // extra plans only once the room is open
               ok = true; coupleId = parent.coupleId || null;
             }
           }
@@ -669,6 +672,11 @@ export default {
             }
             const actsForVenue = a.owner.type === "venue" && (a.role === "venue" || a.role === "support");   // on a venue plan only the venue can invite support
             if (actsForVenue) plan = stampVenue(rec.plan, plan);
+            else if (phasePerms && PL.phase === "names" && !isPlan(rec.plan)) {   // first upload: the starting room, no more
+              let guestT = 0, headT = 0;
+              const keep = plan.tables.filter(t => { if (t && t.shape === "head") return ++headT <= 1; return ++guestT <= STARTER_GUEST_TABLES; });
+              if (keep.length !== plan.tables.length) { plan = { ...plan, tables: keep }; enforced = true; }
+            }
             else if (phasePerms && PL.phase === "names") { const e = enforcePerms(rec.plan, plan, phasePerms, a.owner.type === "venue"); enforced = reverted(e, plan); plan = e; }   // the room opens 30 days before
             else if (a.restricted && a.layoutSet) { const e = enforcePerms(rec.plan, plan, a.perms, true); enforced = reverted(e, plan); plan = e; }
             else if (a.owner.type === "venue") plan = enforcePerms(rec.plan, plan, ALL_OPEN, true);   // keeps the authorship of decor items
@@ -1120,6 +1128,7 @@ export default {
             const startNow = b.startNow === true;
             if (startNow && b.weddingDate >= addDays(todayAthens(), START_NOW_MAX_DAYS)) return json({ error: "start_now_too_early" }, 400);
             const paidAt = Date.now(), opensAt = startNow ? null : athensMidnight(addDays(todayAthens(), OPEN_DELAY_DAYS));
+            if (opensAt && opensAt >= athensMidnight(b.weddingDate)) return json({ error: "never_opens" }, 400);   // it would open only after the wedding: "start now" or check the date
             const cid = rnd(10), planId = rnd(22), token = rnd(32);
             const name = String(b.name || "Wedding").slice(0, 120);
             await env.PLANS.put("plan:" + planId, JSON.stringify({ name, plan: null, editKey: rnd(28), readKey: rnd(24), owner: { type: "couple" }, coupleId: cid, keyGen: 0,
@@ -1149,7 +1158,7 @@ export default {
               const cc = safeParse(await env.PLANS.get("couple:" + parts[2]));
               if (cc) await kvUpdate(env, "plan:" + cc.planId, rec => { if (!rec || rec.coupleId !== cc.id) return null; let dirty = false;
                 if (b.weddingDate !== undefined) { const before = rec.weddingDate || null; applyDate(rec, b.weddingDate || null, null, true);
-                  if (before !== rec.weddingDate) { addAudit(rec, "admin", "date", 0, { d: rec.weddingDate }); dirty = true; } }
+                  if (before !== rec.weddingDate) { addAudit(rec, "admin", "date", 0, { d: rec.weddingDate }); if (rec.frozenUntil) rec.frozenUntil = null; dirty = true; } }
                 if (b.unfreeze === true && rec.frozenUntil) { rec.frozenUntil = null; addAudit(rec, "admin", "unfreeze"); dirty = true; }
                 return dirty ? rec : null; });
             }

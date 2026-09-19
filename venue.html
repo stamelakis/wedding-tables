@@ -545,7 +545,7 @@ function rowHTML(w){
   const past=isPast(w), b=[], S=w.stats;
   if(past) b.push(lockChip(w));
   if(w.supportExpires) b.push(supBadge(w.supportExpires));
-  if(!w.layoutSet && !past) b.push(`<span class="badge own" title="Ο γάμος ξεκίνησε χωρίς τον χώρο σας: το ζευγάρι στήνει τον χώρο μέχρι να τον αποθηκεύσετε εσείς (Άνοιγμα)">Χώρος από το ζευγάρι</span>`);
+  if(!w.layoutSet && !past) b.push(`<span class="badge own" title="Ο γάμος ξεκίνησε χωρίς τον χώρο σας: αν δεν τον αποθηκεύσετε εσείς (Άνοιγμα), το ζευγάρι στήνει μόνο του τον χώρο από 30 ημέρες πριν από τον γάμο — ως τότε μόνο ονόματα και θέσεις">Χώρος από το ζευγάρι</span>`);
   const soon=w.date && dayDiff(todayAthens(),w.date)<=7;
   const when=w.date?`<div class="when">📅 ${esc(fmtYMD(w.date,true))}${past?"":` <span class="rel${soon?" soon":""}">· ${esc(untilText(w.date))}</span>`}</div>`
     :past?"":`<button class="setdate" data-a="date" title="Η ημερομηνία ορίζει πότε κλειδώνει και πότε διαγράφεται το σχέδιο">📅 Ορίστε ημερομηνία</button>`;
@@ -648,7 +648,7 @@ function renderDashboard(){
     </div>
     ${DATA.canCreate?`<div class="under">Η ημερομηνία ορίζει πότε κλειδώνει και διαγράφεται το σχέδιο και από πότε το ζευγάρι αλλάζει τα τραπέζια (30 ημέρες πριν) — γι' αυτό αλλάζει έως 3 φορές.</div>`
       :`<div class="under bad">${helpify(reasonText(DATA.reason)||"Δεν είναι δυνατή η δημιουργία νέου γάμου αυτή τη στιγμή — επικοινωνήστε μαζί μας.")}</div>`}
-    ${DATA.template?"":`<div class="under">Χωρίς χώρο-πρότυπο, το ζευγάρι στήνει μόνο του τον χώρο μέχρι να τον αποθηκεύσετε εσείς.</div>`}
+    ${DATA.template?"":`<div class="under">Χωρίς χώρο-πρότυπο, το ζευγάρι στήνει μόνο του τον χώρο από 30 ημέρες πριν από τον γάμο (ως τότε μόνο ονόματα και θέσεις) — εκτός αν τον αποθηκεύσετε εσείς.</div>`}
     <div class="w-list" id="list">${listHTML()}</div>
     ${trashHTML()}`;
 
@@ -791,7 +791,7 @@ function fromWeddingDialog(){
 function permsDialog(w){
   const st=peState(w.perms);
   const dlg=openModal(`<h3 id="mTitle">Δικαιώματα ζευγαριού</h3><div class="msub">${esc(w.label)}</div>
-    ${w.layoutSet?"":`<div class="info">Αυτός ο γάμος ξεκίνησε χωρίς τον χώρο σας, οπότε το ζευγάρι στήνει ακόμη μόνο του τον χώρο. Οι περιορισμοί ισχύουν μόλις αποθηκεύσετε εσείς τον χώρο (Άνοιγμα).</div>`}
+    ${w.layoutSet?"":`<div class="info">Αυτός ο γάμος ξεκίνησε χωρίς τον χώρο σας: από 30 ημέρες πριν από τον γάμο το ζευγάρι στήνει μόνο του τον χώρο (ως τότε μόνο ονόματα και θέσεις). Οι περιορισμοί ισχύουν μόλις αποθηκεύσετε εσείς τον χώρο (Άνοιγμα).</div>`}
     <div class="pe" id="mPE">${peHTML("m",st)}</div>
     <div class="prev"><a id="mPrev" href="${esc(venueLink(w,true))}" target="_blank" rel="noopener">👁 Δείτε το όπως το ζευγάρι</a>
       <div class="hint" id="mPrevHint" hidden>Η προβολή δείχνει τα αποθηκευμένα δικαιώματα — πατήστε πρώτα «Αποθήκευση».</div></div>
