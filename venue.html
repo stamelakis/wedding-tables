@@ -257,7 +257,7 @@ function reasonText(r){
   return { inactive:"Ο λογαριασμός είναι ανενεργός — επικοινωνήστε μαζί μας.",
     before_season:`Η σεζόν σας ξεκινά ${ymdOk(L.seasonStart)?"στις "+fmtYMD(L.seasonStart):"σύντομα"} — από τότε μπορείτε να δημιουργείτε γάμους. Για νωρίτερα, επικοινωνήστε μαζί μας.`,
     after_season:`Η σεζόν σας έληξε${ymdOk(L.seasonEnd)?" στις "+fmtYMD(L.seasonEnd):""}. Για ανανέωση, επικοινωνήστε μαζί μας.`,
-    quota_reached:`Χρησιμοποιήσατε ${L.quota?`και τους ${L.quota} γάμους`:"όλους τους γάμους"} του πακέτου σας. Για περισσότερους, επικοινωνήστε μαζί μας.`,
+    quota_reached:`Χρησιμοποιήσατε ${L.quota?`και τους ${L.quota} γάμους`:"όλους τους γάμους"} του πακέτου σας. Για συνδρομή σεζόν, επικοινωνήστε μαζί μας.`,
     cap_reached:`Έχετε ήδη ${L.cap||"τους μέγιστους"} γάμους ταυτόχρονα. Διαγράψτε έναν που έχει ολοκληρωθεί ή επικοινωνήστε μαζί μας για μεγαλύτερο όριο.` }[r]||"";
 }
 const helpify=t=>esc(t).replace(/([Εε]πικοινωνήστε μαζί μας|γράψτε μας ή τηλεφωνήστε)/g,'<a href="#help" data-help>$1</a>');
@@ -532,6 +532,15 @@ function lockChip(w){
   const L=w.life||{}, head=L.locked?"🔒 Κλειδωμένο":"Ο γάμος έγινε";
   return `<span class="badge lock" title="${L.locked?"Μόνο για ανάγνωση · ":""}Κατεβάστε τα PDF πριν τη διαγραφή">${head} — ${L.keep||!L.deleteAt?"φυλάσσεται":"διαγράφεται στις "+esc(fmtAth(L.deleteAt))}</span>`;
 }
+// From 30 days before the wedding (life.fullAt, an Athens midnight) the couple may also move/add tables, floor and decor —
+// within the wedding's permissions. Before that: names and seats on the existing tables only. The venue always edits everything.
+const arranges=w=>{ const p=normP(w.perms); return !w.layoutSet || p.floor || p.decor || p.layout || p.tables; };   // no saved space yet: no limits apply
+const fmtAt=x=>typeof x==="number"?fmtAth(x):ymdOk(x)?fmtYMD(x):"";
+function fullLine(w){
+  const at=w.life && fmtAt(w.life.fullAt);
+  if(!at || isPast(w) || !arranges(w)) return "";
+  return `<div class="dt" title="Ως τότε το ζευγάρι γράφει καλεσμένους και τους βάζει στα υπάρχοντα τραπέζια. Εσείς αλλάζετε τα πάντα, όποτε θέλετε.">Διάταξη τραπεζιών για το ζευγάρι από ${esc(at)}</div>`;
+}
 function rowHTML(w){
   const past=isPast(w), b=[], S=w.stats;
   if(past) b.push(lockChip(w));
@@ -549,7 +558,7 @@ function rowHTML(w){
     :`<button class="btn" data-a="open" title="Ανοίγει τον γάμο με πλήρη δικαιώματα κτήματος">Άνοιγμα</button>
         <button class="btn" data-a="link" title="Αντιγραφή του συνδέσμου που στέλνετε στο ζευγάρι">Σύνδεσμος ζευγαριού</button>`;
   return `<div class="card w${past?" past":""}" data-id="${esc(w.planId)}">
-      <div class="grow"><div class="nm">${esc(w.label)}</div>${when}${prog}
+      <div class="grow"><div class="nm">${esc(w.label)}</div>${when}${fullLine(w)}${prog}
         <div class="dt">${w.updated?`<span title="${esc(fmtDT(w.updated,true))}">Τελευταία αλλαγή ${esc(agoText(w.updated))}</span>`:`Δημιουργήθηκε ${esc(fmtDate(w.createdAt))}`}${past?"":` · Ζευγάρι: ${esc(permsSummary(w.perms))}`}</div>
         ${b.length?`<div class="w-badges">${b.join("")}</div>`:""}</div>
       <div class="acts">${acts}</div>
@@ -637,7 +646,7 @@ function renderDashboard(){
         <select id="linklang">${[["el","Ελληνικά"],["en","English"],["de","Deutsch"]].map(([k,n])=>`<option value="${k}" ${LINK_LANG===k?"selected":""}>${n}</option>`).join("")}</select>
       </label>
     </div>
-    ${DATA.canCreate?`<div class="under">Η ημερομηνία ορίζει πότε κλειδώνει και πότε διαγράφεται το σχέδιο — γι' αυτό αλλάζει έως 3 φορές.</div>`
+    ${DATA.canCreate?`<div class="under">Η ημερομηνία ορίζει πότε κλειδώνει και διαγράφεται το σχέδιο και από πότε το ζευγάρι αλλάζει τα τραπέζια (30 ημέρες πριν) — γι' αυτό αλλάζει έως 3 φορές.</div>`
       :`<div class="under bad">${helpify(reasonText(DATA.reason)||"Δεν είναι δυνατή η δημιουργία νέου γάμου αυτή τη στιγμή — επικοινωνήστε μαζί μας.")}</div>`}
     ${DATA.template?"":`<div class="under">Χωρίς χώρο-πρότυπο, το ζευγάρι στήνει μόνο του τον χώρο μέχρι να τον αποθηκεύσετε εσείς.</div>`}
     <div class="w-list" id="list">${listHTML()}</div>
@@ -701,7 +710,8 @@ function bindDashboard(v){
     const r=await call("POST","/venues/"+v.id+"/weddings",{ label, date });
     if(r.gone) return;
     if(r.ok){ newlabel.value=""; newdate.value=""; toast(r.d.fromTemplate?"Ο γάμος δημιουργήθηκε από τον χώρο σας":"Ο γάμος δημιουργήθηκε"); load(); }
-    else{ if(!r.net) toast(DATE_ERR[r.d.error]||reasonText(r.d.error)||"Αποτυχία δημιουργίας",3200); create.disabled=false; if(r.status===403) load(); }
+    else{ if(!r.net) toast(DATE_ERR[r.d.error]||reasonText(r.d.error)||"Αποτυχία δημιουργίας",3200); create.disabled=false;
+      if(DATE_ERR[r.d.error]) newdate.focus(); if(r.status===403) load(); }
   };
   create.onclick=doCreate;
   newlabel.addEventListener("keydown",e=>{ if(e.key==="Enter") doCreate(); });
@@ -722,6 +732,7 @@ function bindDashboard(v){
     else if(a==="pdf-floor") downloadPdf(w, "floor");
     else if(a==="pdf-keepsake") downloadPdf(w, "keepsake");
     else if(a==="perms") permsDialog(w);
+    else if(a==="newlink") newLinkDialog(w);
     else if(a==="support") supportDialog({ planId:w.planId, label:w.label, kind:"wedding", expires:w.supportExpires });
     else if(a==="del") deleteDialog(w);
   });
@@ -737,6 +748,7 @@ function toggleMenu(btn, w){
   m.innerHTML=`${locked?"":`<button role="menuitem" data-a="details">Στοιχεία γάμου</button>`}
     ${past?`<button role="menuitem" data-a="link">Σύνδεσμος ζευγαριού</button>`:""}
     ${locked?"":`<button role="menuitem" data-a="perms">Δικαιώματα ζευγαριού</button>`}
+    ${past?"":`<button role="menuitem" data-a="newlink">Νέος σύνδεσμος ζευγαριού</button>`}
     ${past?"":`<button role="menuitem" data-a="pdf-floor">PDF κάτοψης</button>`}
     <button role="menuitem" data-a="support">Υποστήριξη TakeaSeat</button><hr>
     <button role="menuitem" data-a="del" class="danger">Διαγραφή</button>`;
@@ -850,6 +862,7 @@ function supportDialog(t){
 // ---- the wedding's name & date. The date decides when the plan locks and is deleted, so the server limits it:
 // today … +2 years, the first date free then 3 changes, never removed, fixed once the wedding is over. ----
 const DATE_ERR={ bad_date:"Η ημερομηνία πρέπει να είναι από σήμερα έως δύο χρόνια μπροστά.",
+  missing_date:"Ορίστε την ημερομηνία του γάμου — χωρίς αυτήν δεν δημιουργείται γάμος.",
   no_more_changes:"Η ημερομηνία έχει ήδη αλλάξει όσες φορές επιτρέπεται. Για νέα αλλαγή, γράψτε μας ή τηλεφωνήστε.",
   locked:"Ο γάμος έχει ολοκληρωθεί — δεν αλλάζει πια." };   // the server refuses name, perms and date once the wedding is over
 function detailsDialog(w, focusDate){
@@ -866,8 +879,9 @@ function detailsDialog(w, focusDate){
     if(isPast(w)) return (L.locked?"Το σχέδιο είναι πλέον μόνο για ανάγνωση":"Ο γάμος έχει ολοκληρωθεί")+(L.keep||!L.deleteAt?" και φυλάσσεται.":` και διαγράφεται στις ${fmtAth(L.deleteAt)} — ως τότε μπορείτε να κατεβάσετε τα PDF.`);
     const why="Η ημερομηνία ορίζει πότε κλειδώνει και πότε διαγράφεται το σχέδιο: ";
     if(!d) return why+`χωρίς ημερομηνία, κλειδώνει στις ${L.lockAt?fmtAth(L.lockAt):"—"}.`;
-    const lock=addDays(d,1);
-    return why+`από τις ${fmtYMD(lock)} γίνεται μόνο για ανάγνωση${L.keep||keepDays==null?".":` και διαγράφεται στις ${fmtYMD(addDays(lock,keepDays))}.`}`;
+    const lock=addDays(d,1), full=addDays(d,-30);   // the server's fullAt: 00:00 Athens, 30 days before
+    return why+`από τις ${fmtYMD(lock)} γίνεται μόνο για ανάγνωση${L.keep||keepDays==null?".":` και διαγράφεται στις ${fmtYMD(addDays(lock,keepDays))}.`}`
+      +(arranges(w)&&full>today?` Διάταξη τραπεζιών για το ζευγάρι από ${fmtYMD(full)}.`:"");
   };
   const dlg=openModal(`<h3 id="mTitle">Στοιχεία γάμου</h3><div class="msub">${esc(w.label)}</div>
     <div class="fld"><label class="lbl" for="mName">Όνομα ζευγαριού</label><input id="mName" maxlength="120" value="${esc(w.label)}" ${focusDate&&dateOn?"":"data-focus"}></div>
@@ -902,6 +916,33 @@ function detailsDialog(w, focusDate){
   };
   save.onclick=go;
   [nameI,dateI].forEach(i=>i.addEventListener("keydown",e=>{ if(e.key==="Enter") go(); }));
+}
+
+// ---- a new couple link: the old one (and every device that opened it) stops at once; the server logs it in the plan ----
+function newLinkDialog(w){
+  const head=`<h3 id="mTitle">Νέος σύνδεσμος ζευγαριού</h3><div class="msub">${esc(w.label)}</div>`;
+  const dlg=openModal(`${head}
+    <div class="lead">Ο παλιός σύνδεσμος και όσες συσκευές τον χρησιμοποιούν σταματούν αμέσως να έχουν πρόσβαση. Συνέχεια;</div>
+    <div class="foot"><button class="btn" data-close>Άκυρο</button><button class="btn danger" id="mNew">Νέος σύνδεσμος</button></div>`);
+  dlg.querySelector("#mNew").onclick=async e=>{
+    const b=e.currentTarget; b.disabled=true;
+    const r=await call("POST","/venues/"+DATA.venue.id+"/weddings/"+encodeURIComponent(w.planId)+"/couple-link",{});
+    if(r.gone) return;
+    if(!r.ok || typeof r.d.editKey!=="string" || !r.d.editKey){ b.disabled=false; if(r.net) return;
+      const gone=r.status===404, over=r.d.error==="locked";
+      toast(gone?"Ο γάμος δεν βρέθηκε.":over?"Ο γάμος έχει ολοκληρωθεί.":"Αποτυχία — δοκιμάστε ξανά.",2600);
+      if(gone||over){ closeModal(); load(); } return; }
+    w.editKey=r.d.editKey;
+    const link=coupleLink(w);
+    openModal(`${head}
+      <div class="okbox"><div style="font-weight:700;margin-bottom:6px">✅ Ο νέος σύνδεσμος — στείλτε τον στο ζευγάρι:</div>
+        <div style="font-family:ui-monospace,monospace;font-size:13px;word-break:break-all">${esc(link)}</div>
+        <button class="btn" id="mCopy" data-focus style="margin-top:10px;padding:6px 12px;font-size:13px">📋 Αντιγραφή</button></div>
+      <div class="hint">Ο παλιός σύνδεσμος δεν λειτουργεί πλέον. Τον νέο τον βρίσκετε και στο «Σύνδεσμος ζευγαριού».</div>
+      <div class="foot"><button class="btn" data-close>Κλείσιμο</button></div>`);
+    dlgBox.querySelector("#mCopy").onclick=()=>copy(link);
+    load();
+  };
 }
 
 // ---- delete: 14 days in the trash; only TakeaSeat brings it back ----

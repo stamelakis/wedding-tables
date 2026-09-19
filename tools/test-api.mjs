@@ -15,7 +15,15 @@ const raw = k => JSON.parse(m.get(k));
 const patchRaw = (k, fn) => { const o = raw(k); fn(o); m.set(k, JSON.stringify(o)); };
 const NEW = { 'X-Client': '2' };
 
+const athensDay = n => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Athens', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(Date.now() + n * 86400000));
 async function call(method, url, body, headers = {}) {
+  // Phase shim for the sections written before phases existed: their plans are edited right away (a wedding 10 days
+  // out, "start now"). New tests opt out by passing weddingDate / date / startNow explicitly (undefined = omit).
+  if (method === 'POST' && url === '/admin/couples' && body) {
+    if (!('weddingDate' in body)) body = { ...body, weddingDate: athensDay(10), startNow: true };
+    else if (!('startNow' in body) && body.weddingDate >= athensDay(0) && body.weddingDate < athensDay(21)) body = { ...body, startNow: true };
+  }
+  if (method === 'POST' && /^\/venues\/[^/]+\/weddings$/.test(url) && body && !('date' in body)) body = { ...body, date: athensDay(10) };
   const r = await worker.fetch(new Request('http://t' + url, { method, headers: { 'Content-Type': 'application/json', ...NEW, ...headers }, body: body === undefined ? undefined : JSON.stringify(body) }), env);
   let d = null; try { d = await r.json(); } catch (e) {}
   return { status: r.status, d };
@@ -707,6 +715,51 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     const asRound = layout(); asRound.tables[1].shape = 'round';
     await call('PUT', '/plans/' + WS.planId, { plan: asRound, baseUpdated: raw('plan:' + WS.planId).updated }, { 'X-Edit-Key': WS.venueKey });
     ok(raw('plan:' + WS.planId).plan.tables[1].shape === 'rect', 'a page opened before the update cannot turn a long table round');
+  }
+  // ---- phases: opens 14 days after payment, names until 30 days before, one date change + freeze, new couple link ----
+  {
+    ok((await call('POST', '/admin/couples', { name: 'NoDate', weddingDate: undefined }, OWN)).d.error === 'missing_date', 'a couple is sold with a wedding date');
+    ok((await call('POST', '/venues/' + V9.id + '/weddings', { label: 'NoDate', date: undefined }, HV)).d.error === 'missing_date', 'a venue wedding needs a date');
+    ok((await call('POST', '/admin/couples', { name: 'Early', weddingDate: day(60), startNow: true }, OWN)).d.error === 'start_now_too_early', '"start now" only for a wedding less than 3 weeks away');
+    const P = (await call('POST', '/admin/couples', { name: 'Phases', weddingDate: day(60), startNow: false }, OWN)).d.couple;
+    ok(P.life.phase === 'waiting' && P.life.opensAt > Date.now() + 13 * 86400000 && P.startNow === false, 'the admin sees the planner opening 14 days after payment', P.life);
+    const PC = (await call('POST', '/claim', { token: raw('couple:' + P.id).claimToken, nonce: 'n' })).d, HP = { 'X-Edit-Key': PC.editKey };
+    r = await call('GET', '/plans/' + PC.id, undefined, HP);
+    ok(r.d.life.phase === 'waiting' && r.d.perms.tables === false && r.d.perms.seats === false, 'while waiting the couple sees the plan but can change nothing', r.d.perms);
+    r = await call('PUT', '/plans/' + PC.id, { plan: layout(), baseUpdated: raw('plan:' + PC.id).updated }, HP);
+    ok(r.status === 403 && r.d.error === 'not_open' && r.d.life.opensAt, 'saving before the opening is refused with the date');
+    ok((await call('POST', '/plans/' + PC.id + '/date', { date: day(70) }, HP)).d.error === 'not_open', 'the date cannot change before the opening either');
+    patchRaw('plan:' + PC.id, o => { o.opensAt = Date.now() - 1000; o.plan = layout(); });
+    r = await call('GET', '/plans/' + PC.id, undefined, HP);
+    ok(r.d.life.phase === 'names' && r.d.perms.tables === false && r.d.perms.layout === false && r.d.perms.floor === false && r.d.perms.seats === true && r.d.life.fullAt, 'names phase: guests and seating yes, the room no', r.d.perms);
+    const more = layout(); more.tables.push({ id: 9, shape: 'round', x: 900, y: 900, label: '9', capacity: 8, seats: Array(8).fill(null) }); more.tables[0].x = 777;
+    more.guests = { gA: { name: 'Α' } }; more.tables[1].seats[0] = 'gA'; more.tables[1].capacity = 10; more.tables[1].seats = [...more.tables[1].seats, null, null];
+    r = await call('PUT', '/plans/' + PC.id, { plan: more, baseUpdated: raw('plan:' + PC.id).updated }, HP);
+    const saved = raw('plan:' + PC.id).plan;
+    ok(r.d.enforced && saved.tables.length === 2 && saved.tables[0].x === 100 && saved.tables[1].seats[0] === 'gA' && saved.tables[1].capacity === 10, 'a new table or a moved table is undone; names and chair counts stay', saved.tables.map(t => [t.id, t.x, t.capacity]));
+    // one date change, then view-only until 14 days before the new date
+    r = await call('GET', '/plans/' + PC.id, undefined, HP);
+    ok(r.d.life.dateChangesLeft === 1 && r.d.life.dateEditable, 'a couple has one date change');
+    r = await call('POST', '/plans/' + PC.id + '/date', { date: day(90) }, HP);
+    ok(r.status === 200 && r.d.life.phase === 'frozen' && r.d.life.frozenUntil > Date.now() + 70 * 86400000 && r.d.life.dateChangesLeft === 0, 'after the change the plan freezes until 14 days before the new date', r.d.life);
+    ok((await call('PUT', '/plans/' + PC.id, { plan: saved, baseUpdated: raw('plan:' + PC.id).updated }, HP)).d.error === 'not_open', 'frozen: no saves');
+    await call('PATCH', '/admin/couples/' + P.id, { unfreeze: true }, OWN);
+    r = await call('GET', '/plans/' + PC.id, undefined, HP);
+    ok(r.d.life.phase === 'names' && r.d.life.dateEditable === false, 'the admin can unfreeze; no second change for the couple');
+    await call('PATCH', '/admin/couples/' + P.id, { weddingDate: day(20) }, OWN);
+    r = await call('GET', '/plans/' + PC.id, undefined, HP);
+    ok(r.d.life.phase === 'full' && r.d.perms.tables === true && !r.d.life.frozenUntil, 'an admin date change never freezes; 30 days before, the full editor', r.d.life.phase);
+    // venue couples: no waiting, names until 30 days before; the venue itself is never limited
+    const VW = (await call('POST', '/venues/' + V9.id + '/weddings', { label: 'Phased', date: day(60) }, HV)).d;
+    r = await call('GET', '/plans/' + VW.planId, undefined, { 'X-Edit-Key': VW.editKey });
+    ok(r.d.life.phase === 'names' && r.d.perms.tables === false, 'a venue couple starts in the names phase at once');
+    ok((await call('PUT', '/plans/' + VW.planId, { plan: layout(), baseUpdated: raw('plan:' + VW.planId).updated }, { 'X-Edit-Key': VW.venueKey })).status === 200
+      && (await call('GET', '/venues/' + V9.id, undefined, HV)).d.weddings.find(w => w.planId === VW.planId).life.fullAt, 'the venue edits freely and sees when the couple gets the room');
+    // a new couple link (leaked link)
+    r = await call('POST', '/venues/' + V9.id + '/weddings/' + VW.planId + '/couple-link', {}, HV);
+    ok(r.status === 200 && r.d.editKey && r.d.editKey !== VW.editKey && (await call('GET', '/plans/' + VW.planId, undefined, { 'X-Edit-Key': VW.editKey })).status === 403
+      && (await call('GET', '/plans/' + VW.planId, undefined, { 'X-Edit-Key': r.d.editKey })).status === 200 && raw('plan:' + VW.planId).audit.some(e => e.what === 'rotate' && e.who === 'venue'), 'the venue issues a new couple link; the old one stops; it is logged');
+    ok((await call('POST', '/venues/' + V9.id + '/weddings/' + VW.planId + '/couple-link', {}, { 'X-Venue-Key': 'nope' })).status === 403, 'only the venue can');
   }
   // renewal reminders: 30 and 7 days before, once each
   const VM = (await call('POST', '/admin/venues', { name: 'Remind', license: { type: 'seasonal', seasonStart: day(-200), seasonEnd: day(20) } }, OWN)).d;

@@ -296,18 +296,20 @@ function renderLogin(err){
   document.getElementById("ok").addEventListener("keydown",e=>{ if(e.key==="Enter") go(); });
 }
 
-// Licence fields (create form and «Edit…»). An empty field never means "unlimited": the season dates (seasonal) or the quota
-// (per-wedding) are required unless «Unlimited» is ticked, and a seasonal maximum is a number unless «No maximum» is ticked.
+// Licence fields (create form and «Edit…»). Only seasonal licences are sold now: the type picker appears only for a venue that
+// still has a per-wedding licence (it keeps working, or is converted here). An empty field never means "unlimited": the season
+// dates (seasonal) or the quota (per-wedding) are required unless «Unlimited» is ticked, and a seasonal maximum is a number
+// unless «No maximum» is ticked.
 function licenseFields(prefix, L){
   const isNew=!L;   // a new venue starts with nothing ticked except «No maximum» and «Renews automatically»
   L=L||{ type:"seasonal", autoRenew:true };
   const per=L.type==="per_wedding", unl=per ? !L.quota : !(L.seasonStart||L.seasonEnd);
   return `<div class="grid">
-    <div class="full"><label for="${prefix}type">License type</label>
+    ${per?`<div class="full"><label for="${prefix}type">License type</label>
       <select id="${prefix}type">
-        <option value="seasonal"${per?"":" selected"}>Seasonal (weddings within a season)</option>
-        <option value="per_wedding"${per?" selected":""}>Per-wedding (a fixed number of weddings)</option>
-      </select></div>
+        <option value="per_wedding" selected>Per-wedding (old licence — no longer sold)</option>
+        <option value="seasonal">Seasonal — convert to the season deal</option>
+      </select></div>`:`<input type="hidden" id="${prefix}type" value="seasonal">`}
     <div class="seasonal lim"><label for="${prefix}start">Season start</label><input type="date" id="${prefix}start" value="${esc(isYmd(L.seasonStart)?L.seasonStart:"")}"></div>
     <div class="seasonal lim"><label for="${prefix}end">Season end</label><input type="date" id="${prefix}end" value="${esc(isYmd(L.seasonEnd)?L.seasonEnd:"")}"></div>
     <div class="perw lim"><label for="${prefix}quota">Wedding quota</label><input type="number" id="${prefix}quota" min="1" placeholder="e.g. 20" value="${per&&L.quota?esc(L.quota):""}"></div>
@@ -383,9 +385,12 @@ function renderDashboard(venues){
           <div class="grid">
             <div><label for="cname">Couple name</label><input id="cname" maxlength="120" placeholder="e.g. Μαρία & Νίκος"></div>
             <div><label for="cemail">Email (optional)</label><input id="cemail" type="email" placeholder="for their link and recovery" autocomplete="off"></div>
-            <div><label for="cdate">Wedding date (optional)</label><input id="cdate" type="date" min="${esc(todayYmd())}"></div>
+            <div><label for="cdate">Wedding date</label><input id="cdate" type="date" required min="${esc(todayYmd())}"></div>
             <div><label for="clang">Language</label><select id="clang">${langOptions("el")}</select></div>
             <div class="full"><label for="ccontact">Private notes <span class="hint">— only you see this</span></label><input id="ccontact" maxlength="200" placeholder="phone, how they found us, anything"></div>
+            <div class="full"><label class="chk"><input type="checkbox" id="cstart" disabled> <span>Start now
+              <span class="muted" style="display:block">Only when the wedding is less than 3 weeks away and the couple asked for immediate access (they consented that a withdrawal then costs the days used)</span></span></label>
+              <div class="muted" id="cwhen" style="margin-top:6px"></div></div>
           </div>
           <div class="row fw" style="margin-top:14px"><button class="btn primary" id="createC">Create couple</button>
             ${mailOn()?`<span class="muted">With an email, the link goes straight to the couple — you won't see it.</span>`:""}</div>
@@ -447,6 +452,8 @@ function renderDashboard(venues){
   document.getElementById("createV").onclick=createVenue;
   document.getElementById("createC").onclick=createCouple;
   ["cname","cemail"].forEach(id=>document.getElementById(id).addEventListener("keydown",e=>{ if(e.key==="Enter") createCouple(); }));
+  ["input","change"].forEach(t=>document.getElementById("cdate").addEventListener(t,syncStartNow));
+  document.getElementById("cstart").addEventListener("change",syncStartNow); syncStartNow();
   document.getElementById("supRefresh").onclick=async e=>{ const b=e.currentTarget; b.disabled=true;
     await Promise.all([refreshSupport(), refreshCouples()]); b.disabled=false; };
   document.getElementById("vtable").addEventListener("click", onRowAction());
@@ -495,11 +502,26 @@ function coupleStatusHtml(c){
   if(c.claimedAt) return `<span class="badge per">Opened ${esc(fmtDate(c.claimedAt))}</span>${c.resetAt?`<div class="muted">after a reset on ${esc(fmtDate(c.resetAt))}</div>`:""}`;
   return "—";
 }
+// A day the server gives as an Athens midnight (ms) or "YYYY-MM-DD" → "01 Nov 2026".
+function fmtDay(x){ if(typeof x==="number"){ try{ return new Date(x).toLocaleDateString("en-GB",{timeZone:"Europe/Athens",day:"2-digit",month:"short",year:"numeric"}); }catch(e){ return fmtDate(x); } }
+  return isYmd(x)?fmtYmd(x):"—"; }
+// What the COUPLE can do now (life.phase; the admin and venues are never limited by it). "locked" is the after-the-wedding badge.
+function couplePhaseHtml(L){
+  const P=L && L.phase;
+  if(P==="waiting") return `<span class="badge wait" title="Withdrawal period: the planner is view-only until then">Opens ${esc(fmtDay(L.opensAt))}</span>`;
+  if(P==="names") return `<span class="badge tpl" title="Guests, names and seats on the existing tables; tables, floor and decor unlock then">Names until ${esc(fmtDay(L.fullAt))}</span>`;
+  if(P==="full") return `<span class="badge per">Full editor</span>`;
+  if(P==="frozen") return `<span class="badge warn long" title="The couple changed the date: view-only until 14 days before the new date">Frozen until ${esc(fmtDay(L.frozenUntil))} (date changed)</span>`;
+  if(P==="locked" && !L.over) return `<span class="badge off">View-only</span>`;
+  return "";
+}
 // The wedding date and what happens after it (the server computes the dates; this only shows them).
 function coupleWeddingHtml(c){
   const L=c.life||null, out=[];
   if(c.weddingDate) out.push(`<strong>${esc(fmtYmd(c.weddingDate))}</strong>`);
   else if(!coupleGone(c)) out.push(`<span class="muted" title="${L&&L.lockAt?esc("Without a date the plan counts as over on "+fmtDate(L.lockAt)):""}">No date yet</span>`);
+  const ph=!coupleGone(c) && couplePhaseHtml(L);
+  if(ph) out.push(`<div style="margin-top:3px">${ph}${c.startNow&&L.phase!=="locked"?` <span class="muted" title="Opened at once (the couple asked for immediate access)">· started at once</span>`:""}</div>`);
   if(c.purgedAt) out.push(`<div><span class="badge off">Deleted ${esc(fmtDate(c.purgedAt))}</span></div>`);
   else if(L && L.over && !coupleGone(c)){
     if(L.keep) out.push(`<div><span class="badge per">Kept</span>${L.locked?` <span class="muted">view-only</span>`:""}</div>`);
@@ -522,6 +544,7 @@ function coupleRowHtml(c){
     <td class="acts-cell"><div class="row acts">
       ${c.pendingClaim&&c.claimToken?`<button class="btn sm" data-a="copy">Copy link</button>`:""}
       ${!gone&&c.email&&mailOn()?`<button class="btn sm" data-a="send">Send link</button>`:""}
+      ${!gone&&c.life&&c.life.phase==="frozen"?`<button class="btn sm" data-a="unfreeze" title="The couple can edit again at once">Unfreeze…</button>`:""}
       ${gone?"":`<button class="btn sm" data-a="edit">Edit…</button>`}
       ${gone?"":`<button class="btn sm" data-a="reset">New link…</button>`}
       ${gone?"":`<button class="btn sm" data-a="email">Email…</button>`}
@@ -583,6 +606,22 @@ function closeClaimPanel(cid){
   if(cid && box.dataset.cid!==cid) return;
   box.innerHTML=""; delete box.dataset.cid;
 }
+// A couple's planner opens 14 days after purchase (their withdrawal period) — or at once with «Start now», which the server
+// accepts only for a wedding less than 3 weeks away. Tables, floor and decor unlock 30 days before the wedding.
+const START_NOW_DAYS=21;
+const daysUntil=s=>isYmd(s)?Math.round((Date.parse(s+"T00:00:00Z")-Date.parse(todayYmd()+"T00:00:00Z"))/86400000):NaN;
+function syncStartNow(){
+  const dateEl=document.getElementById("cdate"), box=document.getElementById("cstart"), when=document.getElementById("cwhen"); if(!dateEl || !box || !when) return;
+  const d=dateEl.value, n=daysUntil(d), ok=n>=0 && n<START_NOW_DAYS;
+  box.disabled=!ok; if(!ok) box.checked=false;
+  when.style.color=ok && !box.checked && n<=14 ? "var(--danger)" : "";
+  when.textContent=!(n>=0) ? "The planner opens 14 days after purchase (the couple's withdrawal period); tables, floor and decor unlock 30 days before the wedding."
+    : box.checked ? "The planner opens at once, with the full editor."
+    : n<=14 ? `The wedding is ${n===0?"today":n===1?"tomorrow":`in ${n} days`} — without «Start now» the planner would not open before it.`
+    : n<START_NOW_DAYS ? `The wedding is in ${n} days — without «Start now» the planner opens only ${daysText(n-14)} before it.`
+    : n>44 ? `The planner opens 14 days after purchase (the couple's withdrawal period); tables, floor and decor unlock on ${fmtYmd(ymdPlus(d,-30))}.`
+    : "The planner opens 14 days after purchase (the couple's withdrawal period), with the full editor.";
+}
 async function createCouple(){
   const nameEl=document.getElementById("cname"), btn=document.getElementById("createC");
   const name=nameEl.value.trim(); if(!name){ toast("Enter the couple's name"); nameEl.focus(); return; }
@@ -590,23 +629,29 @@ async function createCouple(){
   const contact=document.getElementById("ccontact").value.trim();
   const email=document.getElementById("cemail").value.trim();
   const sel=document.getElementById("clang").value, lang=PLANNER_FILE[sel]?sel:"el";
-  const dateEl=document.getElementById("cdate"), weddingDate=dateEl.value||"";
+  const dateEl=document.getElementById("cdate"), weddingDate=dateEl.value||"", startEl=document.getElementById("cstart");
   if(dateEl.validity && dateEl.validity.badInput){ invalid(dateEl, "That date isn't complete"); return; }
   const PAST_DATE="The wedding date can't be in the past — a new couple's plan would be deleted at once";
-  if(weddingDate && weddingDate<todayYmd()){ invalid(dateEl, PAST_DATE); return; }
+  const NO_DATE="Enter the wedding date — it decides when the couple can arrange the tables";
+  const TOO_EARLY="«Start now» is only for a wedding less than 3 weeks away";
+  if(!weddingDate){ invalid(dateEl, NO_DATE); return; }
+  if(weddingDate<todayYmd()){ invalid(dateEl, PAST_DATE); return; }
+  const startNow=!!(startEl.checked && !startEl.disabled);
   btn.disabled=true;
-  const res=await req("/admin/couples",{ method:"POST", body:JSON.stringify({ name, contact, email, lang, ...(weddingDate?{ weddingDate }:{}) }) });
+  const res=await req("/admin/couples",{ method:"POST", body:JSON.stringify({ name, contact, email, lang, weddingDate, ...(startNow?{ startNow:true }:{}) }) });
   if(!document.getElementById("createC")) return;
   btn.disabled=false;
   const c=res.d && res.d.couple;
   if(!res.ok || !c || !(res.d.mailed || res.d.claimToken)){
     const err=res.d && res.d.error;
     if(err==="past_date"){ invalid(dateEl, PAST_DATE); return; }
+    if(err==="missing_date"){ invalid(dateEl, NO_DATE); return; }
+    if(err==="start_now_too_early"){ syncStartNow(); invalid(dateEl, TOO_EARLY); return; }
     failToast(res, badEmail(res)?BAD_EMAIL:err==="bad_date"?"That wedding date isn't valid":"Create failed"); return; }
   rememberLang(c.id, lang);
   if(res.d.mailed) showCoupleSent(c.id, `✅ Couple created — link sent to ${esc(c.email||email)}`, CLAIM_NOTE);
   else showClaimPanel(c.id, c.name, res.d.claimToken, "new");
-  nameEl.value=""; document.getElementById("ccontact").value=""; document.getElementById("cemail").value=""; dateEl.value="";
+  nameEl.value=""; document.getElementById("ccontact").value=""; document.getElementById("cemail").value=""; dateEl.value=""; startEl.checked=false; syncStartNow();
   toast(res.d.mailed?"Link sent to "+(c.email||email):"Couple created"); refreshCouples();
 }
 async function onCoupleAction(e){
@@ -620,6 +665,14 @@ async function onCoupleAction(e){
     copy(claimLink(c.claimToken, coupleLang(c.id)));
   } else if(a==="edit"){
     openCoupleEdit(c);
+  } else if(a==="unfreeze"){
+    const until=c.life&&c.life.frozenUntil?` (frozen until ${fmtDay(c.life.frozenUntil)})`:"";
+    if(!confirm(`Unfreeze "${c.name}"${until}?\n\nThe couple can edit again at once; what they can change follows their wedding date. The unfreeze is logged.`)) return;
+    btn.disabled=true;
+    const res=await req(path,{ method:"PATCH", body:JSON.stringify({ unfreeze:true }) });
+    btn.disabled=false;
+    if(!res.ok){ failToast(res, res.status===404?"This couple no longer exists — refreshing":"Could not unfreeze"); if(res.status===404) refreshCouples(); return; }
+    toast("Unfrozen"); refreshCouples();
   } else if(a==="send"){
     btn.disabled=true;
     const res=await req(path+"/send",{ method:"POST", body:"{}" });
@@ -689,7 +742,8 @@ function openCoupleEdit(c){
         <div class="full"><label for="ce_name">Couple name</label><input id="ce_name" maxlength="120" value="${esc(c.name)}"></div>
         <div class="full"><label for="ce_date">Wedding date</label>
           <div class="row"><input type="date" id="ce_date" value="${esc(isYmd(c.weddingDate)?c.weddingDate:"")}" style="max-width:220px"><button type="button" class="linkbtn" id="ce_clear">Clear date</button></div>
-          <div class="muted" style="margin-top:4px">You can set any date, or clear it. Couples can only pick today up to two years ahead, and change it 3 times.</div>
+          <div class="muted" style="margin-top:4px">You can set any date, or clear it, as often as needed — your change never freezes the plan. The couple can change it only once (today up to two years ahead); their plan is then view-only until 14 days before the new date.</div>
+          ${couplePhaseHtml(c.life)?`<div class="muted" style="margin-top:6px">Now: ${couplePhaseHtml(c.life)}</div>`:""}
           ${lifeLineHtml(c.life)}</div>
         <div class="full"><label for="ce_notes">Private notes <span class="hint">— only you see this</span></label><textarea id="ce_notes" maxlength="200" rows="2">${esc(c.contact||"")}</textarea></div>
       </div>

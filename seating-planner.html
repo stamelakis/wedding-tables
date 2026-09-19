@@ -111,6 +111,9 @@
   #lifebar .ibtn{ height:32px; flex:none; }
   #lifebar .ibtn[hidden]{ display:none; }
   #lifebar .lx{ border:none; background:none; color:var(--faint); font-size:15px; cursor:pointer; padding:4px; flex:none; }
+  #lifebar .lcd{ flex:none; font-weight:700; background:var(--card); border:1px solid var(--line); border-radius:999px; padding:3px 10px; white-space:nowrap; }
+  #lifebar .lcd[hidden]{ display:none; }
+  .acc-phase{ font-size:13px; line-height:1.45; margin:6px 0 2px; padding:7px 10px; border-radius:8px; background:var(--paper); }
   .acc-date{ font-family:var(--serif); font-size:17px; font-weight:700; margin:2px 0 4px; }
   .acc-row input[type=date]{ font:inherit; font-size:14px; height:36px; border:1px solid var(--line); border-radius:8px; padding:0 10px; background:var(--paper); color:inherit; }
   /* read only (the wedding is over, or a view link): nothing looks editable — save() reverts anything that slips through */
@@ -602,6 +605,7 @@
     #lifebar .lt{ display:inline; }
     #lifebar .ibtn{ display:inline-flex; height:26px; padding:0 9px; margin-left:6px; vertical-align:middle; font-size:12.5px; }
     #lifebar .lx{ position:absolute; right:6px; top:5px; }
+    #lifebar .lcd{ display:inline-block; margin-left:6px; padding:0 8px; font-size:12px; }
   }
 
   /* ---------- Table chooser (overview ⇄ one table): a column right of the floor on PC, under the floor on phones.
@@ -732,7 +736,7 @@
   <button class="ibtn" id="moreBtn" data-t-title="more">⋯</button>
 </header>
 
-<div id="lifebar" hidden><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg><span class="lt" id="lifeText"></span><button class="ibtn" id="lifePdf" data-t="lifePdf"></button><button class="lx" id="lifeX" data-t-title="close">✕</button></div>
+<div id="lifebar" hidden><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg><span class="lt" id="lifeText"></span><span class="lcd" id="lifeCd" hidden></span><button class="ibtn" id="lifePdf" data-t="lifePdf"></button><button class="lx" id="lifeX" data-t-title="close">✕</button></div>
 <div id="main">
   <aside id="sidebar">
     <div class="side-scroll">
@@ -1000,6 +1004,12 @@ el:{
   accDateSet:"Ορισμός", accDateChange:"Αλλαγή", accDateLeft:"Αλλαγές που απομένουν: {n}", accDateNoMore:"Δεν επιτρέπονται άλλες αλλαγές ημερομηνίας — γράψτε μας στο info@takeaseat.gr.", accDateBad:"Διαλέξτε ημερομηνία από σήμερα έως δύο χρόνια μπροστά.",
   accDateConfirm:"Ημερομηνία γάμου: {d}. Μετά μπορείτε να την αλλάξετε έως {n} φορές. Συνέχεια;", accDateConfirmChange:"Αλλαγή ημερομηνίας σε {d}; Θα απομένουν {n} αλλαγές.", tDateSet:"Ημερομηνία γάμου: {d}", dateNudge:"Ορίστε την ημερομηνία του γάμου σας.", dateNudgeGo:"Ορισμός",
   awSystem:"Σύστημα", atDate:"όρισε την ημερομηνία του γάμου σε {d}", atLocked:"ο γάμος πέρασε — το σχέδιο είναι πλέον μόνο για προβολή",
+  phWait:"Ο σχεδιαστής σας ανοίγει στις {d} — μέχρι τότε μπορείτε να δείτε τον χώρο.", phFrozen:"Αλλάξατε την ημερομηνία του γάμου — το σχέδιο είναι μόνο για προβολή έως {d}.", phIn:"σε {n} ημέρες", phIn1:"αύριο", phSoon:"σε λίγο",
+  phNames:"Φάση ονομάτων: βάλτε τους καλεσμένους σας και τοποθετήστε τους στα τραπέζια. Η διάταξη των τραπεζιών ανοίγει στις {d}.", phNamesV:"Φάση ονομάτων: βάλτε τους καλεσμένους σας και τοποθετήστε τους στα τραπέζια. Ό,τι άλλο επιτρέπει το κτήμα ανοίγει στις {d}.",
+  phLineWait:"Φάση: αναμονή — ο σχεδιαστής ανοίγει στις {d} ({n}).", phLineNames:"Φάση: ονόματα — η διάταξη των τραπεζιών ανοίγει στις {d}.", phLineNamesV:"Φάση: ονόματα — ό,τι άλλο επιτρέπει το κτήμα ανοίγει στις {d}.", phLineFull:"Πλήρης επεξεργασία έως {d}.", phLineFullV:"Επεξεργασία (όσα επιτρέπει το κτήμα) έως {d}.", phLineFrozen:"Φάση: μόνο προβολή έως {d} — αλλάξατε την ημερομηνία του γάμου.",
+  phNamesWhy:"Τώρα μπορείτε:", rbNames:"✎ Φάση ονομάτων", tPhaseLocked:"{w}: ανοίγει στις {d}.", tPhaseLockedV:"{w}: ανοίγει στις {d}, αν το επιτρέπει το κτήμα.", tPhaseEnforced:"Η διάταξη των τραπεζιών ανοίγει στις {d} — κρατήθηκαν οι αλλαγές σας (ονόματα, θέσεις).", tResetKeepRoom:"Τα ονόματα και οι θέσεις διαγράφηκαν· τα τραπέζια έμειναν ως είχαν.",
+  accDateOnce:"Νέα ημερομηνία γάμου: {d}.\n\nΜπορείτε να αλλάξετε την ημερομηνία μόνο μία φορά. Μετά την αλλαγή το σχέδιο γίνεται μόνο για προβολή έως 14 ημέρες πριν από τη νέα ημερομηνία ({f}).\n\nΣυνέχεια;", accDateOnceNow:"Νέα ημερομηνία γάμου: {d}.\n\nΜπορείτε να αλλάξετε την ημερομηνία μόνο μία φορά. Συνέχεια;",
+  accDateConfirm1:"Ημερομηνία γάμου: {d}. Μετά μπορείτε να την αλλάξετε μόνο μία φορά. Συνέχεια;", accDateLater:"Την ημερομηνία μπορείτε να την αλλάξετε (μία φορά) όταν ανοίξει ο σχεδιαστής.", cloudWait:"Σε αναμονή", atUnfreeze:"ξεκλείδωσε το σχέδιο μετά την αλλαγή ημερομηνίας",
   accTitle:"Πρόσβαση & υποστήριξη", mAccess:"Πρόσβαση & υποστήριξη", theVenue:"το κτήμα",
   rbVenue:"🏛 Κτήμα", rbVenueTip:"Ανοίξατε τον γάμο ως κτήμα: αλλάζετε τα πάντα. Το ζευγάρι αλλάζει μόνο ό,τι του επιτρέπετε.", rbTemplate:"🏛 Πρότυπο χώρου", rbTemplateTip:"Αυτή είναι η διάταξη του χώρου σας: κάθε νέος γάμος ξεκινά από εδώ (χωρίς καλεσμένους). Οι γάμοι που υπάρχουν ήδη δεν αλλάζουν.", rbPreview:"👁 Όπως το βλέπει το ζευγάρι",
   rbSupport:"🛟 Υποστήριξη · έως {t}", rbSupportTip:"Ο ιδιοκτήτης σάς έδωσε προσωρινή πρόσβαση. Τίποτα δεν μένει σε αυτή τη συσκευή.", rbViewer:"👁 Μόνο προβολή", rbViewerTip:"Βλέπετε το σχέδιο· δεν μπορείτε να το αλλάξετε.",
@@ -1037,6 +1047,7 @@ el:{
     dTables:["Ονόματα στα τραπέζια","<b>Πατήστε ένα τραπέζι</b>, γράψτε όνομα, <b>Enter</b>. Η κουκκίδα = ομάδα."],
     dFloor:["Η κάτοψη","<b>Σύρετε</b> τραπέζια και διακόσμηση. Ctrl+Z για αναίρεση."],
     dFloorLocked:["Η κάτοψη","Τον χώρο τον έχει στήσει το κτήμα. <b>Πατήστε</b> ένα τραπέζι για να γράψετε ονόματα. Ctrl+Z για αναίρεση."],
+    dFloorNames:["Η κάτοψη","Η διάταξη των τραπεζιών ανοίγει 30 ημέρες πριν από τον γάμο. <b>Πατήστε</b> ένα τραπέζι για να γράψετε ονόματα. Ctrl+Z για αναίρεση."],
     dSave:["Αποθήκευση","Το σύννεφο δείχνει ότι όλα είναι συγχρονισμένα. <b>Ο σύνδεσμός σας είναι το κλειδί.</b>"],
     mTables:["Τα τραπέζια","<b>Πατήστε ένα τραπέζι</b> για να ανοίξουν οι θέσεις του."],
     mNames:["Ονόματα","Γράψτε όνομα, <b>Enter</b> → επόμενη θέση. Η κουκκίδα = ομάδα."],
@@ -1130,6 +1141,12 @@ en:{
   accDateSet:"Set", accDateChange:"Change", accDateLeft:"Changes left: {n}", accDateNoMore:"No more date changes are possible — write to info@takeaseat.gr.", accDateBad:"Choose a date from today up to two years ahead.",
   accDateConfirm:"Wedding date: {d}. You can change it up to {n} times afterwards. Continue?", accDateConfirmChange:"Change the date to {d}? {n} changes will be left.", tDateSet:"Wedding date: {d}", dateNudge:"Set your wedding date.", dateNudgeGo:"Set",
   awSystem:"System", atDate:"set the wedding date to {d}", atLocked:"the wedding is over — the plan is now view-only",
+  phWait:"Your planner opens on {d} — until then you can look around the space.", phFrozen:"You changed the wedding date — the plan is view-only until {d}.", phIn:"in {n} days", phIn1:"tomorrow", phSoon:"shortly",
+  phNames:"Names phase: add your guests and seat them at the tables. The table layout opens on {d}.", phNamesV:"Names phase: add your guests and seat them at the tables. Whatever else the venue allows opens on {d}.",
+  phLineWait:"Phase: waiting — the planner opens on {d} ({n}).", phLineNames:"Phase: names — the table layout opens on {d}.", phLineNamesV:"Phase: names — whatever else the venue allows opens on {d}.", phLineFull:"Full editing until {d}.", phLineFullV:"Editing (what the venue allows) until {d}.", phLineFrozen:"Phase: view-only until {d} — you changed the wedding date.",
+  phNamesWhy:"Right now you can:", rbNames:"✎ Names phase", tPhaseLocked:"{w}: opens on {d}.", tPhaseLockedV:"{w}: opens on {d}, if the venue allows it.", tPhaseEnforced:"The table layout opens on {d} — your changes (names, seats) were kept.", tResetKeepRoom:"Names and seating were cleared; the tables stayed as they were.",
+  accDateOnce:"New wedding date: {d}.\n\nYou can change the date only once. After the change the plan becomes view-only until 14 days before the new date ({f}).\n\nContinue?", accDateOnceNow:"New wedding date: {d}.\n\nYou can change the date only once. Continue?",
+  accDateConfirm1:"Wedding date: {d}. You can change it only once afterwards. Continue?", accDateLater:"You can change the date (once) when the planner opens.", cloudWait:"Waiting", atUnfreeze:"unlocked the plan after the date change",
   accTitle:"Access & support", mAccess:"Access & support", theVenue:"the venue",
   rbVenue:"🏛 Venue", rbVenueTip:"You opened this wedding as the venue: you can change everything. The couple changes only what you allow.", rbTemplate:"🏛 Venue template", rbTemplateTip:"This is your venue layout: every new wedding starts from here (without guests). Existing weddings do not change.", rbPreview:"👁 As the couple sees it",
   rbSupport:"🛟 Support · until {t}", rbSupportTip:"The owner gave you temporary access. Nothing stays on this device.", rbViewer:"👁 View only", rbViewerTip:"You can see the plan but not change it.",
@@ -1167,6 +1184,7 @@ en:{
     dTables:["Names at the tables","<b>Click a table</b>, type a name, <b>Enter</b>. The dot = group."],
     dFloor:["The floor","<b>Drag</b> tables and decor. Ctrl+Z undoes."],
     dFloorLocked:["The floor","The venue has set up the space. <b>Click</b> a table to write names. Ctrl+Z undoes."],
+    dFloorNames:["The floor","The table layout opens 30 days before the wedding. <b>Click</b> a table to write names. Ctrl+Z undoes."],
     dSave:["Saving","The cloud shows everything is in sync. <b>Your link is the key.</b>"],
     mTables:["The tables","<b>Tap a table</b> to open its seats."],
     mNames:["Names","Type a name, <b>Enter</b> → next seat. The dot = group."],
@@ -1260,6 +1278,12 @@ de:{
   accDateSet:"Festlegen", accDateChange:"Ändern", accDateLeft:"Verbleibende Änderungen: {n}", accDateNoMore:"Keine weiteren Datumsänderungen möglich — schreiben Sie an info@takeaseat.gr.", accDateBad:"Wählen Sie ein Datum von heute bis zwei Jahre im Voraus.",
   accDateConfirm:"Hochzeitsdatum: {d}. Danach können Sie es bis zu {n}-mal ändern. Fortfahren?", accDateConfirmChange:"Datum auf {d} ändern? Es bleiben {n} Änderungen.", tDateSet:"Hochzeitsdatum: {d}", dateNudge:"Legen Sie Ihr Hochzeitsdatum fest.", dateNudgeGo:"Festlegen",
   awSystem:"System", atDate:"legte das Hochzeitsdatum auf {d} fest", atLocked:"die Hochzeit ist vorbei — der Plan ist jetzt nur noch zum Ansehen",
+  phWait:"Ihr Planer öffnet am {d} — bis dahin können Sie sich den Raum ansehen.", phFrozen:"Sie haben das Hochzeitsdatum geändert — der Plan ist bis {d} nur zum Ansehen.", phIn:"in {n} Tagen", phIn1:"morgen", phSoon:"in Kürze",
+  phNames:"Namensphase: Tragen Sie Ihre Gäste ein und setzen Sie sie an die Tische. Die Tischanordnung öffnet am {d}.", phNamesV:"Namensphase: Tragen Sie Ihre Gäste ein und setzen Sie sie an die Tische. Was die Location sonst erlaubt, öffnet am {d}.",
+  phLineWait:"Phase: Warten — der Planer öffnet am {d} ({n}).", phLineNames:"Phase: Namen — die Tischanordnung öffnet am {d}.", phLineNamesV:"Phase: Namen — was die Location sonst erlaubt, öffnet am {d}.", phLineFull:"Volle Bearbeitung bis {d}.", phLineFullV:"Bearbeitung (was die Location erlaubt) bis {d}.", phLineFrozen:"Phase: nur ansehen bis {d} — Sie haben das Hochzeitsdatum geändert.",
+  phNamesWhy:"Jetzt können Sie:", rbNames:"✎ Namensphase", tPhaseLocked:"{w}: öffnet am {d}.", tPhaseLockedV:"{w}: öffnet am {d}, wenn die Location es erlaubt.", tPhaseEnforced:"Die Tischanordnung öffnet am {d} — Ihre Änderungen (Namen, Plätze) wurden übernommen.", tResetKeepRoom:"Namen und Sitzordnung wurden geleert; die Tische blieben, wie sie waren.",
+  accDateOnce:"Neues Hochzeitsdatum: {d}.\n\nSie können das Datum nur einmal ändern. Nach der Änderung ist der Plan bis 14 Tage vor dem neuen Datum ({f}) nur zum Ansehen.\n\nFortfahren?", accDateOnceNow:"Neues Hochzeitsdatum: {d}.\n\nSie können das Datum nur einmal ändern. Fortfahren?",
+  accDateConfirm1:"Hochzeitsdatum: {d}. Danach können Sie es nur einmal ändern. Fortfahren?", accDateLater:"Das Datum können Sie (einmal) ändern, sobald der Planer öffnet.", cloudWait:"Wartet", atUnfreeze:"hat den Plan nach der Datumsänderung entsperrt",
   accTitle:"Zugriff & Support", mAccess:"Zugriff & Support", theVenue:"der Veranstaltungsort",
   rbVenue:"🏛 Location", rbVenueTip:"Sie haben diese Hochzeit als Location geöffnet: Sie können alles ändern. Das Paar ändert nur, was Sie erlauben.", rbTemplate:"🏛 Raumvorlage", rbTemplateTip:"Das ist die Aufstellung Ihrer Location: jede neue Hochzeit beginnt hier (ohne Gäste). Bestehende Hochzeiten ändern sich nicht.", rbPreview:"👁 So sieht es das Paar",
   rbSupport:"🛟 Support · bis {t}", rbSupportTip:"Der Eigentümer hat Ihnen vorübergehend Zugriff gegeben. Nichts bleibt auf diesem Gerät.", rbViewer:"👁 Nur ansehen", rbViewerTip:"Sie sehen den Plan, können ihn aber nicht ändern.",
@@ -1297,6 +1321,7 @@ de:{
     dTables:["Namen an den Tischen","<b>Tisch anklicken</b>, Namen eingeben, <b>Enter</b>. Der Punkt = Gruppe."],
     dFloor:["Die Fläche","Tische und Deko <b>ziehen</b>. Strg+Z macht rückgängig."],
     dFloorLocked:["Die Fläche","Die Location hat den Raum eingerichtet. Einen Tisch <b>anklicken</b>, um Namen einzutragen. Strg+Z macht rückgängig."],
+    dFloorNames:["Die Fläche","Die Tischanordnung öffnet 30 Tage vor der Hochzeit. Einen Tisch <b>anklicken</b>, um Namen einzutragen. Strg+Z macht rückgängig."],
     dSave:["Speichern","Die Wolke zeigt, dass alles synchron ist. <b>Ihr Link ist der Schlüssel.</b>"],
     mTables:["Die Tische","<b>Einen Tisch antippen</b>, um seine Plätze zu öffnen."],
     mNames:["Namen","Namen eingeben, <b>Enter</b> → nächster Platz. Der Punkt = Gruppe."],
@@ -2463,7 +2488,7 @@ function openProfileMenu(evt){
   menu.innerHTML=(pd||dateEditable()?`<div class="gm-item" data-act="date">${ICON("clock")}${escapeHtml(pd?fmtDate(pd):tr("accDate")+"…")}</div><div class="gm-sep"></div>`:"")+`<div class="gm-item" data-act="rename">${ICON("edit")}${escapeHtml(tr("pRename"))}</div><div class="gm-item" data-act="dup">${ICON("copy")}${escapeHtml(tr("pDup"))}</div><div class="gm-sep"></div><div class="gm-item danger" data-act="del">${ICON("trash")}${escapeHtml(tr("pDel"))}</div>`;
   const pc=currentProfile()||{};
   const dt=menu.querySelector('[data-act="date"]'); if(dt) dt.onclick=()=>{ closeProfileMenu(); openAccess(); };
-  menu.querySelector('[data-act="rename"]').onclick=()=>{ closeProfileMenu(); if(ACCESS.ro){ roToast(); return; } if(ACCESS.restricted){ toast(tr("tRenameVenue",{v:ACCESS.venueName||tr("theVenue")}),4000); return; } renameProfile(); };
+  menu.querySelector('[data-act="rename"]').onclick=()=>{ closeProfileMenu(); if(ACCESS.ro){ roToast(); return; } if(ACCESS.venueCouple){ toast(tr("tRenameVenue",{v:ACCESS.venueName||tr("theVenue")}),4000); return; } renameProfile(); };
   menu.querySelector('[data-act="dup"]').onclick=()=>{ closeProfileMenu(); if(pc.support){ toast(tr("tNoCopySupport"),4000); return; } duplicateProfile(); };
   menu.querySelector('[data-act="del"]').onclick=()=>{ closeProfileMenu(); deleteProfile(); };
   showPopover(menu,evt);
@@ -3387,7 +3412,7 @@ function startWelcome(){
   try{ localStorage.setItem(WELCOME_KEY,"1"); }catch(e){}
   showTourStep();
 }
-function maybeWelcome(){ try{ if(localStorage.getItem(WELCOME_KEY)||localStorage.getItem(TOUR_KEY)) return; }catch(e){ return; } setTimeout(startWelcome, 700); }
+function maybeWelcome(){ if(ACCESS.waitRo) return;   /* not open yet / frozen: the welcome waits until they can use it */ try{ if(localStorage.getItem(WELCOME_KEY)||localStorage.getItem(TOUR_KEY)) return; }catch(e){ return; } setTimeout(startWelcome, 700); }
 function tourSteps(){
   const S=(key,target,opts)=>({key,target,...(opts||{})});
   const first=()=>state.tables[0]&&state.tables[0].id;
@@ -3441,7 +3466,7 @@ function placeTour(){
   const visible=!!(r&&r.width>0&&r.height>0);
   if(visible){ spot.style.left=(r.left-6)+"px"; spot.style.top=(r.top-6)+"px"; spot.style.width=(r.width+12)+"px"; spot.style.height=(r.height+12)+"px"; spot.style.outlineWidth="2px"; }
   else { spot.style.left=(vw/2)+"px"; spot.style.top=(vh/2)+"px"; spot.style.width="0px"; spot.style.height="0px"; spot.style.outlineWidth="0"; }
-  const tk=(st.key==="dFloor"&&!can("layout"))?"dFloorLocked":st.key;
+  const tk=(st.key==="dFloor"&&!can("layout"))?((ACCESS.phase==="names"&&!ACCESS.venueCouple)?"dFloorNames":"dFloorLocked"):st.key;
   const tx=(T.tour&&T.tour[tk])||T_ALL.el.tour[tk];
   const last=tour.i===tour.steps.length-1;
   card.innerHTML=`<button class="tour-x" data-a="skip" title="${escapeHtml(tr("tourSkip"))}">✕</button><div class="tour-step">${tour.i+1} / ${tour.steps.length}</div><h3>${escapeHtml(tx[0])}</h3><p>${tx[1]}</p>
@@ -3550,7 +3575,7 @@ function resetPlan(){
   setPick(null); unfocusTable();
   if(!PERM_KEYS.every(k=>can(k))){   // a venue plan: names, seating and invitations go — the venue's space stays
     state.guests={}; state.parties=[]; state.activeGroupId=null; state.tables.forEach(t=>{ t.seats=t.seats.map(()=>null); });
-    save(); renderAll(); toast(tr("tResetKeepSpace",{v:ACCESS.venueName||tr("theVenue")}),4500); return;
+    save(); renderAll(); toast(ACCESS.owner==="venue"?tr("tResetKeepSpace",{v:ACCESS.venueName||tr("theVenue")}):tr("tResetKeepRoom"),4500); return;
   }
   state=IS_LAB?labState():defaultState(); uid=state._uid; fontScale=1;
   state.tables.forEach(t=>{ const m=maxSeatsFor(t); if(t.capacity>m){ t.capacity=m; t.seats=t.seats.slice(0,m); } });
@@ -3815,14 +3840,15 @@ function shareLink(cur, viewOnly){ const base=location.origin+location.pathname+
   if(viewOnly) return cur.viewKey? base+"#view="+cur.viewKey : "";
   return (cur.editKey && cur.role!=="venue")? base+"#key="+cur.editKey : ""; }
 function setCloudDot(st){ const b=$("cloudBtn"); if(!b) return;
-  $("cloudTxt").textContent={ok:tr("cloudOk"),pending:tr("cloudPending"),err:tr("cloudErr")}[st]||tr("cloudIdle");
-  b.classList.toggle("on", st==="ok"); b.classList.toggle("err", st==="err"); b.classList.toggle("pending", st==="pending"); }
+  if(st==="ok"){ const c=(profiles&&profiles.profiles)?currentProfile():null; if(c&&c.phaseDirty) st="wait"; }   // a change the closed planner refused is still here, waiting
+  $("cloudTxt").textContent={ok:tr("cloudOk"),pending:tr("cloudPending"),err:tr("cloudErr"),wait:tr("cloudWait")}[st]||tr("cloudIdle");
+  b.classList.toggle("on", st==="ok"); b.classList.toggle("err", st==="err"); b.classList.toggle("pending", st==="pending"||st==="wait"); }
 function fmtTime(ms){ try{ return ms? new Date(ms).toLocaleString(LANG):"—"; }catch(e){ return "—"; } }
 function fmtDate(v){   // "YYYY-MM-DD" (a calendar day) or ms (Athens) → «20 Σεπτεμβρίου 2026»
   const o={day:"numeric",month:"long",year:"numeric"};
   try{ if(typeof v==="string"){ const [y,m,d]=v.split("-").map(Number); return new Date(Date.UTC(y,m-1,d,12)).toLocaleDateString(LANG,{...o,timeZone:"UTC"}); }
     return v? new Date(v).toLocaleDateString(LANG,{...o,timeZone:"Europe/Athens"}):"—"; }catch(e){ return String(v||"—"); } }
-function canPush(prof){ return !IS_LAB && !!(prof && prof.cloudId && !prof.readonly && !prof.unsynced && prof.role!=="viewer" && !(prof.life&&prof.life.locked) && !prof.gone && (!prof.support || prof.supportEdit) && (prof.editKey || prof.supportKey || getSyncCode())); }
+function canPush(prof){ return !IS_LAB && !!(prof && prof.cloudId && !prof.readonly && !prof.unsynced && prof.role!=="viewer" && !(prof.life&&prof.life.locked) && !phaseRo(prof) && !prof.gone && (!prof.support || prof.supportEdit) && (prof.editKey || prof.supportKey || getSyncCode())); }
 let wipeAllowedUntil=0;   // set by deliberate wipes (reset / undo / redo) so the server accepts an empty plan
 const PLAN_ID_RE=/^[A-Za-z0-9_-]{8,64}$/;   // plan ids are opaque handles — never let one rewrite an API path
 function planPath(id){ return SYNC_URL+"/plans/"+encodeURIComponent(id); }
@@ -3852,7 +3878,7 @@ async function cloudCreate(){
   const cur=currentProfile(); cur.cloudId=d.id; cur.editKey=d.editKey; cur.viewKey=d.readKey||""; cur.role="couple"; cur.owner="couple"; cur.perms=null;
   cur.cloudUpdated=d.updated; cur.readonly=false; saveProfilesIdx(); registerUnderCode(cur); applyAccess(); return d;
 }
-function snapshotFor(prof){ return { profId:prof.id, cloudId:prof.cloudId, editKey:prof.editKey||"", headers:authHeaders(prof), name:(prof.support||(ACCESS.restricted&&prof.id===profiles.activeId))?undefined:prof.name,
+function snapshotFor(prof){ return { profId:prof.id, cloudId:prof.cloudId, editKey:prof.editKey||"", headers:authHeaders(prof), name:(prof.support||(ACCESS.venueCouple&&prof.id===profiles.activeId))?undefined:prof.name,
   planJSON:JSON.stringify({...state, _profileName:prof.name}), baseUpdated:prof.cloudUpdated||0, allowWipe:Date.now()<wipeAllowedUntil, guests:Object.keys(state.guests).length }; }
 async function cloudPush(snap){
   const prof=profiles.profiles.find(p=>p.id===snap.profId); if(!prof||!prof.cloudId) return;
@@ -3875,7 +3901,7 @@ async function cloudPush(snap){
   }
   if(r.status===401||r.status===403){
     if(prof.editKey && prof.editKey!==snap.editKey) return cloudPush({...snap, editKey:prof.editKey, headers:authHeaders(prof)});   // new links made here while this save waited
-    const d=await r.json().catch(()=>({})); if(d.error==="locked"){ lifeLocked(prof, d.life); return; } accessLost(prof, d.error, d.at); return; }
+    const d=await r.json().catch(()=>({})); if(d.error==="locked"){ lifeLocked(prof, d.life); return; } if(d.error==="not_open"){ phaseClosed(prof, d.life); return; } accessLost(prof, d.error, d.at); return; }
   if(r.status===410){ planGone(prof, true); return; }   // in the venue's trash: the admin may restore it — this change waits
   if(r.status===404){ accessLost(prof, "gone"); return; }   // deleted for good (erasure): stop retrying
   const d=await r.json(); if(!r.ok) throw new Error(d.error||"update failed");
@@ -3885,7 +3911,8 @@ async function cloudPush(snap){
     if(newer) pendingSnap.baseUpdated=d.updated;   // a newer save is waiting: it will come back fixed too, without losing what was typed meanwhile
     else if(!interactionBusy()) applyPulledPlan(prof,{plan:d.plan, updated:d.updated, name:prof.name});
     else { clearTimeout(conflictTimer); conflictTimer=setTimeout(()=>pullIfNewer(true),4000); }
-    if(Date.now()-(prof._enfToast||0)>60000){ prof._enfToast=Date.now(); toast(tr("tLockedByVenue",{v:prof.venueName||tr("theVenue")}),4500); }
+    if(Date.now()-(prof._enfToast||0)>60000){ prof._enfToast=Date.now(); const L=prof.life||{};
+      toast((prof.owner!=="venue" && L.phase==="names" && L.fullAt)?tr("tPhaseEnforced",{d:fmtDate(L.fullAt)}):tr("tLockedByVenue",{v:prof.venueName||tr("theVenue")}),4500); }
   }
   return d;
 }
@@ -3893,6 +3920,7 @@ async function cloudPush(snap){
 function accessLost(prof, code, at){
   if(!prof) return;
   if(code==="locked"){ lifeLocked(prof, null); return; }   // the wedding is over: view only, not an access alarm
+  if(code==="not_open"){ phaseClosed(prof, null); return; }   // not open yet / frozen: view only for now
   if(prof.readonly && prof._lostShown) return;
   prof.readonly=true; prof._lostShown=true; pendingSnap=null; clearTimeout(cloudTimer); cloudTimer=null;
   saveProfilesIdx(); setCloudDot("err");
@@ -3915,6 +3943,14 @@ function planGone(prof, dirty){
   saveProfilesIdx(); setCloudDot("err");
   if(prof.id===profiles.activeId){ applyAccess(); if(first) toast(tr("goneVenue"),7000); }
 }
+// 403 not_open: the couple's planner is not open yet (the 14 days after purchase) or frozen after the date change. Quietly view only
+// (the strip says until when); what this device had not saved stays here, marked as waiting, and goes up when it opens (adoptAccess).
+function phaseClosed(prof, life){
+  if(life) prof.life={...(prof.life||{}), ...life}; else refreshAccess();
+  if(pendingSnap && pendingSnap.profId===prof.id){ pendingSnap=null; clearTimeout(cloudTimer); cloudTimer=null; }
+  prof.phaseDirty=true; saveProfilesIdx(); setCloudDot("wait");
+  if(prof.id===profiles.activeId) applyAccess();
+}
 // What the server says about this device's rights on the plan → remembered on the profile.
 function adoptAccess(prof, d){
   if(!prof||!d||!d.role) return false;
@@ -3930,6 +3966,7 @@ function adoptAccess(prof, d){
   if("life" in d) prof.life=d.life||null;   // wedding date, lock / delete times (the server decides; see renderLifeBar)
   let back=false; if(prof.gone){ prof.gone=false; prof._goneAt=0; back=true;   // restored from the venue's trash
     if(prof.id===profiles.activeId){ toast(tr("goneBack"),4000); if(prof.goneDirty){ prof.goneDirty=false; setTimeout(scheduleCloudPush,0); } } }   // after the caller's applyAccess: the refused change goes up
+  if(prof.phaseDirty && !phaseRo(prof) && prof.id===profiles.activeId){ prof.phaseDirty=false; back=true; if(!(prof.life&&prof.life.locked)) setTimeout(scheduleCloudPush,0); }   // the planner opened: the change that waited goes up
   return back || before!==JSON.stringify([prof.role,prof.perms,prof.owner,prof.venueName,prof.template,prof.couplePerms,prof.supportInfo&&prof.supportInfo.expires,prof.life]);
 }
 async function cloudFetch(id, prof){ if(!PLAN_ID_RE.test(String(id))) throw new Error("bad id");
@@ -4030,7 +4067,7 @@ function applyPulledPlan(cur, d){
       // so new weddings never inherit — and lock — a layout nobody designed)
       if(cur.support) cur._mem=JSON.stringify(state); else { try{ localStorage.setItem(planKey(cur.id), JSON.stringify(state)); }catch(e){} }
       setTimeout(()=>{ zoom=initialZoom(); applyZoom(); },30);
-    }
+    } else if(cur.id===profiles.activeId){ saveProfilesIdx(); setPick(null); dragData=null; loadActive(); return; }   // this device's own copy — not whatever plan was on screen (a link opened over another plan)
     saveProfilesIdx(); applyAccess(); return; }
   sanitizePlan(s); if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s);
   setPick(null); dragData=null;
@@ -4301,39 +4338,78 @@ function can(k){ return IS_LAB || (!ACCESS.ro && (!ACCESS.perms || ACCESS.perms[
 function applyAccess(){
   const cur=(profiles&&profiles.profiles)?currentProfile():null;
   const role=(IS_LAB||!cur||!cur.cloudId)?"local":(cur.support?"support":(cur.role||(cur.readonly?"viewer":"couple")));
-  const restricted=role==="couple" && cur.owner==="venue" && !!cur.perms;
+  const venueCouple=role==="couple" && cur.owner==="venue";
+  // the server's perms for a couple are the effective ones (the venue's ∩ the phase): anything closed → the lock mirror
+  const restricted=role==="couple" && !!cur.perms && (venueCouple || PERM_KEYS.some(k=>cur.perms[k]===false));
   const preview=role==="venue" && !!cur.previewCouple && !cur.template && !!cur.couplePerms;
   const perms=restricted?cur.perms:preview?cur.couplePerms:null;
   const locked=!IS_LAB && !!(cur && cur.cloudId && cur.life && cur.life.locked);   // after the wedding every role only looks (venues too)
   const gone=!IS_LAB && !!(cur && cur.cloudId && cur.gone);   // in the venue's trash (410) until the admin restores it
+  const phase=role==="couple"?phaseOf(cur):"", waitRo=phase==="waiting"||phase==="frozen";   // only couples live by phases
   const wasRo=!!ACCESS.ro;
-  ACCESS={role, restricted, preview, perms:perms?{...perms}:null, venueName:(cur&&cur.venueName)||"", template:!!(cur&&cur.template), owner:(cur&&cur.owner)||"couple", locked, gone, ro:locked||gone||role==="viewer"};
+  ACCESS={role, restricted, venueCouple, preview, perms:perms?{...perms}:null, venueName:(cur&&cur.venueName)||"", template:!!(cur&&cur.template), owner:(cur&&cur.owner)||"couple", locked, gone, phase, waitRo, ro:locked||gone||waitRo||role==="viewer"};
   document.body.classList.toggle("ro", ACCESS.ro);
   PERM_KEYS.forEach(k=>document.body.classList.toggle("lock-"+k, !can(k)));
   const fl=$("stageFloor"); if(fl) fl.disabled=!can("floor");
   ["venue","support","viewer"].forEach(r=>document.body.classList.toggle("role-"+r, role===r));
-  renderRoleBadge(); renderLifeBar(); updateUndoButtons();
+  renderRoleBadge(); renderLifeBar(); updateUndoButtons(); schedulePhaseCheck();
   if(wasRo!==ACCESS.ro){ setPick(null); closeMenu(); renderAll(); }   // chairs, chips and seat rows are built read-only (or not)
 }
-// ---- after the wedding: "took place on …, view only, deleted on …" + the keepsake PDF ----
+// ---- a couple's phases (the server decides: life.phase) — "waiting" 14 days after a direct purchase, "names" until 30 days
+// before the wedding (guests & seating; the room stays closed), "full", "frozen" after the one date change, "locked" after ----
+const PHASE_LOCKS=["floor","decor","layout","tables"];   // what the names phase keeps closed
+function phaseOf(prof){ return (!IS_LAB && prof && prof.cloudId && prof.role==="couple" && !prof.support && prof.life && prof.life.phase) || ""; }
+function phaseRo(prof){ const p=phaseOf(prof); return p==="waiting"||p==="frozen"; }
+function athensYmd(ms){ try{ return new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Athens",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(ms)); }catch(e){ return new Date(ms).toISOString().slice(0,10); } }
+function daysUntil(ms){ const n=Math.round((Date.parse(athensYmd(ms))-Date.parse(todayAthens()))/864e5); return n>1?tr("phIn",{n}):n===1?tr("phIn1"):tr("phSoon"); }   // calendar days (Athens)
+function phaseOpensAt(L){ return L.phase==="waiting"?L.opensAt:L.phase==="frozen"?L.frozenUntil:L.phase==="names"?L.fullAt:null; }
+function phaseText(cur){ const L=(cur&&cur.life)||{}, at=phaseOpensAt(L);
+  if(L.phase==="waiting") return tr("phWait",{d:fmtDate(at)});
+  if(L.phase==="frozen") return tr("phFrozen",{d:fmtDate(at)});
+  if(L.phase==="names") return tr(cur.owner==="venue"?"phNamesV":"phNames",{d:fmtDate(at)});
+  return ""; }
+function phaseLine(cur){ const L=(cur&&cur.life)||{}, at=phaseOpensAt(L), v=cur.owner==="venue";
+  if(L.phase==="waiting") return tr("phLineWait",{d:fmtDate(at), n:daysUntil(at)});
+  if(L.phase==="frozen") return tr("phLineFrozen",{d:fmtDate(at)});
+  if(L.phase==="names") return tr(v?"phLineNamesV":"phLineNames",{d:fmtDate(at)});
+  if(L.phase==="full" && L.weddingDate && !L.over) return tr(v?"phLineFullV":"phLineFull",{d:fmtDate(L.weddingDate)});
+  return ""; }
+// The next moment the phase changes: re-ask the server then (no reload needed); the 15 s poll is the safety net.
+let phaseTimer=null, phaseTimerAt=0;
+function schedulePhaseCheck(){
+  const cur=(profiles&&profiles.profiles)?currentProfile():null, L=ACCESS.role==="couple"&&cur&&cur.life;
+  const next=L?[L.opensAt,L.frozenUntil,L.fullAt,L.lockAt].filter(t=>t&&t>Date.now()).sort((a,b)=>a-b)[0]||0:0;
+  if(next===phaseTimerAt) return; clearTimeout(phaseTimer); phaseTimer=null; phaseTimerAt=next; if(!next) return;
+  phaseTimer=setTimeout(()=>{ phaseTimer=null; phaseTimerAt=0; renderLifeBar();
+    if(Date.now()>=next) pullIfNewer(); else schedulePhaseCheck(); }, Math.min(next-Date.now()+1500, 3600e3));   // long waits: wake up hourly (the countdown; timers cap at ~24 days)
+}
+// ---- the calm strip under the toolbar: after the wedding (+ keepsake PDF), in the venue's trash, and the couple's phases ----
 function lifeText(cur){ const L=(cur&&cur.life)||{};
   return (L.weddingDate?tr(ACCESS.role==="couple"?"lifeWas":"lifeWasV",{d:fmtDate(L.weddingDate)})+" ":"")+(L.deleteAt&&!L.keep?tr("lifeRoDel",{d:fmtDate(L.deleteAt)}):tr("lifeRo")); }
-function lifeBarKey(){ return PBASE+".lifebar."+((currentProfile()||{}).cloudId||""); }
-function renderLifeBar(){ const bar=$("lifebar"); if(!bar) return; let off=false; try{ off=sessionStorage.getItem(lifeBarKey())==="1"; }catch(e){}
-  bar.hidden=!(ACCESS.locked||ACCESS.gone)||off; $("lifePdf").hidden=!ACCESS.locked;
-  if(!bar.hidden) $("lifeText").textContent=ACCESS.gone?tr("goneVenue"):lifeText(currentProfile()); }
-$("lifeX").addEventListener("click",()=>{ try{ sessionStorage.setItem(lifeBarKey(),"1"); }catch(e){} renderLifeBar(); applyZoom(); });
+function lifeBarKind(){ return ACCESS.gone?"gone":ACCESS.locked?"locked":ACCESS.waitRo?ACCESS.phase:ACCESS.phase==="names"?"names":""; }
+// View-only strips can be closed for this visit; the names strip is closed for good (once per plan and device).
+function lifeBarKey(kind){ return PBASE+(kind==="names"?".namesbar.":".lifebar."+kind+".")+((currentProfile()||{}).cloudId||""); }
+function lifeBarOff(kind){ try{ return (kind==="names"?localStorage:sessionStorage).getItem(lifeBarKey(kind))==="1"; }catch(e){ return false; } }
+function renderLifeBar(){ const bar=$("lifebar"); if(!bar) return; const kind=lifeBarKind(), cur=currentProfile();
+  bar.hidden=!kind||lifeBarOff(kind); $("lifePdf").hidden=kind!=="locked";
+  const at=ACCESS.waitRo?phaseOpensAt((cur&&cur.life)||{}):0, cd=$("lifeCd"); cd.hidden=!at; cd.textContent=at?daysUntil(at):"";
+  bar.querySelector(".ic use").setAttribute("href", kind==="waiting"||kind==="frozen"?"#i-clock":kind==="names"?"#i-people":"#i-heart");
+  if(!bar.hidden) $("lifeText").textContent=kind==="gone"?tr("goneVenue"):kind==="locked"?lifeText(cur):phaseText(cur); }
+$("lifeX").addEventListener("click",()=>{ const kind=lifeBarKind(); try{ (kind==="names"?localStorage:sessionStorage).setItem(lifeBarKey(kind),"1"); }catch(e){} renderLifeBar(); applyZoom(); });
 $("lifePdf").addEventListener("click",e=>downloadPdf("keepsake", e.currentTarget));
 // ---- the wedding date: the couple sets it on its own plan (the venue in its console); first set free, then a few changes ----
-function dateEditable(){ const cur=currentProfile()||{}, L=cur.life; return !IS_LAB && !!(cur.cloudId && L && L.dateEditable===true); }   // the server decides (extra plans follow the main plan's date)
+function dateEditable(){ const cur=currentProfile()||{}, L=cur.life; return !IS_LAB && !!(cur.cloudId && L && L.dateEditable===true) && !phaseRo(cur); }   // the server decides (extra plans follow the main plan's date; not while waiting / frozen)
 function todayAthens(){ try{ return new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Athens",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()); }catch(e){ return new Date().toISOString().slice(0,10); } }
 function ymdPlus(ymd,n){ return new Date(Date.parse(ymd+"T00:00:00Z")+n*864e5).toISOString().slice(0,10); }
 function dateSecHtml(cur){ const L=cur.life; if(!L) return "";
-  const wd=L.weddingDate, ed=dateEditable(), t=todayAthens();
+  const wd=L.weddingDate, ed=dateEditable(), t=todayAthens(), direct=ACCESS.role==="couple" && cur.owner!=="venue", pl=ACCESS.role==="couple"?phaseLine(cur):"";
   let h=`<h4>${escapeHtml(tr("accDate"))}</h4>`+(wd?`<div class="acc-date">${escapeHtml(fmtDate(wd))}</div>`:`<div class="mhint" style="padding:0">${escapeHtml(tr("accDateNone"))}</div>`);
   if(L.locked) return h+`<div class="mhint" style="padding:4px 0 0">${escapeHtml(lifeText(cur))}</div>`;
+  if(pl) h+=`<div class="acc-phase">${escapeHtml(pl)}</div>`;   // the couple's phase: waiting · names · full · frozen
+  if(pl && direct && L.phase==="names" && cur.perms) h+=`<div class="mhint" style="padding:6px 0 0">${escapeHtml(tr("phNamesWhy"))}</div>${permListHtml(cur.perms, PERM_KEYS.filter(k=>k!=="decor"))}`;   // decor: their own items stay theirs
   if(ed) h+=`<div class="acc-row"><input type="date" id="accDateIn" min="${t}" max="${ymdPlus(t,730)}" value="${escapeHtml(wd||"")}"><button class="ibtn primary" id="accDateSave">${escapeHtml(tr(wd?"accDateChange":"accDateSet"))}</button></div>`+(wd&&L.dateChangesLeft!=null?`<div class="mhint" style="padding:6px 0 0">${escapeHtml(tr("accDateLeft",{n:L.dateChangesLeft}))}</div>`:"");
-  else if(wd && ACCESS.role==="couple" && cur.owner!=="venue" && L.dateChangesLeft===0) h+=`<div class="mhint" style="padding:4px 0 0">${escapeHtml(tr("accDateNoMore"))}</div>`;
+  else if(wd && direct && L.phase==="waiting" && L.dateChangesLeft>0) h+=`<div class="mhint" style="padding:4px 0 0">${escapeHtml(tr("accDateLater"))}</div>`;
+  else if(wd && direct && L.dateChangesLeft===0) h+=`<div class="mhint" style="padding:4px 0 0">${escapeHtml(tr("accDateNoMore"))}</div>`;
   else if(cur.owner==="venue" && ACCESS.role!=="venue") h+=`<div class="mhint" style="padding:4px 0 0">${escapeHtml(tr("accDateByVenue"))}</div>`;
   return h+`<div class="mhint" style="padding:6px 0 0">${escapeHtml(tr("accDateHint"))}</div>`; }
 function wireDateSec(cur){
@@ -4342,14 +4418,18 @@ function wireDateSec(cur){
     if(!v){ inp.focus(); return; }
     if(v<t || v>ymdPlus(t,730)){ toast(tr("accDateBad"),5000); return; }
     if(v===L.weddingDate) return;
-    const left=L.dateChangesLeft!=null?L.dateChangesLeft:3;
-    if(!confirm(L.weddingDate?tr("accDateConfirmChange",{d:fmtDate(v),n:Math.max(0,left-1)}):tr("accDateConfirm",{d:fmtDate(v),n:left}))) return;
+    const left=L.dateChangesLeft!=null?L.dateChangesLeft:3, direct=ACCESS.role==="couple" && cur.owner!=="venue", f=ymdPlus(v,-14);
+    // a couple who bought directly changes the date once, then the plan is view-only until 14 days before the new date (if still ahead)
+    const msg=(direct && L.weddingDate)?tr(f>t?"accDateOnce":"accDateOnceNow",{d:fmtDate(v), f:fmtDate(f)}):(direct && left===1)?tr("accDateConfirm1",{d:fmtDate(v)})
+      :L.weddingDate?tr("accDateConfirmChange",{d:fmtDate(v),n:Math.max(0,left-1)}):tr("accDateConfirm",{d:fmtDate(v),n:left});
+    if(!confirm(msg)) return;
     ds.disabled=true; let r=null, d={};
     try{ r=await fetch(planPath(cur.cloudId)+"/date",{method:"POST",headers:authHeaders(cur),body:JSON.stringify({date:v})}); d=await r.json().catch(()=>({})); }catch(e){}
-    if(r && r.ok && d.life){ cur.life=d.life; saveProfilesIdx(); applyAccess(); toast(tr("tDateSet",{d:fmtDate(v)}),4000); await refreshAccess(); if($("accessModal").classList.contains("open")) renderAccessBody(); return; }
+    if(r && r.ok && d.life){ cur.life={...(cur.life||{}), ...d.life}; saveProfilesIdx(); applyAccess(); toast(tr("tDateSet",{d:fmtDate(v)}),4000); await refreshAccess(); if($("accessModal").classList.contains("open")) renderAccessBody(); return; }   // a couple's change: frozen now (the strip says until when)
     ds.disabled=false;
-    toast(!r?tr("claimFail"):d.error==="bad_date"?tr("accDateBad"):d.error==="no_more_changes"?tr("accDateNoMore"):d.error==="locked"?tr("tLockedWed"):tr("accFail"),6000);
-    if(d.error==="locked"||d.error==="no_more_changes"){ await refreshAccess(); applyAccess(); if($("accessModal").classList.contains("open")) renderAccessBody(); } };
+    if(d.error==="not_open" && d.life){ cur.life={...(cur.life||{}), ...d.life}; saveProfilesIdx(); applyAccess(); }
+    toast(!r?tr("claimFail"):d.error==="bad_date"?tr("accDateBad"):d.error==="no_more_changes"?tr("accDateNoMore"):d.error==="locked"?tr("tLockedWed"):(d.error==="not_open"&&phaseText(cur))?phaseText(cur):tr("accFail"),6000);
+    if(d.error==="locked"||d.error==="no_more_changes"||d.error==="not_open"){ await refreshAccess(); applyAccess(); if($("accessModal").classList.contains("open")) renderAccessBody(); } };
 }
 // A plan still on the 18-month fallback: once per device and plan, a gentle "set your wedding date" (only for whoever can set it).
 function maybeDateNudge(){ const cur=currentProfile(), L=cur&&cur.life; if(!L || !L.fallback || L.weddingDate || !dateEditable()) return; showTip("date."+cur.cloudId); }
@@ -4358,25 +4438,29 @@ function renderRoleBadge(){
   let cls="", txt="", tip="";
   if(a.role==="venue" && !a.locked && !a.gone){ cls="r-venue"; txt=a.template?tr("rbTemplate"):a.preview?tr("rbPreview"):tr("rbVenue"); tip=a.template?tr("rbTemplateTip"):tr("rbVenueTip"); }
   else if(a.role==="support"){ cls="r-support"; txt=tr(cur.supportEdit?"rbSupport":"rbSupportView",{t:fmtTime(cur.supportExpires)}); tip=tr("rbSupportTip"); }
-  else if(a.locked||a.gone){ cls="r-viewer"; txt=tr("rbDone"); tip=a.gone?tr("goneVenue"):lifeText(cur); }
+  else if(a.locked||a.gone||a.waitRo){ cls="r-viewer"; txt=tr("rbDone"); tip=a.gone?tr("goneVenue"):a.waitRo?phaseText(cur):lifeText(cur); }
   else if(a.role==="viewer"){ cls="r-viewer"; txt=tr("rbViewer"); tip=tr("rbViewerTip"); }
   else if(a.role==="couple" && cur.supportInfo && cur.supportInfo.expires>Date.now()){ cls="r-support"; txt=tr("rbSupportOn"); tip=tr(cur.supportInfo.by==="venue"?"rbSupportOnVenue":"rbSupportOnTip",{t:fmtTime(cur.supportInfo.expires)}); }
-  else if(a.restricted){ cls="r-locked"; txt=tr("rbLocked",{v:a.venueName||tr("theVenue")}); tip=tr("rbLockedTip"); }
+  else if(a.venueCouple){ cls="r-locked"; txt=tr("rbLocked",{v:a.venueName||tr("theVenue")}); tip=tr("rbLockedTip"); }
+  else if(a.phase==="names"){ cls="r-locked"; txt=tr("rbNames"); tip=phaseText(cur); }
   b.hidden=!txt; b.className=cls; b.textContent=txt; b.title=tip;
 }
-$("roleBadge").addEventListener("click",()=>{ if((ACCESS.locked||ACCESS.gone) && $("lifebar").hidden){ try{ sessionStorage.removeItem(lifeBarKey()); }catch(e){} renderLifeBar(); applyZoom(); return; } openAccess(); });   // after the wedding the badge brings the strip back
+$("roleBadge").addEventListener("click",()=>{ const kind=lifeBarKind(); if(kind && kind!=="names" && $("lifebar").hidden){ try{ sessionStorage.removeItem(lifeBarKey(kind)); }catch(e){} renderLifeBar(); applyZoom(); return; } openAccess(); });   // view only: the badge brings the strip back
 let lockedToastAt=0;
-function roToast(){ if(Date.now()-lockedToastAt<2500) return; lockedToastAt=Date.now(); toast(ACCESS.gone?tr("goneVenue"):ACCESS.locked?tr("tLockedWed"):tr("rbViewerTip"),3500); }
-function lockedToast(k){ if(ACCESS.ro){ roToast(); return; } if(Date.now()-lockedToastAt<2500) return; lockedToastAt=Date.now(); toast(tr("tLockedPart",{v:ACCESS.venueName||tr("theVenue"), w:tr(PERM_LABEL[k])}),3500); }
+function roToast(){ if(Date.now()-lockedToastAt<2500) return; lockedToastAt=Date.now(); toast(ACCESS.gone?tr("goneVenue"):ACCESS.locked?tr("tLockedWed"):ACCESS.waitRo?phaseText(currentProfile()):tr("rbViewerTip"),ACCESS.waitRo?5000:3500); }
+function lockedToast(k){ if(ACCESS.ro){ roToast(); return; } if(Date.now()-lockedToastAt<2500) return; lockedToastAt=Date.now();
+  const L=(currentProfile()||{}).life||{};
+  if(ACCESS.phase==="names" && PHASE_LOCKS.includes(k) && L.fullAt){ toast(tr(ACCESS.venueCouple?"tPhaseLockedV":"tPhaseLocked",{w:tr(PERM_LABEL[k]), d:fmtDate(L.fullAt)}),4500); return; }   // closed by the phase: say when it opens
+  toast(tr("tLockedPart",{v:ACCESS.venueName||tr("theVenue"), w:tr(PERM_LABEL[k])}),3500); }
 function maxSeatsFor(t){ const m=(ACCESS.perms&&ACCESS.perms.maxSeats)||0; return (m && t && t.shape!=="head")? m : 30; }
 // Decor items the venue placed stay the venue's; what the couple adds (photo booth, candy bar…) is theirs to move.
 function featLocked(f){ return ACCESS.ro || !can("decor") && !!f && (f.by==="venue" || (f.by===undefined && ACCESS.owner==="venue")); }
-function permListHtml(p){
-  return `<ul class="acc-perms">${PERM_KEYS.map(k=>`<li class="${p[k]?"yes":"no"}">${p[k]?"✓":"🔒"} ${escapeHtml(tr(PERM_LABEL[k]))}${(k==="seats"&&p[k]&&p.maxSeats)?` <span class="no">(${escapeHtml(tr("permMax",{n:p.maxSeats}))})</span>`:""}</li>`).join("")}<li class="yes">✓ ${escapeHtml(tr("permAlways"))}</li></ul>`;
+function permListHtml(p, keys){
+  return `<ul class="acc-perms">${(keys||PERM_KEYS).map(k=>`<li class="${p[k]?"yes":"no"}">${p[k]?"✓":"🔒"} ${escapeHtml(tr(PERM_LABEL[k]))}${(k==="seats"&&p[k]&&p.maxSeats)?` <span class="no">(${escapeHtml(tr("permMax",{n:p.maxSeats}))})</span>`:""}</li>`).join("")}<li class="yes">✓ ${escapeHtml(tr("permAlways"))}</li></ul>`;
 }
 function auditHtml(list){
   if(!list||!list.length) return `<div class="mhint" style="padding:4px 0 0">${escapeHtml(tr("accLogEmpty"))}</div>`;
-  const WHO={couple:"awCouple",venue:"awVenue",support:"awSupport",admin:"awAdmin",system:"awSystem"}, WHAT={date:"atDate",locked:"atLocked",invite:"atInvite",revoke:"atRevoke",open:"atOpen",save:"atSave",restore:"atRestore",reset:"atReset",claim:"atClaim",claim_reset:"atClaimReset",rotate:"atRotate",recover:"atRecover",email:"atEmail"};
+  const WHO={couple:"awCouple",venue:"awVenue",support:"awSupport",admin:"awAdmin",system:"awSystem"}, WHAT={date:"atDate",locked:"atLocked",invite:"atInvite",revoke:"atRevoke",open:"atOpen",save:"atSave",restore:"atRestore",reset:"atReset",claim:"atClaim",claim_reset:"atClaimReset",rotate:"atRotate",recover:"atRecover",email:"atEmail",unfreeze:"atUnfreeze"};
   return `<ul class="acc-log">${list.slice().reverse().map(e=>`<li><span class="t">${escapeHtml(fmtTime(e.t))}</span><span><b>${escapeHtml(WHO[e.who]?tr(WHO[e.who]):String(e.who))}</b> · ${escapeHtml(WHAT[e.what]?tr(WHAT[e.what],{h:e.h||"",d:e.d?fmtDate(e.d):""}):String(e.what))}</span></li>`).join("")}</ul>`;
 }
 async function refreshAccess(){ const cur=currentProfile(); if(!cur||!cur.cloudId) return;

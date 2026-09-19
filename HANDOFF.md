@@ -3,7 +3,7 @@
 > Read this first. It maps the whole system so a new agent (or developer) can pick it up cold.
 > **This repo is PUBLIC — never commit secrets here.** Real keys live in `ACCESS.local.md`
 > (git-ignored, on Andreas's PC), in the server's env files, and in Andreas's password manager.
-> Last updated: 2026-09-18 (roles & access — §1b; email recovery — §1c).
+> Last updated: 2026-09-20 (roles & access §1b · email §1c · lifecycle §1d · couple phases & season-only §1e).
 
 ## 1. What this is
 
@@ -20,9 +20,9 @@ their guests at tables. Live at **https://takeaseat.gr**.
 - **Venue console** (a κτήμα manages its weddings): https://takeaseat.gr/venue.html
 - **Legal**: `/privacy.html`, `/terms.html`, `/dpa.html`
 
-**Pricing on the site (2026-09-08):** venues season **129 €/season** (unlimited weddings), venues per wedding **9 €**,
-couples **19 € one-off** (the "expensive" tier — never called that; venues simply get the partner price). All three
-numbers live only in the pricing section of `index.html`. Couples currently sign up by e-mail (the CTA is a mailto);
+**Pricing on the site (2026-09-20):** venues **season only, 129 €/season + VAT** (unlimited weddings; the 9 €/wedding tier
+was dropped — old per-wedding licences still work), couples **19 € one-off incl. VAT** (their planner opens after the 14-day
+withdrawal period — §1e). Free public demo: `/lab.html` (up to 8 tables). Numbers live only in `index.html` + `terms.html`. Couples currently sign up by e-mail (the CTA is a mailto);
 fulfil in `admin.html` → **Couples (direct)** → create **with their email** (the claim link is mailed to them when mail
 is on — §1c; otherwise send the **claim link** yourself, §1b). Never again as a wedding under a
 "Direct couples" venue: those weddings are venue-owned, so the admin could open them.
@@ -123,6 +123,26 @@ cancel; **no refunds for venues**; deleted weddings are restorable **only by the
   `contact` is admin-only.
 - **Server hardening**: request bodies > 3 MB → 413 before being read; every 500 is logged (method, path with ids
   masked, stack — never bodies or keys); admin erasures/restores are logged.
+
+## 1e. Couple phases, dates, season-only venues, free lab (2026-09-20)
+
+Why: couples (consumers) may withdraw within 14 days of an online purchase; nobody should get free use, and a plan must
+not serve other couples' weddings. Owner decisions (Andreas):
+- **Direct couples**: the admin sells with a **required wedding date**; the planner opens **after the 14-day withdrawal period (00:00 on day 15 after payment)**
+  (`plan.opensAt`, phase `waiting`: read-only + countdown). **Start now** (admin tick, only when the wedding is < 21 days
+  away; the couple consents that a withdrawal then costs the days used) skips the wait.
+- **Phases** (server `life.phase`, couple role only — venue, support, admin never limited): `names` until 00:00 Athens
+  **30 days before the wedding** (guests, groups, invitations, seating on existing tables, chair counts, table labels;
+  NOT add/delete/merge/move tables, floor, decor — enforced server-side, the plan comes back `{enforced}`), then `full`,
+  then `locked` from the day after the wedding. GET returns the couple's EFFECTIVE `perms` (phase ∩ venue perms).
+- **One date change** for a direct couple; it freezes the plan (`frozen`, `plan.frozenUntil`) until 00:00 Athens 14 days
+  before the new date. The admin can move dates without a freeze and unfreeze (`PATCH /admin/couples/:id {unfreeze}`).
+- **Venues**: season deal only (the 9€/wedding tier is gone from site and admin; old per-wedding licences still work);
+  every wedding needs a date (`missing_date`); venue couples have no waiting phase, same names/full phases; venues keep
+  3 date changes; **new couple link** `POST /venues/:id/weddings/:planId/couple-link` (old link + devices stop, logged).
+- **New plans start with 8 round tables + the head table**; **lab.html is a free public demo** limited to 8 guest tables.
+- **Invitations editor** in the planner (list, members, rename, delete, add/remove/move people, seat all).
+- Hermes «νέος γάμος …» must include the date («… στις 12 Σεπτεμβρίου»); it asks for it otherwise.
 
 ## 2. Architecture
 

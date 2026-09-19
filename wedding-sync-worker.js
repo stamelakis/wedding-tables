@@ -81,6 +81,12 @@ const nextGen = o => { o.lgen = (o.lgen || 0) + 1; return o.lgen; };
 // ---- wedding date & lifecycle ----
 const DAY = 86400000, FALLBACK_DAYS = 548, TRASH_DAYS = 14, DATE_CHANGES = 3, DATE_AHEAD_DAYS = 730, MAX_KEEP_DAYS = 3650;
 const DEFAULT_RETENTION = { keepDays: 7, lockAfter: true, keep: false };
+// Couple phases: a couple who buys directly waits out the 14-day withdrawal period (the payment day doesn't count, so the
+// planner opens at 00:00 on day 15); everyone
+// arranges the room only in the last 30 days; a couple's one date change freezes the plan until 14 days before the new date.
+const OPEN_DELAY_DAYS = 15, FULL_WINDOW_DAYS = 30, START_NOW_MAX_DAYS = 21, COUPLE_DATE_CHANGES = 1, FREEZE_BEFORE_DAYS = 14;
+const NAMES_PERMS = { floor: false, decor: false, layout: false, tables: false, seats: true, labels: true, maxSeats: 0 };
+const andPerms = (p, q) => { const o = {}; for (const k of PERM_KEYS) o[k] = !!(p[k] && q[k]); o.maxSeats = p.maxSeats || 0; return o; };
 const ymdOk = s => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && (d => !isNaN(d) && d.toISOString().slice(0, 10) === s)(new Date(s + "T00:00:00Z"));
 const addDays = (ymd, n) => new Date(Date.parse(ymd + "T00:00:00Z") + n * DAY).toISOString().slice(0, 10);
 const addYears = (ymd, n) => { const [y, m, d] = ymd.split("-").map(Number); const dd = (m === 2 && d === 29) ? 28 : d; return `${y + n}-${String(m).padStart(2, "0")}-${String(dd).padStart(2, "0")}`; };
@@ -112,11 +118,22 @@ async function lifecycleSince(env) {   // plans older than this feature count th
 }
 // lockAt = the day after the wedding (Athens). No date yet: 18 months after the plan was made (so a plan is never reused forever).
 function lifeOf(rec, pol, since, dateOverride) {
-  if (!rec || rec.template) return { weddingDate: null, lockAt: null, deleteAt: null, over: false, locked: false, keep: true, fallback: false };
+  if (!rec || rec.template) return { weddingDate: null, lockAt: null, deleteAt: null, over: false, locked: false, keep: true, fallback: false, phase: "full", opensAt: null, fullAt: null, frozenUntil: null };
   const wd = ymdOk(rec.weddingDate) ? rec.weddingDate : (ymdOk(dateOverride) ? dateOverride : null);
-  const lockAt = wd ? athensMidnight(addDays(wd, 1)) : (rec.createdAt || since || Date.now()) + FALLBACK_DAYS * DAY;
-  const over = Date.now() >= lockAt;
-  return { weddingDate: wd, lockAt, deleteAt: pol.keep ? null : lockAt + pol.keepDays * DAY, over, locked: over && !!pol.lockAfter, keep: !!pol.keep, fallback: !wd };
+  const now = Date.now();
+  const lockAt = wd ? athensMidnight(addDays(wd, 1)) : (rec.createdAt || since || now) + FALLBACK_DAYS * DAY;
+  const over = now >= lockAt, locked = over && !!pol.lockAfter;
+  // the couple's phase (venues, support and the admin are never limited by it)
+  const opensAt = rec.opensAt || null, frozenUntil = (rec.frozenUntil && rec.frozenUntil > now) ? rec.frozenUntil : null;
+  const fullAt = wd ? athensMidnight(addDays(wd, -FULL_WINDOW_DAYS)) : null;
+  const phase = locked ? "locked" : over ? "full" : (opensAt && now < opensAt) ? "waiting" : frozenUntil ? "frozen" : (fullAt && now < fullAt) ? "names" : "full";
+  return { weddingDate: wd, lockAt, deleteAt: pol.keep ? null : lockAt + pol.keepDays * DAY, over, locked, keep: !!pol.keep, fallback: !wd, phase, opensAt, fullAt, frozenUntil };
+}
+// What a couple may change right now: the venue's permissions, narrowed by the phase. null = nothing (waiting / frozen).
+function couplePerms(a, L) {
+  const base = (a.restricted && a.layoutSet) ? a.perms : { ...ALL_OPEN };
+  if (L.phase === "waiting" || L.phase === "frozen") return null;
+  return L.phase === "names" ? andPerms(base, NAMES_PERMS) : base;
 }
 // A couple's extra plans (made with parentId) have no life of their own: they follow the licence's main plan — its date,
 // its lock, its deletion — so one paid wedding can never become a second one.
@@ -130,7 +147,8 @@ async function planLife(env, rec, id, ctx) {
     if (c && c.planId && c.planId !== id) {
       const main = c.purgedAt ? null : safeParse(await env.PLANS.get("plan:" + c.planId));
       if (!main) { const now = Date.now(); return { weddingDate: null, lockAt: now, deleteAt: now, over: true, locked: true, keep: false, fallback: false, child: true }; }
-      const L = lifeOf({ ...rec, weddingDate: main.weddingDate || null, createdAt: main.createdAt || rec.createdAt }, policyOf(settings, layer, main.retention, rec.retention), since);
+      const L = lifeOf({ ...rec, weddingDate: main.weddingDate || null, createdAt: main.createdAt || rec.createdAt, opensAt: main.opensAt || null, frozenUntil: main.frozenUntil || null },
+        policyOf(settings, layer, main.retention, rec.retention), since);
       return { ...L, child: true };
     }
   }
@@ -138,7 +156,7 @@ async function planLife(env, rec, id, ctx) {
 }
 // Setting the date: from today up to 2 years ahead, the first time free then 3 changes, never cleared, not after the wedding.
 // These limits stop one paid wedding from being reused for others; the admin is not limited.
-function applyDate(rec, date, L, byAdmin) {
+function applyDate(rec, date, L, byAdmin, maxChanges, freeze) {
   if (date === null && byAdmin) { rec.weddingDate = null; return null; }
   if (!ymdOk(date)) return "bad_date";
   if (!byAdmin) {
@@ -146,14 +164,16 @@ function applyDate(rec, date, L, byAdmin) {
     const today = todayAthens();
     if (date < today || date > addDays(today, DATE_AHEAD_DAYS)) return "bad_date";
     if (rec.weddingDate && rec.weddingDate !== date) {
-      if ((rec.dateChanges || 0) >= DATE_CHANGES) return "no_more_changes";
+      if ((rec.dateChanges || 0) >= (maxChanges || DATE_CHANGES)) return "no_more_changes";
       rec.dateChanges = (rec.dateChanges || 0) + 1;
+      if (freeze) { const until = athensMidnight(addDays(date, -FREEZE_BEFORE_DAYS)); rec.frozenUntil = until > Date.now() ? until : null; }   // a couple's change: view-only until 14 days before
     }
   }
   rec.weddingDate = date; return null;
 }
-const lifeOut = (L, rec, canEdit) => ({ ...L, dateEditable: !!canEdit && !L.over && !L.locked && !L.child && (!rec.weddingDate || (rec.dateChanges || 0) < DATE_CHANGES),
-  dateChangesLeft: Math.max(0, DATE_CHANGES - (rec.dateChanges || 0)) });
+const lifeOut = (L, rec, canEdit, maxChanges) => { const max = maxChanges || DATE_CHANGES;
+  return { ...L, dateEditable: !!canEdit && !L.over && !L.locked && !L.child && (!rec.weddingDate || (rec.dateChanges || 0) < max),
+    dateChangesLeft: Math.max(0, max - (rec.dateChanges || 0)) }; };
 const PDF_WORDS = { el: ["κάτοψη", "αναμνηστικό"], en: ["floor plan", "keepsake"], de: ["Grundriss", "Erinnerung"] };
 const wellFormed = x => (typeof x.toWellFormed === "function" ? x.toWellFormed() : x);
 const pdfName = (name, mode, lang) => ([...wellFormed(String(name || "TakeaSeat"))].slice(0, 80).join("").replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ").trim() || "TakeaSeat")
@@ -622,13 +642,18 @@ export default {
             out.audit = (rec.audit || []).slice(-20);
             if (rec.resetAt) out.resetAt = rec.resetAt;
           }
-          out.life = lifeOut(await planLife(env, rec, id), rec, (a.role === "couple" && a.owner.type === "couple") || a.role === "venue");   // lifeOut: never for extra plans
+          const L = await planLife(env, rec, id), directCouple = a.role === "couple" && a.owner.type === "couple";
+          out.life = lifeOut(L, rec, directCouple || a.role === "venue", directCouple ? COUPLE_DATE_CHANGES : DATE_CHANGES);   // never for extra plans
+          if (a.role === "couple") { const cp = couplePerms(a, L); out.perms = cp || andPerms(a.perms, { floor: false, decor: false, layout: false, tables: false, seats: false, labels: false }); }
           return json(out);
         }
         if (parts.length === 2 && request.method === "PUT") {
           if (!a) return denied(request, rec);
           if (!a.write) return json({ error: "read_only" }, 403);
-          { const L = await planLife(env, rec, id); if (L.locked) return json({ error: "locked", life: lifeOut(L, rec, false) }, 403); }   // after the wedding: view only
+          const PL = await planLife(env, rec, id);
+          if (PL.locked) return json({ error: "locked", life: lifeOut(PL, rec, false) }, 403);   // after the wedding: view only
+          const phasePerms = a.role === "couple" ? couplePerms(a, PL) : undefined;
+          if (phasePerms === null) return json({ error: "not_open", life: lifeOut(PL, rec, false) }, 403);   // not yet open / frozen after a date change
           const body = await request.json().catch(() => ({}));
           if (body.baseUpdated != null && rec.updated && body.baseUpdated < rec.updated) {
             return json({ error: "conflict", updated: rec.updated, name: rec.name, plan: rec.plan }, 409);
@@ -644,6 +669,7 @@ export default {
             }
             const actsForVenue = a.owner.type === "venue" && (a.role === "venue" || a.role === "support");   // on a venue plan only the venue can invite support
             if (actsForVenue) plan = stampVenue(rec.plan, plan);
+            else if (phasePerms && PL.phase === "names") { const e = enforcePerms(rec.plan, plan, phasePerms, a.owner.type === "venue"); enforced = reverted(e, plan); plan = e; }   // the room opens 30 days before
             else if (a.restricted && a.layoutSet) { const e = enforcePerms(rec.plan, plan, a.perms, true); enforced = reverted(e, plan); plan = e; }
             else if (a.owner.type === "venue") plan = enforcePerms(rec.plan, plan, ALL_OPEN, true);   // keeps the authorship of decor items
             const before = planStats(rec.plan), after = planStats(plan);
@@ -688,13 +714,17 @@ export default {
         if (parts.length === 3 && parts[2] === "restore" && request.method === "POST") {
           if (!a) return denied(request, rec);
           if (!a.write) return json({ error: "read_only" }, 403);
-          { const L = await planLife(env, rec, id); if (L.locked) return json({ error: "locked", life: lifeOut(L, rec, false) }, 403); }
+          const RL = await planLife(env, rec, id);
+          if (RL.locked) return json({ error: "locked", life: lifeOut(RL, rec, false) }, 403);
+          const rPerms = a.role === "couple" ? couplePerms(a, RL) : undefined;
+          if (rPerms === null) return json({ error: "not_open", life: lifeOut(RL, rec, false) }, 403);
           const body = await request.json().catch(() => ({}));
           const h = safeParse(await env.PLANS.get("hist:" + id)) || [];
           const v = h.find(x => x.updated === Number(body.updated));
           if (!v || !isPlan(v.plan)) return json({ error: "version not found" }, 404);
           let plan = pinCounters(rec.plan, v.plan), enforced = false;
-          if (a.restricted && a.layoutSet) { const e = enforcePerms(rec.plan, plan, a.perms, true); enforced = reverted(e, plan); plan = e; }   // an old version never undoes the venue's locks
+          if (rPerms && RL.phase === "names") { const e = enforcePerms(rec.plan, plan, rPerms, a.owner.type === "venue"); enforced = reverted(e, plan); plan = e; }
+          else if (a.restricted && a.layoutSet) { const e = enforcePerms(rec.plan, plan, a.perms, true); enforced = reverted(e, plan); plan = e; }   // an old version never undoes the venue's locks
           const before = planStats(rec.plan), after = planStats(plan);
           if (before.guests >= 5 && after.guests === 0 && body.allowWipe !== true) return json({ error: "wipe_refused", guests: before.guests }, 422);
           if (rec.plan) await pushHistory(env, id, rec);
@@ -749,15 +779,17 @@ export default {
           const b = await readBody(request);
           const L = await planLife(env, rec, id);
           if (L.child) return json({ error: "unauthorized" }, 403);   // an extra plan follows the main plan's date
+          const direct = a.role === "couple";   // a couple who bought directly: one change, then view-only until 14 days before
+          if (direct && (L.phase === "waiting" || L.phase === "frozen")) return json({ error: "not_open", life: lifeOut(L, rec, false) }, 403);
           let err = null;
-          const r = await kvUpdate(env, key, cur => { if (!cur) return null; const before = cur.weddingDate || null; err = applyDate(cur, b.date, L, false);
+          const r = await kvUpdate(env, key, cur => { if (!cur) return null; const before = cur.weddingDate || null; err = applyDate(cur, b.date, L, false, direct ? COUPLE_DATE_CHANGES : DATE_CHANGES, direct);
             if (err) return { __res: null };
             if (before !== cur.weddingDate) addAudit(cur, a.role, "date", 0, { d: cur.weddingDate });
             return cur; });
           if (err) return json({ error: err }, err === "bad_date" ? 400 : 403);
           if (!r.obj) return json({ error: "not found" }, 404);
           if (a.owner.type === "venue") await kvUpdate(env, "venue:" + a.owner.venueId, v => { if (!v) return null; const w = (v.weddings || []).find(x => x.planId === id); if (!w || w.date === r.obj.weddingDate) return null; w.date = r.obj.weddingDate; return v; });
-          return json({ ok: true, life: lifeOut(await planLife(env, r.obj, id), r.obj, true) });
+          return json({ ok: true, life: lifeOut(await planLife(env, r.obj, id), r.obj, true, direct ? COUPLE_DATE_CHANGES : DATE_CHANGES) });
         }
         if (parts.length === 3 && parts[2] === "pdf" && request.method === "GET") {   // floor plan / keepsake — also after the wedding
           if (!a) return denied(request, rec);
@@ -1081,13 +1113,18 @@ export default {
             const b = await readBody(request);
             const email = normEmail(b.email), lang = langOf(b.lang);
             if (b.email && !email) return json({ error: "bad_email" }, 400);
-            if (b.weddingDate && !ymdOk(b.weddingDate)) return json({ error: "bad_date" }, 400);
-            if (b.weddingDate && b.weddingDate < todayAthens() && b.allowPast !== true) return json({ error: "past_date" }, 400);
+            if (!b.weddingDate) return json({ error: "missing_date" }, 400);
+            if (!ymdOk(b.weddingDate)) return json({ error: "bad_date" }, 400);
+            if (b.weddingDate < todayAthens() && b.allowPast !== true) return json({ error: "past_date" }, 400);
+            // The planner opens 14 days after payment (the couple's withdrawal period); "start now" only for a wedding < 21 days away.
+            const startNow = b.startNow === true;
+            if (startNow && b.weddingDate >= addDays(todayAthens(), START_NOW_MAX_DAYS)) return json({ error: "start_now_too_early" }, 400);
+            const paidAt = Date.now(), opensAt = startNow ? null : athensMidnight(addDays(todayAthens(), OPEN_DELAY_DAYS));
             const cid = rnd(10), planId = rnd(22), token = rnd(32);
             const name = String(b.name || "Wedding").slice(0, 120);
             await env.PLANS.put("plan:" + planId, JSON.stringify({ name, plan: null, editKey: rnd(28), readKey: rnd(24), owner: { type: "couple" }, coupleId: cid, keyGen: 0,
-              weddingDate: b.weddingDate || null, createdAt: Date.now(), updated: Date.now(), audit: [] }));
-            const c = { id: cid, name, contact: String(b.contact || "").slice(0, 200), email, lang, createdAt: Date.now(), claimAt: Date.now(), planId, claimToken: token, claimedAt: null };
+              weddingDate: b.weddingDate, opensAt, createdAt: paidAt, updated: paidAt, audit: [] }));
+            const c = { id: cid, name, contact: String(b.contact || "").slice(0, 200), email, lang, createdAt: paidAt, paidAt, startNow, claimAt: paidAt, planId, claimToken: token, claimedAt: null };
             const cret = normRetention(b.retention); if (cret) c.retention = cret;
             const mailed = !!(email && mailOn(env)) && mailClaim(c, token);
             c.mailed = mailed; if (mailed) c.mailedTo = email;
@@ -1108,10 +1145,13 @@ export default {
             const email = b.email != null ? normEmail(b.email) : null;
             if (b.email != null && String(b.email).trim() && !email) return json({ error: "bad_email" }, 400);
             if (b.weddingDate !== undefined && b.weddingDate !== null && b.weddingDate !== "" && !ymdOk(b.weddingDate)) return json({ error: "bad_date" }, 400);
-            if (b.weddingDate !== undefined) {   // the admin may set any date (or clear it)
+            if (b.weddingDate !== undefined || b.unfreeze === true) {   // the admin may set any date (or clear it) — it never freezes; and may unfreeze
               const cc = safeParse(await env.PLANS.get("couple:" + parts[2]));
-              if (cc) await kvUpdate(env, "plan:" + cc.planId, rec => { if (!rec || rec.coupleId !== cc.id) return null; const before = rec.weddingDate || null;
-                applyDate(rec, b.weddingDate || null, null, true); if (before === rec.weddingDate) return null; addAudit(rec, "admin", "date", 0, { d: rec.weddingDate }); return rec; });
+              if (cc) await kvUpdate(env, "plan:" + cc.planId, rec => { if (!rec || rec.coupleId !== cc.id) return null; let dirty = false;
+                if (b.weddingDate !== undefined) { const before = rec.weddingDate || null; applyDate(rec, b.weddingDate || null, null, true);
+                  if (before !== rec.weddingDate) { addAudit(rec, "admin", "date", 0, { d: rec.weddingDate }); dirty = true; } }
+                if (b.unfreeze === true && rec.frozenUntil) { rec.frozenUntil = null; addAudit(rec, "admin", "unfreeze"); dirty = true; }
+                return dirty ? rec : null; });
             }
             const r = await kvUpdate(env, "couple:" + parts[2], c => { if (!c) return null; const old = c.email || "";
               if (b.name != null) c.name = String(b.name).slice(0, 120);
@@ -1227,7 +1267,7 @@ export default {
             rows.push({ planId: w.planId, label: w.label, createdAt: w.createdAt, editKey: w.editKey, venueKey: w.venueKey,
               perms: normPerms(w.perms, ALL_OPEN), layoutSet: w.layoutSet !== false, supportExpires: live(w.supportExpires),
               date: p ? (p.weddingDate || null) : (w.date || null), updated: p ? p.updated : null, stats: p ? planStats(p.plan) : null,
-              life: L ? { lockAt: L.lockAt, deleteAt: L.deleteAt, over: L.over, locked: L.locked, keep: L.keep, fallback: L.fallback } : null,
+              life: L ? { lockAt: L.lockAt, deleteAt: L.deleteAt, over: L.over, locked: L.locked, keep: L.keep, fallback: L.fallback, phase: L.phase, fullAt: L.fullAt } : null,
               dateChangesLeft: p ? Math.max(0, DATE_CHANGES - (p.dateChanges || 0)) : 0 });
           }
           return json({ venue: { ...publicVenue(v), email: v.email || "", emailVerified: !!v.emailVerified, mail: mailOn(env) }, template, defaultPerms: normPerms(v.defaultPerms, ALL_OPEN), canCreate: gate.ok, reason: gate.reason,
@@ -1295,7 +1335,8 @@ export default {
           if (!gate.ok) return json({ error: gate.reason }, 403);
           const b = await readBody(request);
           const dated = {};
-          if (b.date != null && b.date !== "") { const e = applyDate(dated, b.date, null, false); if (e) return json({ error: e }, 400); }   // checked before a wedding is counted
+          if (b.date == null || b.date === "") return json({ error: "missing_date" }, 400);   // the date drives the couple's phases and the lifecycle
+          { const e = applyDate(dated, b.date, null, false); if (e) return json({ error: e }, 400); }   // checked before a wedding is counted
           let plan = null;
           if (v.templateId) { const t = await ownPlan(v.templateId); if (t) plan = layoutOnly(t.plan); }
           const id = rnd(22), editKey = rnd(28), venueKey = rnd(28);
@@ -1336,6 +1377,17 @@ export default {
             if (perms) rec.perms = perms;
             return rec; });
           return json({ ok: true, label: label || w.label, perms: perms || normPerms(w.perms, ALL_OPEN), date: date || w.date || null });
+        }
+        if (parts.length === 5 && parts[2] === "weddings" && parts[4] === "couple-link" && request.method === "POST") {   // a leaked couple link: new keys, the old link and its devices stop
+          const w = (v.weddings || []).find(x => x.planId === parts[3]);
+          const wp = w ? await ownPlan(parts[3]) : null;
+          if (!w || !wp) return json({ error: "not found" }, 404);
+          if ((await planLife(env, wp, parts[3], { venue: v })).locked) return json({ error: "locked" }, 403);
+          const r = await kvUpdate(env, "plan:" + parts[3], rec => { if (!rec) return null;
+            rec.editKey = rnd(28); rec.readKey = rnd(24); rec.keyGen = (rec.keyGen || 0) + 1; rec.legacyOpenUntil = null; addAudit(rec, "venue", "rotate"); return rec; });
+          await kvUpdate(env, vkey, cur => { if (!cur) return null; const cw = (cur.weddings || []).find(x => x.planId === parts[3]); if (!cw) return null; cw.editKey = r.obj.editKey; return cur; });
+          console.log("venue " + v.id + ": new couple link for " + parts[3]);
+          return json({ ok: true, editKey: r.obj.editKey, readKey: r.obj.readKey });
         }
         if (parts.length === 4 && parts[2] === "weddings" && request.method === "DELETE") {   // into the trash for 14 days (only TakeaSeat restores)
           const w = (v.weddings || []).find(x => x.planId === parts[3]);
@@ -1511,7 +1563,9 @@ async function adminCouple(env, c) {   // licence metadata only — never the pl
     claimIssuedAt: c.claimToken ? (c.claimAt || c.resetAt || c.createdAt) : null,
     support: supportActive(rec) ? { expires: rec.support.expires } : null,
     weddingDate: rec ? (rec.weddingDate || null) : null, retention: c.retention || null, keepsakeSentAt: rec ? (rec.keepsakeSentAt || null) : null, purgedAt: c.purgedAt || null,
-    life: rec ? (L => ({ lockAt: L.lockAt, deleteAt: L.deleteAt, over: L.over, locked: L.locked, keep: L.keep, fallback: L.fallback }))(await planLife(env, rec, c.planId, { couple: c })) : null };
+    life: rec ? (L => ({ lockAt: L.lockAt, deleteAt: L.deleteAt, over: L.over, locked: L.locked, keep: L.keep, fallback: L.fallback,
+      phase: L.phase, opensAt: L.opensAt, fullAt: L.fullAt, frozenUntil: L.frozenUntil }))(await planLife(env, rec, c.planId, { couple: c })) : null,
+    startNow: !!c.startNow, paidAt: c.paidAt || c.createdAt };
 }
 async function addIndex(env, key, id) { await kvUpdate(env, key, ids => { ids = Array.isArray(ids) ? ids : []; if (ids.includes(id)) return null; ids.push(id); return ids; }); }
 async function removeIndex(env, key, id) { await kvUpdate(env, key, ids => Array.isArray(ids) && ids.includes(id) ? ids.filter(x => x !== id) : null); }

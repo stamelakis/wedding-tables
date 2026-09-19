@@ -9,3 +9,6 @@ ACCESS.local.md
 *.local.md
 hermes/.env
 hermes/__pycache__/
+
+# agent worktrees (local only)
+.claude/worktrees/

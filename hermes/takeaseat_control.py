@@ -179,6 +179,48 @@ _KEYS = ["ζευγάρι", "ζευγαρι", "γάμου", "γαμου", "γάμ
 _NOT_NAMES = {"takeaseat", "hermes", "jockey"}
 
 
+_MONTHS = {}
+for _i, _names in enumerate([
+        ("ιανουαριου", "ιανουαριος", "ιαν", "january", "jan"), ("φεβρουαριου", "φεβρουαριος", "φεβ", "february", "feb"),
+        ("μαρτιου", "μαρτιος", "μαρ", "march", "mar"), ("απριλιου", "απριλιος", "απρ", "april", "apr"),
+        ("μαιου", "μαιος", "μαι", "may"), ("ιουνιου", "ιουνιος", "ιουν", "june", "jun"),
+        ("ιουλιου", "ιουλιος", "ιουλ", "july", "jul"), ("αυγουστου", "αυγουστος", "αυγ", "august", "aug"),
+        ("σεπτεμβριου", "σεπτεμβριος", "σεπ", "september", "sep", "sept"), ("οκτωβριου", "οκτωβριος", "οκτ", "october", "oct"),
+        ("νοεμβριου", "νοεμβριος", "νοε", "november", "nov"), ("δεκεμβριου", "δεκεμβριος", "δεκ", "december", "dec")], start=1):
+    for _nm in _names:
+        _MONTHS[_nm] = _i
+_ACCENTS = str.maketrans("άέήίόύώϊϋΐΰ", "αεηιουωιυιυ")
+
+
+def _date_from(task: str):
+    """The wedding date in his sentence → ("YYYY-MM-DD", the matched text) or (None, "").
+    «στις 12 Σεπτεμβρίου», «12/9», «12.09.2027», "on 12 September 2027"; no year → the next such day."""
+    t = (task or "")
+    low = t.lower().translate(_ACCENTS)
+    today = _dt.date.today()
+    m = re.search(r"\b(\d{1,2})[/.\-](\d{1,2})(?:[/.\-](\d{2,4}))?\b", low)
+    day = mon = yr = None
+    if m:
+        day, mon = int(m.group(1)), int(m.group(2))
+        yr = int(m.group(3)) if m.group(3) else None
+    else:
+        m = re.search(r"\b(\d{1,2})\s+([a-zα-ω]+)\.?(?:\s+(\d{4}))?\b", low)
+        if m and m.group(2) in _MONTHS:
+            day, mon = int(m.group(1)), _MONTHS[m.group(2)]
+            yr = int(m.group(3)) if m.group(3) else None
+    if not day:
+        return None, ""
+    if yr is not None and yr < 100:
+        yr += 2000
+    try:
+        d = _dt.date(yr or today.year, mon, day)
+        if yr is None and d < today:
+            d = _dt.date(today.year + 1, mon, day)
+    except ValueError:
+        return None, ""
+    return d.isoformat(), t[m.start():m.end()]
+
+
 def _name_from(task: str) -> str:
     """Pull the name out of his sentence.
     «νέος γάμος για Μαρία και Νίκο» → «Μαρία και Νίκο» · "create a venue customer Κτήμα Ηλιοβασίλεμα" → «Κτήμα Ηλιοβασίλεμα».
@@ -307,18 +349,26 @@ def takeaseat_new_wedding(value: str = "", task: str = "", **_):
     """`value` = the thing he named (Hermes ≥ 2026-09-10), `task` = his whole sentence; either gives the couple's name."""
     if not OWN_VENUE or OWN_VENUE not in OWN_VENUES:
         raise RuntimeError("Δεν έχει οριστεί δικό μας κτήμα για νέους γάμους — δεν γράφω σε κτήμα πελάτη.")
-    name = (value or "").strip()[:80] or _name_from(task) or ("Νέος γάμος " + _dt.datetime.now().strftime("%d/%m %H:%M"))
+    date, said = _date_from(task or value)
+    if not date:   # the server needs the date: it decides when the couple can arrange the tables and when the plan closes
+        raise RuntimeError("Πείτε μου και την ημερομηνία του γάμου, π.χ. «νέος γάμος Μαρία και Νίκος στις 12 Σεπτεμβρίου».")
+    spoken = (task or "").replace(said, " ") if said else (task or "")
+    spoken = re.sub(r"\s+(στις|την|on|am)\s*$", "", re.sub(r"\s+", " ", spoken)).strip()
+    name = ((value or "").replace(said, " ").strip(" ,.")[:80] if value else "") or _name_from(spoken) or ("Νέος γάμος " + _dt.datetime.now().strftime("%d/%m %H:%M"))
+    name = re.sub(r"\s+(στις|την|on|am)$", "", name).strip(" ,.")
 
     def make():
         key = _venue_key(OWN_VENUE)
         vd = _api(f"/venues/{OWN_VENUE}", headers={"X-Venue-Key": key})
         if not vd.get("canCreate"):
             raise RuntimeError("Το κτήμα μας δεν επιτρέπει νέο γάμο τώρα — έληξε η άδεια ή το όριο.")
-        r = _api(f"/venues/{OWN_VENUE}/weddings", "POST", {"label": name}, {"X-Venue-Key": key})
+        r = _api(f"/venues/{OWN_VENUE}/weddings", "POST", {"label": name, "date": date}, {"X-Venue-Key": key})
         link = f"{BASE}/seating-planner-el.html?plan={r['planId']}#key={r['editKey']}"
         _clip(link)
         vname = (vd.get("venue") or {}).get("name", "κτήμα μας")
-        return f"Δημιουργήθηκε ο γάμος «{name}» στο {vname}. Ο σύνδεσμος του ζευγαριού είναι στο πρόχειρο του υπολογιστή και στην κονσόλα κτήματος."
+        d = _dt.date.fromisoformat(date)
+        return (f"Δημιουργήθηκε ο γάμος «{name}» στις {d.day}/{d.month}/{d.year} στο {vname}. "
+                "Ο σύνδεσμος του ζευγαριού είναι στο πρόχειρο του υπολογιστή και στην κονσόλα κτήματος.")
 
     return _dedupe("wedding:" + name.lower(), make)
 
