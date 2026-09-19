@@ -43,6 +43,8 @@
   /* returning couples: "Έχετε ήδη σχέδιο; Ανάκτηση" — header on wide screens, hero line below 1060px */
   .nav .links a.back{ white-space:nowrap; }
   .nav .links a.back span{ font-weight:400; color:var(--faint); }
+  .nav .links .btn{ padding:9px 16px; }
+  .nav .lbl-short,.nav .lbl-xs{ display:none; }
   .show-md{ display:none; }
 
   /* ---- hero ---- */
@@ -109,6 +111,10 @@
   .cta-band{ background:linear-gradient(150deg,var(--hero-1),var(--hero-2)); color:#fff; text-align:center; }
   .cta-band h2{ color:#fff; font-size:clamp(24px,3.4vw,34px); }
   .cta-band p{ color:#d9cce0; max-width:52ch; margin:10px auto 26px; }
+  .cta-band .reach{ margin-top:16px; font-size:14px; color:#c3b6cf; line-height:1.9; }
+  .cta-band .reach a{ color:#efe3f6; }
+  .cta-band .reach a:hover{ text-decoration:underline; }
+  .cta-band .reach .hours{ font-size:13px; color:#a898b6; }
 
   footer{ background:var(--ink); color:#c9beb2; padding:40px 0; font-size:14px; }
   footer .wrap{ display:flex; flex-wrap:wrap; gap:16px 30px; align-items:center; }
@@ -116,6 +122,8 @@
   footer a{ color:#d7ccc0; }
   footer a:hover{ color:#fff; }
   footer .sp{ margin-left:auto; }
+  footer .help{ flex-basis:100%; font-size:13px; color:#a99d90; border-top:1px solid rgba(255,255,255,.08); padding-top:14px; }
+  footer .help .nw{ white-space:nowrap; }
 
   @media (max-width:1060px){
     .nav .links a.back{ display:none; }
@@ -126,6 +134,22 @@
     .hero .art{ order:-1; max-width:420px; }
     .steps,.fgrid,.plans,.plans.three{ grid-template-columns:1fr; }
     .nav .links a.txt.hide-sm{ display:none; }
+  }
+  /* phones: "Είσοδος κτήματος" and the demo button stay on one line inside the 62px bar */
+  @media (max-width:480px){
+    .nav .wrap{ gap:8px; }
+    .nav .links{ gap:2px; min-width:0; }
+    .nav .links a{ white-space:nowrap; }
+    .nav .links a.txt{ padding:8px 6px; min-width:0; overflow:hidden; text-overflow:ellipsis; }   /* a wider phone font truncates, never wraps */
+    .nav .links .btn{ padding:8px 12px; font-size:14px; flex-shrink:0; }
+  }
+  @media (max-width:420px){
+    .nav .btn .lbl-full{ display:none; }
+    .nav .lbl-short{ display:inline; }
+  }
+  @media (max-width:360px){
+    .nav .txt .lbl-full{ display:none; }
+    .nav .lbl-xs{ display:inline; }
   }
 </style>
 </head>
@@ -139,8 +163,8 @@
       <a class="txt hide-sm" href="#features">Χαρακτηριστικά</a>
       <a class="txt hide-sm" href="#pricing">Τιμές</a>
       <a class="txt back" href="/seating-planner-el.html#recover" title="Χάσατε τον σύνδεσμο του σχεδίου σας; Θα σας τον στείλουμε ξανά στο email σας."><span>Έχετε ήδη σχέδιο;</span> Ανάκτηση</a>
-      <a class="txt" href="/venue.html">Είσοδος κτήματος</a>
-      <a class="btn primary" href="#contact" style="padding:9px 16px">Ζητήστε demo</a>
+      <a class="txt" href="/venue.html" aria-label="Είσοδος κτήματος"><span class="lbl-full">Είσοδος κτήματος</span><span class="lbl-xs">Είσοδος</span></a>
+      <a class="btn primary" href="#contact" aria-label="Ζητήστε demo"><span class="lbl-full">Ζητήστε demo</span><span class="lbl-short">Demo</span></a>
     </nav>
   </div>
 </header>
@@ -195,7 +219,7 @@
     <div class="steps">
       <div class="step"><div class="n">1</div><h3>Δημιουργείτε τον γάμο</h3><p>Από την κονσόλα του κτήματος ανοίγετε έναν νέο γάμο για κάθε ζευγάρι και στήνετε την κάτοψη του χώρου σας.</p></div>
       <div class="step"><div class="n">2</div><h3>Το ζευγάρι τοποθετεί καλεσμένους</h3><p>Στέλνετε έναν σύνδεσμο. Το ζευγάρι σέρνει τους καλεσμένους στα τραπέζια από κινητό ή υπολογιστή — αυτόματα συγχρονισμένο.</p></div>
-      <div class="step"><div class="n">3</div><h3>Έτοιμο &amp; εκτυπώσιμο</h3><p>Βλέπετε το τελικό πλάνο ανά πάσα στιγμή και το εκτυπώνετε — λίστα τραπεζιών και κάτοψη.</p></div>
+      <div class="step"><div class="n">3</div><h3>Έτοιμο για τη βραδιά</h3><p>Βλέπετε το τελικό πλάνο ανά πάσα στιγμή, εξάγετε την κάτοψη σε PDF και τυπώνετε λίστες ονομάτων ανά τραπέζι ή ανά πρόσκληση.</p></div>
     </div>
   </div>
 </section>
@@ -254,7 +278,7 @@
         <ul>
           <li>Πλήρες τραπεζολόγιο για έναν γάμο</li>
           <li>Από κινητό &amp; υπολογιστή, συγχρονισμένο</li>
-          <li>Εκτύπωση λίστας τραπεζιών</li>
+          <li>Κάτοψη σε PDF &amp; λίστες τραπεζιών για εκτύπωση</li>
         </ul>
         <a class="btn line" href="mailto:info@takeaseat.gr?subject=TakeaSeat%20%CE%B3%CE%B9%CE%B1%20%CF%84%CE%BF%CE%BD%20%CE%B3%CE%AC%CE%BC%CE%BF%20%CE%BC%CE%B1%CF%82&amp;body=%CE%93%CE%B5%CE%B9%CE%B1%20%CF%83%CE%B1%CF%82%2C%20%CE%B8%CE%AD%CE%BB%CE%BF%CF%85%CE%BC%CE%B5%20%CF%84%CE%BF%20TakeaSeat%20%CE%B3%CE%B9%CE%B1%20%CF%84%CE%BF%CE%BD%20%CE%B3%CE%AC%CE%BC%CE%BF%20%CE%BC%CE%B1%CF%82.%0A%0A%CE%9F%CE%BD%CF%8C%CE%BC%CE%B1%CF%84%CE%B1%3A%20%0A%CE%97%CE%BC%CE%B5%CF%81%CE%BF%CE%BC%CE%B7%CE%BD%CE%AF%CE%B1%20%CE%B3%CE%AC%CE%BC%CE%BF%CF%85%3A%20%0A%CE%9A%CF%84%CE%AE%CE%BC%CE%B1%3A%20">Ξεκινήστε</a>
       </div>
@@ -268,7 +292,11 @@
     <h2>Δείτε το κτήμα σας οργανωμένο.</h2>
     <p>Στείλτε μας δυο λόγια για το κτήμα σας και θα σας δείξουμε το TakeaSeat σε ένα σύντομο demo — με τον δικό σας χώρο.</p>
     <a class="btn primary" href="mailto:info@takeaseat.gr?subject=Demo%20TakeaSeat&body=Γεια%20σας%2C%20θα%20ήθελα%20ένα%20demo%20για%20το%20κτήμα%20μου.">✉ Ζητήστε demo</a>
-    <div style="margin-top:16px;font-size:14px;color:#c3b6cf">ή γράψτε μας: <a href="mailto:info@takeaseat.gr" style="color:#efe3f6">info@takeaseat.gr</a></div>
+    <div class="reach">
+      <div>ή γράψτε μας: <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a></div>
+      <div>ή καλέστε μας: <a href="tel:+306977355378">697 735 5378</a> · <a href="viber://chat?number=%2B306977355378">Viber</a> · <a href="https://wa.me/306977355378" target="_blank" rel="noopener">WhatsApp</a></div>
+      <div class="hours">Υποστήριξη 10:00–14:00 &amp; 17:00–21:00</div>
+    </div>
   </div>
 </section>
 
@@ -283,6 +311,7 @@
     <a href="/terms.html">Όροι</a>
     <a href="mailto:info@takeaseat.gr">Επικοινωνία</a>
     <span class="sp">© <a class="q" href="/lab.html" rel="nofollow" aria-label="Lab" tabindex="-1">2026</a> TakeaSeat</span>
+    <div class="help"><span class="nw">Υποστήριξη 10:00–14:00 &amp; 17:00–21:00</span> · <span class="nw"><a href="tel:+306977355378">697 735 5378</a> · <a href="viber://chat?number=%2B306977355378">Viber</a> · <a href="https://wa.me/306977355378" target="_blank" rel="noopener">WhatsApp</a></span> · <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a></div>
   </div>
 </footer>
 

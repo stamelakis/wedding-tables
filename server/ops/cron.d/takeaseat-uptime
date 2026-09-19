@@ -1,0 +1,7 @@
+# TakeaSeat: every-5-min health check of https://takeaseat.gr/health through the local Caddy,
+# auto-restart, e-mail alerts; also daily backup-age and disk checks.
+# Installed as /etc/cron.d/takeaseat-uptime (root:root 0644). Script: /opt/takeaseat-uptime.sh
+# (repo: server/uptime-check.sh), alerts via /opt/takeaseat-alert.sh (repo: server/alert.sh).
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+*/5 * * * * root /opt/takeaseat-uptime.sh >> /var/log/takeaseat-uptime.log 2>&1

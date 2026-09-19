@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Όροι Χρήσης — TakeaSeat / Terms of Service</title>
-<meta name="description" content="Όροι Χρήσης του TakeaSeat για κτήματα / TakeaSeat Terms of Service for venues — DRAFT for legal review.">
+<meta name="description" content="Όροι Χρήσης του TakeaSeat για κτήματα και ζευγάρια / TakeaSeat Terms of Service for venues and couples.">
 <style>
   :root{
     --paper:#f7f4f1; --paper-2:#efe9e2; --card:#fffdfb;
@@ -34,9 +34,18 @@
   .doc h1{ font-family:var(--serif); font-weight:600; letter-spacing:-.01em; font-size:clamp(28px,4vw,38px); line-height:1.12; margin:6px 0 6px; }
   .updated{ color:var(--faint); font-size:14px; margin:0 0 22px; }
 
-  .banner{ background:var(--amber-bg); border:1px solid var(--amber-line); color:var(--amber-ink); border-radius:14px; padding:16px 18px; margin:0 0 14px; box-shadow:var(--shadow); }
-  .banner strong{ display:block; font-size:15.5px; margin-bottom:3px; }
-  .banner p{ margin:6px 0 0; font-size:14px; line-height:1.6; }
+  /* the one place with the provider's identity (fill the [brackets] after registration) */
+  .idblock{ background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 18px 12px; margin:0 0 10px; box-shadow:var(--shadow); font-size:14.5px; line-height:1.6; }
+  .idblock h2{ font-family:var(--sans); font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent-ink); margin:0 0 8px; font-weight:700; }
+  .idblock dl{ display:grid; grid-template-columns:max-content 1fr; gap:4px 16px; margin:0; }
+  .idblock dt{ color:var(--faint); }
+  .idblock dd{ margin:0; color:var(--ink); overflow-wrap:anywhere; }
+  @media (max-width:560px){ .idblock dl{ grid-template-columns:1fr; gap:0; } .idblock dd{ margin-bottom:7px; } }
+  details.form{ background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 16px; margin:12px 0; font-size:15px; }
+  details.form summary{ cursor:pointer; font-weight:700; color:var(--accent-ink); }
+  details.form[open] summary{ margin-bottom:6px; }
+  details.form ol{ margin:6px 0; padding-left:22px; }
+  details.form li{ margin:4px 0; }
 
   .note{ background:var(--accent-soft); border:1px solid #dcc9e4; border-radius:12px; padding:13px 16px; font-size:13.5px; color:var(--accent-ink); margin:0 0 30px; }
   .note b{ color:var(--accent-ink); }
@@ -77,64 +86,132 @@
 <main class="doc">
   <div class="wrap">
     <h1>Όροι Χρήσης · Terms of Service</h1>
-    <p class="updated">Τελευταία ενημέρωση / Last updated: 20 Αυγούστου 2026 · 20 August 2026</p>
+    <p class="updated">Έκδοση 19 Σεπτεμβρίου 2026 · Version 19 September 2026</p>
 
-    <div class="banner">
-      <strong>Έκδοση 1.0 — δεν αποτελεί νομική συμβουλή</strong>
-      Version 1.0 — not legal advice.
-      <p>Συνιστάται έλεγχος από δικηγόρο πριν την υπογραφή συμβάσεων με μεγάλα κτήματα. / Legal review is recommended before signing contracts with larger venues.</p>
+    <div class="idblock" id="provider">
+      <h2>Στοιχεία παρόχου · Provider details</h2>
+      <dl>
+        <dt>Επωνυμία · Legal name</dt><dd><span class="ph">[ΕΠΩΝΥΜΙΑ / LEGAL ENTITY NAME]</span> — «TakeaSeat»</dd>
+        <dt>ΑΦΜ · Tax ID (VAT)</dt><dd><span class="ph">[ΑΦΜ / TAX ID]</span></dd>
+        <dt>Αρ. ΓΕΜΗ · GEMI no.</dt><dd><span class="ph">[ΑΡ. ΓΕΜΗ / GEMI NO.]</span></dd>
+        <dt>Έδρα · Address</dt><dd><span class="ph">[ΔΙΕΥΘΥΝΣΗ / ADDRESS]</span></dd>
+        <dt>Email</dt><dd><a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a></dd>
+        <dt>Τηλέφωνο · Phone</dt><dd><a href="tel:+306977355378">+30 697 735 5378</a> · Viber · WhatsApp</dd>
+        <dt>Υποστήριξη · Support</dt><dd>10:00–14:00 &amp; 17:00–21:00 (ώρα Ελλάδας / Greek time)</dd>
+      </dl>
     </div>
 
     <!-- ==================== ΕΛΛΗΝΙΚΑ ==================== -->
     <span class="lang-tag">Ελληνικά</span>
     <section class="body">
-      <p class="lead">Οι παρόντες Όροι διέπουν τη χρήση της υπηρεσίας <b>TakeaSeat</b> (https://takeaseat.gr) από κτήματα και χώρους δεξιώσεων γάμου («το Κτήμα», «εσείς») — και, όπου αναφέρεται στο άρθρο 7, από ζευγάρια που αγοράζουν απευθείας. Πάροχος της υπηρεσίας είναι το <b>TakeaSeat</b> (Ελλάδα), τηλ. +30 697 7355 378, <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a> («TakeaSeat», «εμείς»). Πλήρη εταιρικά στοιχεία (επωνυμία, ΑΦΜ, έδρα) παρέχονται στο κτήμα με τη <a href="/dpa.html">Σύμβαση Επεξεργασίας (DPA)</a> και στο τιμολόγιο. Με τη χρήση της υπηρεσίας αποδέχεστε τους Όρους αυτούς.</p>
+      <p class="lead">Οι παρόντες Όροι διέπουν τη χρήση της υπηρεσίας <b>TakeaSeat</b> (https://takeaseat.gr) από δύο κατηγορίες πελατών: (α) <b>κτήματα και χώρους δεξιώσεων</b> («το Κτήμα»), που χρησιμοποιούν την υπηρεσία για τους γάμους που φιλοξενούν, και (β) <b>ζευγάρια που αγοράζουν απευθείας</b> ένα σχέδιο για τον δικό τους γάμο («το Ζευγάρι»). Όπου ένας όρος αφορά μόνο τη μία κατηγορία, αυτό αναφέρεται ρητά. Τα ζευγάρια που χρησιμοποιούν τον σύνδεσμο που τους έδωσε ένα Κτήμα χρησιμοποιούν την υπηρεσία στο πλαίσιο της συνεργασίας τους με το Κτήμα· ισχύουν και γι' αυτά τα άρθρα 3, 5 και 6. Πάροχος της υπηρεσίας είναι η επιχείρηση των <a href="#provider">Στοιχείων παρόχου</a> στην αρχή της σελίδας («TakeaSeat», «εμείς»). Με τη χρήση ή την αγορά της υπηρεσίας αποδέχεστε τους Όρους αυτούς.</p>
 
       <h2>1. Η υπηρεσία</h2>
-      <p>Το TakeaSeat είναι διαδικτυακή εφαρμογή τραπεζολογίου γάμου. Το Κτήμα δημιουργεί γάμους, στήνει την κάτοψη του χώρου και μοιράζεται συνδέσμους με τα ζευγάρια, τα οποία τοποθετούν τους καλεσμένους τους στα τραπέζια. Οι λειτουργίες ενδέχεται να εξελίσσονται με την πάροδο του χρόνου.</p>
+      <p>Το TakeaSeat είναι διαδικτυακή εφαρμογή τραπεζολογίου γάμου. Λειτουργεί στον φυλλομετρητή (browser) κινητού, tablet ή υπολογιστή, χωρίς εγκατάσταση εφαρμογής· χρειάζεται σύνδεση στο διαδίκτυο και σύγχρονο φυλλομετρητή. Με αυτήν:</p>
+      <ul>
+        <li>καταχωρείτε καλεσμένους, ομάδες/παρέες, προσκλήσεις και σημειώσεις, και τοποθετείτε τους καλεσμένους σε τραπέζια πάνω στην κάτοψη του χώρου·</li>
+        <li>οι αλλαγές συγχρονίζονται σε όλες τις συσκευές όσων έχουν σύνδεσμο πρόσβασης·</li>
+        <li>εξάγετε την κάτοψη σε PDF και τυπώνετε λίστες ονομάτων ανά τραπέζι ή ανά πρόσκληση.</li>
+      </ul>
+      <p>Το Κτήμα δημιουργεί από την κονσόλα του έναν γάμο για κάθε ζευγάρι, στήνει την κάτοψη του χώρου του, ορίζει τι μπορεί να αλλάξει το ζευγάρι και του δίνει τον σύνδεσμο του γάμου. Το Ζευγάρι που αγοράζει απευθείας λαμβάνει δικό του σχέδιο και στήνει το ίδιο τον χώρο και τους καλεσμένους. Οι λειτουργίες μπορεί να βελτιώνονται με τον χρόνο· δεν αφαιρούμε όμως τα βασικά χαρακτηριστικά που περιγράφονται εδώ από υπηρεσία που έχετε ήδη πληρώσει.</p>
 
-      <h2>2. Ρόλοι δεδομένων — το Κτήμα είναι ο Υπεύθυνος Επεξεργασίας</h2>
-      <p>Ως προς τα δεδομένα καλεσμένων που εισάγονται στην πλατφόρμα, <b>το Κτήμα είναι ο Υπεύθυνος Επεξεργασίας (Controller) και το TakeaSeat ο Εκτελών την Επεξεργασία (Processor)</b>. Το Κτήμα:</p>
+      <h2>2. Ρόλοι ως προς τα δεδομένα των καλεσμένων</h2>
+      <h3>2.1 Κτήματα</h3>
+      <p>Για τα δεδομένα των γάμων που δημιουργεί το Κτήμα (ονόματα καλεσμένων, ομάδες, προσκλήσεις, σημειώσεις, θέσεις), <b>το Κτήμα είναι ο Υπεύθυνος Επεξεργασίας και η TakeaSeat ο Εκτελών την Επεξεργασία</b>, που ενεργεί μόνο για λογαριασμό του Κτήματος. Το Κτήμα:</p>
       <ul>
         <li>φέρει την ευθύνη να διαθέτει <b>νόμιμη βάση επεξεργασίας</b> για τα δεδομένα των καλεσμένων·</li>
-        <li>φέρει την ευθύνη να <b>ενημερώνει τους καλεσμένους του</b> (και τα ζευγάρια) για την επεξεργασία, σύμφωνα με τα άρθρα 13/14 GDPR·</li>
-        <li>εγγυάται ότι έχει το δικαίωμα να καταχωρεί τα εν λόγω δεδομένα στην πλατφόρμα.</li>
+        <li>φέρει την ευθύνη να <b>ενημερώνει τα ζευγάρια του</b> (και, μέσω αυτών, τους καλεσμένους) για την επεξεργασία, σύμφωνα με τα άρθρα 13/14 GDPR·</li>
+        <li>εγγυάται ότι έχει το δικαίωμα να καταχωρεί τα δεδομένα αυτά στην πλατφόρμα.</li>
       </ul>
-      <div class="callout">Η επεξεργασία δεδομένων διέπεται από τη <b><a href="/dpa.html">Σύμβαση Επεξεργασίας Δεδομένων (DPA)</a></b>, η οποία αποτελεί αναπόσπαστο μέρος των παρόντων Όρων.</div>
+      <div class="callout">Η επεξεργασία για λογαριασμό των Κτημάτων διέπεται από τη <b><a href="/dpa.html">Σύμβαση Επεξεργασίας Δεδομένων (DPA)</a></b>, η οποία αποτελεί αναπόσπαστο μέρος των παρόντων Όρων.</div>
+      <h3>2.2 Ζευγάρια που αγοράζουν απευθείας</h3>
+      <p>Όταν το Ζευγάρι αγοράζει απευθείας, η TakeaSeat παρέχει την υπηρεσία στο ίδιο το Ζευγάρι. Το Ζευγάρι καταχωρεί τα ονόματα των καλεσμένων του για την οργάνωση του δικού του γάμου και αποφασίζει ποια δεδομένα θα γράψει. Η TakeaSeat αποθηκεύει και επεξεργάζεται τα δεδομένα αυτά μόνο για να παρέχει την υπηρεσία στο Ζευγάρι, σύμφωνα με τις επιλογές του, και δεν τα χρησιμοποιεί για κανέναν άλλο σκοπό. Περισσότερα στην <a href="/privacy.html">Πολιτική Απορρήτου</a>.</p>
 
       <h2>3. Αποδεκτή χρήση</h2>
       <ul>
         <li>Χρησιμοποιείτε την υπηρεσία μόνο για νόμιμους σκοπούς οργάνωσης δεξιώσεων.</li>
-        <li>Δεν καταχωρείτε παράνομο, προσβλητικό ή ευαίσθητο περιεχόμενο, ούτε ειδικές κατηγορίες δεδομένων (άρθρο 9) στις ελεύθερες σημειώσεις.</li>
+        <li>Δεν καταχωρείτε παράνομο ή προσβλητικό περιεχόμενο, ούτε ειδικές κατηγορίες δεδομένων (άρθρο 9 GDPR, π.χ. στοιχεία υγείας) στις ελεύθερες σημειώσεις.</li>
         <li>Δεν επιχειρείτε μη εξουσιοδοτημένη πρόσβαση, αναπαραγωγή, αντίστροφη μηχανίκευση ή υπερφόρτωση της υπηρεσίας.</li>
-        <li>Διαφυλάσσετε τους μυστικούς συνδέσμους/κλειδιά πρόσβασης· είστε υπεύθυνοι για τη διανομή τους στα ζευγάρια σας.</li>
+        <li>Οι σύνδεσμοι πρόσβασης λειτουργούν σαν κλειδιά: όποιος έχει τον σύνδεσμο επεξεργασίας μπορεί να αλλάξει το σχέδιο. Φυλάξτε τους και δώστε τους μόνο σε όσους εμπιστεύεστε. Αν ένας σύνδεσμος χαθεί ή διαρρεύσει, φτιάξτε νέο από την εφαρμογή ή ζητήστε τον από εμάς· οι παλιοί σταματούν να λειτουργούν.</li>
       </ul>
 
       <h2>4. Υποχρεώσεις του Κτήματος</h2>
       <ul>
-        <li>Παρέχετε ακριβή στοιχεία λογαριασμού και τα διατηρείτε ενημερωμένα.</li>
-        <li>Είστε υπεύθυνοι για κάθε δραστηριότητα εντός του λογαριασμού σας και των ζευγαριών που προσκαλείτε.</li>
+        <li>Παρέχετε ακριβή στοιχεία λογαριασμού (και email ανάκτησης) και τα διατηρείτε ενημερωμένα.</li>
+        <li>Είστε υπεύθυνοι για κάθε δραστηριότητα εντός του λογαριασμού σας και για τη διανομή των συνδέσμων στα ζευγάρια σας.</li>
         <li>Συμμορφώνεστε με την ισχύουσα νομοθεσία περί προστασίας δεδομένων ως Υπεύθυνος Επεξεργασίας.</li>
       </ul>
 
-      <h2>5. Διαθεσιμότητα — «ως έχει»</h2>
-      <p>Στο τρέχον στάδιο, η υπηρεσία παρέχεται <b>«ως έχει» και «ως διατίθεται», χωρίς εγγύηση διαθεσιμότητας ή αδιάλειπτης λειτουργίας (no uptime warranty)</b>. Ενδέχεται να υπάρξουν διακοπές για συντήρηση, αναβαθμίσεις ή για λόγους εκτός του ελέγχου μας. Καταβάλλουμε εύλογη προσπάθεια για τη διαθεσιμότητα και την ασφάλεια των δεδομένων (βλ. Πολιτική Απορρήτου, μέτρα ασφαλείας).</p>
+      <h2>5. Πρόσβαση της TakeaSeat και υποστήριξη</h2>
+      <p><b>Η TakeaSeat δεν ανοίγει το σχέδιό σας χωρίς πρόσκλησή σας — κάθε πρόσβαση καταγράφεται.</b></p>
+      <ul>
+        <li><b>Πρόσκληση υποστήριξης:</b> αν χρειάζεστε βοήθεια, ο κάτοχος του σχεδίου (το Κτήμα για τους γάμους του, το Ζευγάρι για το δικό του σχέδιο) μας προσκαλεί με το κουμπί υποστήριξης για 24 ώρες, 3 ή 7 ημέρες, και μπορεί να ανακαλέσει την πρόσκληση οποτεδήποτε. Κάθε άνοιγμα και κάθε αποθήκευση από εμάς εμφανίζεται στο ημερολόγιο πρόσβασης του σχεδίου.</li>
+        <li><b>Ενέργειες που κάνουμε μόνο αν μας το ζητήσετε, και που βλέπετε:</b> νέος σύνδεσμος όταν ένα ζευγάρι έχασε τον δικό του (οι παλιοί σύνδεσμοι σταματούν)· αλλαγή του email ανάκτησης (η παλιά διεύθυνση ειδοποιείται)· νέο κλειδί κονσόλας για ένα Κτήμα, που στέλνεται μόνο στο email του. Ο νέος σύνδεσμος και η αλλαγή email καταγράφονται στο ημερολόγιο πρόσβασης του σχεδίου.</li>
+        <li><b>Τεχνική πρόσβαση:</b> όπως σε κάθε φιλοξενούμενη υπηρεσία, ο διαχειριστής του διακομιστή έχει τεχνικά πρόσβαση στη βάση δεδομένων. Τη χρησιμοποιούμε μόνο για τη λειτουργία και την ασφάλεια της υπηρεσίας (π.χ. επαναφορά από αντίγραφο ασφαλείας μετά από βλάβη), όχι για να διαβάζουμε σχέδια.</li>
+      </ul>
+      <p><b>Υποστήριξη:</b> <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a> · τηλέφωνο, Viber, WhatsApp <a href="tel:+306977355378">+30 697 735 5378</a> · 10:00–14:00 και 17:00–21:00. Σε μηνύματα εκτός ωραρίου απαντάμε το συντομότερο δυνατό.</p>
 
-      <h2>6. Περιορισμός ευθύνης</h2>
-      <p>Στον μέγιστο βαθμό που επιτρέπει ο νόμος, το TakeaSeat δεν ευθύνεται για έμμεσες, αποθετικές ή παρεπόμενες ζημίες, διαφυγόντα κέρδη ή απώλεια δεδομένων που δεν οφείλεται σε δική μας βαριά αμέλεια ή δόλο. Ουδέν στους παρόντες Όρους περιορίζει ευθύνη που δεν μπορεί να αποκλειστεί κατά νόμο.</p>
+      <h2>6. Μετά τον γάμο: προβολή, διαγραφή, αναμνηστικό</h2>
+      <ul>
+        <li><b>Ημερομηνία γάμου:</b> την ορίζει το Κτήμα για τους γάμους του ή το Ζευγάρι για το δικό του σχέδιο. Από αυτήν υπολογίζονται οι παρακάτω προθεσμίες.</li>
+        <li><b>Μόνο για προβολή:</b> από την επόμενη ημέρα του γάμου (00:00, ώρα Ελλάδας) το σχέδιο δεν αλλάζει πια, για κανέναν — ούτε για το Κτήμα ούτε για εμάς. Μπορείτε ακόμη να το δείτε και να κατεβάσετε PDF.</li>
+        <li><b>Διαγραφή:</b> το σχέδιο διαγράφεται οριστικά 7 ημέρες μετά τον γάμο, μαζί με το ιστορικό εκδόσεων και το ημερολόγιο πρόσβασης. Διαφορετικό διάστημα μπορεί να συμφωνηθεί με την TakeaSeat για ένα Κτήμα ή ένα Ζευγάρι. Ό,τι θέλετε να κρατήσετε, κατεβάστε το σε PDF πριν τη διαγραφή.</li>
+        <li><b>Σχέδια χωρίς ημερομηνία γάμου:</b> γίνονται μόνο για προβολή περίπου 18 μήνες μετά τη δημιουργία τους και διαγράφονται 7 ημέρες αργότερα. Για σχέδια που δημιουργήθηκαν πριν τις 19 Σεπτεμβρίου 2026, οι 18 μήνες μετρούν από εκείνη την ημέρα.</li>
+        <li><b>Αναμνηστικό:</b> αν αγοράσατε απευθείας ως Ζευγάρι, μετά τον γάμο σάς στέλνουμε με email ένα αναμνηστικό PDF (κάτοψη και ποιος κάθισε πού), όταν έχουμε το email σας.</li>
+        <li><b>Γάμος που διαγράφει το Κτήμα:</b> φυλάσσεται 14 ημέρες, ώστε να μπορεί να επαναφερθεί αν το ζητήσει το Κτήμα, και μετά διαγράφεται οριστικά.</li>
+        <li><b>Αντίγραφα ασφαλείας:</b> τα διαγραμμένα δεδομένα παραμένουν στα κρυπτογραφημένα νυχτερινά αντίγραφα ασφαλείας έως 14 ημέρες στον διακομιστή και έως 21 ημέρες εκτός αυτού, και μετά σβήνονται.</li>
+      </ul>
 
-      <h2>7. Χρεώσεις</h2>
-      <p>Για κτήματα, η τιμολόγηση συμφωνείται ξεχωριστά και εκδίδεται κανονικά στην επιχείρησή σας. Η εφαρμογή δεν επεξεργάζεται δεδομένα πληρωμών.</p>
-      <p><b>Ζευγάρια που αγοράζουν απευθείας το πακέτο «Ο γάμος σας»:</b> η τιμή που αναγράφεται στην αρχική σελίδα είναι τελική (με ΦΠΑ) και αφορά έναν γάμο· εκδίδεται απόδειξη. Η υπηρεσία ενεργοποιείται αμέσως μετά την πληρωμή. Ως καταναλωτής έχετε δικαίωμα υπαναχώρησης 14 ημερών, το οποίο παύει να ισχύει μόλις ζητήσετε την άμεση έναρξη της ψηφιακής υπηρεσίας και αρχίσετε να τη χρησιμοποιείτε. Όπου οι παρόντες Όροι αναφέρονται στο «Κτήμα», για τα ζευγάρια αυτά νοείται το ίδιο το ζευγάρι, το οποίο είναι και ο Υπεύθυνος Επεξεργασίας για τα δεδομένα των καλεσμένων του.</p>
+      <h2>7. Κτήματα: τιμές, σεζόν, ανανέωση</h2>
+      <ul>
+        <li><b>Τιμές:</b> εποχιακή συνδρομή 129 € ανά σεζόν (απεριόριστοι γάμοι μέσα στη σεζόν) ή 9 € ανά γάμο, πλέον ΦΠΑ, εκτός αν η παραγγελία σας ορίζει άλλη τιμή. Εκδίδεται τιμολόγιο στην επιχείρησή σας· η εφαρμογή δεν επεξεργάζεται δεδομένα πληρωμών.</li>
+        <li><b>Σεζόν:</b> η διάρκεια και οι ημερομηνίες της σεζόν είναι αυτές που συμφωνούνται στην παραγγελία και εμφανίζονται στην κονσόλα του Κτήματος.</li>
+        <li><b>Αυτόματη ανανέωση:</b> η εποχιακή συνδρομή ανανεώνεται αυτόματα για ίσο διάστημα (την επόμενη σεζόν), εκτός αν καταγγελθεί έως την ημερομηνία ανανέωσης· θα σας ειδοποιήσουμε με email 30 και 7 ημέρες πριν. Μπορείτε να την καταγγείλετε οποτεδήποτε πριν την ημερομηνία ανανέωσης, απενεργοποιώντας την αυτόματη ανανέωση από την κονσόλα του Κτήματος ή με email στο <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a>. Αν αλλάξει η τιμή για την επόμενη σεζόν, θα σας ενημερώσουμε πριν την ανανέωση.</li>
+        <li><b>Επιστροφές:</b> δεν επιστρέφονται ποσά για μη χρησιμοποιηθέν διάστημα, εκτός αν η λύση οφείλεται σε εμάς (αν καταγγείλουμε εμείς τη σύμβαση χωρίς υπαιτιότητά σας ή αν την παραβιάσουμε)· τότε επιστρέφουμε το ποσό που αναλογεί στο υπόλοιπο διάστημα.</li>
+        <li><b>Ανά γάμο:</b> η χρέωση ανά γάμο δεν έχει δέσμευση σεζόν και δεν ανανεώνεται.</li>
+      </ul>
 
-      <h2>8. Διάρκεια και λήξη — διαγραφή δεδομένων</h2>
-      <p>Η σύμβαση ισχύει όσο διατηρείτε ενεργό λογαριασμό. Κάθε μέρος μπορεί να την καταγγείλει σύμφωνα με τους συμφωνηθέντες όρους. <b>Με τη λήξη/κατάργηση του λογαριασμού, τα πλάνα και τα σχετικά δεδομένα διαγράφονται</b> (ή επιστρέφονται κατόπιν αιτήματος), και τα αντίγραφα ασφαλείας κυλούν και σβήνουν εντός περίπου 14 ημερών, όπως ορίζει το DPA και η Πολιτική Απορρήτου.</p>
+      <h2>8. Ζευγάρια: τιμή, διάρκεια, δικαίωμα υπαναχώρησης</h2>
+      <p><b>Τιμή:</b> το πακέτο «Ο γάμος σας» κοστίζει <b>19 € εφάπαξ, με ΦΠΑ</b> (τελική τιμή), και αφορά ένα σχέδιο για έναν γάμο. Εκδίδεται απόδειξη. Οι διαθέσιμοι τρόποι πληρωμής σάς γνωστοποιούνται πριν πληρώσετε. Μετά την πληρωμή σάς στέλνουμε στο email σας τον σύνδεσμο του σχεδίου σας.</p>
+      <p><b>Διάρκεια:</b> η υπηρεσία παρέχεται έως ότου το σχέδιο διαγραφεί μετά τον γάμο (άρθρο 6).</p>
+      <h3>Δικαίωμα υπαναχώρησης</h3>
+      <p>Έχετε δικαίωμα υπαναχώρησης 14 ημερολογιακών ημερών από τη σύναψη της σύμβασης, χωρίς αιτιολογία. Εφόσον ζητήσατε ρητά να ξεκινήσει αμέσως η παροχή της υπηρεσίας, αν υπαναχωρήσετε οφείλετε ποσό ανάλογο προς όσα σας παρασχέθηκαν έως τη γνωστοποίηση της υπαναχώρησης (άρθρο 3ι παρ. 3 ν. 2251/1994). Το δικαίωμα χάνεται μόλις η υπηρεσία εκτελεστεί πλήρως. Για να υπαναχωρήσετε, στείλτε μας δήλωση στο <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a> ή χρησιμοποιήστε το υπόδειγμα εντύπου υπαναχώρησης· θα λάβετε αμέσως βεβαίωση παραλαβής και θα επιστρέψουμε το ποσό (μείον το αναλογούν) εντός 14 ημερών με τον ίδιο τρόπο πληρωμής. Τα δικαιώματά σας από τη νόμιμη εγγύηση (ν. 4967/2022) δεν θίγονται.</p>
+      <p><b>Πώς υπαναχωρείτε:</b> αρκεί ένα email στο <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a> με σαφή δήλωση ότι υπαναχωρείτε από τη σύμβαση, σταλμένο μέσα στις 14 ημέρες. Μπορείτε, αν θέλετε, να χρησιμοποιήσετε το υπόδειγμα που ακολουθεί· δεν είναι υποχρεωτικό.</p>
+      <details class="form">
+        <summary>Υπόδειγμα εντύπου υπαναχώρησης</summary>
+        <p>(Συμπληρώστε και επιστρέψτε το παρόν έντυπο μόνο εφόσον επιθυμείτε να υπαναχωρήσετε από τη σύμβαση.)</p>
+        <ol>
+          <li>Προς: TakeaSeat — επωνυμία και διεύθυνση όπως στα <a href="#provider">Στοιχεία παρόχου</a>, <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a></li>
+          <li>Γνωστοποιώ/Γνωστοποιούμε (*) με την παρούσα ότι υπαναχωρώ/υπαναχωρούμε (*) από τη σύμβαση μου/μας (*) για την παροχή της ακόλουθης υπηρεσίας (*): TakeaSeat — «Ο γάμος σας»</li>
+          <li>Που παραγγέλθηκε(-αν) στις (*):</li>
+          <li>Όνομα καταναλωτή(-ών):</li>
+          <li>Διεύθυνση καταναλωτή(-ών):</li>
+          <li>Υπογραφή καταναλωτή(-ών) (μόνο εάν το παρόν έντυπο κοινοποιηθεί σε χαρτί):</li>
+          <li>Ημερομηνία:</li>
+        </ol>
+        <p>(*) Διαγράφεται η περιττή ένδειξη.</p>
+      </details>
+      <p><b>Παράπονα:</b> γράψτε μας στο <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a>. Ως καταναλωτής μπορείτε επίσης να απευθυνθείτε στον Συνήγορο του Καταναλωτή (<a href="https://www.synigoroskatanaloti.gr" target="_blank" rel="noopener">www.synigoroskatanaloti.gr</a>) ή σε άλλο φορέα εναλλακτικής επίλυσης καταναλωτικών διαφορών.</p>
 
-      <h2>9. Εφαρμοστέο δίκαιο</h2>
+      <h2>9. Διαθεσιμότητα</h2>
+      <p>Καταβάλλουμε εύλογη προσπάθεια ώστε η υπηρεσία να είναι διαθέσιμη και τα δεδομένα ασφαλή (βλ. <a href="/privacy.html">Πολιτική Απορρήτου</a>), αλλά δεν εγγυόμαστε αδιάλειπτη λειτουργία: μπορεί να υπάρξουν διακοπές για συντήρηση, αναβαθμίσεις ή για λόγους εκτός του ελέγχου μας. Για τα Κτήματα η υπηρεσία παρέχεται <b>«ως έχει» και «ως διατίθεται», χωρίς εγγύηση διαθεσιμότητας</b>. Για τα Ζευγάρια ισχύουν πάντα τα δικαιώματα της νόμιμης εγγύησης (ν. 4967/2022).</p>
+
+      <h2>10. Περιορισμός ευθύνης</h2>
+      <p>Στον μέγιστο βαθμό που επιτρέπει ο νόμος, η TakeaSeat δεν ευθύνεται για έμμεσες, αποθετικές ή παρεπόμενες ζημίες, διαφυγόντα κέρδη ή απώλεια δεδομένων που δεν οφείλεται σε δική μας βαριά αμέλεια ή δόλο. Ουδέν στους παρόντες Όρους περιορίζει ευθύνη που δεν μπορεί να αποκλειστεί κατά νόμο ούτε τα δικαιώματα που σας δίνει ο νόμος ως καταναλωτή.</p>
+
+      <h2>11. Διάρκεια και λήξη — διαγραφή δεδομένων</h2>
+      <p><b>Κτήματα:</b> η σύμβαση ισχύει για τη σεζόν ή τους γάμους που αγοράσατε και, για την εποχιακή συνδρομή, ανανεώνεται όπως ορίζει το άρθρο 7. Κάθε μέρος μπορεί να την καταγγείλει σύμφωνα με τους παρόντες Όρους και την παραγγελία. <b>Με τη λήξη, τα σχέδια και τα σχετικά δεδομένα διαγράφονται</b> ή επιστρέφονται κατόπιν αιτήματος, όπως ορίζει το <a href="/dpa.html">DPA</a>.</p>
+      <p><b>Ζευγάρια:</b> η σύμβαση λήγει με τη διαγραφή του σχεδίου μετά τον γάμο (άρθρο 6). Μπορείτε να ζητήσετε νωρίτερα τη διαγραφή του σχεδίου σας στο <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a>.</p>
+      <p>Σε κάθε περίπτωση, τα διαγραμμένα δεδομένα σβήνουν και από τα αντίγραφα ασφαλείας το αργότερο 21 ημέρες μετά τη διαγραφή.</p>
+
+      <h2>12. Αλλαγές στους Όρους</h2>
+      <p>Μπορεί να αλλάξουμε τους Όρους· η νέα έκδοση αναρτάται σε αυτή τη σελίδα με νέα ημερομηνία. Για ουσιώδεις αλλαγές ενημερώνουμε τα Κτήματα με email πριν ισχύσουν. Για τα Ζευγάρια ισχύουν οι Όροι της ημέρας της αγοράς.</p>
+
+      <h2>13. Εφαρμοστέο δίκαιο</h2>
       <p>Οι παρόντες Όροι διέπονται από το <b>ελληνικό δίκαιο</b>. Αρμόδια ορίζονται τα καθ' ύλην αρμόδια ελληνικά δικαστήρια, με την επιφύλαξη τυχόν αναγκαστικού δικαίου προστασίας καταναλωτή/δεδομένων.</p>
 
-      <h2>10. Επικοινωνία</h2>
-      <p>Ερωτήσεις για τους Όρους: <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a>. Θέματα απορρήτου: <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a>.</p>
+      <h2>14. Επικοινωνία</h2>
+      <p>Ερωτήσεις για τους Όρους, το απόρρητο ή την υποστήριξη: <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a> · τηλέφωνο, Viber, WhatsApp <a href="tel:+306977355378">+30 697 735 5378</a> (10:00–14:00 και 17:00–21:00).</p>
     </section>
 
     <hr class="divider">
@@ -142,53 +219,114 @@
     <!-- ==================== ENGLISH ==================== -->
     <span class="lang-tag">English</span>
     <section class="body">
-      <p class="lead">These Terms govern the use of the <b>TakeaSeat</b> service (https://takeaseat.gr) by wedding venues (κτήματα) ("the Venue", "you"). The service is provided by <b>TakeaSeat</b> (Greece), tel. +30 697 7355 378, <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a> ("TakeaSeat", "we"). Full company details (legal name, Tax ID, registered address) are provided to the venue in the <a href="/dpa.html">Data Processing Agreement (DPA)</a> and on the invoice. By using the service you accept these Terms.</p>
+      <p class="lead">These Terms govern the use of the <b>TakeaSeat</b> service (https://takeaseat.gr) by two kinds of customers: (a) <b>wedding venues</b> (κτήματα, "the Venue"), which use the service for the weddings they host, and (b) <b>couples who buy directly</b> a plan for their own wedding ("the Couple"). Where a term applies to only one of them, this is said expressly. Couples who use the link a Venue gave them use the service within their arrangement with that Venue; sections 3, 5 and 6 apply to them as well. The service is provided by the business named in the <a href="#provider">Provider details</a> at the top of this page ("TakeaSeat", "we"). By using or buying the service you accept these Terms.</p>
 
       <h2>1. The service</h2>
-      <p>TakeaSeat is a web application for wedding seating plans. The Venue creates weddings, sets up the floor plan, and shares links with couples, who place their guests at tables. Features may evolve over time.</p>
+      <p>TakeaSeat is a web application for wedding seating plans. It runs in the browser of a phone, tablet or computer, with nothing to install; it needs an internet connection and an up-to-date browser. With it you:</p>
+      <ul>
+        <li>enter guests, groups, invitations and notes, and place the guests at tables on the floor plan of the venue;</li>
+        <li>see changes synced on every device of everyone who has an access link;</li>
+        <li>export the floor plan as a PDF and print name lists per table or per invitation.</li>
+      </ul>
+      <p>From its console the Venue creates one wedding per couple, sets up the floor plan of its space, decides what the couple may change, and gives the couple the wedding's link. A Couple who buys directly gets its own plan and sets up the space and the guests itself. Features may improve over time; we do not, however, remove the main features described here from a service you have already paid for.</p>
 
-      <h2>2. Data roles — the Venue is the Controller</h2>
-      <p>For guest data entered into the platform, <b>the Venue is the Data Controller and TakeaSeat is the Data Processor</b>. The Venue:</p>
+      <h2>2. Roles for the guests' data</h2>
+      <h3>2.1 Venues</h3>
+      <p>For the data of the weddings a Venue creates (guest names, groups, invitations, notes, seating), <b>the Venue is the Data Controller and TakeaSeat is the Data Processor</b>, acting only on the Venue's behalf. The Venue:</p>
       <ul>
         <li>is responsible for having a <b>lawful basis</b> for processing the guests' data;</li>
-        <li>is responsible for <b>informing its guests</b> (and couples) about the processing, per Articles 13/14 GDPR;</li>
+        <li>is responsible for <b>informing its couples</b> (and, through them, the guests) about the processing, per Articles 13/14 GDPR;</li>
         <li>warrants that it is entitled to enter such data into the platform.</li>
       </ul>
-      <div class="callout">Data processing is governed by the <b><a href="/dpa.html">Data Processing Agreement (DPA)</a></b>, which forms an integral part of these Terms.</div>
+      <div class="callout">Processing on behalf of Venues is governed by the <b><a href="/dpa.html">Data Processing Agreement (DPA)</a></b>, which forms an integral part of these Terms.</div>
+      <h3>2.2 Couples who buy directly</h3>
+      <p>When a Couple buys directly, TakeaSeat provides the service to the Couple itself. The Couple enters its guests' names to organise its own wedding and decides what to write. TakeaSeat stores and processes these data only to provide the service to the Couple, following the Couple's choices, and uses them for no other purpose. More in the <a href="/privacy.html">Privacy Policy</a>.</p>
 
       <h2>3. Acceptable use</h2>
       <ul>
         <li>Use the service only for lawful reception-planning purposes.</li>
-        <li>Do not enter unlawful, offensive, or sensitive content, or special categories of data (Art. 9), in free-text notes.</li>
+        <li>Do not enter unlawful or offensive content, or special categories of data (Art. 9 GDPR, e.g. health data), in free-text notes.</li>
         <li>Do not attempt unauthorised access, reproduction, reverse engineering, or overloading of the service.</li>
-        <li>Safeguard the secret access links/keys; you are responsible for distributing them to your couples.</li>
+        <li>Access links work like keys: whoever has the edit link can change the plan. Keep them safe and share them only with people you trust. If a link is lost or leaked, make a new one in the app or ask us for one; the old ones stop working.</li>
       </ul>
 
       <h2>4. Venue obligations</h2>
       <ul>
-        <li>Provide accurate account details and keep them up to date.</li>
-        <li>You are responsible for all activity within your account and the couples you invite.</li>
+        <li>Provide accurate account details (and a recovery email) and keep them up to date.</li>
+        <li>You are responsible for all activity within your account and for distributing the links to your couples.</li>
         <li>Comply with applicable data-protection law as the Controller.</li>
       </ul>
 
-      <h2>5. Availability — "as is"</h2>
-      <p>At this stage, the service is provided <b>"as is" and "as available", with no uptime warranty</b>. There may be interruptions for maintenance, upgrades, or reasons beyond our control. We make reasonable efforts to keep the service available and data secure (see Privacy Policy, security measures).</p>
+      <h2>5. TakeaSeat's access and support</h2>
+      <p><b>TakeaSeat never opens your plan without your invitation — every access is logged.</b></p>
+      <ul>
+        <li><b>Support invitation:</b> if you need help, the plan's owner (the Venue for its weddings, the Couple for its own plan) invites us with the support button for 24 hours, 3 or 7 days, and can withdraw the invitation at any time. Every time we open or save the plan, it appears in the plan's access log.</li>
+        <li><b>Actions we take only when you ask, and which you can see:</b> a new link when a couple has lost theirs (the old links stop working); a change of the recovery email (the old address is notified); a new console key for a Venue, sent only to its email. The new link and the email change are recorded in the plan's access log.</li>
+        <li><b>Technical access:</b> as with any hosted service, the server's administrator can technically access the database. We use this only to run and secure the service (e.g. restoring a backup after a fault), not to read plans.</li>
+      </ul>
+      <p><b>Support:</b> <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a> · phone, Viber, WhatsApp <a href="tel:+306977355378">+30 697 735 5378</a> · 10:00–14:00 and 17:00–21:00 (Greek time). Messages outside these hours are answered as soon as possible.</p>
 
-      <h2>6. Limitation of liability</h2>
-      <p>To the maximum extent permitted by law, TakeaSeat is not liable for indirect, consequential, or incidental damages, lost profits, or loss of data not arising from our gross negligence or wilful misconduct. Nothing in these Terms limits liability that cannot be excluded by law.</p>
+      <h2>6. After the wedding: view-only, deletion, keepsake</h2>
+      <ul>
+        <li><b>Wedding date:</b> set by the Venue for its weddings or by the Couple for its own plan. The periods below are counted from it.</li>
+        <li><b>View-only:</b> from the day after the wedding (00:00, Greek time) the plan can no longer be changed by anyone — not by the Venue and not by us. You can still view it and download PDFs.</li>
+        <li><b>Deletion:</b> the plan is deleted for good 7 days after the wedding, together with its version history and access log. A different period can be agreed with TakeaSeat for a Venue or a Couple. Download anything you want to keep as a PDF before then.</li>
+        <li><b>Plans without a wedding date:</b> become view-only about 18 months after they were created and are deleted 7 days later. For plans created before 19 September 2026, the 18 months count from that day.</li>
+        <li><b>Keepsake:</b> if you bought directly as a Couple, after the wedding we email you a keepsake PDF (floor plan and who sat where), if we have your email address.</li>
+        <li><b>A wedding the Venue deletes:</b> is kept for 14 days so it can be restored if the Venue asks us, then erased for good.</li>
+        <li><b>Backups:</b> deleted data remain in the encrypted nightly backups for up to 14 days on the server and up to 21 days off-site, and are then erased.</li>
+      </ul>
 
-      <h2>7. Fees</h2>
-      <p>For venues, billing is agreed separately and invoiced to your business in the normal way. The app does not process payment data.</p>
-      <p><b>Couples buying the "Your wedding" package directly:</b> the price shown on the home page is final (VAT included) and covers one wedding; a receipt is issued. The service is activated right after payment. As a consumer you have a 14-day right of withdrawal, which ends once you ask for the digital service to start immediately and begin using it. Where these Terms refer to "the Venue", for such couples it means the couple itself, which is also the Controller for its guests' data.</p>
+      <h2>7. Venues: prices, season, renewal</h2>
+      <ul>
+        <li><b>Prices:</b> seasonal subscription 129 € per season (unlimited weddings within the season) or 9 € per wedding, plus VAT, unless your order states a different price. An invoice is issued to your business; the app does not process payment data.</li>
+        <li><b>Season:</b> the length and dates of the season are those agreed in the order and shown in the Venue's console.</li>
+        <li><b>Automatic renewal:</b> the seasonal subscription renews automatically for an equal period (the next season) unless cancelled by the renewal date; we will remind you by email 30 and 7 days before. You can cancel at any time before the renewal date by turning automatic renewal off in the Venue's console or by email to <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a>. If the price for the next season changes, we will tell you before the renewal.</li>
+        <li><b>Refunds:</b> amounts for unused periods are not refunded, unless the contract ends because of us (we terminate it without fault on your side, or we breach it); in that case we refund the part for the remaining period.</li>
+        <li><b>Per wedding:</b> the per-wedding option has no season commitment and does not renew.</li>
+      </ul>
 
-      <h2>8. Term and termination — data deletion</h2>
-      <p>The agreement remains in force while you maintain an active account. Either party may terminate it in accordance with the agreed terms. <b>On termination, plans and related data are deleted</b> (or returned on request), and backups roll off and are deleted within about 14 days, as set out in the DPA and the Privacy Policy.</p>
+      <h2>8. Couples: price, duration, right of withdrawal</h2>
+      <p><b>Price:</b> the "Your wedding" package costs <b>19 € one-off, VAT included</b> (final price), and covers one plan for one wedding. A receipt is issued. The available payment methods are given to you before you pay. After payment we email you the link to your plan.</p>
+      <p><b>Duration:</b> the service is provided until the plan is deleted after the wedding (section 6).</p>
+      <h3>Right of withdrawal</h3>
+      <p>You have the right to withdraw from this contract within 14 calendar days of its conclusion, without giving any reason. If you expressly asked for the service to start immediately and you withdraw, you owe an amount proportionate to what was provided to you until you informed us of your withdrawal (Article 3i(3) of Greek Law 2251/1994). The right is lost once the service has been fully performed. To withdraw, send us a statement at <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a> or use the model withdrawal form; you will receive an acknowledgement of receipt straight away, and we will refund the amount (minus the proportionate part) within 14 days, using the same means of payment. Your rights under the legal guarantee (Greek Law 4967/2022) are not affected.</p>
+      <p><b>How to withdraw:</b> an email to <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a> clearly stating that you withdraw from the contract, sent within the 14 days, is enough. You may use the model form below if you wish; it is not required.</p>
+      <details class="form">
+        <summary>Model withdrawal form</summary>
+        <p>(Complete and return this form only if you wish to withdraw from the contract.)</p>
+        <ol>
+          <li>To: TakeaSeat — legal name and address as in the <a href="#provider">Provider details</a>, <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a></li>
+          <li>I/We (*) hereby give notice that I/We (*) withdraw from my/our (*) contract for the provision of the following service (*): TakeaSeat — "Your wedding"</li>
+          <li>Ordered on (*):</li>
+          <li>Name of consumer(s):</li>
+          <li>Address of consumer(s):</li>
+          <li>Signature of consumer(s) (only if this form is notified on paper):</li>
+          <li>Date:</li>
+        </ol>
+        <p>(*) Delete as appropriate.</p>
+      </details>
+      <p><b>Complaints:</b> write to us at <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a>. As a consumer you can also turn to the Hellenic Consumer Ombudsman (<a href="https://www.synigoroskatanaloti.gr" target="_blank" rel="noopener">www.synigoroskatanaloti.gr</a>) or another alternative dispute resolution body for consumer disputes.</p>
 
-      <h2>9. Governing law</h2>
+      <h2>9. Availability</h2>
+      <p>We make reasonable efforts to keep the service available and the data secure (see the <a href="/privacy.html">Privacy Policy</a>), but we do not guarantee uninterrupted operation: there may be interruptions for maintenance, upgrades, or reasons beyond our control. For Venues the service is provided <b>"as is" and "as available", with no uptime warranty</b>. For Couples, the rights under the legal guarantee (Greek Law 4967/2022) always apply.</p>
+
+      <h2>10. Limitation of liability</h2>
+      <p>To the maximum extent permitted by law, TakeaSeat is not liable for indirect, consequential, or incidental damages, lost profits, or loss of data not arising from our gross negligence or wilful misconduct. Nothing in these Terms limits liability that cannot be excluded by law, or the rights the law gives you as a consumer.</p>
+
+      <h2>11. Term and termination — data deletion</h2>
+      <p><b>Venues:</b> the contract runs for the season or the weddings you bought and, for the seasonal subscription, renews as set out in section 7. Either party may terminate it in accordance with these Terms and the order. <b>On termination, plans and related data are deleted</b> or returned on request, as set out in the <a href="/dpa.html">DPA</a>.</p>
+      <p><b>Couples:</b> the contract ends when the plan is deleted after the wedding (section 6). You can ask us to delete your plan earlier at <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a>.</p>
+      <p>In every case, deleted data are also erased from the backups no later than 21 days after deletion.</p>
+
+      <h2>12. Changes to these Terms</h2>
+      <p>We may change these Terms; the new version is posted on this page with a new date. For material changes we notify Venues by email before they take effect. For Couples, the Terms in force on the day of purchase apply.</p>
+
+      <h2>13. Governing law</h2>
       <p>These Terms are governed by <b>Greek law</b>. The competent Greek courts have jurisdiction, subject to any mandatory consumer/data-protection law.</p>
 
-      <h2>10. Contact</h2>
-      <p>Questions about the Terms: <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a>. Privacy matters: <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a>.</p>
+      <h2>14. Contact</h2>
+      <p>Questions about the Terms, privacy or support: <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a> · phone, Viber, WhatsApp <a href="tel:+306977355378">+30 697 735 5378</a> (10:00–14:00 and 17:00–21:00, Greek time).</p>
     </section>
   </div>
 </main>

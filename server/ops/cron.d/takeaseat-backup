@@ -1,0 +1,6 @@
+# TakeaSeat: nightly encrypted SQLite backup -> /opt/backups/takeaseat-*.db.gz.age (14 days).
+# Installed as /etc/cron.d/takeaseat-backup (root:root 0644). Script: /opt/takeaseat-backup.sh
+# (repo: server/backup.sh). Times are UTC (the box runs in UTC). Before offsite-push (03:40).
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+10 3 * * * root /opt/takeaseat-backup.sh >> /var/log/takeaseat-backup.log 2>&1

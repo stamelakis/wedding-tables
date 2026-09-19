@@ -7,12 +7,14 @@
 //
 // Env: PORT, DB_PATH, PUBLIC_DIR, OWNER_KEY, KV_BACKEND ("sqlite" default, "memory" for tests).
 // Mail (optional): SMTP_HOST, SMTP_PORT (465 = TLS), SMTP_USER, SMTP_PASS, MAIL_FROM, PUBLIC_URL. MAIL_LOG=1 prints mails instead (dev).
+// PDF: ./pdf.mjs (pdfkit + an embedded font) renders floor plans and keepsakes; without it the PDF routes answer 503.
 
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import worker, { migrate, sweep } from './worker.mjs';
+import { Worker } from 'node:worker_threads';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.PORT || '8080', 10);
@@ -65,7 +67,7 @@ if (process.env.SMTP_HOST && MAIL_FROM) {
     transport.verify().then(() => console.log('mail: SMTP login ok'), e => console.error('mail: SMTP check failed: ' + (e.code || '') + ' ' + (e.responseCode || '')));
   } catch (e) { console.error('mail: SMTP not available', e.message); }
 } else if (process.env.MAIL_LOG === '1') {
-  transport = { sendMail: async m => console.log('--- mail to ' + m.to + ' — ' + m.subject + '\n' + m.text + '\n---') };
+  transport = { sendMail: async m => console.log('--- mail to ' + m.to + ' — ' + m.subject + '\n' + m.text + (m.attachments ? '\n[attachments: ' + m.attachments.map(a => a.filename + ' ' + (a.content ? a.content.length : 0) + ' bytes').join(', ') + ']' : '') + '\n---') };
   console.log('mail: log only (MAIL_LOG=1)');
 } else console.log('mail: off (links are shown to the admin)');
 const mailQueue = [];
@@ -76,7 +78,7 @@ async function drainMail() {
   if (mailBusy) return; mailBusy = true;
   while (mailQueue.length) {
     const m = mailQueue.shift();
-    try { await transport.sendMail({ from: MAIL_FROM || 'TakeaSeat <noreply@localhost>', to: m.to, subject: m.subject, text: m.text }); mailStat.sent++; mailStat.lastOkAt = Date.now(); }
+    try { await transport.sendMail({ from: MAIL_FROM || 'TakeaSeat <noreply@localhost>', to: m.to, subject: m.subject, text: m.text, ...(m.attachments ? { attachments: m.attachments } : {}) }); mailStat.sent++; mailStat.lastOkAt = Date.now(); }
     catch (e) {
       const code = [e.code, e.responseCode, e.command].filter(Boolean).join(' ') || 'error';   // never e.message: SMTP errors quote the address
       const transient = !e.responseCode || (e.responseCode >= 400 && e.responseCode < 500);
@@ -87,6 +89,40 @@ async function drainMail() {
   }
   mailBusy = false;
 }
+// ---- PDF (floor plan / keepsake): rendered in a worker thread, one at a time, at most 10 s each, so a heavy or
+// hostile plan can never freeze the API. The thread keeps its parsed fonts between renders. ----
+const PDF_TIMEOUT = 10000, PDF_QUEUE_MAX = 4;
+let pdfWorker = null, pdfSeq = 0, pdfWaiting = 0, pdfChain = Promise.resolve();
+const pdfPending = new Map();
+function startPdfWorker() {
+  const w = new Worker(new URL('./pdf-worker.mjs', import.meta.url));
+  w.on('message', m => { const p = pdfPending.get(m.id); if (!p) return; pdfPending.delete(m.id); clearTimeout(p.t); m.ok ? p.res(Buffer.from(m.buf)) : p.rej(new Error(m.error)); });
+  const dead = e => { if (pdfWorker === w) pdfWorker = null; for (const [id, p] of pdfPending) if (p.w === w) { clearTimeout(p.t); p.rej(e || new Error('pdf worker stopped')); pdfPending.delete(id); } };
+  w.on('error', e => { console.error('pdf: worker error ' + e.message); dead(e); });
+  w.on('exit', () => dead());
+  w.unref();
+  return w;
+}
+function renderPdf(plan, meta) {
+  if (pdfWaiting >= PDF_QUEUE_MAX) return Promise.reject(Object.assign(new Error('pdf busy'), { busy: true }));
+  pdfWaiting++;
+  const job = () => new Promise((res, rej) => {
+    if (!pdfWorker) pdfWorker = startPdfWorker();
+    const id = ++pdfSeq, w = pdfWorker;
+    const t = setTimeout(() => { pdfPending.delete(id); rej(new Error('pdf timeout')); if (pdfWorker === w) pdfWorker = null; w.terminate(); console.error('pdf: render stopped after ' + PDF_TIMEOUT + ' ms'); }, PDF_TIMEOUT);
+    pdfPending.set(id, { res, rej, t, w });
+    w.postMessage({ id, plan, meta });
+  });
+  const p = pdfChain.then(job, job);
+  pdfChain = p.catch(() => {}).then(() => { pdfWaiting--; });
+  return p;
+}
+let renderPlanPdf = null;
+try {
+  await import('./pdf.mjs');   // fails early (and PDF stays off) if pdfkit or the fonts are missing
+  renderPlanPdf = renderPdf; env.PDF = { render: renderPdf }; console.log('pdf: on (worker thread)');
+  setTimeout(() => renderPdf({ tables: [] }, {}).catch(e => console.error('pdf: warm-up failed: ' + e.message)), 3000).unref?.();   // parse the fonts once, not on the first customer's click
+} catch (e) { console.error('pdf: off (' + e.message + ')'); }
 if (transport) env.MAIL = { enabled: true, from: MAIL_FROM || '(log)', status: () => ({ ...mailStat, queued: mailQueue.length }),
   send: m => { if (mailQueue.length > 500) return false; mailQueue.push(m); setImmediate(drainMail); return true; } };
 // One-time data migration for roles & access (idempotent; the nightly backup runs before any deploy that needs it).
@@ -103,7 +139,13 @@ setTimeout(runSweep, 60000).unref?.(); setInterval(runSweep, 3600000).unref?.();
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png',
   '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.ico': 'image/x-icon', '.webp': 'image/webp', '.txt': 'text/plain; charset=utf-8' };
-const API_PREFIXES = ['/plans', '/codes', '/venues', '/admin', '/claim', '/health', '/recover', '/verify'];
+const API_PREFIXES = ['/plans', '/codes', '/venues', '/admin', '/claim', '/health', '/recover', '/verify', '/pdf'];
+const MAX_BODY = 3 * 1024 * 1024;   // the largest plan is 512 KB of JSON; anything far bigger is refused before it is read
+const PDF_LANG = { el: 1, en: 1, de: 1 };
+const PDF_WORDS = { el: ['κάτοψη', 'αναμνηστικό'], en: ['floor plan', 'keepsake'], de: ['Grundriss', 'Erinnerung'] };
+const wellFormed = x => (typeof x.toWellFormed === 'function' ? x.toWellFormed() : x);
+const pdfFileName = (name, mode, lang) => ([...wellFormed(String(name || 'TakeaSeat'))].slice(0, 80).join('').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').trim() || 'TakeaSeat') + ' — ' + PDF_WORDS[lang][mode === 'keepsake' ? 1 : 0] + '.pdf';
+const ymd = s => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
 const isApiPath = p => API_PREFIXES.some(pre => p === pre || p.startsWith(pre + '/'));
 
 function serveStatic(req, res, urlPath) {
@@ -151,6 +193,12 @@ http.createServer(async (req, res) => {
   const urlPath = req.url.split('?')[0];
   let canon; try { canon = new URL(req.url, 'http://x').pathname.replace(/\/{2,}/g, '/').replace(/\/+$/, '') || '/'; } catch (e) { canon = urlPath; }
   if (!isApiPath(urlPath)) { try { return serveStatic(req, res, req.url); } catch (e) { res.writeHead(500); return res.end('server error'); } }
+  const declared = parseInt(req.headers['content-length'] || '0', 10);
+  if (declared > MAX_BODY) { res.writeHead(413, { 'Content-Type': 'application/json', 'Connection': 'close' }); res.end('{"error":"too_large"}'); req.destroy(); return; }
+  // PDF rendering costs CPU: 10 a minute per IP (stored plans and the stateless route together)
+  if ((canon === '/pdf' || /^\/plans\/[^/]+\/pdf$/.test(canon)) && req.method !== 'OPTIONS' && !rateOk(clientIp(req) + ':pdf', 10, 60000)) {
+    res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '60' }); res.end('{"error":"rate_limited"}'); return;
+  }
   // ---- abuse guards on writes (unauth POST /plans is the disk-fill vector) ----
   if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS') {
     const ip = clientIp(req);
@@ -174,8 +222,26 @@ http.createServer(async (req, res) => {
   let failed = true;
   // ---- API: hand off to the worker ----
   try {
-    const chunks = []; for await (const c of req) chunks.push(c);
+    const chunks = []; let size = 0;
+    for await (const c of req) { size += c.length; if (size > MAX_BODY) { failed = false; res.writeHead(413, { 'Content-Type': 'application/json', 'Connection': 'close' }); res.end('{"error":"too_large"}'); req.destroy(); return; } chunks.push(c); }
     const body = chunks.length ? Buffer.concat(chunks) : undefined;
+    if (canon === '/pdf') {   // stateless render of the plan the planner sends (local plans, the lab, unsynced edits) — no store access
+      failed = false;
+      if (req.method !== 'POST') { res.writeHead(405, { 'Content-Type': 'application/json' }); res.end('{"error":"method"}'); return; }
+      if (!renderPlanPdf) { res.writeHead(503, { 'Content-Type': 'application/json' }); res.end('{"error":"pdf_off"}'); return; }
+      let b = null; try { b = JSON.parse(body ? body.toString('utf8') : 'null'); } catch (e) {}
+      let size = Infinity; try { size = JSON.stringify(b && b.plan).length; } catch (e) {}   // absurdly nested JSON → refused, not a crash
+      if (!b || typeof b !== 'object' || !b.plan || typeof b.plan !== 'object' || !Array.isArray(b.plan.tables) || size > 600 * 1024) {
+        res.writeHead(422, { 'Content-Type': 'application/json' }); res.end('{"error":"bad_plan"}'); return; }
+      const mode = b.mode === 'keepsake' ? 'keepsake' : 'floor', lang = PDF_LANG[b.lang] ? b.lang : 'el';
+      const name = String(b.name || '').slice(0, 120);
+      let pdf;
+      try { pdf = await renderPlanPdf(b.plan, { name, weddingDate: ymd(b.weddingDate), venueName: String(b.venueName || '').slice(0, 120), mode, lang }); }
+      catch (e) { res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '30' }); res.end(e && e.busy ? '{"error":"pdf_busy"}' : '{"error":"pdf_failed"}'); return; }
+      res.writeHead(200, { 'Content-Type': 'application/pdf', 'Cache-Control': 'no-store',
+        'Content-Disposition': 'attachment; filename="takeaseat.pdf"; filename*=UTF-8\'\'' + encodeURIComponent(pdfFileName(name, mode, lang)) });
+      res.end(pdf); return;
+    }
     const request = new Request('http://internal' + req.url, {
       method: req.method, headers: req.headers,
       body: ['GET', 'HEAD', 'OPTIONS'].includes(req.method) ? undefined : body,
@@ -187,7 +253,8 @@ http.createServer(async (req, res) => {
     res.writeHead(r.status, headers);
     res.end(buf);
   } catch (e) {
-    res.writeHead(500, { 'Content-Type': 'application/json' });
+    console.error('server error ' + req.method + ' ' + canon.replace(/[A-Za-z0-9]{16,}/g, '…') + ': ' + ((e && e.stack) || e));   // never bodies or keys
+    if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' });
     res.end('{"error":"server error"}');
   } finally {
     if (!failed) { const a = RL.get(failKey); const i = a ? a.lastIndexOf(slot) : -1; if (i >= 0) a.splice(i, 1); }

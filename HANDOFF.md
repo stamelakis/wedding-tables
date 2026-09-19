@@ -95,6 +95,35 @@ Dev: `MAIL_LOG=1 node tools/dev.mjs` prints mails to the console with links to t
 The remaining admin power over a couple plan is visible, not impossible: the admin can change a couple's address to
 one he controls and press Send link (or reset). The couple's old address is told and both steps are in their log.
 
+## 1d. After the wedding, dates, trash, renewals (2026-09-19)
+
+Owner decisions (Andreas): support 10:00–14:00 & 17:00–21:00, phone/Viber/WhatsApp +30 697 735 5378; after the wedding
+the plan is **view-only** and **deleted 7 days later** (admin can change this); venues **renew automatically** unless they
+cancel; **no refunds for venues**; deleted weddings are restorable **only by the admin** for 14 days.
+- **Wedding date** (`rec.weddingDate`, Athens): venues set it per wedding in the console, couples who bought directly in
+  the planner, the admin anywhere. Limits against reusing one paid wedding for another couple: today … +2 years, the first
+  date free then 3 changes, never cleared, frozen after the wedding (admin unlimited). Changes are in the access log.
+- **Lifecycle** (server computes `life` on every plan GET): `lockAt` = 00:00 Athens the day after the wedding; from then
+  every write answers `403 locked` (couple, venue, support alike); `deleteAt` = lockAt + keepDays (default 7). No date →
+  fallback 18 months after creation (older plans: 18 months after `meta:lifecycle.since`). Policy = global
+  (`meta:settings`, admin "After the wedding") < venue/couple `retention` < plan `retention` (admin "Exceptions" by plan
+  id: keep forever / stay editable / extra days; index `retention:index`). **Andreas & Lina** has a plan exception:
+  keep forever + stay editable (set after the 2026-09-19 deploy); a private export also lives in
+  `C:\Users\andre\Documents\TakeaSeat-archive\` (outside the repo).
+- **Hourly sweep** (`sweep()` in the worker, run by server.mjs): lock → keepsake PDF mailed once to couples who bought
+  directly (needs mail + PDF) → delete at deleteAt (couple licence keeps name/dates, loses its address) · empty the
+  venues' trash after 14 days · renew seasonal licences (same dates next year, `invoiceDue` for the admin) · renewal
+  reminder mails 30 and 7 days before (venues with an email).
+- **PDF**: `server/pdf.mjs` (pdfkit, DejaVu fonts in the image) — `GET /plans/:id/pdf?mode=floor|keepsake` for stored
+  plans (any role that can read, also after the wedding) and stateless `POST /pdf` for the planner (local plans, the lab,
+  unsynced edits). 10 PDFs/min per IP.
+- **Trash**: a venue's DELETE moves the wedding to `v.trash` (plan gets `deletedAt`, every route answers 410);
+  admin.html lists, restores (fresh venue link) or erases now.
+- **Admin notes**: `venue.contact` is PUBLIC (shown to that venue's couples); `venue.notes` is private. A couple's
+  `contact` is admin-only.
+- **Server hardening**: request bodies > 3 MB → 413 before being read; every 500 is logged (method, path with ids
+  masked, stack — never bodies or keys); admin erasures/restores are logged.
+
 ## 2. Architecture
 
 ```
@@ -139,7 +168,12 @@ Browser ──HTTPS──> Caddy (edu-admin-caddy-1, owns :80/:443 on the shared
 | `server/docker-compose.yml` | Runs the container (hardened: cap_drop ALL, no-new-privileges, mem/pids limits) on the `edu-admin_internal` network. |
 | `server/backup.sh` | Nightly local encrypted SQLite backup (deployed as `/opt/takeaseat-backup.sh`). |
 | `server/offsite-push.sh` | Nightly off-site push to Backblaze B2, age-encrypted (deployed as `/opt/offsite-push.sh`). |
-| `server/uptime-check.sh` | 5-min health check + auto-restart + email alert (deployed as `/opt/takeaseat-uptime.sh`). |
+| `server/uptime-check.sh` | 5-min health check (`/health` via Caddy, real TLS) + auto-restart + alerts + daily backup-age/disk checks (deployed as `/opt/takeaseat-uptime.sh`). |
+| `server/deploy.sh` | The deploy: weekend guard, backup, build with tests, health wait, automatic rollback (runs on the box). |
+| `server/alert.sh` | Shared alert mail helper for the host scripts (deployed as `/opt/takeaseat-alert.sh`). |
+| `server/pdf.mjs` | PDF renderer (pdfkit + DejaVu fonts): floor plan and keepsake. `node tools/pdf-sample.mjs <plan.json> <out>` renders samples. |
+| `server/ops/` | `Caddyfile.takeaseat` (copy of the live site block + planned www redirect), `cron.d/` (the host cron files), `REBUILD.md` (new server from zero). |
+| `.github/workflows/monitor.yml` | External uptime monitor (GitHub Actions, every 10 min) — opens/closes the issue "takeaseat.gr down". |
 
 > **Editing rule:** edit `planner.src.html` only, then run `node tools/build-planner.mjs` — it regenerates the three
 > language files, their `.artifact.html` twins and `lab.html` in one go. Commit the source **and** the outputs
@@ -180,17 +214,24 @@ a couple-owned plan**: the promise to couples is that TakeaSeat only enters by t
 
 ## 5. Deploy / update
 
-All changes ship the same way — commit here, then on the box pull + rebuild:
+All changes ship the same way — commit here, then deploy on the box with `deploy.sh`:
 ```bash
 # from your PC:
 git add -A && git commit -m "..." && git push origin main
-# on the box:
+# on the box (Monday–Thursday in the season; Fri–Sun needs --force):
 ssh -i ~/.ssh/hetzner root@178.104.158.125
-cd /opt/takeaseat && git pull --ff-only && docker compose -f server/docker-compose.yml up -d --build
+bash /opt/takeaseat/server/deploy.sh
 ```
-- **Client (html) or API (`wedding-sync-worker.js`) or server** changes → the command above rebuilds the image.
-- **Host scripts** (`backup.sh`, `offsite-push.sh`, `uptime-check.sh`) are deployed copies at `/opt/*.sh`;
-  editing the repo copy does **not** auto-deploy them — copy them to the box if you change them.
+`deploy.sh` takes a backup, tags the live image `takeaseat-api:prev`, pulls, builds (the build runs
+`tools/test-api.mjs` and the stale-planner check — a failure deploys nothing), starts, and waits up to 60 s for
+`https://takeaseat.gr/health` `{"ok":true}`. If it never gets healthy it puts `:prev` back, mails an alert and exits 1.
+It ends with the startup log (migration / mail / pdf) and a list of host files that differ from the repo.
+- **Host files** are copies, not deployed by deploy.sh. Install `alert.sh` first (the others call it):
+  `install -m 755 server/alert.sh /opt/takeaseat-alert.sh`, then `backup.sh` → `/opt/takeaseat-backup.sh`,
+  `uptime-check.sh` → `/opt/takeaseat-uptime.sh`, `offsite-push.sh` → `/opt/offsite-push.sh`, and
+  `install -m 644 server/ops/cron.d/* /etc/cron.d/`. Test with `/opt/takeaseat-alert.sh test "install check"` (one real
+  mail) and `/opt/takeaseat-uptime.sh; echo $?` (silent, 0). `/opt/offsite-push.sh` also pushes the amelie, edu and elab
+  backups — keep those lines when you edit it.
 - **Caddy** changes (rare): edit `/opt/edu-admin/Caddyfile`, **back it up**, run `docker exec edu-admin-caddy-1 caddy validate --config /etc/caddy/Caddyfile`, reload, then verify **both** takeaseat and educationproject.gr return 200.
 - **Legacy Cloudflare worker** (`wedding-sync`): dormant, no longer used by the app (client `SYNC_URL=""`,
   GitHub Pages redirects to takeaseat.gr). Safe to ignore or delete. Its KV namespace `wedding-plans`
@@ -199,15 +240,26 @@ cd /opt/takeaseat && git pull --ff-only && docker compose -f server/docker-compo
 ## 6. Operations
 
 **Backups (all in `/opt/backups`, cron in `/etc/cron.d/`):**
-- `takeaseat-backup` — 03:10 — WAL-safe snapshot → gzip → **age-encrypt** → `takeaseat-*.db.gz.age`, 14-day local retention.
+- `takeaseat-backup` — 03:10 — WAL-safe snapshot → gzip → **age-encrypt** → `takeaseat-*.db.gz.age`, kept at most 14 days.
 - `offsite-push` — 03:40 — age-encrypts every backup (edu + elab too, which are otherwise plaintext) and
   `rclone copy`s them to Backblaze **B2 bucket `TakeaSeat/backups`**, 21-day retention. B2 only ever holds ciphertext.
 - The **age private key is OFF the box** (Andreas's password manager). Without it, backups can't be decrypted.
 - **Restore:** `rclone copy b2:TakeaSeat/backups/<file>.age . && age -d -i <privkey-file> <file>.age > out.gz && gunzip out.gz`
   (or use a local `/opt/backups/*.age`). Verified working.
 
-**Monitoring:** `takeaseat-uptime` cron (*/5) probes https://takeaseat.gr/; on failure it restarts the
-container and emails an alert via the edu-admin app's SMTP (so alerts reach the same inbox as edu — no separate account).
+- **Backups fail loudly**: `takeaseat-backup` and `offsite-push` exit 1 and mail an alert on any failed step; "backup ok"
+  / "off-site push ok" in `/var/log/*.log` means it worked. B2 retention is pruned by the script (`B2_PRUNE=1`, needs a
+  key with deleteFiles). With a no-delete key: bucket lifecycle rules (20+1 days; amelie 14+1) and `B2_PRUNE=0` in
+  `/etc/cron.d/offsite-push` (steps in §8).
+
+**Monitoring**, two layers:
+- **On the box** (`takeaseat-uptime`, */5): `/health` through Caddy with real TLS, restart on failure, alerts through the
+  edu-admin app's SMTP (hourly while down, once on recovery); once a day it warns if the newest backup is older than
+  26 h or the disk is over 85 %.
+- **Outside** (GitHub Actions `monitor`, every 10 min): `/health`, valid TLS, certificate > 14 days. On failure it opens
+  the issue "takeaseat.gr down" (GitHub emails Andreas) and closes it on recovery. GitHub pauses scheduled workflows
+  after 60 days without repository activity — re-enable in Actions → monitor.
+- **Rebuild from zero**: `server/ops/REBUILD.md`.
 
 **Database:** SQLite WAL. The main `.db` file can look small/old because recent writes sit in the `-wal`
 sidecar until checkpoint — that's normal; reads through sqlite3 or the app see current data. `PRAGMA
@@ -251,9 +303,44 @@ cascade-purges its plans; venues can rotate their own key; backups encrypted at 
 5. **Mail sender** (§1c): pick a transactional provider (e.g. Brevo / Postmark, EU) or a Google Workspace mailbox on
    takeaseat.gr, add its SPF + DKIM records at Papaki, put `SMTP_*` + `MAIL_FROM` in `server.env`, and list the
    provider as a sub-processor in `privacy.html` / `dpa.html` (the DPA promises venues notice before a new one).
+   Andreas: "we'll buy an email soon".
+6. **Couples and the 14-day withdrawal right (decision + lawyer)**: the online planner is a *digital service*, so couples
+   keep 14 days to withdraw (pro rata → nearly the full 19€ back). The terms now carry a compliant interim clause.
+   Options researched 2026-09-19 (scratch notes, summarised): **A** free planner, 19€ buys the downloadable "export pack"
+   (PDF floor plan, keepsake, Excel) — the right ends at the first download with express consent (recommended);
+   **B** keep the paid plan as is (compliant, weak); **C** 14-day free trial converting to 19€ (card up front).
+   Online sales will also need the new withdrawal button (ν. 5317/2026, art. 3ζα). Needs Andreas's choice + a lawyer.
+7. **Season length** for venue licences: not decided yet (renewal = same dates next year). Note: creating weddings is
+   blocked before `seasonStart` — revisit when the season is defined (venues book next season's weddings in winter).
+8. **Monitoring**: a free GitHub Actions monitor (`.github/workflows/monitor.yml`, every 10 min, opens an issue → email)
+   runs until Andreas picks a dedicated service (UptimeRobot / Better Stack) — to discuss.
+9. **Backblaze key**: the server's B2 key can delete backups (checked 2026-09-19; bucket `TakeaSeat`, region
+   eu-central-003 Amsterdam). Andreas: create a key without `deleteFiles` in the Backblaze console, put it in
+   `/root/.config/rclone/rclone.conf` on the box, and move the 21-day retention to a bucket lifecycle rule.
+10. **Emergency access**: none yet (Andreas's decision) — revisit before the first busy season.
+11. **2FA** is still Andreas's to switch on (Hetzner, Cloudflare, Papaki, GitHub). GitHub Pages was turned off 2026-09-19.
+
+## 7b. Product features added 2026-09-19
+
+- **Planner**: search also finds seated guests («→ table», jumps there); **long tables** (shape `rect`, both long sides);
+  **Excel**: export guest → table (CSV, UTF-8 BOM, `;`) and import names from CSV/TSV/paste with preview (groups,
+  invitations, tables); print dialog «Εκτύπωση & PDF» with **floor-plan PDF** and, after the wedding, the **keepsake PDF**;
+  printed lists carry the plan name, wedding date and print time; wedding date in Access (couples on their own plan);
+  after the wedding a calm view-only strip; «Βοήθεια & επικοινωνία» in the ⋯ menu. View links are now truly read-only.
+- **Venue console**: wedding date required, grouped/sorted list with search, progress and last change per wedding, PDF
+  downloads, locked chips, soft delete + «Διαγραμμένοι γάμοι», licence/renewal toggle, help dialog + legal footer.
+- **Admin console**: venue «Edit…» (public contact vs private notes, licence with explicit Unlimited, auto-renew,
+  per-venue after-the-wedding override), renewal invoice badges, trash restore/erase, "After the wedding" settings with
+  plan exceptions (paste a link), couple wedding dates and overrides.
+- **Legal pages** (version 19 Sep 2026): both customer types, the real lifecycle, sub-processors (Hetzner DE, Backblaze
+  EU-Central NL), honest access wording, interim couples' withdrawal clause + model form, venue auto-renewal. One
+  identity block per page with `[bracket]` placeholders until the company exists. A lawyer review is still pending
+  (15 points listed by the drafting agent — see the 2026-09-19 session; the main ones are in §8.6).
 
 ## 9. Critical gotchas
 
+- **Deploy with `server/deploy.sh`**, not by hand. It refuses Fri–Sun in the season (use `--force` only when no
+  wedding can be affected) and rolls back an unhealthy build.
 - **Public repo → no secrets in git.** `server.env`, `rclone.conf`, the age private key, edit keys — all stay out.
 - **Shared box runs the live educationproject.gr business.** Caddy owns 80/443. Back up the Caddyfile and
   `caddy validate` before any reload; confirm edu still serves 200 afterward.

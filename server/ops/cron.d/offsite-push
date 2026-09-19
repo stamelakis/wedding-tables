@@ -1,0 +1,7 @@
+# Off-site push of every backup in /opt/backups (takeaseat, amelie, edu, elab) to Backblaze B2,
+# age-encrypted. Installed as /etc/cron.d/offsite-push (root:root 0644). Script: /opt/offsite-push.sh
+# (repo: server/offsite-push.sh). Once the box's B2 key has no deleteFiles, add B2_PRUNE=0 on its own
+# line above the schedule and let the bucket lifecycle rules do the retention (HANDOFF §6).
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+40 3 * * * root /opt/offsite-push.sh >> /var/log/offsite-push.log 2>&1

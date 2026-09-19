@@ -1,0 +1,95 @@
+# External uptime monitor for https://takeaseat.gr — free, runs on GitHub's servers (so it also
+# notices when the whole box, its network or DNS is gone, which the box's own cron cannot).
+#
+# Every 10 minutes: GET /health must answer 200 with "ok":true over valid TLS (curl verifies the
+# certificate), and the certificate must be valid for more than 14 more days.
+# On failure it opens ONE issue titled "takeaseat.gr down" (GitHub e-mails new issues to people
+# watching the repo — the owner by default); on recovery it comments and closes that issue.
+# The job itself stays green either way, so a long outage is one e-mail, not one per run.
+# Run it by hand: Actions -> monitor -> Run workflow.
+#
+# Caveats:
+# - GitHub DISABLES scheduled workflows in a public repo after 60 days without repository
+#   activity (commits etc.; it e-mails a warning first). Re-enable in Actions -> monitor ->
+#   "Enable workflow", or push any commit.
+# - Scheduled runs can start late or be skipped when GitHub is busy (worst at the top of the
+#   hour, hence minutes 3,13,23,…). Treat it as a safety net next to the box's 5-min cron.
+name: monitor
+
+on:
+  schedule:
+    - cron: "3,13,23,33,43,53 * * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+concurrency:
+  group: monitor
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe https://takeaseat.gr/health and the certificate
+        id: probe
+        run: |
+          set +e   # GitHub runs bash -e; a failing curl must be reported, not end the step
+          reason="" end=""
+          # three tries 20 s apart, so one lost packet does not open an issue
+          for i in 1 2 3; do
+            reason=""
+            body=$(curl -sS --max-time 20 -w '\n%{http_code}' https://takeaseat.gr/health 2>curl.err); rc=$?
+            code=$(printf '%s' "$body" | tail -n 1); body=$(printf '%s' "$body" | sed '$d')
+            if [ "$rc" -ne 0 ]; then reason="curl exit $rc: $(tr -d '\n' < curl.err | cut -c1-200)"
+            elif [ "$code" != 200 ]; then reason="HTTP $code from /health"
+            elif ! printf '%s' "$body" | grep -q '"ok":true'; then reason="/health answered without \"ok\":true: $(printf '%s' "$body" | cut -c1-200)"
+            fi
+            [ -z "$reason" ] && break
+            echo "try $i: $reason"; [ "$i" -lt 3 ] && sleep 20
+          done
+          if [ -z "$reason" ]; then
+            end=$(echo | openssl s_client -connect takeaseat.gr:443 -servername takeaseat.gr 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
+            if [ -z "$end" ]; then reason="could not read the TLS certificate"
+            elif ! echo | openssl s_client -connect takeaseat.gr:443 -servername takeaseat.gr 2>/dev/null | openssl x509 -noout -checkend $((14*86400)) >/dev/null; then
+              reason="TLS certificate expires in less than 14 days ($end); Caddy should have renewed it"
+            fi
+          fi
+          echo "cert_end=${end:-?}" >> "$GITHUB_OUTPUT"
+          if [ -n "$reason" ]; then
+            echo "DOWN: $reason"; echo "state=down" >> "$GITHUB_OUTPUT"
+            { echo "reason<<EOF"; echo "$reason"; echo "EOF"; } >> "$GITHUB_OUTPUT"
+            echo "### takeaseat.gr DOWN — $reason" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "UP (certificate valid until $end)"; echo "state=up" >> "$GITHUB_OUTPUT"
+            echo "### takeaseat.gr up — certificate valid until $end" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Open or close the "takeaseat.gr down" issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          STATE: ${{ steps.probe.outputs.state }}
+          REASON: ${{ steps.probe.outputs.reason }}
+          CERT_END: ${{ steps.probe.outputs.cert_end }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          TITLE="takeaseat.gr down"
+          open=$(gh issue list --state open --limit 100 --json number,title --jq ".[] | select(.title == \"$TITLE\") | .number" | head -n 1)
+          now=$(TZ=Europe/Athens date '+%Y-%m-%d %H:%M %Z')
+          if [ "$STATE" = down ]; then
+            if [ -z "$open" ]; then
+              gh issue create --title "$TITLE" --body "$(printf '%s\n\n%s\n\n%s\n\n%s' \
+                "**takeaseat.gr failed the external health check** at $now." \
+                "Reason: $REASON" \
+                "Check: \`curl -s https://takeaseat.gr/health\` · on the box: \`docker ps\`, \`docker logs --tail 50 takeaseat-api\`, \`tail /var/log/takeaseat-uptime.log\`. The box's own 5-minute check restarts the container by itself; if the whole box is unreachable, look at the Hetzner console." \
+                "This issue closes by itself when the site answers again. Run: $RUN_URL")"
+            else
+              echo "issue #$open is already open — no new mail"
+            fi
+          elif [ -n "$open" ]; then
+            gh issue comment "$open" --body "Back up at $now: /health answers \"ok\":true, certificate valid until $CERT_END. Run: $RUN_URL"
+            gh issue close "$open"
+          fi

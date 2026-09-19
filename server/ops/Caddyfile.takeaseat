@@ -1,0 +1,36 @@
+# TakeaSeat site blocks for Caddy — a copy of the takeaseat part of /opt/edu-admin/Caddyfile, the
+# SHARED Caddy (container edu-admin-caddy-1, which also serves the live educationproject.gr and
+# amelie.gr). Copied from the box on 2026-09-19. The box file is the live one; keep this copy in step.
+# The file's global block only sets the ACME e-mail:  { email andrewstamelakis@gmail.com }
+#
+# ONE CHANGE vs the box, NOT applied yet: on the box one block serves both names
+# ("takeaseat.gr, www.takeaseat.gr { ... }"), so www shows the whole site on its own origin.
+# Here www redirects to the apex: one origin for links, CORS and the browser's local plans.
+# Side effect: plans kept only in the browser's local storage while someone used www stay under
+# the www origin (cloud plans come back through their link — the #fragment survives the redirect).
+# Every link the app sends uses PUBLIC_URL = the apex, so few people should be on www.
+#
+# To apply on the box (HANDOFF §5 "Caddy"):
+#   cp /opt/edu-admin/Caddyfile /opt/edu-admin/Caddyfile.bak-$(date +%Y%m%d-%H%M%S)
+#   edit /opt/edu-admin/Caddyfile: replace the "takeaseat.gr, www.takeaseat.gr {" block with the two blocks below
+#   docker exec edu-admin-caddy-1 caddy validate --config /etc/caddy/Caddyfile
+#   docker exec edu-admin-caddy-1 caddy reload --config /etc/caddy/Caddyfile
+#   curl -sI https://www.takeaseat.gr/x | head -3     -> 301, location: https://takeaseat.gr/x
+#   curl -s https://takeaseat.gr/health               -> {"ok":true,...}
+#   curl -sI https://educationproject.gr/ | head -1    -> 200   (and amelie.gr)
+
+takeaseat.gr {
+	encode gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
+		-Server
+	}
+	reverse_proxy takeaseat-api:8080
+}
+
+www.takeaseat.gr {
+	redir https://takeaseat.gr{uri} permanent
+}

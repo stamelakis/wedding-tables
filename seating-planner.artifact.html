@@ -78,9 +78,24 @@
   .acc-sec textarea{ width:100%; min-height:60px; resize:vertical; margin-top:8px; }
   .acc-live{ background:#fff7e6; border:1px solid #f0d49a; border-radius:10px; padding:10px 12px; font-size:13px; }
   .claim-lead{ font-size:15px; line-height:1.5; margin:0 0 6px; }
+  /* after the wedding: a calm strip under the app bar (✕ hides it for this visit; the badge brings it back) */
+  #lifebar{ flex:none; display:flex; align-items:center; gap:10px; padding:8px 14px; background:#f3efe6; border-bottom:1px solid var(--line); font-size:13px; line-height:1.4; color:var(--ink); position:relative; z-index:25; }
+  #lifebar[hidden]{ display:none; }
+  #lifebar>.ic{ color:var(--gold); flex:none; }
+  #lifebar .lt{ flex:1; min-width:0; }
+  #lifebar .ibtn{ height:32px; flex:none; }
+  #lifebar .ibtn[hidden]{ display:none; }
+  #lifebar .lx{ border:none; background:none; color:var(--faint); font-size:15px; cursor:pointer; padding:4px; flex:none; }
+  .acc-date{ font-family:var(--serif); font-size:17px; font-weight:700; margin:2px 0 4px; }
+  .acc-row input[type=date]{ font:inherit; font-size:14px; height:36px; border:1px solid var(--line); border-radius:8px; padding:0 10px; background:var(--paper); color:inherit; }
+  /* read only (the wedding is over, or a view link): nothing looks editable — save() reverts anything that slips through */
+  body.ro #toolsSec, body.ro #addNames, body.ro .grip, body.ro .fx, body.ro .gchip .acts, body.ro .pparty .pedit, body.ro .tgear, body.ro .rot-h, body.ro .feat-gear, body.ro .rz, body.ro #stageResize,
+  body.ro .ffoot, body.ro #fSettings, body.ro .chip.add, body.ro .chip .gmore{ display:none !important; }
+  body.ro .frow .fdot, body.ro .chip .dot{ pointer-events:none; }
+  body.ro .gchip, body.ro .pparty{ cursor:default; }
   .feature.flocked{ cursor:default; }
   body.lock-floor #stageResize{ display:none !important; }
-  body.lock-tables #addTableBtn, body.lock-tables #addHeadBtn, body.lock-tables #menuDelete{ display:none !important; }
+  body.lock-tables #addTableBtn, body.lock-tables #addRectBtn, body.lock-tables #addHeadBtn, body.lock-tables #menuDelete{ display:none !important; }
   #tablemenu .caps button:disabled, #menuCapCustom:disabled{ opacity:.45; cursor:not-allowed; }
   #menuLabel[readonly]{ background:var(--paper); color:var(--soft); }
   body.mode-lab #langsel{ display:none; }
@@ -101,6 +116,7 @@
   details.sec:not([open])>summary{ margin-bottom:0; }
   .tools{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
   .tools .ibtn{ height:36px; font-size:12.5px; justify-content:flex-start; padding:0 10px; }
+  .tools .ibtn.wide{ grid-column:1 / -1; }
   .floorrow{ display:flex; align-items:center; gap:8px; margin-top:8px; font-size:12px; color:var(--soft); }
   .floorrow select{ flex:1; height:32px; padding:0 8px; border:1px solid var(--line); border-radius:8px; font-size:12.5px; }
   .search{ position:relative; margin-bottom:8px; }
@@ -159,6 +175,13 @@
   .pparty .pedit .ic{ width:13px; height:13px; }
   .pparty.picked{ outline:2px solid var(--accent); outline-offset:1px; border-radius:8px; background:var(--accent-soft); }
   .gchip.inparty{ margin-left:12px; }
+  /* search: a name that already has a seat → "→ table"; a tap opens that table */
+  .gchip.seated{ cursor:pointer; background:var(--card); padding-left:10px; }
+  .gchip.seated .to{ flex:none; max-width:48%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--soft); font-size:12px; padding-right:4px; }
+  #pool .gm-cap{ padding:10px 4px 2px; }
+  .frow.hit input{ background:var(--accent-soft) !important; border-color:var(--accent); }
+  .seat.found{ z-index:40; animation:seatFound .8s ease-in-out 3; }
+  @keyframes seatFound{ 0%,100%{ box-shadow:0 0 0 3px #fff,0 0 0 5px var(--accent); } 50%{ box-shadow:0 0 0 3px #fff,0 0 0 13px rgba(125,90,140,.35); } }
   .stag{ font-size:9.5px; color:#a0692b; background:#fff4e6; border:1px solid #f0d9bf; border-radius:6px; padding:0 4px; margin-left:5px; vertical-align:middle; }
   .stag.cut{ color:#b03535; background:#fdeaea; border-color:#f2c7c7; }
   .empty-note{ font-size:12.5px; color:var(--faint); padding:14px 6px; text-align:center; line-height:1.5; }
@@ -201,6 +224,9 @@
   .table-disc.head{ border-radius:14px; background:linear-gradient(180deg,#fffaf1 0%,#f6ecd9 100%); border:1.5px solid #cdb07a; }
   .table-disc.dragover{ box-shadow:0 0 0 4px #fff,0 0 0 8px var(--accent) !important; }
   .table.mergeto .table-disc{ box-shadow:0 0 0 4px #fff,0 0 0 8px var(--accent) !important; }
+  .table-disc.rect{ border-radius:10px; background:linear-gradient(180deg,#fffefc 0%,#f4eee5 100%); }   /* a long table: chairs on both long sides */
+  .table.shape-rect.focused::before{ border-radius:46px; }   /* its focus ring is a rounded box, not an ellipse */
+  .fside{ height:1px; background:var(--line); margin:5px 0 5px 28px; }   /* long table: side A | side B in the seat list */
   .table-disc.head::after{ content:""; position:absolute; inset:4px; border:1px solid rgba(181,138,60,.55); border-radius:10px; pointer-events:none; }   /* gold inner rule */
   .table-disc:active{ cursor:grabbing; }
   .table:hover .table-disc{ box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 12px 26px rgba(30,20,10,.28),0 2px 4px rgba(30,20,10,.12); }
@@ -341,6 +367,7 @@
   body.far .table-disc .tcount, body.far .seat .nm, body.far .tgear{ display:none !important; }
   body.far .table-disc .tnum{ font-size:min(calc(var(--dd,112px) * .5), calc(56px * var(--tfs,1))); line-height:1; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transition:font-size .15s; }
   body.far .table-disc.head .tnum{ font-size:calc(30px * var(--tfs,1)); }
+  body.far .table-disc.rect .tnum{ font-size:min(54px, calc(46px * var(--tfs,1))); }
   body.far .seat:not(.occupied)::after{ display:none; }
 
   /* ---------- Popovers & modals ---------- */
@@ -417,14 +444,31 @@
   .modal textarea{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:11px; resize:vertical; }
   .mrow{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
   .modal .mlab{ font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--faint); font-weight:700; margin:10px 2px 5px; }
+  .csvt-wrap{ overflow-x:auto; margin-top:8px; }
+  .csvt{ width:100%; border-collapse:collapse; font-size:12px; }
+  .csvt th{ text-align:left; color:var(--faint); font-weight:700; font-size:10.5px; text-transform:uppercase; letter-spacing:.04em; padding:4px 6px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  .csvt td{ padding:4px 6px; border-bottom:1px solid var(--line); max-width:170px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .csvsum{ font-size:13px; margin-top:10px; line-height:1.45; }
+  .csvsum .muted{ color:var(--soft); font-size:12px; }
+  #csvModal .mrow{ position:sticky; bottom:0; background:var(--card); margin:0 -16px; padding:10px 16px 12px; border-top:1px solid var(--line); }
   #importModal .mrow{ position:sticky; bottom:0; background:var(--card); margin:0 -16px; padding:10px 16px 12px; border-top:1px solid var(--line); }   /* Load / Choose file stay reachable while the mode list scrolls */
   .imodes{ display:flex; flex-direction:column; gap:4px; }
   .imode{ display:flex; gap:8px; align-items:flex-start; padding:6px 9px; border:1px solid var(--line); border-radius:9px; cursor:pointer; font-size:13px; background:var(--card); }
+  .imode[hidden]{ display:none; }   /* display:flex would beat the hidden attribute */
   .imode input{ margin:3px 0 0; flex:none; }
   .imode b{ display:block; font-weight:600; }
   .imode small{ display:block; color:var(--soft); font-size:11.5px; line-height:1.35; }
   .imode:has(input:checked){ border-color:var(--accent); background:var(--accent-soft); }
   .mrow .ibtn{ flex:1; min-width:120px; height:38px; }
+  .ibtn.busy::before{ content:""; width:13px; height:13px; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:spin .8s linear infinite; flex:none; }   /* waiting for the server (PDF) */
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  /* help & contact sheet */
+  .hl-hours{ font-size:14px; line-height:1.5; margin:0 0 4px; }
+  .hl-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0 4px; }
+  .hl-grid .ibtn{ height:42px; text-decoration:none; color:var(--ink); font-size:14px; }
+  .hl-grid .ibtn.wide{ grid-column:1 / -1; }
+  .hl-legal{ font-size:12.5px; color:var(--soft); margin-top:12px; }
+  .hl-legal a{ color:var(--accent-ink); }
   .hist{ display:flex; flex-direction:column; gap:6px; padding:10px 16px 16px; }
   .hrow{ display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; }
   .hrow>div{ flex:1; min-width:0; }
@@ -459,6 +503,7 @@
   #tip[hidden]{ display:none; }
   #tip .ic{ stroke:#f2d27a; width:20px; height:20px; margin-top:1px; }
   #tip .tt{ flex:1; }
+  #tip .ta{ border:none; background:rgba(255,255,255,.16); color:#fff; border-radius:999px; padding:5px 11px; font-size:12.5px; cursor:pointer; white-space:nowrap; align-self:center; }
   #tip .tx{ border:none; background:none; color:#c9c2b8; font-size:14px; cursor:pointer; padding:0 4px; line-height:1; }
   @keyframes tipIn{ from{ opacity:0; transform:translateY(-6px); } to{ opacity:1; transform:none; } }
   @media (min-width:901px){ #tip{ right:auto; left:calc(50% - 170px); width:340px; } }   /* PC: over the floor, not over the side panels */
@@ -505,7 +550,7 @@
     .ffoot{ display:none; }   /* phone: fill/clear live under ⚙ — the rows get the space */
     .fhint{ padding:6px 14px 2px; font-size:13px; color:var(--soft); }
     .modal{ width:96vw; max-height:88vh; }
-    #importText{ height:80px !important; }
+    #importText, #csvText{ height:80px !important; }
     .decor-grid{ grid-template-columns:repeat(auto-fill,minmax(92px,1fr)); gap:8px; padding:12px; }
     #pickbar{ bottom:calc(14px + env(safe-area-inset-bottom)); }
     #pickbar .pbhint{ display:none; }
@@ -526,6 +571,13 @@
     .gchip{ padding-top:9px; padding-bottom:9px; }
   }
   @media (max-width:420px){ #zoomFit{ padding:0 7px; font-size:12px; } }
+  @media (max-width:900px){   /* phone: one flowing paragraph with the button at its end, ✕ in the corner — a low strip */
+    #lifebar{ display:block; font-size:12.5px; padding:7px 34px 7px 10px; }
+    #lifebar>.ic{ display:none; }
+    #lifebar .lt{ display:inline; }
+    #lifebar .ibtn{ display:inline-flex; height:26px; padding:0 9px; margin-left:6px; vertical-align:middle; font-size:12.5px; }
+    #lifebar .lx{ position:absolute; right:6px; top:5px; }
+  }
 
   /* ---------- Table chooser (overview ⇄ one table): a column right of the floor on PC, under the floor on phones.
      The right side is always "tables": this list when nothing is selected, the seat list when a table is. ---------- */
@@ -570,6 +622,7 @@
     #printarea{ display:block; position:static; width:100%; padding:0 10px; }
   }
   #printarea h2{ font-size:22px; margin:0 0 2px; font-family:var(--serif); }
+  #printarea .pmeta{ color:#555; font-size:12.5px; margin:0 0 4px; }
   #printarea .psub{ color:#666; margin-bottom:14px; font-size:13px; }
   #printarea .plegend{ display:flex; flex-wrap:wrap; gap:12px; margin-bottom:16px; font-size:12px; }
   #printarea .plegend span{ display:flex; align-items:center; gap:5px; }
@@ -611,6 +664,7 @@
   <symbol id="i-dl" viewBox="0 0 24 24"><path d="M12 4v12M6 10l6 6 6-6M4 20h16"/></symbol>
   <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="m19 16 .8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></symbol>
   <symbol id="i-decor" viewBox="0 0 24 24"><path d="M5 11V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"/><path d="M3 13a2 2 0 0 1 4 0v2h10v-2a2 2 0 0 1 4 0v4H3z"/><path d="M5 19v1M19 19v1"/></symbol>
+  <symbol id="i-longtable" viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="6" rx="1.5"/><circle cx="7" cy="5.3" r="1.3"/><circle cx="12" cy="5.3" r="1.3"/><circle cx="17" cy="5.3" r="1.3"/><circle cx="7" cy="18.7" r="1.3"/><circle cx="12" cy="18.7" r="1.3"/><circle cx="17" cy="18.7" r="1.3"/></symbol>
   <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></symbol>
   <symbol id="i-table" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="3.5" r="1.3"/><circle cx="19.4" cy="7.8" r="1.3"/><circle cx="19.4" cy="16.2" r="1.3"/><circle cx="12" cy="20.5" r="1.3"/><circle cx="4.6" cy="16.2" r="1.3"/><circle cx="4.6" cy="7.8" r="1.3"/></symbol>
   <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
@@ -620,6 +674,9 @@
   <symbol id="i-grip" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.4"/><circle cx="15" cy="6" r="1.4"/><circle cx="9" cy="12" r="1.4"/><circle cx="15" cy="12" r="1.4"/><circle cx="9" cy="18" r="1.4"/><circle cx="15" cy="18" r="1.4"/></symbol>
   <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M8.5 14.5a6 6 0 1 1 7 0c-.6.5-1 1.3-1 2.1V18h-5v-1.4c0-.8-.4-1.6-1-2.1z"/></symbol>
   <symbol id="i-broom" viewBox="0 0 24 24"><path d="m14 4 6 6-7.5 7.5-6-6z"/><path d="M8.5 15.5 4 20"/><path d="m10 18 2-2"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2z"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="m4 7 8 6 8-6"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4.5 18.5 6 15a7.5 7.5 0 1 1 3 3z"/><path d="M9 11h.01M12 11h.01M15 11h.01"/></symbol>
 </svg>
 
 <header id="appbar">
@@ -648,6 +705,7 @@
   <button class="ibtn" id="moreBtn" data-t-title="more">⋯</button>
 </header>
 
+<div id="lifebar" hidden><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg><span class="lt" id="lifeText"></span><button class="ibtn" id="lifePdf" data-t="lifePdf"></button><button class="lx" id="lifeX" data-t-title="close">✕</button></div>
 <div id="main">
   <aside id="sidebar">
     <div class="side-scroll">
@@ -655,9 +713,10 @@
         <summary class="sec-title" data-t="tools"></summary>
         <div class="tools">
           <button class="ibtn primary" id="addTableBtn"><svg class="ic" aria-hidden="true"><use href="#i-table"/></svg><span data-t="addRound"></span></button>
+          <button class="ibtn" id="addRectBtn"><svg class="ic" aria-hidden="true"><use href="#i-longtable"/></svg><span data-t="addRect"></span></button>
           <button class="ibtn" id="addHeadBtn"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg><span data-t="addHead"></span></button>
           <button class="ibtn" id="decorBtn"><svg class="ic" aria-hidden="true"><use href="#i-decor"/></svg><span data-t="decor"></span></button>
-          <button class="ibtn" id="autoSeatBtn"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg><span data-t="autoSeat"></span></button>
+          <button class="ibtn wide" id="autoSeatBtn"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg><span data-t="autoSeat"></span></button>
         </div>
         <div class="floorrow"><span data-t="floor"></span><select id="stageFloor"></select></div>
       </details>
@@ -743,6 +802,8 @@
     <div class="mbody">
       <label class="imode"><input type="radio" name="pmode" value="names" checked><span data-t="pmNames"></span></label>
       <label class="imode" style="margin-top:6px"><input type="radio" name="pmode" value="parties"><span data-t="pmParties"></span></label>
+      <label class="imode" style="margin-top:6px"><input type="radio" name="pmode" value="pdf"><span data-t="pmPdf"></span></label>
+      <label class="imode" style="margin-top:6px" id="pmKeepRow" hidden><input type="radio" name="pmode" value="keepsake"><span data-t="pmKeep"></span></label>
       <div class="mrow"><button class="ibtn primary" id="printGo" data-t="mPrint"></button></div>
     </div>
   </div>
@@ -802,6 +863,17 @@
     </div>
   </div>
 </div>
+<div id="csvModal" class="modal-back">
+  <div class="modal">
+    <div class="modal-head"><strong data-t="csvInTitle"></strong><button class="mx" id="csvClose">✕</button></div>
+    <div class="mhint" data-t="csvInHint"></div>
+    <div class="mbody">
+      <textarea id="csvText" data-t-ph="csvPh" style="height:110px" spellcheck="false"></textarea>
+      <div id="csvPrev"></div>
+      <div class="mrow"><button class="ibtn primary" id="csvAdd" disabled></button><button class="ibtn" id="csvFile" data-t="importFile"></button></div>
+    </div>
+  </div>
+</div>
 <div id="cloudModal" class="modal-back">
   <div class="modal">
     <div class="modal-head"><strong data-t="cloudTitle"></strong><button class="mx" id="cloudClose">✕</button></div>
@@ -824,6 +896,21 @@
   <div class="modal">
     <div class="modal-head"><strong data-t="histTitle"></strong><button class="mx" id="histClose">✕</button></div>
     <div id="histBody"></div>
+  </div>
+</div>
+<div id="helpModal" class="modal-back">
+  <div class="modal narrow">
+    <div class="modal-head"><strong data-t="mHelp"></strong><button class="mx" id="helpClose">✕</button></div>
+    <div class="mbody">
+      <p class="hl-hours" data-t="helpHours"></p>
+      <div class="hl-grid">
+        <a class="ibtn wide" href="tel:+306977355378"><svg class="ic" aria-hidden="true"><use href="#i-phone"/></svg><span>+30 697 735 5378</span></a>
+        <a class="ibtn" href="viber://chat?number=%2B306977355378"><svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg><span>Viber</span></a>
+        <a class="ibtn" href="https://wa.me/306977355378" target="_blank" rel="noopener"><svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg><span>WhatsApp</span></a>
+        <a class="ibtn wide" href="mailto:info@takeaseat.gr"><svg class="ic" aria-hidden="true"><use href="#i-mail"/></svg><span>info@takeaseat.gr</span></a>
+      </div>
+      <div class="hl-legal"><a href="/privacy.html" target="_blank" rel="noopener" data-t="helpPrivacy"></a> · <a href="/terms.html" target="_blank" rel="noopener" data-t="helpTerms"></a></div>
+    </div>
   </div>
 </div>
 <div id="tour" hidden>
@@ -865,7 +952,7 @@ el:{
   openedAsVenue:"Ανοίξατε ως κτήμα (αυτή η συσκευή έχει τον σύνδεσμο του κτήματος). Για να το δείτε όπως το ζευγάρι: Πρόσβαση & υποστήριξη.", accResetBy:"Η TakeaSeat έδωσε νέο σύνδεσμο πρόσβασης στις {t} — ανοίξτε τον νέο σύνδεσμο.", accGone:"Αυτό το σχέδιο δεν υπάρχει πια στο cloud.",
   cUploadNone:"Αυτό το σχέδιο είναι μόνο σε αυτή τη συσκευή. Τα σχέδια online τα δίνει το κτήμα σας ή η TakeaSeat.", cLegacyNote:"Παλιοί σύνδεσμοι προβολής και παράθυρα που άνοιξαν πριν από την ενημέρωση συγχρονίζονται έως {t}. Ανανεώστε το TakeaSeat στις άλλες συσκευές σας πριν το απενεργοποιήσετε.", cLegacyOff:"Απενεργοποίηση τώρα", cLegacyOffDone:"Οι παλιοί σύνδεσμοι δεν λειτουργούν πια.",
   claimTitle:"Το τραπεζολόγιό σας", claimLead:"Καλώς ήρθατε! Ο σύνδεσμος ανοίγει το σχέδιό σας μία φορά, σε αυτή τη συσκευή· μετά θα δείτε τον προσωπικό σας σύνδεσμο.", claimInApp:"Είστε μέσα σε εφαρμογή (Viber, Messenger, Instagram…). Ανοίξτε τον σύνδεσμο στο Chrome ή στο Safari, αλλιώς το σχέδιο θα μείνει μόνο εδώ.", claimGo:"Άνοιγμα του σχεδίου μου",
-  claimDone:"Το «{n}» είναι δικό σας — μόνο εσείς το βλέπετε.", claimKeep:"Κρατήστε αυτόν τον προσωπικό σύνδεσμο και στείλτε τον στον/στη σύντροφό σας:", claimShare:"Αποστολή…", claimShareText:"Το τραπεζολόγιό μας «{n}»", claimContinue:"Συνέχεια",
+  claimDone:"Το «{n}» είναι δικό σας — η TakeaSeat δεν το ανοίγει χωρίς πρόσκλησή σας.", claimKeep:"Κρατήστε αυτόν τον προσωπικό σύνδεσμο και στείλτε τον στον/στη σύντροφό σας:", claimShare:"Αποστολή…", claimShareText:"Το τραπεζολόγιό μας «{n}»", claimContinue:"Συνέχεια",
   claimUsedAt:"Αυτός ο σύνδεσμος άνοιξε ήδη ({t}). Αν τον άνοιξε ο/η σύντροφός σας, ζητήστε του/της τον «Σύνδεσμο επεξεργασίας» (☁). Αλλιώς ζητήστε νέο σύνδεσμο στο email σας.", claimExpired:"Ο σύνδεσμος έληξε — ζητήστε νέο στο email σας.", claimFail:"Δεν ήταν δυνατή η σύνδεση — δοκιμάστε ξανά.", claimRetry:"Ξανά", claimHome:"Αρχική σελίδα",
   accAskVenue:"Για αλλαγές στον χώρο επικοινωνήστε με το κτήμα: {c}", accSupportView:"Βλέπετε το σχέδιο χωρίς να το αλλάζετε. Για διορθώσεις, ενεργοποιήστε την επεξεργασία.", accSupportEdit:"Ενεργοποίηση επεξεργασίας", tSupportEditOn:"Επεξεργασία ενεργή — οι αλλαγές αποθηκεύονται στο σχέδιο του πελάτη.", rbSupportView:"🛟 Υποστήριξη (προβολή) · έως {t}",
   accLinks:"Οι σύνδεσμοί σας", accLinksHint:"Αν ο σύνδεσμός σας έφτασε σε κάποιον που δεν θέλετε, φτιάξτε νέους: οι παλιοί και όλες οι άλλες συσκευές σταματούν να έχουν πρόσβαση.", accRotate:"Νέοι σύνδεσμοι", accRotateConfirm:"Οι παλιοί σύνδεσμοι και οι άλλες συσκευές σας θα σταματήσουν να έχουν πρόσβαση. Συνέχεια;", tRotated:"Νέοι σύνδεσμοι έτοιμοι — στείλτε τον νέο στον/στη σύντροφό σας.", atRotate:"έφτιαξε νέους συνδέσμους (οι παλιοί σταμάτησαν)",
@@ -879,6 +966,13 @@ el:{
   accEmail:"Email ανάκτησης", accEmailHint:"Αν χάσετε τον σύνδεσμό σας, ζητήστε νέο με αυτό το email από το takeaseat.gr.", accEmailNone:"Δεν έχει οριστεί email — προσθέστε ένα, για να μπορείτε να ανακτήσετε το σχέδιο αν χάσετε τον σύνδεσμο.",
   accEmailChange:"Αλλαγή", accEmailSet:"Αποθήκευση", accEmailSame:"Αυτό είναι ήδη το email ανάκτησης.", tEmailSent:"Στείλαμε σύνδεσμο επιβεβαίωσης στο {e}. Η αλλαγή γίνεται όταν τον ανοίξετε.",
   atRecover:"άνοιξε το σχέδιο με σύνδεσμο ανάκτησης (email)", atEmail:"άλλαξε το email ανάκτησης",
+  goneVenue:"Ο γάμος διαγράφηκε από το κτήμα — αν έγινε κατά λάθος, το κτήμα μπορεί να ζητήσει επαναφορά.", goneBack:"Το σχέδιο είναι ξανά διαθέσιμο.",
+  lifeWas:"Ο γάμος σας έγινε στις {d}.", lifeWasV:"Ο γάμος έγινε στις {d}.", lifeRo:"Το σχέδιο είναι πλέον μόνο για προβολή.", lifeRoDel:"Το σχέδιο είναι πλέον μόνο για προβολή και θα διαγραφεί στις {d}.", lifePdf:"Αναμνηστικό PDF",
+  rbDone:"🔒 Μόνο προβολή", tLockedWed:"Ο γάμος έχει γίνει — το σχέδιο είναι μόνο για προβολή.",
+  accDate:"Ημερομηνία γάμου", accDateNone:"Δεν έχει οριστεί ακόμη.", accDateHint:"Από την επόμενη μέρα του γάμου το σχέδιο γίνεται μόνο για προβολή (με αναμνηστικό PDF).", accDateByVenue:"Την ημερομηνία την ορίζει το κτήμα.",
+  accDateSet:"Ορισμός", accDateChange:"Αλλαγή", accDateLeft:"Αλλαγές που απομένουν: {n}", accDateNoMore:"Δεν επιτρέπονται άλλες αλλαγές ημερομηνίας — γράψτε μας στο info@takeaseat.gr.", accDateBad:"Διαλέξτε ημερομηνία από σήμερα έως δύο χρόνια μπροστά.",
+  accDateConfirm:"Ημερομηνία γάμου: {d}. Μετά μπορείτε να την αλλάξετε έως {n} φορές. Συνέχεια;", accDateConfirmChange:"Αλλαγή ημερομηνίας σε {d}; Θα απομένουν {n} αλλαγές.", tDateSet:"Ημερομηνία γάμου: {d}", dateNudge:"Ορίστε την ημερομηνία του γάμου σας.", dateNudgeGo:"Ορισμός",
+  awSystem:"Σύστημα", atDate:"όρισε την ημερομηνία του γάμου σε {d}", atLocked:"ο γάμος πέρασε — το σχέδιο είναι πλέον μόνο για προβολή",
   accTitle:"Πρόσβαση & υποστήριξη", mAccess:"Πρόσβαση & υποστήριξη", theVenue:"το κτήμα",
   rbVenue:"🏛 Κτήμα", rbVenueTip:"Ανοίξατε τον γάμο ως κτήμα: αλλάζετε τα πάντα. Το ζευγάρι αλλάζει μόνο ό,τι του επιτρέπετε.", rbTemplate:"🏛 Πρότυπο χώρου", rbTemplateTip:"Αυτή είναι η διάταξη του χώρου σας: κάθε νέος γάμος ξεκινά από εδώ (χωρίς καλεσμένους). Οι γάμοι που υπάρχουν ήδη δεν αλλάζουν.", rbPreview:"👁 Όπως το βλέπει το ζευγάρι",
   rbSupport:"🛟 Υποστήριξη · έως {t}", rbSupportTip:"Ο ιδιοκτήτης σάς έδωσε προσωρινή πρόσβαση. Τίποτα δεν μένει σε αυτή τη συσκευή.", rbViewer:"👁 Μόνο προβολή", rbViewerTip:"Βλέπετε το σχέδιο· δεν μπορείτε να το αλλάξετε.",
@@ -886,7 +980,7 @@ el:{
   permFloor:"Δάπεδο & μέγεθος χώρου", permDecor:"Στοιχεία του κτήματος (πίστα, μπαρ, μπουφέδες, WC…)", permLayout:"Θέσεις τραπεζιών στον χώρο", permTables:"Προσθήκη / διαγραφή τραπεζιών", permSeats:"Αριθμός θέσεων ανά τραπέζι", permLabels:"Ονόματα τραπεζιών", permMax:"έως {n} ανά τραπέζι", permAlways:"Καλεσμένοι, θέσεις, ομάδες, προσκλητήρια, εκτύπωση",
   tLockedPart:"Αυτό το ορίζει το κτήμα ({w}).", tLockedByVenue:"Ο χώρος μένει όπως τον έστησε {v} — κρατήθηκαν οι δικές σας αλλαγές (ονόματα, θέσεις).",
   accSpace:"Ο χώρος σας — από {v}", accSpaceHint:"Το κτήμα έχει στήσει τον χώρο. Εσείς μπορείτε:", accCouplePerms:"Τι μπορεί να αλλάξει το ζευγάρι", accCouplePermsHint:"Αλλάζει από την κονσόλα του κτήματος (Δικαιώματα).", accPreview:"Δείτε το όπως το ζευγάρι", tPreviewOn:"Βλέπετε όσα βλέπει το ζευγάρι.", tPreviewOff:"Πλήρης προβολή κτήματος.",
-  accSupport:"Υποστήριξη TakeaSeat", accSupportHint:"Η TakeaSeat δεν μπορεί να ανοίξει το σχέδιό σας. Αν χρειαστείτε βοήθεια, δώστε μας πρόσβαση για λίγο — τη διακόπτετε όποτε θέλετε και βλέπετε παρακάτω τι κάναμε.", accSupportHintVenue:"Η TakeaSeat δεν ανοίγει τους γάμους σας. Για βοήθεια, δώστε μας πρόσβαση σε αυτόν τον γάμο για λίγο — τη διακόπτετε όποτε θέλετε.",
+  accSupport:"Υποστήριξη TakeaSeat", accSupportHint:"Η TakeaSeat δεν ανοίγει το σχέδιό σας χωρίς πρόσκλησή σας — κάθε πρόσβαση καταγράφεται. Αν χρειαστείτε βοήθεια, δώστε μας πρόσβαση για λίγο — τη διακόπτετε όποτε θέλετε και βλέπετε παρακάτω τι κάναμε.", accSupportHintVenue:"Η TakeaSeat δεν ανοίγει τους γάμους σας χωρίς πρόσκλησή σας — κάθε πρόσβαση καταγράφεται. Για βοήθεια, δώστε μας πρόσβαση σε αυτόν τον γάμο για λίγο — τη διακόπτετε όποτε θέλετε.",
   accMsgPh:"Τι χρειάζεστε; (προαιρετικό)", accH24:"για 24 ώρες", accH72:"για 3 ημέρες", accH168:"για 7 ημέρες", accInvite:"Πρόσκληση υποστήριξης", accSupportLive:"Η υποστήριξη έχει πρόσβαση έως {t}.", accRevoke:"Τερματισμός πρόσβασης", accRevokeConfirm:"Να σταματήσει τώρα η πρόσβαση της υποστήριξης;",
   accMail:"Ενημερώστε μας με email", accMailSubject:"Υποστήριξη TakeaSeat — {n}", accMailBody:"Γεια σας, σας δώσαμε πρόσβαση στο σχέδιό μας (έως {t}). Χρειαζόμαστε βοήθεια με: ",
   tSupportInvited:"Η πρόσκληση στάλθηκε — πατήστε «Ενημερώστε μας με email» για να το δούμε αμέσως.", tSupportEnded:"Η πρόσβαση της υποστήριξης σταμάτησε.", accFail:"Δεν έγινε — δοκιμάστε ξανά.",
@@ -895,13 +989,13 @@ el:{
   awCouple:"Ζευγάρι", awVenue:"Κτήμα", awSupport:"Υποστήριξη TakeaSeat", awAdmin:"TakeaSeat",
   atInvite:"έδωσε πρόσβαση στην υποστήριξη ({h} ώρες)", atRevoke:"σταμάτησε την πρόσβαση της υποστήριξης", atOpen:"άνοιξε το σχέδιο", atSave:"έκανε αλλαγές", atRestore:"επανέφερε παλαιότερη έκδοση", atReset:"έδωσε νέο σύνδεσμο πρόσβασης (ο παλιός δεν ισχύει)", atClaim:"άνοιξε το σχέδιο για πρώτη φορά", atClaimReset:"άνοιξε τον νέο σύνδεσμο που έδωσε η TakeaSeat",
   supOpened:"Υποστήριξη: «{n}» — η πρόσβαση είναι προσωρινή.", supEnded:"Η πρόσβαση υποστήριξης έληξε ή σταμάτησε.", accLost:"Αυτή η συσκευή δεν έχει πια πρόσβαση στο σχέδιο — ανοίξτε τον πιο πρόσφατο σύνδεσμο.", accViewExpired:"Αυτός ο σύνδεσμος δεν ισχύει πια — ζητήστε νέο από το ζευγάρι ή το κτήμα.",
-  claimUsed:"Αυτός ο σύνδεσμος έχει ήδη ανοιχτεί. Ανοίξτε το σχέδιο από τη συσκευή που το ανοίξατε πρώτη φορά, ή γράψτε μας στο info@takeaseat.gr.", claimWelcome:"Καλώς ήρθατε! Το «{n}» είναι δικό σας — μόνο εσείς το βλέπετε. Κρατήστε τον σύνδεσμο (☁) για τις άλλες συσκευές σας.",
+  claimUsed:"Αυτός ο σύνδεσμος έχει ήδη ανοιχτεί. Ανοίξτε το σχέδιο από τη συσκευή που το ανοίξατε πρώτη φορά, ή γράψτε μας στο info@takeaseat.gr.", claimWelcome:"Καλώς ήρθατε! Το «{n}» είναι δικό σας — η TakeaSeat δεν το ανοίγει χωρίς πρόσκλησή σας. Κρατήστε τον σύνδεσμο (☁) για τις άλλες συσκευές σας.",
   cVenueLinks:"Είστε συνδεδεμένοι ως κτήμα. Τον σύνδεσμο του ζευγαριού τον αντιγράφετε από την κονσόλα του κτήματος.", cSupportNoLinks:"Προσωρινή πρόσβαση υποστήριξης — χωρίς συνδέσμους κοινής χρήσης.",
   labBadge:"🧪 Εργαστήριο", labHint:"Δοκιμαστικός χώρος — ό,τι αλλάζετε εδώ μένει μόνο σε αυτή τη συσκευή.",
   switchPlan:"Αλλαγή ζευγαριού / εκδήλωσης", newPlan:"Νέο σχέδιο (ζευγάρι / εκδήλωση)", planMore:"Μετονομασία · αντιγραφή · διαγραφή",
   shareTitle:"Κοινή χρήση & συγχρονισμός", fontDown:"Μικρότερα ονόματα", fontUp:"Μεγαλύτερα ονόματα", fit:"Προσαρμογή", zoomIn:"Μεγέθυνση", zoomOut:"Σμίκρυνση", print:"Εκτύπωση", more:"Περισσότερα",
   tsTitle:"Τραπέζια", tsAll:"Όλα", tsToggle:"Εμφάνιση / απόκρυψη λίστας τραπεζιών",
-  helpTitle:"Οδηγός χρήσης", mTour:"Οδηγός χρήσης", tourSkip:"Παράλειψη οδηγού", tourBack:"Πίσω", tourNext:"Επόμενο", tourDone:"Τέλος",
+  helpTitle:"Οδηγός χρήσης", mTour:"Οδηγός χρήσης", mHelp:"Βοήθεια & επικοινωνία", helpHours:"Είμαστε εδώ 10:00–14:00 και 17:00–21:00 (ώρα Ελλάδας) — τηλέφωνο, Viber, WhatsApp ή email.", helpPrivacy:"Πολιτική απορρήτου", helpTerms:"Όροι χρήσης", tourSkip:"Παράλειψη οδηγού", tourBack:"Πίσω", tourNext:"Επόμενο", tourDone:"Τέλος",
   welcomeTitle:"Καλώς ήρθατε!", welcome1:"Πατήστε ένα τραπέζι.", welcome2:"Γράψτε όνομα και πατήστε Enter.", welcome3:"Ο σύνδεσμός σας είναι το κλειδί — φυλάξτε τον.", welcomeGo:"Ξεκινάω", welcomeSteps:"Δείξτε μου τα βήματα",
   hintEnter:"Γράψτε όνομα, Enter → επόμενη θέση.",
   tipMoveTouch:"Κρατήστε ένα όνομα μισό δευτερόλεπτο και σύρετέ το σε άλλη καρέκλα.", tipMove:"Σύρετε ένα όνομα σε άλλη καρέκλα για να το μετακινήσετε.",
@@ -926,18 +1020,18 @@ el:{
   mHistory:"Ιστορικό εκδόσεων", histTitle:"Ιστορικό εκδόσεων", histHint:"Κάθε αποθήκευση κρατά την προηγούμενη έκδοση στον διακομιστή. Επαναφέρετε όποια θέλετε — η τωρινή έκδοση κρατιέται κι αυτή.", histRow:"{g} καλεσμένοι · {s} με θέση · {n} τραπέζια", histRestore:"Επαναφορά", histConfirm:"Επαναφορά της έκδοσης «{t}»; Η τωρινή έκδοση μένει στο ιστορικό.", histRestored:"Επαναφέρθηκε η έκδοση «{t}»", histEmpty:"Δεν υπάρχουν προηγούμενες εκδόσεις ακόμη.", histFail:"Δεν ήταν δυνατή η ανάκτηση του ιστορικού", histNoCloud:"Το ιστορικό υπάρχει μόνο για σχέδια που είναι online.",
   resetWarn2:"ΠΡΟΣΟΧΗ: το σχέδιο έχει {g} καλεσμένους ({s} με θέση). Να σβηστούν ΟΛΑ;", tResetHist:"Έγινε επαναφορά — η προηγούμενη έκδοση υπάρχει στο ⋯ → Ιστορικό εκδόσεων",
   cWipeBlocked:"Δεν αποθηκεύτηκε: το online σχέδιο έχει {n} καλεσμένους ενώ αυτό εδώ είναι άδειο. Φορτώνω ξανά το online σχέδιο.", cLocalErr:"Το τοπικό αντίγραφο δεν φορτώθηκε ({e}) — φόρτωση από το cloud.", cLoadErr:"Σφάλμα φόρτωσης από το cloud: {e}",
-  view:"Προβολή", names:"Ονόματα καλεσμένων", nm_full:"Πλήρη", nm_short:"Σύντομα", nm_initials:"Αρχικά", nameSize:"Μέγεθος ονομάτων", numSize:"Μέγεθος αριθμών τραπεζιών", zoomLbl:"Ζουμ", undo:"Αναίρεση", redo:"Επανάληψη", tUndo:"Αναιρέθηκε", tRedo:"Επαναλήφθηκε", tNumSize:"Μέγεθος αριθμών {n}%", mRound:"Στρογγυλό τραπέζι", holdToMove:"Για μετακίνηση, κρατήστε το τραπέζι ή αντικείμενο μισό δευτερόλεπτο και σύρετε.",
-  tools:"Τραπέζια & χώρος", addRound:"Στρογγυλό", addHead:"Νυφικό", decor:"Διακόσμηση", autoSeat:"Αυτόματα", floor:"Δάπεδο",
-  guests:"Καλεσμένοι", unseatedN:"{n} χωρίς θέση", searchPh:"Αναζήτηση ονόματος…", all:"Όλοι", addGroup:"＋ ομάδα", addGroupTitle:"Νέα ομάδα",
+  view:"Προβολή", names:"Ονόματα καλεσμένων", nm_full:"Πλήρη", nm_short:"Σύντομα", nm_initials:"Αρχικά", nameSize:"Μέγεθος ονομάτων", numSize:"Μέγεθος αριθμών τραπεζιών", zoomLbl:"Ζουμ", undo:"Αναίρεση", redo:"Επανάληψη", tUndo:"Αναιρέθηκε", tRedo:"Επαναλήφθηκε", tNumSize:"Μέγεθος αριθμών {n}%", mRound:"Στρογγυλό τραπέζι", mRect:"Μακρύ τραπέζι", holdToMove:"Για μετακίνηση, κρατήστε το τραπέζι ή αντικείμενο μισό δευτερόλεπτο και σύρετε.",
+  tools:"Τραπέζια & χώρος", addRound:"Στρογγυλό", addRect:"Μακρύ", addHead:"Νυφικό", decor:"Διακόσμηση", autoSeat:"Αυτόματα", floor:"Δάπεδο",
+  guests:"Καλεσμένοι", unseatedN:"{n} χωρίς θέση", searchPh:"Αναζήτηση ονόματος…", seatedCap:"Με θέση", all:"Όλοι", addGroup:"＋ ομάδα", addGroupTitle:"Νέα ομάδα",
   addNames:"Προσθήκη ονομάτων", namesPh:"Ένα όνομα ανά γραμμή…\nΟικ. Παπαδόπουλου:\nΓιώργος\nΜαρία", namesHint:"Μπαίνουν στην επιλεγμένη ομάδα · Ctrl+Enter για προσθήκη", namesTo:"Τα νέα ονόματα μπαίνουν σε: {g} · «Όνομα προσκλητηρίου:» σε δική του γραμμή ομαδοποιεί όσα ακολουθούν · Ctrl+Enter", namesToTouch:"Τα νέα ονόματα μπαίνουν σε: {g} · «Όνομα προσκλητηρίου:» σε δική του γραμμή ομαδοποιεί όσα ακολουθούν", addToList:"Προσθήκη στη λίστα",
   poolEmpty:"Όλοι οι καλεσμένοι έχουν θέση 🎉", poolEmptyNew:"Δεν υπάρχουν καλεσμένοι ακόμη.<br>Προσθέστε ονόματα παρακάτω ↓", poolEmptyGroup:"Κανείς χωρίς θέση σε αυτή την ομάδα — δείτε «Όλοι»", noMatch:"Κανένα όνομα δεν ταιριάζει",
   chipEdit:"Επεξεργασία ονόματος & ομάδας", chipRemove:"Αφαίρεση καλεσμένου", groupTip:"Κλικ: επιλογή · Διπλό κλικ: μετονομασία · Δεξί κλικ: χρώμα / διαγραφή", groupMore:"Μετονομασία / χρώμα / διαγραφή",
   prevTable:"Προηγούμενο τραπέζι", nextTable:"Επόμενο τραπέζι", tableSettings:"Ρυθμίσεις τραπεζιού", close:"Κλείσιμο",
-  seatPh:"κενή θέση", unseat:"Αφαίρεση από τη θέση", fill:"Γέμισμα", clearTable:"Άδειασμα", tableGroup:"Ομάδα τραπεζιού…", partyNew:"Προσκλητήριο…", partySelHint:"Πατήστε τα ονόματα που ανήκουν στο ίδιο προσκλητήριο", psCount:"{n} επιλεγμένα", psNamePh:"Όνομα προσκλητηρίου (π.χ. ΚΟΤΣΩΝΑΣ)", psOk:"Δημιουργία", partyN:"Προσκλητήριο {n}", tPartyMade:"Προσκλητήριο «{n}»: {k} ονόματα", tPartyNone:"Πατήστε πρώτα τα ονόματα που θέλετε", printTitleM:"Εκτύπωση", pmNames:"Ονόματα ανά τραπέζι", pmParties:"Προσκλητήρια ανά τραπέζι (πόσα άτομα από κάθε προσκλητήριο)", nameCase:"Γραφή", nc_asis:"Όπως γράφτηκαν", nc_upper:"ΚΕΦΑΛΑΙΑ", nc_lower:"Πεζά", tLowerHint:"Πεζά με αρχικό κεφαλαίο — οι τόνοι επιστρέφουν μόνο σε γνωστά μικρά ονόματα· τα υπόλοιπα διορθώστε τα με το χέρι.", confirmMerge:"Συγχώνευση «{a}» στο «{b}»; Τα {n} άτομα μετακινούνται και το «{b}» θα έχει {c} θέσεις.", mergeTitle:"Συγχώνευση τραπεζιών", mergeOk:"Συγχώνευση", dragMerge:"Συγχώνευση με «{b}»", tTablesMerged:"«{a}» → «{b}»: {n} άτομα, {c} θέσεις — ↶ για αναίρεση", tMergeTooBig:"Δεν γίνεται: το «{b}» θα χρειαζόταν {c} θέσεις (μέγιστο 30).", tgCap:"Όλοι στο «{n}» → ομάδα", tgEmpty:"Κανείς δεν κάθεται ακόμη στο «{n}».", tGrouped:"«{g}»: όλοι στο «{n}» ({k})", tUngrouped:"Χωρίς ομάδα: όλοι στο «{n}» ({k})", clearConfirm:"Να επιστρέψουν όλοι οι καλεσμένοι του «{n}» στους χωρίς θέση;",
+  seatPh:"κενή θέση", unseat:"Αφαίρεση από τη θέση", fill:"Γέμισμα", clearTable:"Άδειασμα", tableGroup:"Ομάδα τραπεζιού…", partyNew:"Προσκλητήριο…", partySelHint:"Πατήστε τα ονόματα που ανήκουν στο ίδιο προσκλητήριο", psCount:"{n} επιλεγμένα", psNamePh:"Όνομα προσκλητηρίου (π.χ. ΚΟΤΣΩΝΑΣ)", psOk:"Δημιουργία", partyN:"Προσκλητήριο {n}", tPartyMade:"Προσκλητήριο «{n}»: {k} ονόματα", tPartyNone:"Πατήστε πρώτα τα ονόματα που θέλετε", printTitleM:"Εκτύπωση & PDF", pmPdf:"Κάτοψη (PDF) — ο χώρος με τα τραπέζια και τα ονόματα, σε μία σελίδα", pmKeep:"Αναμνηστικό PDF — εξώφυλλο, κάτοψη και ποιος κάθισε πού", pdfGo:"Λήψη PDF", pdfMaking:"Δημιουργία PDF…", pdfBig:"Το σχέδιο είναι πολύ μεγάλο για PDF.", pdfOff:"Το PDF δεν είναι διαθέσιμο αυτή τη στιγμή — δοκιμάστε αργότερα ή χρησιμοποιήστε την εκτύπωση.", pdfFail:"Δεν δημιουργήθηκε το PDF — δοκιμάστε ξανά.", printWed:"Γάμος: {d}", printAt:"Εκτύπωση: {t}", pmNames:"Ονόματα ανά τραπέζι", pmParties:"Προσκλητήρια ανά τραπέζι (πόσα άτομα από κάθε προσκλητήριο)", nameCase:"Γραφή", nc_asis:"Όπως γράφτηκαν", nc_upper:"ΚΕΦΑΛΑΙΑ", nc_lower:"Πεζά", tLowerHint:"Πεζά με αρχικό κεφαλαίο — οι τόνοι επιστρέφουν μόνο σε γνωστά μικρά ονόματα· τα υπόλοιπα διορθώστε τα με το χέρι.", confirmMerge:"Συγχώνευση «{a}» στο «{b}»; Τα {n} άτομα μετακινούνται και το «{b}» θα έχει {c} θέσεις.", mergeTitle:"Συγχώνευση τραπεζιών", mergeOk:"Συγχώνευση", dragMerge:"Συγχώνευση με «{b}»", tTablesMerged:"«{a}» → «{b}»: {n} άτομα, {c} θέσεις — ↶ για αναίρεση", tMergeTooBig:"Δεν γίνεται: το «{b}» θα χρειαζόταν {c} θέσεις (μέγιστο 30).", tgCap:"Όλοι στο «{n}» → ομάδα", tgEmpty:"Κανείς δεν κάθεται ακόμη στο «{n}».", tGrouped:"«{g}»: όλοι στο «{n}» ({k})", tUngrouped:"Χωρίς ομάδα: όλοι στο «{n}» ({k})", clearConfirm:"Να επιστρέψουν όλοι οι καλεσμένοι του «{n}» στους χωρίς θέση;",
   fillNone:"Δεν υπάρχουν καλεσμένοι χωρίς θέση εκεί", filled:"Τοποθετήθηκαν {n}", createNew:"＋ Νέος καλεσμένος «{n}»", renameTo:"Μετονομασία σε «{n}»", moreMatches:"…και άλλοι {n} — συνεχίστε να γράφετε",
   pbHint:"→ πατήστε μια θέση", pbUnseat:"↩ Χωρίς θέση", pbEdit:"Επεξεργασία", pbCancel:"Άκυρο",
-  menuTitle:"Ρυθμίσεις τραπεζιού", menuTitleHead:"Ρυθμίσεις νυφικού τραπεζιού", capLabel:"Θέσεις", capLabelHead:"Συνολικές θέσεις (οι 2 είναι οι ακριανές)", labelPh:"Όνομα / αριθμός τραπεζιού", deleteTable:"Διαγραφή", focusSeats:"Ονόματα",
-  mShare:"Κοινή χρήση & συγχρονισμός", mImportGuests:"Λίστα καλεσμένων από αρχείο κτήματος", mExport:"Εξαγωγή σχεδίου (αρχείο)", mImport:"Εισαγωγή σχεδίου — νέο ή συγχώνευση…", mPrint:"Εκτύπωση", mReset:"Επαναφορά σχεδίου", mAskDel:"Ρώτα ξανά πριν από διαγραφή ή συγχώνευση", tAskDel:"Εντάξει — θα ρωτάω ξανά πριν από κάθε διαγραφή ή συγχώνευση.", mLang:"Γλώσσα", mMore:"Περισσότερα…", capPlan:"Σχέδιο", capFiles:"Αρχεία & αντίγραφα", mDecor:"Διακόσμηση & αντικείμενα", mHead:"Νυφικό τραπέζι", mAuto:"Αυτόματη τοποθέτηση",
+  menuTitle:"Ρυθμίσεις τραπεζιού", menuTitleHead:"Ρυθμίσεις νυφικού τραπεζιού", menuTitleRect:"Ρυθμίσεις μακριού τραπεζιού", capLabelRect:"Θέσεις (και στις δύο μακριές πλευρές)", capLabel:"Θέσεις", capLabelHead:"Συνολικές θέσεις (οι 2 είναι οι ακριανές)", labelPh:"Όνομα / αριθμός τραπεζιού", deleteTable:"Διαγραφή", focusSeats:"Ονόματα",
+  mShare:"Κοινή χρήση & συγχρονισμός", mExport:"Εξαγωγή σχεδίου (αρχείο)", mImport:"Εισαγωγή σχεδίου — νέο ή συγχώνευση…", mPrint:"Εκτύπωση", mReset:"Επαναφορά σχεδίου", mAskDel:"Ρώτα ξανά πριν από διαγραφή ή συγχώνευση", tAskDel:"Εντάξει — θα ρωτάω ξανά πριν από κάθε διαγραφή ή συγχώνευση.", mLang:"Γλώσσα", mMore:"Περισσότερα…", capPlan:"Σχέδιο", capFiles:"Αρχεία & αντίγραφα", mDecor:"Διακόσμηση & αντικείμενα", mHead:"Νυφικό τραπέζι", mAuto:"Αυτόματη τοποθέτηση",
   stats:"{t} τραπέζια · {s}/{g} με θέση · {c} θέσεις",
   headTable:"Νυφικό τραπέζι", headFacing:"βλέπει προς την πίστα",
   groupsDefault:["Πλευρά νύφης","Πλευρά γαμπρού","Φίλοι","Οικογένεια"],
@@ -955,7 +1049,7 @@ el:{
   ourWedding:"Ο γάμος μας", sharedPlan:"Κοινόχρηστο σχέδιο", importedPlan:"Εισαγόμενο σχέδιο", pastedPlan:"Επικολλημένο σχέδιο", labPlan:"Δοκιμαστικός γάμος",
   confirmDeleteTable:"Διαγραφή «{n}»; Οι καλεσμένοι του επιστρέφουν στους χωρίς θέση.", confirmDeleteFeature:"Διαγραφή «{n}»;", delTitle:"Διαγραφή", delSkip:"Να μην ξαναρωτηθώ", delOk:"Διαγραφή", tDeleted:"Διαγράφηκε «{n}» — ↶ για αναίρεση",
   confirmResetShared:"Επαναφορά στην αρχική διάταξη; Διαγράφονται όλοι οι καλεσμένοι — και επειδή το σχέδιο είναι κοινόχρηστο, θα το δουν όλοι όσοι έχουν τον σύνδεσμο.", confirmReset:"Επαναφορά στην αρχική διάταξη; Διαγράφονται όλοι οι καλεσμένοι.",
-  tGuestRemoved:"Ο καλεσμένος αφαιρέθηκε", tTableAdded:"Νέο τραπέζι — γράψτε τα ονόματα ή σύρετέ το στη θέση του", tHeadAdded:"Προστέθηκε νυφικό τραπέζι", tGuestsAdded:"{n} καλεσμένος/-οι προστέθηκαν", tAutoSeated:"Τοποθετήθηκαν {n} καλεσμένος/-οι", tNoSeats:"Δεν υπάρχουν ελεύθερες θέσεις ή καλεσμένοι χωρίς θέση", tBumped:"{n} καλεσμένος/-οι μετακινήθηκαν σε «χωρίς θέση»", tReset:"Έγινε επαναφορά", tProfileCreated:"Δημιουργήθηκε νέο σχέδιο", tProfileCopied:"Το σχέδιο αντιγράφηκε", tProfileDeleted:"Το σχέδιο διαγράφηκε", tImported:"Εισήχθη ως νέο σχέδιο: «{n}»", tCopied:"Αντιγράφηκε στο πρόχειρο", tCopyHint:"Επιλέξτε όλα & πατήστε Ctrl+C", tDownloaded:"Λήφθηκε {n}", tNotPlan:"Δεν είναι αρχείο σχεδίου ή λίστας καλεσμένων", tInvalidFile:"Μη έγκυρο αρχείο", tPasteFirst:"Επικολλήστε πρώτα κείμενο σχεδίου", tInvalidPaste:"Το κείμενο δεν είναι έγκυρο σχέδιο", tFont:"Μέγεθος ονομάτων {n}%", tFullPlan:"Αυτό είναι πλήρες σχέδιο — χρησιμοποιήστε την «Εισαγωγή σχεδίου»", tNotGuestList:"Δεν είναι αρχείο λίστας καλεσμένων", tMerged:"Προστέθηκαν {a} καλεσμένος/-οι", tMergedSkipped:" · παραλείφθηκαν {s} ήδη εισαγμένοι", tCleared:"Το τραπέζι άδειασε",
+  tGuestRemoved:"Ο καλεσμένος αφαιρέθηκε", tTableAdded:"Νέο τραπέζι — γράψτε τα ονόματα ή σύρετέ το στη θέση του", tHeadAdded:"Προστέθηκε νυφικό τραπέζι", tGuestsAdded:"{n} καλεσμένος/-οι προστέθηκαν", tAutoSeated:"Τοποθετήθηκαν {n} καλεσμένος/-οι", tNoSeats:"Δεν υπάρχουν ελεύθερες θέσεις ή καλεσμένοι χωρίς θέση", tBumped:"{n} καλεσμένος/-οι μετακινήθηκαν σε «χωρίς θέση»", tReset:"Έγινε επαναφορά", tProfileCreated:"Δημιουργήθηκε νέο σχέδιο", tProfileCopied:"Το σχέδιο αντιγράφηκε", tProfileDeleted:"Το σχέδιο διαγράφηκε", tImported:"Εισήχθη ως νέο σχέδιο: «{n}»", tCopied:"Αντιγράφηκε στο πρόχειρο", tCopyHint:"Επιλέξτε όλα & πατήστε Ctrl+C", tDownloaded:"Λήφθηκε {n}", tNotPlan:"Δεν είναι αρχείο σχεδίου ή λίστας καλεσμένων", tInvalidFile:"Μη έγκυρο αρχείο", tPasteFirst:"Επικολλήστε πρώτα κείμενο σχεδίου", tInvalidPaste:"Το κείμενο δεν είναι έγκυρο σχέδιο", tFont:"Μέγεθος ονομάτων {n}%", tMerged:"Προστέθηκαν {a} καλεσμένος/-οι", tMergedSkipped:" · παραλείφθηκαν {s} ήδη εισαγμένοι", tCleared:"Το τραπέζι άδειασε",
   exportTitle:"Αντιγραφή / λήψη σχεδίου", exportHint:"Αντιγράψτε το κείμενο και επικολλήστε το στην «Εισαγωγή σχεδίου» σε άλλη συσκευή — ή κατεβάστε το ως αρχείο.", exportCopy:"Αντιγραφή", exportDownload:"Λήψη αρχείου",
   importTitle:"Εισαγωγή σχεδίου", importHint:"Επικολλήστε κείμενο σχεδίου ή επιλέξτε αρχείο — και διαλέξτε πώς θα μπει.", importPh:"Επικολλήστε εδώ το κείμενο του σχεδίου…", importPaste:"Φόρτωση", importFile:"Επιλογή αρχείου",
   imTitle:"Τρόπος εισαγωγής", im_new:"Νέο σχέδιο", im_new_d:"Το αρχείο ανοίγει ως ξεχωριστό σχέδιο.",
@@ -974,7 +1068,12 @@ el:{
   cViewOnly:"Αυτό το σχέδιο είναι μόνο για προβολή εδώ", cPushed:"Στάλθηκε στο cloud", cPushFail:"Η αποστολή απέτυχε", cPullConfirm:"Αντικατάσταση με την πιο πρόσφατη έκδοση από το cloud;", cPulled:"Λήφθηκε το πιο πρόσφατο", cPullFail:"Η λήψη απέτυχε", cRemoveConfirm:"Αφαίρεση από το cloud; Μένει σε αυτή τη συσκευή, αλλά σταματά ο συγχρονισμός και οι σύνδεσμοι παύουν να λειτουργούν.", cRemoved:"Αφαιρέθηκε από το cloud",
   cNewer:"Φορτώθηκε νεότερη έκδοση από άλλη συσκευή", cUpdated:"Ενημερώθηκε από το cloud", cOpenedSync:"Άνοιξε κοινόχρηστο σχέδιο (συγχρονισμένο)", cOpenedView:"Άνοιξε κοινόχρηστο σχέδιο (μόνο προβολή)", cOpenedNamed:"Άνοιξε: «{n}»", cOpenedNamedView:"Άνοιξε (μόνο προβολή): «{n}»", cOpenFail:"Δεν ήταν δυνατό το άνοιγμα του συνδέσμου",
   printTitle:"Σχέδιο Τραπεζιών Γάμου", printSub:"{t} τραπέζια · {s} καλεσμένοι με θέση · {c} θέσεις", printEmpty:"— κενή —", printUnassigned:"Χωρίς θέση ({n}):",
-  stProbable:"πιθανή", stCut:"ακυρώθηκε",
+  stProbable:"πιθανή", stCut:"ακυρώθηκε", stConfirmed:"επιβεβαιωμένη",
+  mCsvOut:"Λίστα καλεσμένων (Excel)", mCsvIn:"Εισαγωγή ονομάτων από Excel…", csvFile:"καλεσμένοι", csvName:"Όνομα", csvTable:"Τραπέζι", csvGroup:"Ομάδα", csvParty:"Προσκλητήριο", csvStatus:"Κατάσταση", csvNote:"Σημείωση",
+  csvInTitle:"Εισαγωγή ονομάτων (Excel / CSV)", csvInHint:"Επικολλήστε κελιά από το Excel ή διαλέξτε αρχείο .csv. Αναγνωρίζονται οι στήλες Όνομα (ή Όνομα + Επώνυμο), Τραπέζι, Ομάδα, Προσκλητήριο, Κατάσταση, Σημείωση — όλες εκτός από το όνομα είναι προαιρετικές.", csvPh:"Επικολλήστε εδώ — μία γραμμή ανά καλεσμένο",
+  csvSum:"Ονόματα: {n} · νέα: {k}", csvSumDup:" · ήδη στη λίστα (παραλείπονται): {d}", csvCols:"Στήλες: {c}", csvNoHead:"Χωρίς επικεφαλίδες: η πρώτη στήλη γίνεται όνομα.", csvAdd:"Προσθήκη στη λίστα ({n})",
+  csvEnc:"Το αρχείο δεν ήταν σε UTF-8 και διαβάστηκε ως {e}. Αν τα ονόματα φαίνονται λάθος, αποθηκεύστε το στο Excel ως «CSV UTF-8» και δοκιμάστε ξανά.", csvBad:"Κάποιοι χαρακτήρες δεν διαβάστηκαν (�). Αποθηκεύστε το αρχείο στο Excel ως «CSV UTF-8» και δοκιμάστε ξανά.", csvXlsx:"Αυτό είναι αρχείο Excel (.xlsx). Στο Excel: Αποθήκευση ως → «CSV UTF-8», και διαλέξτε αυτό το αρχείο.",
+  csvDone:"Προστέθηκαν στη λίστα: {n}", csvDoneSeated:" · σε τραπέζια: {s}", csvDoneNoRoom:" · χωρίς θέση: {k} (το τραπέζι τους δεν βρέθηκε ή είναι γεμάτο)",
   labBride:"Νύφη", labGroom:"Γαμπρός",
   labNames:["Μαρία Π.","Γιώργος Κ.","Ελένη Α.","Νίκος Δ.","Κατερίνα Μ.","Δημήτρης Σ.","Σοφία Λ.","Κώστας Β.","Άννα Χ.","Παναγιώτης Ρ.","Χριστίνα Τ.","Μιχάλης Γ.","Ειρήνη Ν.","Βασίλης Ζ.","Δέσποινα Φ.","Αλέξανδρος Κ.","Ιωάννα Π.","Θανάσης Μ.","Αγγελική Σ.","Στέλιος Α.","Φωτεινή Δ.","Μανώλης Λ.","Ζωή Β.","Πέτρος Χ.","Ευαγγελία Ρ.","Σπύρος Τ.","Ναταλία Γ.","Χρήστος Ν.","Μαρίνα Ζ.","Λευτέρης Φ.","Αναστασία Κ.","Αντώνης Π.","Ελευθερία Μ.","Σταύρος Σ.","Νεφέλη Α.","Ορέστης Δ.","Δανάη Λ.","Άρης Β.","Ισμήνη Χ.","Φίλιππος Ρ."],
 },
@@ -983,7 +1082,7 @@ en:{
   openedAsVenue:"Opened as the venue (this device has the venue's link). To see it as the couple does: Access & support.", accResetBy:"TakeaSeat issued a new access link on {t} — open the new link.", accGone:"This plan no longer exists in the cloud.",
   cUploadNone:"This plan is only on this device. Online plans come from your venue or from TakeaSeat.", cLegacyNote:"Old view-only links, and app windows opened before the update, keep syncing until {t}. Reload TakeaSeat on your other devices before turning this off.", cLegacyOff:"Turn them off now", cLegacyOffDone:"Old links no longer work.",
   claimTitle:"Your seating plan", claimLead:"Welcome! This link opens your plan once, on this device; after that you will see your personal link.", claimInApp:"You are inside an app (Viber, Messenger, Instagram…). Open the link in Chrome or Safari, otherwise the plan will only stay here.", claimGo:"Open my plan",
-  claimDone:"“{n}” is yours — only you can see it.", claimKeep:"Keep this personal link and send it to your partner:", claimShare:"Send…", claimShareText:"Our seating plan “{n}”", claimContinue:"Continue",
+  claimDone:"“{n}” is yours — TakeaSeat never opens it without your invitation.", claimKeep:"Keep this personal link and send it to your partner:", claimShare:"Send…", claimShareText:"Our seating plan “{n}”", claimContinue:"Continue",
   claimUsedAt:"This link was already opened ({t}). If your partner opened it, ask them for the “Edit link” (☁). Otherwise ask for a new link by email.", claimExpired:"This link has expired — ask for a new one by email.", claimFail:"Could not connect — please try again.", claimRetry:"Try again", claimHome:"Home page",
   accAskVenue:"For changes to the space, contact the venue: {c}", accSupportView:"You are viewing the plan without changing it. To fix something, turn on editing.", accSupportEdit:"Turn on editing", tSupportEditOn:"Editing is on — changes are saved to the customer's plan.", rbSupportView:"🛟 Support (view) · until {t}",
   accLinks:"Your links", accLinksHint:"If your link reached someone you did not intend, make new links: the old ones and all your other devices lose access.", accRotate:"New links", accRotateConfirm:"The old links and your other devices will lose access. Continue?", tRotated:"New links are ready — send the new one to your partner.", atRotate:"made new links (the old ones stopped working)",
@@ -997,6 +1096,13 @@ en:{
   accEmail:"Recovery email", accEmailHint:"If you lose your link, ask for a new one with this email on takeaseat.gr.", accEmailNone:"No email set — add one so you can recover the plan if you lose the link.",
   accEmailChange:"Change", accEmailSet:"Save", accEmailSame:"This is already your recovery email.", tEmailSent:"We sent a confirmation link to {e}. The change happens when you open it.",
   atRecover:"opened the plan with a recovery link (email)", atEmail:"changed the recovery email",
+  goneVenue:"The venue deleted this wedding — if that was a mistake, the venue can ask for it to be restored.", goneBack:"The plan is available again.",
+  lifeWas:"Your wedding took place on {d}.", lifeWasV:"The wedding took place on {d}.", lifeRo:"The plan is now view-only.", lifeRoDel:"The plan is now view-only and will be deleted on {d}.", lifePdf:"Keepsake PDF",
+  rbDone:"🔒 View only", tLockedWed:"The wedding is over — the plan is view-only.",
+  accDate:"Wedding date", accDateNone:"Not set yet.", accDateHint:"From the day after the wedding the plan is view-only (with a keepsake PDF).", accDateByVenue:"The venue sets the date.",
+  accDateSet:"Set", accDateChange:"Change", accDateLeft:"Changes left: {n}", accDateNoMore:"No more date changes are possible — write to info@takeaseat.gr.", accDateBad:"Choose a date from today up to two years ahead.",
+  accDateConfirm:"Wedding date: {d}. You can change it up to {n} times afterwards. Continue?", accDateConfirmChange:"Change the date to {d}? {n} changes will be left.", tDateSet:"Wedding date: {d}", dateNudge:"Set your wedding date.", dateNudgeGo:"Set",
+  awSystem:"System", atDate:"set the wedding date to {d}", atLocked:"the wedding is over — the plan is now view-only",
   accTitle:"Access & support", mAccess:"Access & support", theVenue:"the venue",
   rbVenue:"🏛 Venue", rbVenueTip:"You opened this wedding as the venue: you can change everything. The couple changes only what you allow.", rbTemplate:"🏛 Venue template", rbTemplateTip:"This is your venue layout: every new wedding starts from here (without guests). Existing weddings do not change.", rbPreview:"👁 As the couple sees it",
   rbSupport:"🛟 Support · until {t}", rbSupportTip:"The owner gave you temporary access. Nothing stays on this device.", rbViewer:"👁 View only", rbViewerTip:"You can see the plan but not change it.",
@@ -1004,7 +1110,7 @@ en:{
   permFloor:"Floor & size of the space", permDecor:"The venue's elements (dance floor, bar, buffets, WC…)", permLayout:"Table positions", permTables:"Add / delete tables", permSeats:"Number of seats per table", permLabels:"Table names", permMax:"up to {n} per table", permAlways:"Guests, seats, groups, invitations, printing",
   tLockedPart:"The venue sets this ({w}).", tLockedByVenue:"The space stays as {v} set it up — your own changes (names, seats) were kept.",
   accSpace:"Your space — by {v}", accSpaceHint:"The venue has set up the space. You can:", accCouplePerms:"What the couple may change", accCouplePermsHint:"Changed from the venue console (Permissions).", accPreview:"See it as the couple does", tPreviewOn:"You now see what the couple sees.", tPreviewOff:"Full venue view.",
-  accSupport:"TakeaSeat support", accSupportHint:"TakeaSeat cannot open your plan. If you need help, give us access for a while — end it whenever you like and see below what we did.", accSupportHintVenue:"TakeaSeat does not open your weddings. For help, give us access to this wedding for a while — end it whenever you like.",
+  accSupport:"TakeaSeat support", accSupportHint:"TakeaSeat never opens your plan without your invitation — every access is logged. If you need help, give us access for a while — end it whenever you like and see below what we did.", accSupportHintVenue:"TakeaSeat never opens your weddings without your invitation — every access is logged. For help, give us access to this wedding for a while — end it whenever you like.",
   accMsgPh:"What do you need? (optional)", accH24:"for 24 hours", accH72:"for 3 days", accH168:"for 7 days", accInvite:"Invite support", accSupportLive:"Support has access until {t}.", accRevoke:"End access", accRevokeConfirm:"End support access now?",
   accMail:"Let us know by e-mail", accMailSubject:"TakeaSeat support — {n}", accMailBody:"Hello, we gave you access to our plan (until {t}). We need help with: ",
   tSupportInvited:"Invitation sent — tap “Let us know by e-mail” so we see it right away.", tSupportEnded:"Support access has ended.", accFail:"That did not work — please try again.",
@@ -1013,13 +1119,13 @@ en:{
   awCouple:"Couple", awVenue:"Venue", awSupport:"TakeaSeat support", awAdmin:"TakeaSeat",
   atInvite:"gave support access ({h} hours)", atRevoke:"ended support access", atOpen:"opened the plan", atSave:"made changes", atRestore:"restored an older version", atReset:"issued a new access link (the old one stopped working)", atClaim:"opened the plan for the first time", atClaimReset:"opened the new link TakeaSeat issued",
   supOpened:"Support: “{n}” — access is temporary.", supEnded:"Support access has expired or was ended.", accLost:"This device no longer has access to the plan — open the latest link.", accViewExpired:"This link no longer works — ask the couple or the venue for a new one.",
-  claimUsed:"This link has already been opened. Open the plan on the device you first used, or write to info@takeaseat.gr.", claimWelcome:"Welcome! “{n}” is yours — only you can see it. Keep the link (☁) for your other devices.",
+  claimUsed:"This link has already been opened. Open the plan on the device you first used, or write to info@takeaseat.gr.", claimWelcome:"Welcome! “{n}” is yours — TakeaSeat never opens it without your invitation. Keep the link (☁) for your other devices.",
   cVenueLinks:"You are signed in as the venue. Copy the couple's link from the venue console.", cSupportNoLinks:"Temporary support access — no sharing links.",
   labBadge:"🧪 Lab", labHint:"Sandbox — whatever you change here stays on this device only.",
   switchPlan:"Switch couple / event", newPlan:"New plan (couple / event)", planMore:"Rename · duplicate · delete",
   shareTitle:"Share & sync", fontDown:"Smaller names", fontUp:"Larger names", fit:"Fit", zoomIn:"Zoom in", zoomOut:"Zoom out", print:"Print", more:"More",
   tsTitle:"Tables", tsAll:"All", tsToggle:"Show / hide the table list",
-  helpTitle:"Guide", mTour:"How to use", tourSkip:"Skip guide", tourBack:"Back", tourNext:"Next", tourDone:"Done",
+  helpTitle:"Guide", mTour:"How to use", mHelp:"Help & contact", helpHours:"We are here 10:00–14:00 and 17:00–21:00 (Greek time) — phone, Viber, WhatsApp or email.", helpPrivacy:"Privacy policy", helpTerms:"Terms of use", tourSkip:"Skip guide", tourBack:"Back", tourNext:"Next", tourDone:"Done",
   welcomeTitle:"Welcome!", welcome1:"Tap a table.", welcome2:"Type a name and press Enter.", welcome3:"Your link is the key — keep it.", welcomeGo:"Let's go", welcomeSteps:"Show me the steps",
   hintEnter:"Type a name, Enter → next seat.",
   tipMoveTouch:"Hold a name for half a second and drag it to another chair.", tipMove:"Drag a name to another chair to move them.",
@@ -1044,18 +1150,18 @@ en:{
   mHistory:"Version history", histTitle:"Version history", histHint:"Every save keeps the previous version on the server. Restore any of them — the current version is kept too.", histRow:"{g} guests · {s} seated · {n} tables", histRestore:"Restore", histConfirm:"Restore the version from “{t}”? The current version stays in the history.", histRestored:"Restored the version from “{t}”", histEmpty:"No previous versions yet.", histFail:"Couldn't load the history", histNoCloud:"History exists only for plans that are online.",
   resetWarn2:"WARNING: this plan has {g} guests ({s} seated). Delete ALL of them?", tResetHist:"Reset done — the previous version is under ⋯ → Version history",
   cWipeBlocked:"Not saved: the online plan has {n} guests while this copy is empty. Reloading the online plan.", cLocalErr:"The local copy could not be loaded ({e}) — loading from the cloud.", cLoadErr:"Error loading from the cloud: {e}",
-  view:"View", names:"Guest names", nm_full:"Full", nm_short:"Short", nm_initials:"Initials", nameSize:"Name size", numSize:"Table number size", zoomLbl:"Zoom", undo:"Undo", redo:"Redo", tUndo:"Undone", tRedo:"Redone", tNumSize:"Table numbers {n}%", mRound:"Round table", holdToMove:"To move a table or item, hold it half a second, then drag.",
-  tools:"Tables & space", addRound:"Round table", addHead:"Head table", decor:"Decor", autoSeat:"Auto-seat", floor:"Floor",
-  guests:"Guests", unseatedN:"{n} unseated", searchPh:"Search a name…", all:"All", addGroup:"＋ group", addGroupTitle:"New group",
+  view:"View", names:"Guest names", nm_full:"Full", nm_short:"Short", nm_initials:"Initials", nameSize:"Name size", numSize:"Table number size", zoomLbl:"Zoom", undo:"Undo", redo:"Redo", tUndo:"Undone", tRedo:"Redone", tNumSize:"Table numbers {n}%", mRound:"Round table", mRect:"Long table", holdToMove:"To move a table or item, hold it half a second, then drag.",
+  tools:"Tables & space", addRound:"Round table", addRect:"Long table", addHead:"Head table", decor:"Decor", autoSeat:"Auto-seat", floor:"Floor",
+  guests:"Guests", unseatedN:"{n} unseated", searchPh:"Search a name…", seatedCap:"Seated", all:"All", addGroup:"＋ group", addGroupTitle:"New group",
   addNames:"Add names", namesPh:"One name per line…\nThe Smiths:\nJohn\nMary", namesHint:"They join the selected group · Ctrl+Enter to add", namesTo:"New names go to: {g} · “Invitation name:” on its own line groups the names below it · Ctrl+Enter", namesToTouch:"New names go to: {g} · “Invitation name:” on its own line groups the names below it", addToList:"Add to list",
   poolEmpty:"Everyone has a seat 🎉", poolEmptyNew:"No guests yet.<br>Add names below ↓", poolEmptyGroup:"No unseated guests in this group — see “All”", noMatch:"No name matches",
   chipEdit:"Edit name & group", chipRemove:"Remove guest", groupTip:"Click: select · Double-click: rename · Right-click: colour / delete", groupMore:"Rename / colour / delete",
   prevTable:"Previous table", nextTable:"Next table", tableSettings:"Table settings", close:"Close",
-  seatPh:"empty seat", unseat:"Remove from seat", fill:"Fill", clearTable:"Clear", tableGroup:"Table group…", partyNew:"Invitation…", partySelHint:"Tap the names that share one invitation", psCount:"{n} selected", psNamePh:"Invitation name (e.g. the Smiths)", psOk:"Create", partyN:"Invitation {n}", tPartyMade:"Invitation “{n}”: {k} names", tPartyNone:"Tap the names you want first", printTitleM:"Print", pmNames:"Names per table", pmParties:"Invitations per table (how many people of each)", nameCase:"Letter case", nc_asis:"As typed", nc_upper:"UPPERCASE", nc_lower:"Lowercase", tLowerHint:"Capitalised words — Greek accents come back only for known first names; fix the rest by hand.", confirmMerge:"Merge “{a}” into “{b}”? Its {n} people move over and “{b}” will have {c} seats.", mergeTitle:"Merge tables", mergeOk:"Merge", dragMerge:"Merge into “{b}”", tTablesMerged:"“{a}” → “{b}”: {n} people, {c} seats — ↶ to undo", tMergeTooBig:"Not possible: “{b}” would need {c} seats (30 at most).", tgCap:"Everyone at “{n}” → group", tgEmpty:"Nobody is seated at “{n}” yet.", tGrouped:"“{g}”: everyone at “{n}” ({k})", tUngrouped:"No group: everyone at “{n}” ({k})", clearConfirm:"Send everyone at “{n}” back to the unseated list?",
+  seatPh:"empty seat", unseat:"Remove from seat", fill:"Fill", clearTable:"Clear", tableGroup:"Table group…", partyNew:"Invitation…", partySelHint:"Tap the names that share one invitation", psCount:"{n} selected", psNamePh:"Invitation name (e.g. the Smiths)", psOk:"Create", partyN:"Invitation {n}", tPartyMade:"Invitation “{n}”: {k} names", tPartyNone:"Tap the names you want first", printTitleM:"Print & PDF", pmPdf:"Floor plan (PDF) — the space with its tables and names, on one page", pmKeep:"Keepsake PDF — cover, floor plan and who sat where", pdfGo:"Download PDF", pdfMaking:"Making the PDF…", pdfBig:"This plan is too large for a PDF.", pdfOff:"The PDF is not available right now — try again later or use printing.", pdfFail:"The PDF could not be made — please try again.", printWed:"Wedding: {d}", printAt:"Printed: {t}", pmNames:"Names per table", pmParties:"Invitations per table (how many people of each)", nameCase:"Letter case", nc_asis:"As typed", nc_upper:"UPPERCASE", nc_lower:"Lowercase", tLowerHint:"Capitalised words — Greek accents come back only for known first names; fix the rest by hand.", confirmMerge:"Merge “{a}” into “{b}”? Its {n} people move over and “{b}” will have {c} seats.", mergeTitle:"Merge tables", mergeOk:"Merge", dragMerge:"Merge into “{b}”", tTablesMerged:"“{a}” → “{b}”: {n} people, {c} seats — ↶ to undo", tMergeTooBig:"Not possible: “{b}” would need {c} seats (30 at most).", tgCap:"Everyone at “{n}” → group", tgEmpty:"Nobody is seated at “{n}” yet.", tGrouped:"“{g}”: everyone at “{n}” ({k})", tUngrouped:"No group: everyone at “{n}” ({k})", clearConfirm:"Send everyone at “{n}” back to the unseated list?",
   fillNone:"No unseated guests there", filled:"Seated {n}", createNew:"＋ New guest “{n}”", renameTo:"Rename to “{n}”", moreMatches:"…and {n} more — keep typing",
   pbHint:"→ tap a seat", pbUnseat:"↩ Unseat", pbEdit:"Edit", pbCancel:"Cancel",
-  menuTitle:"Table settings", menuTitleHead:"Head table settings", capLabel:"Seats", capLabelHead:"Total seats (2 are the ends)", labelPh:"Table name / number", deleteTable:"Delete", focusSeats:"Names",
-  mShare:"Share & sync", mImportGuests:"Guest list from a venue file", mExport:"Export plan (file)", mImport:"Import plan — new or merge…", mPrint:"Print", mReset:"Reset plan", mAskDel:"Ask again before deleting or merging", tAskDel:"OK — I will ask before every delete or merge.", mLang:"Language", mMore:"More…", capPlan:"Plan", capFiles:"Files & backups", mDecor:"Decor & items", mHead:"Head table", mAuto:"Auto-seat",
+  menuTitle:"Table settings", menuTitleHead:"Head table settings", menuTitleRect:"Long table settings", capLabelRect:"Seats (on both long sides)", capLabel:"Seats", capLabelHead:"Total seats (2 are the ends)", labelPh:"Table name / number", deleteTable:"Delete", focusSeats:"Names",
+  mShare:"Share & sync", mExport:"Export plan (file)", mImport:"Import plan — new or merge…", mPrint:"Print", mReset:"Reset plan", mAskDel:"Ask again before deleting or merging", tAskDel:"OK — I will ask before every delete or merge.", mLang:"Language", mMore:"More…", capPlan:"Plan", capFiles:"Files & backups", mDecor:"Decor & items", mHead:"Head table", mAuto:"Auto-seat",
   stats:"{t} tables · {s}/{g} seated · {c} seats",
   headTable:"Head table", headFacing:"faces the dance floor",
   groupsDefault:["Bride's side","Groom's side","Friends","Family"],
@@ -1073,7 +1179,7 @@ en:{
   ourWedding:"Our wedding", sharedPlan:"Shared plan", importedPlan:"Imported plan", pastedPlan:"Pasted plan", labPlan:"Demo wedding",
   confirmDeleteTable:"Delete “{n}”? Its guests return to the unseated list.", confirmDeleteFeature:"Delete “{n}”?", delTitle:"Delete", delSkip:"Don't ask again", delOk:"Delete", tDeleted:"Deleted “{n}” — ↶ to undo",
   confirmResetShared:"Reset to the starter layout? This removes all guests — and because the plan is shared, everyone with the link will see the reset.", confirmReset:"Reset to the starter layout? This removes all guests.",
-  tGuestRemoved:"Guest removed", tTableAdded:"New table — type the names or drag it into place", tHeadAdded:"Head table added", tGuestsAdded:"{n} guest(s) added", tAutoSeated:"Seated {n} guest(s)", tNoSeats:"No free seats or no unseated guests", tBumped:"{n} guest(s) moved to unseated", tReset:"Reset done", tProfileCreated:"New plan created", tProfileCopied:"Plan duplicated", tProfileDeleted:"Plan deleted", tImported:"Imported as a new plan: “{n}”", tCopied:"Copied to clipboard", tCopyHint:"Select all & press Ctrl+C", tDownloaded:"Downloaded {n}", tNotPlan:"Not a plan or guest-list file", tInvalidFile:"Invalid file", tPasteFirst:"Paste plan text first", tInvalidPaste:"That text isn't a valid plan", tFont:"Name size {n}%", tFullPlan:"That's a full plan — use “Import plan”", tNotGuestList:"Not a guest-list file", tMerged:"Added {a} guest(s)", tMergedSkipped:" · skipped {s} already imported", tCleared:"Table cleared",
+  tGuestRemoved:"Guest removed", tTableAdded:"New table — type the names or drag it into place", tHeadAdded:"Head table added", tGuestsAdded:"{n} guest(s) added", tAutoSeated:"Seated {n} guest(s)", tNoSeats:"No free seats or no unseated guests", tBumped:"{n} guest(s) moved to unseated", tReset:"Reset done", tProfileCreated:"New plan created", tProfileCopied:"Plan duplicated", tProfileDeleted:"Plan deleted", tImported:"Imported as a new plan: “{n}”", tCopied:"Copied to clipboard", tCopyHint:"Select all & press Ctrl+C", tDownloaded:"Downloaded {n}", tNotPlan:"Not a plan or guest-list file", tInvalidFile:"Invalid file", tPasteFirst:"Paste plan text first", tInvalidPaste:"That text isn't a valid plan", tFont:"Name size {n}%", tMerged:"Added {a} guest(s)", tMergedSkipped:" · skipped {s} already imported", tCleared:"Table cleared",
   exportTitle:"Copy / download this plan", exportHint:"Copy this text and paste it into “Import plan” on another device — or download it as a file.", exportCopy:"Copy", exportDownload:"Download file",
   importTitle:"Import plan", importHint:"Paste plan text or choose a file — and choose how it comes in.", importPh:"Paste the plan text here…", importPaste:"Load", importFile:"Choose file",
   imTitle:"How to import", im_new:"New plan", im_new_d:"The file opens as a separate plan.",
@@ -1092,7 +1198,12 @@ en:{
   cViewOnly:"This plan is view-only here", cPushed:"Pushed to cloud", cPushFail:"Push failed", cPullConfirm:"Replace with the latest version from the cloud?", cPulled:"Pulled the latest", cPullFail:"Pull failed", cRemoveConfirm:"Remove from cloud? It stays on this device, but sync stops and the share links stop working.", cRemoved:"Removed from cloud",
   cNewer:"Loaded a newer version from another device", cUpdated:"Updated from cloud", cOpenedSync:"Opened shared plan (synced)", cOpenedView:"Opened shared plan (view-only)", cOpenedNamed:"Opened: “{n}”", cOpenedNamedView:"Opened (view-only): “{n}”", cOpenFail:"Couldn't open that link",
   printTitle:"Wedding Seating Plan", printSub:"{t} tables · {s} guests seated · {c} seats", printEmpty:"— empty —", printUnassigned:"Unseated ({n}):",
-  stProbable:"probable", stCut:"cancelled",
+  stProbable:"probable", stCut:"cancelled", stConfirmed:"confirmed",
+  mCsvOut:"Guest list (Excel)", mCsvIn:"Import names from Excel…", csvFile:"guests", csvName:"Name", csvTable:"Table", csvGroup:"Group", csvParty:"Invitation", csvStatus:"Status", csvNote:"Note",
+  csvInTitle:"Import names (Excel / CSV)", csvInHint:"Paste cells from Excel or choose a .csv file. Recognised columns: Name (or First name + Last name), Table, Group, Invitation, Status, Note — all but the name are optional.", csvPh:"Paste here — one line per guest",
+  csvSum:"Names: {n} · new: {k}", csvSumDup:" · already on the list (skipped): {d}", csvCols:"Columns: {c}", csvNoHead:"No headings: the first column becomes the name.", csvAdd:"Add to list ({n})",
+  csvEnc:"The file was not UTF-8 and was read as {e}. If the names look wrong, save it in Excel as “CSV UTF-8” and try again.", csvBad:"Some characters could not be read (�). Save the file in Excel as “CSV UTF-8” and try again.", csvXlsx:"This is an Excel file (.xlsx). In Excel: Save as → “CSV UTF-8”, then choose that file.",
+  csvDone:"Added to the list: {n}", csvDoneSeated:" · at tables: {s}", csvDoneNoRoom:" · unseated: {k} (their table was not found or is full)",
   labBride:"Bride", labGroom:"Groom",
   labNames:["Maria P.","George K.","Helen A.","Nick D.","Katerina M.","Jim S.","Sophia L.","Kostas V.","Anna C.","Peter R.","Christina T.","Michael G.","Irene N.","Bill Z.","Despina F.","Alex K.","Joanna P.","Thanos M.","Angela S.","Steve A.","Fay D.","Manolis L.","Zoe V.","Petros C.","Eva R.","Spyros T.","Natalie G.","Chris N.","Marina Z.","Lefteris F.","Anastasia K.","Tony P.","Ellie M.","Stavros S.","Nefeli A.","Orestis D.","Danae L.","Aris V.","Ismene C.","Philip R."],
 },
@@ -1101,7 +1212,7 @@ de:{
   openedAsVenue:"Als Location geöffnet (dieses Gerät hat den Link der Location). So ansehen wie das Paar: Zugriff & Support.", accResetBy:"TakeaSeat hat am {t} einen neuen Zugangslink ausgegeben — öffnen Sie den neuen Link.", accGone:"Dieser Plan existiert nicht mehr in der Cloud.",
   cUploadNone:"Dieser Plan ist nur auf diesem Gerät. Online-Pläne gibt es von Ihrer Location oder von TakeaSeat.", cLegacyNote:"Alte Ansichtslinks und Fenster, die vor dem Update geöffnet wurden, synchronisieren bis {t}. Laden Sie TakeaSeat auf Ihren anderen Geräten neu, bevor Sie das abschalten.", cLegacyOff:"Jetzt abschalten", cLegacyOffDone:"Alte Links funktionieren nicht mehr.",
   claimTitle:"Ihr Sitzplan", claimLead:"Willkommen! Dieser Link öffnet Ihren Plan einmal, auf diesem Gerät; danach sehen Sie Ihren persönlichen Link.", claimInApp:"Sie sind in einer App (Viber, Messenger, Instagram…). Öffnen Sie den Link in Chrome oder Safari, sonst bleibt der Plan nur hier.", claimGo:"Meinen Plan öffnen",
-  claimDone:"„{n}“ gehört Ihnen — nur Sie sehen ihn.", claimKeep:"Bewahren Sie diesen persönlichen Link auf und senden Sie ihn Ihrem Partner:", claimShare:"Senden…", claimShareText:"Unser Sitzplan „{n}“", claimContinue:"Weiter",
+  claimDone:"„{n}“ gehört Ihnen — TakeaSeat öffnet ihn nie ohne Ihre Einladung.", claimKeep:"Bewahren Sie diesen persönlichen Link auf und senden Sie ihn Ihrem Partner:", claimShare:"Senden…", claimShareText:"Unser Sitzplan „{n}“", claimContinue:"Weiter",
   claimUsedAt:"Dieser Link wurde bereits geöffnet ({t}). Wenn Ihr Partner ihn geöffnet hat, fragen Sie nach dem „Bearbeitungslink“ (☁). Sonst fordern Sie per E-Mail einen neuen Link an.", claimExpired:"Dieser Link ist abgelaufen — fordern Sie per E-Mail einen neuen an.", claimFail:"Keine Verbindung — bitte erneut versuchen.", claimRetry:"Erneut", claimHome:"Startseite",
   accAskVenue:"Für Änderungen am Raum wenden Sie sich an die Location: {c}", accSupportView:"Sie sehen den Plan, ohne ihn zu ändern. Zum Korrigieren schalten Sie das Bearbeiten ein.", accSupportEdit:"Bearbeiten einschalten", tSupportEditOn:"Bearbeiten ist an — Änderungen werden im Plan des Kunden gespeichert.", rbSupportView:"🛟 Support (Ansicht) · bis {t}",
   accLinks:"Ihre Links", accLinksHint:"Wenn Ihr Link bei jemandem gelandet ist, den Sie nicht wollten, erstellen Sie neue Links: die alten und alle anderen Geräte verlieren den Zugriff.", accRotate:"Neue Links", accRotateConfirm:"Die alten Links und Ihre anderen Geräte verlieren den Zugriff. Fortfahren?", tRotated:"Neue Links sind bereit — senden Sie den neuen an Ihren Partner.", atRotate:"erstellte neue Links (die alten gelten nicht mehr)",
@@ -1115,6 +1226,13 @@ de:{
   accEmail:"Wiederherstellungs-E-Mail", accEmailHint:"Wenn Sie Ihren Link verlieren, fordern Sie mit dieser E-Mail auf takeaseat.gr einen neuen an.", accEmailNone:"Keine E-Mail hinterlegt — fügen Sie eine hinzu, damit Sie den Plan wiederherstellen können, wenn Sie den Link verlieren.",
   accEmailChange:"Ändern", accEmailSet:"Speichern", accEmailSame:"Das ist bereits Ihre Wiederherstellungs-E-Mail.", tEmailSent:"Wir haben einen Bestätigungslink an {e} gesendet. Die Änderung gilt, sobald Sie ihn öffnen.",
   atRecover:"öffnete den Plan mit einem Wiederherstellungslink (E-Mail)", atEmail:"änderte die Wiederherstellungs-E-Mail",
+  goneVenue:"Die Location hat diese Hochzeit gelöscht — falls das ein Versehen war, kann die Location die Wiederherstellung anfordern.", goneBack:"Der Plan ist wieder verfügbar.",
+  lifeWas:"Ihre Hochzeit war am {d}.", lifeWasV:"Die Hochzeit war am {d}.", lifeRo:"Der Plan ist jetzt nur noch zum Ansehen.", lifeRoDel:"Der Plan ist jetzt nur noch zum Ansehen und wird am {d} gelöscht.", lifePdf:"Erinnerungs-PDF",
+  rbDone:"🔒 Nur ansehen", tLockedWed:"Die Hochzeit ist vorbei — der Plan ist nur noch zum Ansehen.",
+  accDate:"Hochzeitsdatum", accDateNone:"Noch nicht festgelegt.", accDateHint:"Ab dem Tag nach der Hochzeit ist der Plan nur noch zum Ansehen (mit Erinnerungs-PDF).", accDateByVenue:"Das Datum legt die Location fest.",
+  accDateSet:"Festlegen", accDateChange:"Ändern", accDateLeft:"Verbleibende Änderungen: {n}", accDateNoMore:"Keine weiteren Datumsänderungen möglich — schreiben Sie an info@takeaseat.gr.", accDateBad:"Wählen Sie ein Datum von heute bis zwei Jahre im Voraus.",
+  accDateConfirm:"Hochzeitsdatum: {d}. Danach können Sie es bis zu {n}-mal ändern. Fortfahren?", accDateConfirmChange:"Datum auf {d} ändern? Es bleiben {n} Änderungen.", tDateSet:"Hochzeitsdatum: {d}", dateNudge:"Legen Sie Ihr Hochzeitsdatum fest.", dateNudgeGo:"Festlegen",
+  awSystem:"System", atDate:"legte das Hochzeitsdatum auf {d} fest", atLocked:"die Hochzeit ist vorbei — der Plan ist jetzt nur noch zum Ansehen",
   accTitle:"Zugriff & Support", mAccess:"Zugriff & Support", theVenue:"der Veranstaltungsort",
   rbVenue:"🏛 Location", rbVenueTip:"Sie haben diese Hochzeit als Location geöffnet: Sie können alles ändern. Das Paar ändert nur, was Sie erlauben.", rbTemplate:"🏛 Raumvorlage", rbTemplateTip:"Das ist die Aufstellung Ihrer Location: jede neue Hochzeit beginnt hier (ohne Gäste). Bestehende Hochzeiten ändern sich nicht.", rbPreview:"👁 So sieht es das Paar",
   rbSupport:"🛟 Support · bis {t}", rbSupportTip:"Der Eigentümer hat Ihnen vorübergehend Zugriff gegeben. Nichts bleibt auf diesem Gerät.", rbViewer:"👁 Nur ansehen", rbViewerTip:"Sie sehen den Plan, können ihn aber nicht ändern.",
@@ -1122,7 +1240,7 @@ de:{
   permFloor:"Boden & Größe des Raums", permDecor:"Elemente der Location (Tanzfläche, Bar, Buffets, WC…)", permLayout:"Position der Tische", permTables:"Tische hinzufügen / löschen", permSeats:"Anzahl der Plätze pro Tisch", permLabels:"Tischnamen", permMax:"bis {n} pro Tisch", permAlways:"Gäste, Plätze, Gruppen, Einladungen, Druck",
   tLockedPart:"Das legt die Location fest ({w}).", tLockedByVenue:"Der Raum bleibt, wie {v} ihn eingerichtet hat — Ihre eigenen Änderungen (Namen, Plätze) wurden übernommen.",
   accSpace:"Ihr Raum — von {v}", accSpaceHint:"Die Location hat den Raum eingerichtet. Sie können:", accCouplePerms:"Was das Paar ändern darf", accCouplePermsHint:"Wird in der Location-Konsole geändert (Rechte).", accPreview:"So ansehen, wie es das Paar sieht", tPreviewOn:"Sie sehen jetzt, was das Paar sieht.", tPreviewOff:"Volle Ansicht der Location.",
-  accSupport:"TakeaSeat-Support", accSupportHint:"TakeaSeat kann Ihren Plan nicht öffnen. Wenn Sie Hilfe brauchen, geben Sie uns kurz Zugriff — Sie beenden ihn jederzeit und sehen unten, was wir getan haben.", accSupportHintVenue:"TakeaSeat öffnet Ihre Hochzeiten nicht. Für Hilfe geben Sie uns kurz Zugriff auf diese Hochzeit — Sie beenden ihn jederzeit.",
+  accSupport:"TakeaSeat-Support", accSupportHint:"TakeaSeat öffnet Ihren Plan nie ohne Ihre Einladung — jeder Zugriff wird protokolliert. Wenn Sie Hilfe brauchen, geben Sie uns kurz Zugriff — Sie beenden ihn jederzeit und sehen unten, was wir getan haben.", accSupportHintVenue:"TakeaSeat öffnet Ihre Hochzeiten nie ohne Ihre Einladung — jeder Zugriff wird protokolliert. Für Hilfe geben Sie uns kurz Zugriff auf diese Hochzeit — Sie beenden ihn jederzeit.",
   accMsgPh:"Wobei brauchen Sie Hilfe? (optional)", accH24:"für 24 Stunden", accH72:"für 3 Tage", accH168:"für 7 Tage", accInvite:"Support einladen", accSupportLive:"Der Support hat bis {t} Zugriff.", accRevoke:"Zugriff beenden", accRevokeConfirm:"Den Support-Zugriff jetzt beenden?",
   accMail:"Per E-Mail Bescheid geben", accMailSubject:"TakeaSeat-Support — {n}", accMailBody:"Hallo, wir haben Ihnen Zugriff auf unseren Plan gegeben (bis {t}). Wir brauchen Hilfe bei: ",
   tSupportInvited:"Einladung gesendet — tippen Sie auf „Per E-Mail Bescheid geben“, damit wir es sofort sehen.", tSupportEnded:"Der Support-Zugriff wurde beendet.", accFail:"Das hat nicht geklappt — bitte erneut versuchen.",
@@ -1131,13 +1249,13 @@ de:{
   awCouple:"Paar", awVenue:"Location", awSupport:"TakeaSeat-Support", awAdmin:"TakeaSeat",
   atInvite:"gab dem Support Zugriff ({h} Stunden)", atRevoke:"beendete den Support-Zugriff", atOpen:"öffnete den Plan", atSave:"hat Änderungen gemacht", atRestore:"stellte eine ältere Version wieder her", atReset:"gab einen neuen Zugangslink aus (der alte gilt nicht mehr)", atClaim:"öffnete den Plan zum ersten Mal", atClaimReset:"öffnete den neuen Link von TakeaSeat",
   supOpened:"Support: „{n}“ — der Zugriff ist vorübergehend.", supEnded:"Der Support-Zugriff ist abgelaufen oder wurde beendet.", accLost:"Dieses Gerät hat keinen Zugriff mehr auf den Plan — öffnen Sie den neuesten Link.", accViewExpired:"Dieser Link gilt nicht mehr — bitten Sie das Paar oder die Location um einen neuen.",
-  claimUsed:"Dieser Link wurde bereits geöffnet. Öffnen Sie den Plan auf dem Gerät, das Sie zuerst benutzt haben, oder schreiben Sie an info@takeaseat.gr.", claimWelcome:"Willkommen! „{n}“ gehört Ihnen — nur Sie sehen ihn. Bewahren Sie den Link (☁) für Ihre anderen Geräte auf.",
+  claimUsed:"Dieser Link wurde bereits geöffnet. Öffnen Sie den Plan auf dem Gerät, das Sie zuerst benutzt haben, oder schreiben Sie an info@takeaseat.gr.", claimWelcome:"Willkommen! „{n}“ gehört Ihnen — TakeaSeat öffnet ihn nie ohne Ihre Einladung. Bewahren Sie den Link (☁) für Ihre anderen Geräte auf.",
   cVenueLinks:"Sie sind als Location angemeldet. Den Link des Paares kopieren Sie in der Location-Konsole.", cSupportNoLinks:"Vorübergehender Support-Zugriff — keine Freigabelinks.",
   labBadge:"🧪 Labor", labHint:"Sandbox — alles, was Sie hier ändern, bleibt nur auf diesem Gerät.",
   switchPlan:"Paar / Veranstaltung wechseln", newPlan:"Neuer Plan (Paar / Veranstaltung)", planMore:"Umbenennen · duplizieren · löschen",
   shareTitle:"Teilen & synchronisieren", fontDown:"Kleinere Namen", fontUp:"Größere Namen", fit:"Einpassen", zoomIn:"Vergrößern", zoomOut:"Verkleinern", print:"Drucken", more:"Mehr",
   tsTitle:"Tische", tsAll:"Alle", tsToggle:"Tischliste ein-/ausblenden",
-  helpTitle:"Anleitung", mTour:"Anleitung", tourSkip:"Anleitung überspringen", tourBack:"Zurück", tourNext:"Weiter", tourDone:"Fertig",
+  helpTitle:"Anleitung", mTour:"Anleitung", mHelp:"Hilfe & Kontakt", helpHours:"Wir sind für Sie da: 10:00–14:00 und 17:00–21:00 (griechische Zeit) — Telefon, Viber, WhatsApp oder E-Mail.", helpPrivacy:"Datenschutz", helpTerms:"Nutzungsbedingungen", tourSkip:"Anleitung überspringen", tourBack:"Zurück", tourNext:"Weiter", tourDone:"Fertig",
   welcomeTitle:"Willkommen!", welcome1:"Tippen Sie auf einen Tisch.", welcome2:"Namen eingeben und Enter drücken.", welcome3:"Ihr Link ist der Schlüssel — gut aufbewahren.", welcomeGo:"Los geht's", welcomeSteps:"Schritte zeigen",
   hintEnter:"Namen eingeben, Enter → nächster Platz.",
   tipMoveTouch:"Einen Namen eine halbe Sekunde halten und auf einen anderen Stuhl ziehen.", tipMove:"Einen Namen auf einen anderen Stuhl ziehen, um ihn umzusetzen.",
@@ -1162,18 +1280,18 @@ de:{
   mHistory:"Versionsverlauf", histTitle:"Versionsverlauf", histHint:"Jedes Speichern behält die vorherige Version auf dem Server. Stellen Sie jede beliebige wieder her — die aktuelle bleibt ebenfalls erhalten.", histRow:"{g} Gäste · {s} platziert · {n} Tische", histRestore:"Wiederherstellen", histConfirm:"Version vom „{t}“ wiederherstellen? Die aktuelle Version bleibt im Verlauf.", histRestored:"Version vom „{t}“ wiederhergestellt", histEmpty:"Noch keine früheren Versionen.", histFail:"Verlauf konnte nicht geladen werden", histNoCloud:"Einen Verlauf gibt es nur für Pläne, die online sind.",
   resetWarn2:"ACHTUNG: Dieser Plan hat {g} Gäste ({s} platziert). Wirklich ALLE löschen?", tResetHist:"Zurückgesetzt — die vorherige Version steht unter ⋯ → Versionsverlauf",
   cWipeBlocked:"Nicht gespeichert: Der Online-Plan hat {n} Gäste, diese Kopie ist leer. Der Online-Plan wird neu geladen.", cLocalErr:"Die lokale Kopie konnte nicht geladen werden ({e}) — Laden aus der Cloud.", cLoadErr:"Fehler beim Laden aus der Cloud: {e}",
-  view:"Ansicht", names:"Gästenamen", nm_full:"Voll", nm_short:"Kurz", nm_initials:"Initialen", nameSize:"Namensgröße", numSize:"Größe der Tischnummern", zoomLbl:"Zoom", undo:"Rückgängig", redo:"Wiederholen", tUndo:"Rückgängig gemacht", tRedo:"Wiederholt", tNumSize:"Tischnummern {n}%", mRound:"Runder Tisch", holdToMove:"Zum Verschieben Tisch oder Objekt eine halbe Sekunde halten, dann ziehen.",
-  tools:"Tische & Fläche", addRound:"Runder Tisch", addHead:"Brauttisch", decor:"Deko", autoSeat:"Auto-Füllen", floor:"Boden",
-  guests:"Gäste", unseatedN:"{n} ohne Platz", searchPh:"Namen suchen…", all:"Alle", addGroup:"＋ Gruppe", addGroupTitle:"Neue Gruppe",
+  view:"Ansicht", names:"Gästenamen", nm_full:"Voll", nm_short:"Kurz", nm_initials:"Initialen", nameSize:"Namensgröße", numSize:"Größe der Tischnummern", zoomLbl:"Zoom", undo:"Rückgängig", redo:"Wiederholen", tUndo:"Rückgängig gemacht", tRedo:"Wiederholt", tNumSize:"Tischnummern {n}%", mRound:"Runder Tisch", mRect:"Lange Tafel", holdToMove:"Zum Verschieben Tisch oder Objekt eine halbe Sekunde halten, dann ziehen.",
+  tools:"Tische & Fläche", addRound:"Runder Tisch", addRect:"Lange Tafel", addHead:"Brauttisch", decor:"Deko", autoSeat:"Auto-Füllen", floor:"Boden",
+  guests:"Gäste", unseatedN:"{n} ohne Platz", searchPh:"Namen suchen…", seatedCap:"Mit Platz", all:"Alle", addGroup:"＋ Gruppe", addGroupTitle:"Neue Gruppe",
   addNames:"Namen hinzufügen", namesPh:"Ein Name pro Zeile…\nFamilie Müller:\nHans\nMaria", namesHint:"Kommen in die gewählte Gruppe · Strg+Enter zum Hinzufügen", namesTo:"Neue Namen kommen in: {g} · „Name der Einladung:“ in eigener Zeile fasst die Namen darunter zusammen · Strg+Enter", namesToTouch:"Neue Namen kommen in: {g} · „Name der Einladung:“ in eigener Zeile fasst die Namen darunter zusammen", addToList:"Zur Liste hinzufügen",
   poolEmpty:"Alle Gäste haben einen Platz 🎉", poolEmptyNew:"Noch keine Gäste.<br>Namen unten hinzufügen ↓", poolEmptyGroup:"Niemand ohne Platz in dieser Gruppe — siehe „Alle“", noMatch:"Kein Name passt",
   chipEdit:"Name & Gruppe bearbeiten", chipRemove:"Gast entfernen", groupTip:"Klick: auswählen · Doppelklick: umbenennen · Rechtsklick: Farbe / löschen", groupMore:"Umbenennen / Farbe / löschen",
   prevTable:"Vorheriger Tisch", nextTable:"Nächster Tisch", tableSettings:"Tisch-Einstellungen", close:"Schließen",
-  seatPh:"freier Platz", unseat:"Vom Platz entfernen", fill:"Füllen", clearTable:"Leeren", tableGroup:"Tischgruppe…", partyNew:"Einladung…", partySelHint:"Tippen Sie die Namen an, die zu einer Einladung gehören", psCount:"{n} ausgewählt", psNamePh:"Name der Einladung (z. B. Familie Müller)", psOk:"Anlegen", partyN:"Einladung {n}", tPartyMade:"Einladung „{n}“: {k} Namen", tPartyNone:"Zuerst die Namen antippen", printTitleM:"Drucken", pmNames:"Namen pro Tisch", pmParties:"Einladungen pro Tisch (wie viele Personen je Einladung)", nameCase:"Schreibweise", nc_asis:"Wie eingegeben", nc_upper:"GROSSBUCHSTABEN", nc_lower:"Kleinbuchstaben", tLowerHint:"Groß-/Kleinschreibung — griechische Akzente kommen nur bei bekannten Vornamen zurück; den Rest bitte von Hand.", confirmMerge:"„{a}“ in „{b}“ zusammenführen? Die {n} Personen ziehen um und „{b}“ bekommt {c} Plätze.", mergeTitle:"Tische zusammenführen", mergeOk:"Zusammenführen", dragMerge:"Zusammenführen mit „{b}“", tTablesMerged:"„{a}“ → „{b}“: {n} Personen, {c} Plätze — ↶ macht es rückgängig", tMergeTooBig:"Geht nicht: „{b}“ bräuchte {c} Plätze (höchstens 30).", tgCap:"Alle an „{n}“ → Gruppe", tgEmpty:"An „{n}“ sitzt noch niemand.", tGrouped:"„{g}“: alle an „{n}“ ({k})", tUngrouped:"Keine Gruppe: alle an „{n}“ ({k})", clearConfirm:"Alle Gäste von „{n}“ zurück in die Liste ohne Platz?",
+  seatPh:"freier Platz", unseat:"Vom Platz entfernen", fill:"Füllen", clearTable:"Leeren", tableGroup:"Tischgruppe…", partyNew:"Einladung…", partySelHint:"Tippen Sie die Namen an, die zu einer Einladung gehören", psCount:"{n} ausgewählt", psNamePh:"Name der Einladung (z. B. Familie Müller)", psOk:"Anlegen", partyN:"Einladung {n}", tPartyMade:"Einladung „{n}“: {k} Namen", tPartyNone:"Zuerst die Namen antippen", printTitleM:"Drucken & PDF", pmPdf:"Grundriss (PDF) — der Raum mit Tischen und Namen, auf einer Seite", pmKeep:"Erinnerungs-PDF — Titelblatt, Grundriss und wer wo saß", pdfGo:"PDF herunterladen", pdfMaking:"PDF wird erstellt…", pdfBig:"Dieser Plan ist zu groß für ein PDF.", pdfOff:"Das PDF ist gerade nicht verfügbar — bitte später erneut versuchen oder drucken.", pdfFail:"Das PDF konnte nicht erstellt werden — bitte erneut versuchen.", printWed:"Hochzeit: {d}", printAt:"Gedruckt: {t}", pmNames:"Namen pro Tisch", pmParties:"Einladungen pro Tisch (wie viele Personen je Einladung)", nameCase:"Schreibweise", nc_asis:"Wie eingegeben", nc_upper:"GROSSBUCHSTABEN", nc_lower:"Kleinbuchstaben", tLowerHint:"Groß-/Kleinschreibung — griechische Akzente kommen nur bei bekannten Vornamen zurück; den Rest bitte von Hand.", confirmMerge:"„{a}“ in „{b}“ zusammenführen? Die {n} Personen ziehen um und „{b}“ bekommt {c} Plätze.", mergeTitle:"Tische zusammenführen", mergeOk:"Zusammenführen", dragMerge:"Zusammenführen mit „{b}“", tTablesMerged:"„{a}“ → „{b}“: {n} Personen, {c} Plätze — ↶ macht es rückgängig", tMergeTooBig:"Geht nicht: „{b}“ bräuchte {c} Plätze (höchstens 30).", tgCap:"Alle an „{n}“ → Gruppe", tgEmpty:"An „{n}“ sitzt noch niemand.", tGrouped:"„{g}“: alle an „{n}“ ({k})", tUngrouped:"Keine Gruppe: alle an „{n}“ ({k})", clearConfirm:"Alle Gäste von „{n}“ zurück in die Liste ohne Platz?",
   fillNone:"Dort gibt es keine Gäste ohne Platz", filled:"{n} platziert", createNew:"＋ Neuer Gast „{n}“", renameTo:"Umbenennen in „{n}“", moreMatches:"…und {n} weitere — weiter tippen",
   pbHint:"→ Platz antippen", pbUnseat:"↩ Platz freigeben", pbEdit:"Bearbeiten", pbCancel:"Abbrechen",
-  menuTitle:"Tisch-Einstellungen", menuTitleHead:"Brauttisch-Einstellungen", capLabel:"Plätze", capLabelHead:"Plätze gesamt (2 davon an den Enden)", labelPh:"Tischname / -nummer", deleteTable:"Löschen", focusSeats:"Namen",
-  mShare:"Teilen & synchronisieren", mImportGuests:"Gästeliste aus Datei des Veranstaltungsorts", mExport:"Plan exportieren (Datei)", mImport:"Plan importieren — neu oder zusammenführen…", mPrint:"Drucken", mReset:"Plan zurücksetzen", mAskDel:"Vor dem Löschen oder Zusammenführen wieder fragen", tAskDel:"Okay — ich frage vor jedem Löschen oder Zusammenführen.", mLang:"Sprache", mMore:"Mehr…", capPlan:"Plan", capFiles:"Dateien & Sicherungen", mDecor:"Deko & Objekte", mHead:"Brauttisch", mAuto:"Auto-Füllen",
+  menuTitle:"Tisch-Einstellungen", menuTitleHead:"Brauttisch-Einstellungen", menuTitleRect:"Einstellungen der langen Tafel", capLabelRect:"Plätze (an beiden Längsseiten)", capLabel:"Plätze", capLabelHead:"Plätze gesamt (2 davon an den Enden)", labelPh:"Tischname / -nummer", deleteTable:"Löschen", focusSeats:"Namen",
+  mShare:"Teilen & synchronisieren", mExport:"Plan exportieren (Datei)", mImport:"Plan importieren — neu oder zusammenführen…", mPrint:"Drucken", mReset:"Plan zurücksetzen", mAskDel:"Vor dem Löschen oder Zusammenführen wieder fragen", tAskDel:"Okay — ich frage vor jedem Löschen oder Zusammenführen.", mLang:"Sprache", mMore:"Mehr…", capPlan:"Plan", capFiles:"Dateien & Sicherungen", mDecor:"Deko & Objekte", mHead:"Brauttisch", mAuto:"Auto-Füllen",
   stats:"{t} Tische · {s}/{g} platziert · {c} Plätze",
   headTable:"Brauttisch", headFacing:"blickt zur Tanzfläche",
   groupsDefault:["Seite der Braut","Seite des Bräutigams","Freunde","Familie"],
@@ -1191,7 +1309,7 @@ de:{
   ourWedding:"Unsere Hochzeit", sharedPlan:"Geteilter Plan", importedPlan:"Importierter Plan", pastedPlan:"Eingefügter Plan", labPlan:"Demo-Hochzeit",
   confirmDeleteTable:"„{n}“ löschen? Die Gäste kommen zurück in die Liste ohne Platz.", confirmDeleteFeature:"„{n}“ löschen?", delTitle:"Löschen", delSkip:"Nicht mehr fragen", delOk:"Löschen", tDeleted:"„{n}“ gelöscht — ↶ macht es rückgängig",
   confirmResetShared:"Auf die Startanordnung zurücksetzen? Alle Gäste werden entfernt — und weil der Plan geteilt ist, sehen das alle mit dem Link.", confirmReset:"Auf die Startanordnung zurücksetzen? Alle Gäste werden entfernt.",
-  tGuestRemoved:"Gast entfernt", tTableAdded:"Neuer Tisch — Namen eingeben oder an die richtige Stelle ziehen", tHeadAdded:"Brauttisch hinzugefügt", tGuestsAdded:"{n} Gast/Gäste hinzugefügt", tAutoSeated:"{n} Gast/Gäste platziert", tNoSeats:"Keine freien Plätze oder keine Gäste ohne Platz", tBumped:"{n} Gast/Gäste in „ohne Platz“ verschoben", tReset:"Zurückgesetzt", tProfileCreated:"Neuer Plan erstellt", tProfileCopied:"Plan dupliziert", tProfileDeleted:"Plan gelöscht", tImported:"Als neuer Plan importiert: „{n}“", tCopied:"In die Zwischenablage kopiert", tCopyHint:"Alles markieren & Strg+C drücken", tDownloaded:"{n} heruntergeladen", tNotPlan:"Keine Plan- oder Gästelisten-Datei", tInvalidFile:"Ungültige Datei", tPasteFirst:"Zuerst Plantext einfügen", tInvalidPaste:"Dieser Text ist kein gültiger Plan", tFont:"Namensgröße {n}%", tFullPlan:"Das ist ein vollständiger Plan — „Plan importieren“ verwenden", tNotGuestList:"Keine Gästelisten-Datei", tMerged:"{a} Gast/Gäste hinzugefügt", tMergedSkipped:" · {s} bereits importierte übersprungen", tCleared:"Tisch geleert",
+  tGuestRemoved:"Gast entfernt", tTableAdded:"Neuer Tisch — Namen eingeben oder an die richtige Stelle ziehen", tHeadAdded:"Brauttisch hinzugefügt", tGuestsAdded:"{n} Gast/Gäste hinzugefügt", tAutoSeated:"{n} Gast/Gäste platziert", tNoSeats:"Keine freien Plätze oder keine Gäste ohne Platz", tBumped:"{n} Gast/Gäste in „ohne Platz“ verschoben", tReset:"Zurückgesetzt", tProfileCreated:"Neuer Plan erstellt", tProfileCopied:"Plan dupliziert", tProfileDeleted:"Plan gelöscht", tImported:"Als neuer Plan importiert: „{n}“", tCopied:"In die Zwischenablage kopiert", tCopyHint:"Alles markieren & Strg+C drücken", tDownloaded:"{n} heruntergeladen", tNotPlan:"Keine Plan- oder Gästelisten-Datei", tInvalidFile:"Ungültige Datei", tPasteFirst:"Zuerst Plantext einfügen", tInvalidPaste:"Dieser Text ist kein gültiger Plan", tFont:"Namensgröße {n}%", tMerged:"{a} Gast/Gäste hinzugefügt", tMergedSkipped:" · {s} bereits importierte übersprungen", tCleared:"Tisch geleert",
   exportTitle:"Plan kopieren / herunterladen", exportHint:"Text kopieren und auf einem anderen Gerät unter „Plan importieren“ einfügen — oder als Datei herunterladen.", exportCopy:"Kopieren", exportDownload:"Datei herunterladen",
   importTitle:"Plan importieren", importHint:"Plantext einfügen oder Datei wählen — und festlegen, wie er übernommen wird.", importPh:"Plantext hier einfügen…", importPaste:"Laden", importFile:"Datei wählen",
   imTitle:"Art des Imports", im_new:"Neuer Plan", im_new_d:"Die Datei wird als eigener Plan geöffnet.",
@@ -1210,7 +1328,12 @@ de:{
   cViewOnly:"Dieser Plan ist hier nur lesbar", cPushed:"In die Cloud gesendet", cPushFail:"Senden fehlgeschlagen", cPullConfirm:"Durch die neueste Version aus der Cloud ersetzen?", cPulled:"Neueste Version geladen", cPullFail:"Laden fehlgeschlagen", cRemoveConfirm:"Aus der Cloud entfernen? Er bleibt auf diesem Gerät, aber die Synchronisierung stoppt und die Links funktionieren nicht mehr.", cRemoved:"Aus der Cloud entfernt",
   cNewer:"Neuere Version von einem anderen Gerät geladen", cUpdated:"Aus der Cloud aktualisiert", cOpenedSync:"Geteilten Plan geöffnet (synchron)", cOpenedView:"Geteilten Plan geöffnet (nur lesen)", cOpenedNamed:"Geöffnet: „{n}“", cOpenedNamedView:"Geöffnet (nur lesen): „{n}“", cOpenFail:"Link konnte nicht geöffnet werden",
   printTitle:"Hochzeits-Sitzplan", printSub:"{t} Tische · {s} Gäste platziert · {c} Plätze", printEmpty:"— frei —", printUnassigned:"Ohne Platz ({n}):",
-  stProbable:"wahrscheinlich", stCut:"abgesagt",
+  stProbable:"wahrscheinlich", stCut:"abgesagt", stConfirmed:"bestätigt",
+  mCsvOut:"Gästeliste (Excel)", mCsvIn:"Namen aus Excel importieren…", csvFile:"Gäste", csvName:"Name", csvTable:"Tisch", csvGroup:"Gruppe", csvParty:"Einladung", csvStatus:"Status", csvNote:"Notiz",
+  csvInTitle:"Namen importieren (Excel / CSV)", csvInHint:"Zellen aus Excel einfügen oder eine .csv-Datei wählen. Erkannte Spalten: Name (oder Vorname + Nachname), Tisch, Gruppe, Einladung, Status, Notiz — alle außer dem Namen sind freiwillig.", csvPh:"Hier einfügen — eine Zeile pro Gast",
+  csvSum:"Namen: {n} · neu: {k}", csvSumDup:" · schon auf der Liste (übersprungen): {d}", csvCols:"Spalten: {c}", csvNoHead:"Keine Überschriften: die erste Spalte wird der Name.", csvAdd:"Zur Liste hinzufügen ({n})",
+  csvEnc:"Die Datei war nicht UTF-8 und wurde als {e} gelesen. Wenn die Namen falsch aussehen, speichern Sie sie in Excel als „CSV UTF-8“ und versuchen Sie es erneut.", csvBad:"Einige Zeichen konnten nicht gelesen werden (�). Speichern Sie die Datei in Excel als „CSV UTF-8“ und versuchen Sie es erneut.", csvXlsx:"Das ist eine Excel-Datei (.xlsx). In Excel: Speichern unter → „CSV UTF-8“, dann diese Datei wählen.",
+  csvDone:"Zur Liste hinzugefügt: {n}", csvDoneSeated:" · an Tischen: {s}", csvDoneNoRoom:" · ohne Platz: {k} (ihr Tisch wurde nicht gefunden oder ist voll)",
   labBride:"Braut", labGroom:"Bräutigam",
   labNames:["Maria P.","Georg K.","Helena A.","Niko D.","Katharina M.","Jan S.","Sophie L.","Konstantin V.","Anna C.","Peter R.","Christina T.","Michael G.","Irene N.","Wilhelm Z.","Despina F.","Alex K.","Johanna P.","Thomas M.","Angelika S.","Stefan A.","Frieda D.","Manuel L.","Zoe V.","Petra C.","Eva R.","Sebastian T.","Natalie G.","Christoph N.","Marina Z.","Leon F.","Anastasia K.","Anton P.","Elli M.","Stefanos S.","Nefeli A.","Oliver D.","Diana L.","Aris V.","Isabel C.","Philipp R."],
 },
@@ -1398,8 +1521,11 @@ function ensureProfiles(){
 }
 // ---------- save + undo / redo (one snapshot per saved change; the stacks reset when another plan is loaded) ----------
 let undoStack=[], redoStack=[], lastJSON=null;
+const VIEW_KEYS=["seatFontScale","tableFontScale","nameMode","nameCase","printMode","activeGroupId"];   // how this device shows the plan, not the plan
+function planCore(json){ const o=JSON.parse(json); VIEW_KEYS.forEach(k=>delete o[k]); return JSON.stringify(o); }
 function save(opts){
   const now=JSON.stringify(state);
+  if(ACCESS.ro && lastJSON!==null && now!==lastJSON && planCore(now)!==planCore(lastJSON)){ restoreSnapshot(lastJSON); roToast(); return; }   // read only: whatever slipped past the UI goes back
   if(lastJSON!==null && now!==lastJSON && !(opts&&opts.noHistory)){ undoStack.push(lastJSON); if(undoStack.length>60) undoStack.shift(); redoStack.length=0; }
   lastJSON=now;
   const sp=(profiles&&profiles.profiles)?profiles.profiles.find(p=>p.id===profiles.activeId):null;
@@ -1408,8 +1534,8 @@ function save(opts){
 }
 function resetHistory(){ undoStack=[]; redoStack=[]; lastJSON=JSON.stringify(state); updateUndoButtons(); }
 function updateUndoButtons(){
-  ["undoBtn","mbUndo"].forEach(id=>{ const b=$(id); if(b) b.disabled=!undoStack.length; });
-  ["redoBtn","mbRedo"].forEach(id=>{ const b=$(id); if(b) b.disabled=!redoStack.length; });
+  ["undoBtn","mbUndo"].forEach(id=>{ const b=$(id); if(b) b.disabled=!undoStack.length||ACCESS.ro; });
+  ["redoBtn","mbRedo"].forEach(id=>{ const b=$(id); if(b) b.disabled=!redoStack.length||ACCESS.ro; });
 }
 function restoreSnapshot(json){
   const s=sanitizePlan(JSON.parse(json)); if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s);
@@ -1419,8 +1545,8 @@ function restoreSnapshot(json){
   if(focusId!=null && !state.tables.some(t=>t.id===focusId)) unfocusTable();
   renderAll();
 }
-function undo(){ if(!undoStack.length) return; const cur=JSON.stringify(state); const j=undoStack.pop(); redoStack.push(cur); restoreSnapshot(j); lastJSON=j; wipeAllowedUntil=Date.now()+15000; save({noHistory:true}); toast(tr("tUndo")); }
-function redo(){ if(!redoStack.length) return; const cur=JSON.stringify(state); const j=redoStack.pop(); undoStack.push(cur); restoreSnapshot(j); lastJSON=j; wipeAllowedUntil=Date.now()+15000; save({noHistory:true}); toast(tr("tRedo")); }
+function undo(){ if(!undoStack.length||ACCESS.ro) return; const cur=JSON.stringify(state); const j=undoStack.pop(); redoStack.push(cur); restoreSnapshot(j); lastJSON=j; wipeAllowedUntil=Date.now()+15000; save({noHistory:true}); toast(tr("tUndo")); }
+function redo(){ if(!redoStack.length||ACCESS.ro) return; const cur=JSON.stringify(state); const j=redoStack.pop(); undoStack.push(cur); restoreSnapshot(j); lastJSON=j; wipeAllowedUntil=Date.now()+15000; save({noHistory:true}); toast(tr("tRedo")); }
 // Version-aware migration — keeps guests / groups / seat assignments (and, from v4 on, table positions).
 function migrateLayout(s){
   const from=s.layoutVersion||0;
@@ -1509,8 +1635,9 @@ function sanitizePlan(s){ if(!s||typeof s!=="object") return s;
       if(g.partyId!=null&&(typeof g.partyId!=="string"||!s.parties.some(p=>p.id===g.partyId))) g.partyId=null; }
     const seen=new Set();   // a guest id in two chairs (hand-edited / external file): the first chair wins
     s.tables.forEach(t=>{
-      t.capacity=clamp(Math.floor(+t.capacity)||10,1,30);
-      t.label=String(t.label??"").slice(0,60); t.shape=(t.shape==="head")?"head":"round";
+      t.shape=(t.shape==="head"||t.shape==="rect")?t.shape:"round";   // rect = a long table (chairs on both long sides)
+      t.capacity=clamp(Math.floor(+t.capacity)||10,t.shape==="rect"?2:1,30);
+      t.label=String(t.label??"").slice(0,60);
       if(t.shape==="head" && /^💑\s/.test(t.label)){ const bare=t.label.replace(/^💑\s*/,""); if(["νυφικό τραπέζι","head table","brauttisch"].includes(bare.toLowerCase())) t.label=bare; }   // default labels stored before the emoji-free chrome (2026-09-10); self-contained: sanitizePlan runs during top-level load
       if(!isNum(t.x)) t.x=200; if(!isNum(t.y)) t.y=200; if(t.rot!=null&&!isNum(t.rot)) t.rot=0;
       if(!Array.isArray(t.seats)) t.seats=[];
@@ -1572,7 +1699,7 @@ function renderFeatures(){
     }
     el.style.transform=`translate(-50%,-50%) rotate(${f.rot||0}deg)`;
     if(featLocked(f)){   // the venue's element: shown, not editable
-      el.classList.add("flocked"); el.title=tr("featLockedTip",{v:ACCESS.venueName||tr("theVenue")});
+      el.classList.add("flocked"); if(!ACCESS.ro) el.title=tr("featLockedTip",{v:ACCESS.venueName||tr("theVenue")});
       el.addEventListener("contextmenu",e=>{ e.preventDefault(); e.stopPropagation(); lockedToast("decor"); });
       stage.appendChild(el); return;
     }
@@ -1616,7 +1743,7 @@ function buildSeat(t,i,relx,rely,fs,seatH){
     if(gStatus(gid)!=="confirmed"){ seat.style.borderStyle="dashed"; seat.style.borderColor="rgba(255,255,255,.9)"; seat.style.backgroundClip="padding-box"; }   // not-yet-confirmed: white dashes inside the pill, visible on any floor
     seat.innerHTML=`<span class="nm">${escapeHtml(shown)}</span>`;
     seat.title=guestName(gid)+(guestGroup(gid)?` · ${guestGroup(gid).name}`:"")+statusTitle(gid);
-    seat.draggable=!isTouch; seat.dataset.guestId=gid;   // touch moves with seatHold — no native (iOS) drag session competing
+    seat.draggable=!isTouch&&!ACCESS.ro; seat.dataset.guestId=gid;   // touch moves with seatHold — no native (iOS) drag session competing
   }else{
     seat.style.width="34px";
     seat.innerHTML=`<span class="nm" style="opacity:.6">+</span>`;
@@ -1632,11 +1759,22 @@ function seatLeader(ax,ay,px,py,gid){   // a dot on the chair + a thin line to w
   return frag;
 }
 function tableExtent(t){   // half-size of a table incl. its seats and any name that slid outward — used to zoom onto it
+  if(t.shape==="rect"){ const {g,W,pos}=rectLayout(t); let rx=g.tableW/2+24, ry=g.tableH/2+g.seatH+14;   // wrap frame (the focus ring); zx/zy = the same box as the stage sees it (zoom)
+    pos.forEach((p,i)=>{ if(t.seats[i]){ rx=Math.max(rx, Math.abs(p.x)+W[i]/2+8); ry=Math.max(ry, Math.abs(p.y)+g.seatH/2+8); } });
+    const a=(t.rot||0)*Math.PI/180, c=Math.abs(Math.cos(a)), s=Math.abs(Math.sin(a)); return {rx, ry, zx:rx*c+ry*s, zy:rx*s+ry*c}; }
   if(t.shape==="head"){ const {g,W,pos}=headLayout(t); let rx=g.tableW/2+30+100, ry=g.tableH/2+g.seatH+40;
     pos.forEach((p,i)=>{ if(t.seats[i]&&p.moved){ rx=Math.max(rx, Math.abs(p.sx)+W[i]/2+10); ry=Math.max(ry, Math.abs(p.sy)+g.seatH/2+30); } }); return { rx, ry }; }
   const {g,W,seats}=roundLayout(t); let rx=g.ringR+100, ry=g.ringR+40;
   seats.forEach((p,i)=>{ if(p.moved){ rx=Math.max(rx, Math.abs(p.sx)+W[i]/2+10); ry=Math.max(ry, Math.abs(p.sy)+g.seatH/2+30); } });
   return {rx, ry};
+}
+function wireTableDisc(disc, t, wrap){   // every table top: tip, gear, right-click menu, drag (merge by drop), tap = open, name drops
+  disc.title=tr("tableTip");
+  disc.querySelector(".tgear").addEventListener("click",e=>{ e.stopPropagation(); openMenu(t.id,e); });
+  disc.addEventListener("contextmenu",e=>{ e.preventDefault(); openMenu(t.id,e); });
+  makeDraggable(disc, wrap, t, ()=>renderTables([t.id]), ()=>{ if(pick){ const p=pick; setPick(null); placeInTable(p, t.id); } else focusTable(t.id); }, tableHooks());
+  wireDiscDrop(disc, t);
+  wrap.appendChild(disc);
 }
 function renderRoundTable(t, wrap){
   const g=roundGeom(t);
@@ -1645,12 +1783,7 @@ function renderRoundTable(t, wrap){
   disc.style.width=(g.discR*2)+"px"; disc.style.height=(g.discR*2)+"px"; disc.style.setProperty("--dd",(g.discR*2)+"px");
   const occ=t.seats.filter(Boolean).length;
   disc.innerHTML=`<span class="tgear" title="${escapeHtml(tr("tableSettings"))}">${ICON("gear")}</span><span class="tnum">${escapeHtml(t.label)}</span><span class="tcount">${occ}/${t.capacity}</span>`;
-  disc.title=tr("tableTip");
-  disc.querySelector(".tgear").addEventListener("click",e=>{ e.stopPropagation(); openMenu(t.id,e); });
-  disc.addEventListener("contextmenu",e=>{ e.preventDefault(); openMenu(t.id,e); });
-  makeDraggable(disc, wrap, t, ()=>renderTables([t.id]), ()=>{ if(pick){ const p=pick; setPick(null); placeInTable(p, t.id); } else focusTable(t.id); }, tableHooks());
-  wireDiscDrop(disc, t);
-  wrap.appendChild(disc);
+  wireTableDisc(disc, t, wrap);
   // Name pills that would collide slide apart along an outer circle (like labels around a pie chart), each tied to its
   // chair by a thin leader; a table where nothing collides looks exactly as it always did.
   const {W, seats}=roundLayout(t);
@@ -1668,7 +1801,7 @@ function renderRoundTable(t, wrap){
 // closer), never crossing inward over the chairs. Nothing is ever pushed to a shared far circle.
 function placeNear(items, obstacles, disc){
   const boxes=obstacles.slice(), res=[];
-  const hitB=(x,y,w,h,B)=>Math.abs(x-B.x)<(w+B.w)/2+2 && Math.abs(y-B.y)<(h+B.h)/2+2;
+  const hitB=(x,y,w,h,B)=>B.c!=null ? hitRot(x,y,w/2+2,h/2+2,B) : Math.abs(x-B.x)<(w+B.w)/2+2 && Math.abs(y-B.y)<(h+B.h)/2+2;
   // the pill's CENTRE stays on or outside the chair ring (a wide pill's inner corner may brush the disc, as it always did at its chair)
   const ok=(x,y,w,h)=>(!disc||Math.hypot(x-disc.x,y-disc.y)>=disc.ring-4) && !boxes.some(B=>hitB(x,y,w,h,B));
   for(const it of items){
@@ -1683,6 +1816,11 @@ function placeNear(items, obstacles, disc){
     res.push(p); boxes.push({x:p.x,y:p.y,w:it.w,h:it.h});
   }
   return res;
+}
+// An upright box (half sizes aw,ah) against a rotated one {x,y,w,h,c,s} (a long table at any angle) — separating axes.
+function hitRot(x,y,aw,ah,B){
+  const dx=x-B.x, dy=y-B.y, bw=B.w/2, bh=B.h/2, c=Math.abs(B.c), s=Math.abs(B.s);
+  return Math.abs(dx)<aw+bw*c+bh*s && Math.abs(dy)<ah+bw*s+bh*c && Math.abs(dx*B.c+dy*B.s)<aw*c+ah*s+bw && Math.abs(dy*B.c-dx*B.s)<aw*s+ah*c+bh;
 }
 // Where every seat of a round table goes. The collision maths runs in the STAGE frame (pills are counter-rotated, so they are
 // axis-aligned there); results come back in wrap coordinates (x,y) plus the stage ones (sx,sy) for the zoom extent.
@@ -1735,12 +1873,7 @@ function renderHeadTable(t, wrap){
   disc.style.width=g.tableW+"px"; disc.style.height=g.tableH+"px";
   const occ=t.seats.filter(Boolean).length;
   disc.innerHTML=`<span class="tgear" title="${escapeHtml(tr("tableSettings"))}">${ICON("gear")}</span><span class="tnum">${escapeHtml(t.label)}</span><span class="tcount">${occ}/${t.capacity} · ${escapeHtml(tr("headFacing"))}</span>`;
-  disc.title=tr("tableTip");
-  disc.querySelector(".tgear").addEventListener("click",e=>{ e.stopPropagation(); openMenu(t.id,e); });
-  disc.addEventListener("contextmenu",e=>{ e.preventDefault(); openMenu(t.id,e); });
-  makeDraggable(disc, wrap, t, ()=>renderTables([t.id]), ()=>{ if(pick){ const p=pick; setPick(null); placeInTable(p, t.id); } else focusTable(t.id); }, tableHooks());
-  wireDiscDrop(disc, t);
-  wrap.appendChild(disc);
+  wireTableDisc(disc, t, wrap);
   // main row on the FAR side of the table, so the couple sits behind the table facing the dance floor
   // the row of names under the table: colliding names slide sideways (past the table ends if needed), tied to their chair
   const {homes, pos}=headLayout(t);
@@ -1753,11 +1886,47 @@ function renderHeadTable(t, wrap){
   if(ri<t.capacity) wrap.appendChild(buildSeat(t,ri,  (g.tableW/2)+endGap, 0, g.fs, g.seatH));
   addTableRotateHandle(wrap, t, g.tableH/2 + g.seatH + 30);
 }
+// A long table (shape "rect"): chairs on both long sides, none at the ends. Seat order: side A (top, left→right) 0..per-1,
+// then side B (bottom, left→right). Geometry mirrors the head table; the server's PDF draws it the same way.
+function rectGeom(t){
+  const n=t.capacity, per=Math.max(1,Math.ceil(n/2)), fs=Math.round(11*fontScale), seatH=fs+11, slot=Math.round(64*fontScale), innerW=per*slot;
+  return {n,per,fs,seatH,slot,innerW,tableW:innerW+34,tableH:70};
+}
+function rectHome(g,i){ const b=i>=g.per, k=b?i-g.per:i; return {x:-g.innerW/2+g.slot/2+k*g.slot, y:(b?1:-1)*(g.tableH/2+g.seatH/2+6), b}; }
+// Both rows, like the head table's row: a colliding name slides along its row (past the ends if needed), else the nearest free spot.
+function rectLayout(t){
+  const g=rectGeom(t), rot=(t.rot||0)*Math.PI/180, c=Math.cos(rot), s=Math.sin(rot), h=g.seatH;
+  const toS=(x,y)=>({x:x*c-y*s, y:x*s+y*c}), toW=(X,Y)=>({x:X*c+Y*s, y:-X*s+Y*c});
+  const W=[], homes=[], items=[], obstacles=[{x:0,y:0,w:g.tableW,h:g.tableH,c,s}];   // the table top as the rotated box it is
+  for(let i=0;i<g.n;i++){ const gid=t.seats[i], hm=rectHome(g,i), o=hm.b?{x:-s,y:c}:{x:s,y:-c};
+    W.push(gid?seatWidthFor(displayName(gid),g.fs):34);
+    const sh=Math.max(0, W[i]/2*Math.abs(s)+h/2*Math.abs(c)-h/2); hm.y+=hm.b?sh:-sh;   // turned table: an upright pill steps out until it clears the table top (0 at 0°, half its width at 90°)
+    const p=toS(hm.x,hm.y); homes.push(hm);
+    if(gid) items.push({i,hx:p.x,hy:p.y,w:W[i],h,ox:o.x,oy:o.y, slide:d=>({x:p.x+d*c, y:p.y+d*s}), maxSlide:W[i]}); else obstacles.push({x:p.x,y:p.y,w:34,h}); }
+  const placed=placeNear(items, obstacles, null);
+  const pos=homes.map(hm=>({x:hm.x,y:hm.y,sx:0,sy:0,moved:false}));
+  items.forEach((it,k)=>{ const p=placed[k], w=toW(p.x,p.y); pos[it.i]={x:w.x,y:w.y,sx:p.x,sy:p.y,moved:Math.abs(p.x-it.hx)>3||Math.abs(p.y-it.hy)>3}; });
+  return {g, W, homes, pos};
+}
+function renderRectTable(t, wrap){
+  const g=rectGeom(t), disc=document.createElement("div");
+  disc.className="table-disc rect"; disc.style.width=g.tableW+"px"; disc.style.height=g.tableH+"px";
+  const occ=t.seats.filter(Boolean).length;
+  disc.innerHTML=`<span class="tgear" title="${escapeHtml(tr("tableSettings"))}">${ICON("gear")}</span><span class="tnum">${escapeHtml(t.label)}</span><span class="tcount">${occ}/${t.capacity}</span>`;
+  wireTableDisc(disc, t, wrap);
+  const {W, homes, pos}=rectLayout(t);
+  let hTop=g.tableH/2+6+g.seatH;   // the rotate handle sits above whatever pill crosses its column
+  for(let i=0;i<g.n;i++){ const p=pos[i];
+    if(t.seats[i] && Math.abs(p.x)<W[i]/2+9 && -p.y+g.seatH/2>hTop) hTop=-p.y+g.seatH/2;
+    if(t.seats[i] && p.moved) wrap.appendChild(seatLeader(homes[i].x, (homes[i].b?1:-1)*g.tableH/2, p.x, p.y, t.seats[i]));
+    wrap.appendChild(buildSeat(t,i, p.x, p.y, g.fs, g.seatH)); }
+  addTableRotateHandle(wrap, t, hTop+19);
+}
 function buildTableWrap(t){
   const wrap=document.createElement("div");
-  wrap.className="table"+(t.id===focusId?" focused":""); wrap.style.left=t.x+"px"; wrap.style.top=t.y+"px"; wrap.dataset.tableId=t.id;
+  wrap.className="table"+(t.shape==="rect"?" shape-rect":"")+(t.id===focusId?" focused":""); wrap.style.left=t.x+"px"; wrap.style.top=t.y+"px"; wrap.dataset.tableId=t.id;
   wrap.style.setProperty("--tfs", String(state.tableFontScale||1));
-  if(t.shape==="head") renderHeadTable(t,wrap); else renderRoundTable(t,wrap);
+  if(t.shape==="head") renderHeadTable(t,wrap); else if(t.shape==="rect") renderRectTable(t,wrap); else renderRoundTable(t,wrap);
   const ext=tableExtent(t); wrap.style.setProperty("--frx", Math.round(ext.rx+4)+"px"); wrap.style.setProperty("--fry", Math.round(ext.ry+4)+"px");
   return wrap;
 }
@@ -1810,14 +1979,19 @@ function visiblePoolIds(){
   if(state.activeGroupId) ids=ids.filter(id=>state.guests[id].groupId===state.activeGroupId);
   return ids;
 }
+function seatedHits(){   // a search also finds names that already sit somewhere (table order, then seat order)
+  const q=norm(searchQ), out=[]; if(!q) return out;
+  state.tables.forEach(t=>t.seats.forEach((id,i)=>{ if(id&&state.guests[id]&&(norm(guestName(id)).includes(q)||(partyOf(id)&&norm(partyOf(id).name).includes(q)))) out.push({id,t,i}); }));
+  return out;
+}
 function renderPool(){
   const pool=$("pool"); pool.innerHTML="";
-  const un=unseatedIds(), ids=visiblePoolIds();
+  const un=unseatedIds(), ids=visiblePoolIds(), hits=seatedHits();
   $("poolCount").textContent=tr("unseatedN",{n:un.length});
   $("mbCount").textContent=un.length;
   $("searchWrap").classList.toggle("has", !!searchQ);
-  $("searchWrap").hidden = isNarrow() && !searchQ && document.activeElement!==$("guestSearch") && un.length<8;   // phones: search only once the list needs it; PC: always
-  if(ids.length===0){
+  $("searchWrap").hidden = isNarrow() && !searchQ && document.activeElement!==$("guestSearch") && Object.keys(state.guests).length<8;   // phones: search only once the list needs it (it finds seated names too); PC: always
+  if(ids.length===0 && !hits.length){
     const msg = searchQ ? escapeHtml(tr("noMatch")) : (state.activeGroupId&&un.length) ? escapeHtml(tr("poolEmptyGroup")) : (Object.keys(state.guests).length ? escapeHtml(tr("poolEmpty")) : tr("poolEmptyNew"));
     pool.innerHTML=`<div class="empty-note">${msg}</div>`;
     if(!Object.keys(state.guests).length) $("addNames").open=true;
@@ -1827,9 +2001,30 @@ function renderPool(){
   ids.forEach(id=>{ const p=partyOf(id); if(p){ if(!byParty.has(p.id)) byParty.set(p.id,{p,members:[]}); byParty.get(p.id).members.push(id); } else singles.push(id); });
   [...byParty.values()].sort((a,b)=>a.p.name.localeCompare(b.p.name)).forEach(({p,members})=>{ pool.appendChild(partyHeader(p, members, partyUnseated(p.id).length)); members.forEach(id=>pool.appendChild(makeChip(id, true))); });
   singles.forEach(id=>pool.appendChild(makeChip(id, false)));
+  if(hits.length){ const cap=document.createElement("div"); cap.className="gm-cap"; cap.textContent=tr("seatedCap")+" · "+hits.length; pool.appendChild(cap);
+    hits.slice(0,40).forEach(h=>pool.appendChild(makeSeatedHit(h)));
+    if(hits.length>40){ const more=document.createElement("div"); more.className="empty-note"; more.textContent=tr("moreMatches",{n:hits.length-40}); pool.appendChild(more); } }
+}
+function makeSeatedHit({id,t,i}){
+  const row=document.createElement("div"); row.className="gchip seated"; row.dataset.guestId=id; row.style.borderLeftColor=guestColor(id);
+  row.innerHTML=`<span class="nm">${escapeHtml(guestName(id))}${statusTag(id)}</span><span class="to">→ ${escapeHtml(t.label)}</span>`;
+  row.title=tr("dragTo",{t:t.label,n:i+1});
+  row.addEventListener("click",()=>goToSeat(t.id,i));
+  return row;
+}
+// A search hit: open that table (the usual glide + seat sheet) and show where the guest sits — the chair pulses, the row lights up.
+function goToSeat(tid, i){
+  if(!state.tables.some(x=>x.id===tid)) return;
+  if(pick) setPick(null);
+  focusTable(tid,{}); markSeat(i);
+  const row=fSeats.querySelector(`.frow[data-i="${i}"]`);
+  if(row){ row.classList.add("hit"); setTimeout(()=>row.classList.remove("hit"),2600);
+    requestAnimationFrame(()=>{ const r=row.getBoundingClientRect(), fr=fSeats.getBoundingClientRect(); fSeats.scrollTop+=r.top-fr.top-(fr.height-r.height)/2; }); }
+  const el=stage.querySelector(`.table[data-table-id="${tid}"] .seat[data-seat-index="${i}"]`);
+  if(el){ el.classList.add("found"); setTimeout(()=>el.classList.remove("found"),2600); }
 }
 function partyHeader(p, members, total){
-  const h=document.createElement("div"); h.className="pparty"; h.draggable=true; h.dataset.pid=p.id;
+  const h=document.createElement("div"); h.className="pparty"; h.draggable=!ACCESS.ro; h.dataset.pid=p.id;
   const cnt=(total&&total!==members.length)?`${members.length} / ${total}`:String(members.length);   // a colour / search filter hides some: say so — the gesture seats all of them
   h.innerHTML=`<span class="grip" title="${escapeHtml(tr("gripParty"))}">${ICON("grip")}</span><b>${escapeHtml(caseName(p.name))}</b><span class="n">${cnt}</span><button class="pedit" title="${escapeHtml(tr("partyRename"))}">${ICON("edit")}</button>`;
   if(pick&&pick.type==="party"&&pick.partyId===p.id) h.classList.add("picked");
@@ -1848,7 +2043,7 @@ function partyHeader(p, members, total){
 function makeChip(id, inParty){
     const col=guestColor(id);
     const chip=document.createElement("div");
-    chip.className="gchip"+(inParty?" inparty":""); chip.draggable=true; chip.dataset.guestId=id;
+    chip.className="gchip"+(inParty?" inparty":""); chip.draggable=!ACCESS.ro; chip.dataset.guestId=id;
     chip.style.borderLeftColor=col; chip.style.background=hexTint(col);
     chip.title=(guestGroup(id)?guestGroup(id).name:"")+statusTitle(id);
     chip.innerHTML=`<span class="grip" title="${escapeHtml(tr("gripTitle"))}">${ICON("grip")}</span><span class="nm">${escapeHtml(guestName(id))}${statusTag(id)}</span><span class="acts"><button class="edit" title="${escapeHtml(tr("chipEdit"))}">${ICON("edit")}</button><button class="x" title="${escapeHtml(tr("chipRemove"))}">✕</button></span>`;
@@ -1900,7 +2095,7 @@ function addGroup(){
   const g={id:"grp"+nextId(), name:name.trim(), color};
   state.groups.push(g); state.activeGroupId=g.id; save(); renderGroups(); renderPool();
 }
-function renameGroup(id){ const g=state.groups.find(x=>x.id===id); if(!g)return; const nm=prompt(tr("promptRenameGroup"),g.name); if(nm&&nm.trim()){ g.name=nm.trim(); save(); renderGroups(); } }
+function renameGroup(id){ if(ACCESS.ro) return; const g=state.groups.find(x=>x.id===id); if(!g)return; const nm=prompt(tr("promptRenameGroup"),g.name); if(nm&&nm.trim()){ g.name=nm.trim(); save(); renderGroups(); } }
 function recolorGroup(id){
   const g=state.groups.find(x=>x.id===id); if(!g)return;
   const inp=document.createElement("input"); inp.type="color"; inp.value=g.color;
@@ -1909,6 +2104,7 @@ function recolorGroup(id){
   inp.addEventListener("change",()=>inp.remove()); inp.click();
 }
 function editGroup(id,evt){
+  if(ACCESS.ro) return;
   const g=state.groups.find(x=>x.id===id); if(!g)return;
   const menu=$("groupmenu"); menu.dataset.fromSheet="";
   menu.innerHTML=`
@@ -1943,6 +2139,7 @@ function groupRowsHtml(selId){
 }
 // Change a guest's group (from a seat row's dot, a chip, the pick bar…)
 function openGroupMenu(guestId, evt){
+  if(ACCESS.ro) return;
   closePlaceMenu();
   const menu=$("groupmenu"); const g=state.guests[guestId]; if(!g) return;
   menu.dataset.fromSheet=""; menu.innerHTML=`<div class="gm-cap">${escapeHtml(tr("rowGroup"))}</div>`+groupRowsHtml(g.groupId||null);
@@ -1953,6 +2150,7 @@ function openGroupMenu(guestId, evt){
 // Everyone at a table → one group (gear menu, sheet footer). Pick a group or type a new one; one save, one undo step.
 function tableSeated(t){ return t.seats.filter(id=>id&&state.guests[id]); }
 function openTableGroupMenu(t, anc){
+  if(ACCESS.ro) return;
   closePlaceMenu();
   const ids=tableSeated(t); if(!ids.length){ toast(tr("tgEmpty",{n:t.label}),2500); return; }
   const per={}; ids.forEach(id=>{ const g=state.guests[id].groupId||""; per[g]=(per[g]||0)+1; });
@@ -1988,6 +2186,7 @@ function setTableGroup(t, gid){
 // ---- Προσκλητήριο from the sheet: tick the names that share one invitation, name it, done (one save) ----
 let partySel=null;   // {tableId, ids:Set} while picking
 function startPartySelect(t){
+  if(ACCESS.ro) return;
   if(!t) return;
   if(partySel&&partySel.tableId===t.id){ try{ $("psName").focus({preventScroll:true}); }catch(e){} return; }   // pressed again: keep the ticks, go to the name
   if(focusId!==t.id) focusTable(t.id,{});
@@ -2033,6 +2232,7 @@ $("menuGroup").addEventListener("click",e=>{ const t=state.tables.find(x=>x.id==
 $("fGroup").addEventListener("click",e=>{ const t=focusedTable(); if(t) openTableGroupMenu(t, anchorOf(e.currentTarget)); });
 // Choose the group that NEW names will join (an empty seat row's dot)
 function openActiveGroupMenu(evt){
+  if(ACCESS.ro) return;
   closePlaceMenu();
   const menu=$("groupmenu");
   menu.dataset.fromSheet=""; menu.innerHTML=`<div class="gm-cap">${escapeHtml(tr("rowNewGroup"))}</div>`+groupRowsHtml(state.activeGroupId||null);
@@ -2062,10 +2262,11 @@ function renderGroupsModal(){
     setTimeout(()=>{ const i=$("gNewName"); if(i) i.focus(); },0); };
   $("gAdd").onclick=add; $("gNewName").addEventListener("keydown",e=>{ e.stopPropagation(); if(e.key==="Enter"){ e.preventDefault(); add(); } });
 }
-function openGroupsModal(){ setNav(false); renderGroupsModal(); $("groupsModal").classList.add("open"); }
+function openGroupsModal(){ if(ACCESS.ro){ roToast(); return; } setNav(false); renderGroupsModal(); $("groupsModal").classList.add("open"); }
 $("groupsClose").addEventListener("click",()=>$("groupsModal").classList.remove("open"));
 $("groupsModal").addEventListener("click",e=>{ if(e.target.id==="groupsModal") e.currentTarget.classList.remove("open"); });
 function openPalette(g, anchorEl){
+  if(ACCESS.ro) return;
   const m=$("palette"); const cols=[...GROUP_PALETTE,...EXTRA_PALETTE];
   m.innerHTML=`<div class="pal">${cols.map(c=>`<button class="psw${c===g.color?" on":""}" data-c="${c}" style="background:${c}"></button>`).join("")}</div><label class="gm-item"><input type="color" id="palCustom" value="${safeColor(g.color)}" style="width:28px;height:28px;border:none;padding:0;background:none">${escapeHtml(tr("customColor"))}</label>`;
   const apply=c=>{ g.color=safeColor(c); save(); renderGroups(); renderTables(); renderPool(); if($("groupsModal").classList.contains("open")) renderGroupsModal(); };
@@ -2075,6 +2276,7 @@ function openPalette(g, anchorEl){
 }
 // Combined name + group editor (from a pool chip ✎ / right-click, a placed guest, or the pick bar).
 function openGuestEditor(guestId, evt){
+  if(ACCESS.ro) return;
   closePlaceMenu();
   const g=state.guests[guestId]; if(!g) return;
   const menu=$("guesteditor");
@@ -2230,9 +2432,11 @@ function importPlanAsProfile(s, suggestedName){
 }
 function openProfileMenu(evt){
   const menu=$("profilemenu");
-  menu.innerHTML=`<div class="gm-item" data-act="rename">${ICON("edit")}${escapeHtml(tr("pRename"))}</div><div class="gm-item" data-act="dup">${ICON("copy")}${escapeHtml(tr("pDup"))}</div><div class="gm-sep"></div><div class="gm-item danger" data-act="del">${ICON("trash")}${escapeHtml(tr("pDel"))}</div>`;
+  const pl=(currentProfile()||{}).life, pd=pl&&pl.weddingDate;
+  menu.innerHTML=(pd||dateEditable()?`<div class="gm-item" data-act="date">${ICON("clock")}${escapeHtml(pd?fmtDate(pd):tr("accDate")+"…")}</div><div class="gm-sep"></div>`:"")+`<div class="gm-item" data-act="rename">${ICON("edit")}${escapeHtml(tr("pRename"))}</div><div class="gm-item" data-act="dup">${ICON("copy")}${escapeHtml(tr("pDup"))}</div><div class="gm-sep"></div><div class="gm-item danger" data-act="del">${ICON("trash")}${escapeHtml(tr("pDel"))}</div>`;
   const pc=currentProfile()||{};
-  menu.querySelector('[data-act="rename"]').onclick=()=>{ closeProfileMenu(); if(ACCESS.restricted){ toast(tr("tRenameVenue",{v:ACCESS.venueName||tr("theVenue")}),4000); return; } renameProfile(); };
+  const dt=menu.querySelector('[data-act="date"]'); if(dt) dt.onclick=()=>{ closeProfileMenu(); openAccess(); };
+  menu.querySelector('[data-act="rename"]').onclick=()=>{ closeProfileMenu(); if(ACCESS.ro){ roToast(); return; } if(ACCESS.restricted){ toast(tr("tRenameVenue",{v:ACCESS.venueName||tr("theVenue")}),4000); return; } renameProfile(); };
   menu.querySelector('[data-act="dup"]').onclick=()=>{ closeProfileMenu(); if(pc.support){ toast(tr("tNoCopySupport"),4000); return; } duplicateProfile(); };
   menu.querySelector('[data-act="del"]').onclick=()=>{ closeProfileMenu(); deleteProfile(); };
   showPopover(menu,evt);
@@ -2275,14 +2479,15 @@ function hintHold(){ if(!isTouch || seenHint(HINT_HOLD)) return; markHint(HINT_H
 // Tips: one card at a time, each shown once per device, only at the moment the action becomes useful (see checkTips).
 const TIP_KEY="weddingSeatingPlanner.tips"; let tipsSeen={}, tipTimer=null, tipPending=null;
 try{ tipsSeen=JSON.parse(localStorage.getItem(TIP_KEY)||"{}")||{}; }catch(e){ tipsSeen={}; }
-function tipText(k){ const t={ move:isTouch?tr("tipMoveTouch"):tr("tipMove"), pick:isTouch?tr("tipPickTouch"):tr("tipPick"), groups:tr("tipGroups"), full:can("seats")?tr("tipFull"):tr("tipFullLocked"), print:tr("tipPrint") }; return t[k]||""; }
+function tipText(k){ if(k.startsWith("date.")) return tr("dateNudge"); const t={ move:isTouch?tr("tipMoveTouch"):tr("tipMove"), pick:isTouch?tr("tipPickTouch"):tr("tipPick"), groups:tr("tipGroups"), full:can("seats")?tr("tipFull"):tr("tipFullLocked"), print:tr("tipPrint") }; return t[k]||""; }
 function showTip(key){
   if(tipsSeen[key]) return false;
   const el=$("tip"); if(!el || !el.hidden || tour || document.querySelector(".modal-back.open")) return false;   // not now — the trigger will come round again
   if(isNarrow() && (document.body.classList.contains("kb") || document.body.classList.contains("nav-open"))){ tipPending=key; return false; }   // would sit on the sheet head / the drawer: show it when they go
   tipsSeen[key]=1; try{ localStorage.setItem(TIP_KEY, JSON.stringify(tipsSeen)); }catch(e){}
-  el.innerHTML=`${ICON("bulb")}<span class="tt">${escapeHtml(tipText(key))}</span><button class="tx" title="${escapeHtml(tr("close"))}">✕</button>`;
-  el.hidden=false; el.querySelector(".tx").onclick=hideTip;
+  const act=key.startsWith("date.")?[tr("dateNudgeGo"),()=>{ hideTip(); openAccess(); }]:null;
+  el.innerHTML=`${ICON("bulb")}<span class="tt">${escapeHtml(tipText(key))}</span>${act?`<button class="ta">${escapeHtml(act[0])}</button>`:""}<button class="tx" title="${escapeHtml(tr("close"))}">✕</button>`;
+  el.hidden=false; el.querySelector(".tx").onclick=hideTip; if(act) el.querySelector(".ta").onclick=act[1];
   clearTimeout(tipTimer); tipTimer=setTimeout(hideTip, 9000);
   return true;
 }
@@ -2296,11 +2501,12 @@ function checkTips(why){
   if(n>=6 && !guests.some(g=>g.groupId) && showTip("groups")) return;
   if(n>=20 && seated>=0.8*n) showTip("print");
 }
-function renderSheetHint(){ const el=$("fHint"); if(!el) return; el.hidden=!(focusedTable() && !seenHint(HINT_ENTER)); if(!el.hidden) el.textContent=tr("hintEnter"); }
+function renderSheetHint(){ const el=$("fHint"); if(!el) return; el.hidden=!(focusedTable() && !seenHint(HINT_ENTER) && !ACCESS.ro); if(!el.hidden) el.textContent=tr("hintEnter"); }
 
 // ---- tap to place: HTML5 drag & drop never fires on touch, so this is the phone's way to seat anyone ----
 let pick=null;   // {type,guestId,from,tableId,seatIndex}
 function setPick(p){
+  if(ACCESS.ro) p=null;   // read only: nothing to pick up
   pick=p||null;
   document.body.classList.toggle("picking", !!pick);
   stage.querySelectorAll(".seat.picked").forEach(el=>el.classList.remove("picked"));
@@ -2383,12 +2589,12 @@ function wireSeat(seat){
     if(performance.now()-seatDragEndedAt<500) return;   // the click that trails a lift is not a tap
     if(pick){ placePick(tableId,idx); return; }
     const occ=seat.classList.contains("occupied");
-    if(occ && isTouch){ setPick({type:"guest",guestId:seat.dataset.guestId,from:"seat",tableId,seatIndex:idx}); return; }   // touch: pick up to move
+    if(occ && isTouch && !ACCESS.ro){ setPick({type:"guest",guestId:seat.dataset.guestId,from:"seat",tableId,seatIndex:idx}); return; }   // touch: pick up to move
     focusTable(tableId,{row:idx});                                                                                        // otherwise: type in the names panel
   });
   // Mouse: right-click edits. Touch: a long press MOVES the name (seatHold) — editing lives in the pick bar, never two things at once.
   seat.addEventListener("contextmenu",e=>{ if(seat.classList.contains("occupied")){ e.preventDefault(); e.stopPropagation(); if(!isTouch) openGuestEditor(seat.dataset.guestId,e); } });
-  if(isTouch) seat.addEventListener("pointerdown",e=>{ if(e.pointerType==="touch" && seat.classList.contains("occupied")) seatHold(e, seat, tableId, idx); });
+  if(isTouch) seat.addEventListener("pointerdown",e=>{ if(e.pointerType==="touch" && seat.classList.contains("occupied") && !ACCESS.ro) seatHold(e, seat, tableId, idx); });
 }
 // Touch: hold a seated name ~⅓ s → it lifts and follows the finger; release over another chair to move (or swap) it.
 // Before the lift the finger pans the floor as usual (touch-action), so nothing happens by accident.
@@ -2479,6 +2685,7 @@ function seatHold(e, seat, tableId, idx){
 // `from` is null for an unseated name, {tableId,seatIndex} for a seated one (moving keeps the swap semantics of a drop).
 function dragFor(guestId, from){ return from?{type:"guest",guestId,from:"seat",tableId:from.tableId,seatIndex:from.seatIndex}:{type:"guest",guestId,from:"pool"}; }
 function openPlaceMenu(guestId, anc, from, partyId){
+  if(ACCESS.ro) return;
   if(partyId ? !partyUnseated(partyId).length : !state.guests[guestId]) return;
   closeGroupMenu(); closeGuestEditor(); closeFeatureMenu(); closeMenu(); $("palette").style.display="none";   // one popover at a time
   const m=$("placemenu"); m._anchor=anc; m._guest=guestId; m._from=from; m._party=partyId||null;
@@ -2499,7 +2706,7 @@ function placeAnchor(m){
 function closePlaceMenu(){ const m=$("placemenu"); m.style.display="none"; }
 function renderPlaceTables(m){
   const guestId=m._guest, from=m._from;
-  const rows=state.tables.map(t=>{ const free=t.seats.filter(x=>!x).length; return `<div class="gm-item${free?"":" dim"}" data-tid="${t.id}">${t.shape==="head"?ICON("heart"):ICON("table")}<span class="pm-name">${escapeHtml(t.label)}</span><span class="n">${free}/${t.capacity}</span></div>`; }).join("");
+  const rows=state.tables.map(t=>{ const free=t.seats.filter(x=>!x).length; return `<div class="gm-item${free?"":" dim"}" data-tid="${t.id}">${t.shape==="head"?ICON("heart"):t.shape==="rect"?ICON("longtable"):ICON("table")}<span class="pm-name">${escapeHtml(t.label)}</span><span class="n">${free}/${t.capacity}</span></div>`; }).join("");
   const who=m._party?tr("pbParty",{n:partyName(m._party), c:partyUnseated(m._party).length}):guestName(guestId);
   m.innerHTML=`<div class="gm-cap">${escapeHtml(tr("pmFor",{n:who}))}</div><div class="gm-item" data-act="floor">${ICON("fit")}${escapeHtml(tr("pmFloor"))}</div><div class="gm-sep"></div><div class="pm-list">${rows}</div>`;
   m.querySelector('[data-act="floor"]').onclick=()=>{ closePlaceMenu(); setPick(m._party?{type:"party",partyId:m._party}:dragFor(guestId, from)); };   // setPick closes the drawer on phones; overview() would cancel the pick
@@ -2534,6 +2741,8 @@ function placePartyInTable(pid, tableId, firstSeat){   // seats the members stil
 }
 function seatNeighbours(t,i){   // who physically sits next to seat i (head table: a row 0..top-1 with the two ends at its corners)
   const cnt=t.capacity;
+  if(t.shape==="rect"){ const per=Math.ceil(cnt/2), b=i>=per, k=b?i-per:i, len=b?cnt-per:per, base=b?per:0, r=[];   // same side left/right, then across
+    if(k>0) r.push(base+k-1); if(k<len-1) r.push(base+k+1); const o=b?k:per+k; if(o<cnt) r.push(o); return r; }
   if(t.shape!=="head") return [(i+1)%cnt,(i-1+cnt)%cnt];
   const top=Math.max(1,cnt-2), li=top, ri=top+1;
   if(i===li) return [0]; if(i===ri) return [top-1];
@@ -2700,13 +2909,16 @@ function makeStageResizable(h){
 // ============================================================
 const menu=$("tablemenu");
 function openMenu(tableId, evt){
+  if(ACCESS.ro) return;   // the table's settings: nothing to change
   closePlaceMenu();
   activeMenuTableId=tableId;
   const t=state.tables.find(x=>x.id===tableId); if(!t) return;
-  $("menuTitle").textContent = t.shape==="head" ? tr("menuTitleHead") : tr("menuTitle");
-  $("menuCapLabel").textContent = t.shape==="head" ? tr("capLabelHead") : tr("capLabel");
+  const rect=t.shape==="rect", presets=rect?[12,16,20]:[8,10,12];   // a long table seats more
+  $("menuTitle").textContent = t.shape==="head" ? tr("menuTitleHead") : rect ? tr("menuTitleRect") : tr("menuTitle");
+  $("menuCapLabel").textContent = t.shape==="head" ? tr("capLabelHead") : rect ? tr("capLabelRect") : tr("capLabel");
+  menu.querySelectorAll(".caps button").forEach((b,k)=>{ b.dataset.cap=presets[k]; b.textContent=presets[k]; });
   $("menuLabel").value=t.label; $("menuLabel").readOnly=!can("labels");
-  $("menuCapCustom").value=[8,10,12].includes(t.capacity)?"":t.capacity;
+  $("menuCapCustom").value=presets.includes(t.capacity)?"":t.capacity; $("menuCapCustom").min=rect?2:1;
   const mx=maxSeatsFor(t); $("menuCapCustom").max=mx; $("menuCapCustom").disabled=!can("seats");
   menu.querySelectorAll(".caps button").forEach(b=>{ b.classList.toggle("active",+b.dataset.cap===t.capacity); b.disabled=!can("seats") || (+b.dataset.cap>mx && +b.dataset.cap>t.capacity); });
   showPopover(menu,evt);
@@ -2717,15 +2929,22 @@ $("menuLabel").addEventListener("keydown",e=>{ e.stopPropagation(); if(e.key==="
 menu.querySelectorAll(".caps button").forEach(b=>b.addEventListener("click",()=>setCapacity(+b.dataset.cap)));
 $("menuCapCustom").addEventListener("change",e=>{ const v=parseInt(e.target.value,10); if(v>=1&&v<=30) setCapacity(v); });
 function resizeSeats(t,n){   // keeps everyone seated who fits; returns how many lost their chair
+  if(t.shape==="rect") return resizeRect(t,n);
   const old=t.seats, newSeats=Array(n).fill(null); let bumped=0;
   for(let i=0;i<old.length;i++){ if(old[i]!=null){ if(i<n)newSeats[i]=old[i]; else{ const free=newSeats.indexOf(null); if(free>=0)newSeats[free]=old[i]; else bumped++; } } }
   t.capacity=n; t.seats=newSeats; return bumped;
+}
+function resizeRect(t,n){   // a long table keeps each guest on their side: side B starts at ceil(n/2), so its indices move with n
+  const oldPer=Math.ceil(t.capacity/2), per=Math.ceil(n/2), nb=n-per, out=Array(n).fill(null), extra=[]; let bumped=0;
+  t.seats.forEach((id,i)=>{ if(!id) return; const b=i>=oldPer, k=b?i-oldPer:i, j=b?(k<nb?per+k:-1):(k<per?k:-1); if(j>=0) out[j]=id; else extra.push(id); });
+  extra.forEach(id=>{ const f=out.indexOf(null); if(f>=0) out[f]=id; else bumped++; });
+  t.capacity=n; t.seats=out; return bumped;
 }
 function setCapacity(n){
   const t=state.tables.find(x=>x.id===activeMenuTableId); if(!t)return;
   if(!can("seats")){ lockedToast("seats"); return; }
   if(n>maxSeatsFor(t) && n>t.capacity){ toast(tr("tMaxSeats",{n:maxSeatsFor(t), v:ACCESS.venueName||tr("theVenue")}),4000); n=Math.max(t.capacity, maxSeatsFor(t)); }
-  if(t.shape==="head") n=Math.max(3,n);
+  if(t.shape==="head") n=Math.max(3,n); else if(t.shape==="rect") n=Math.max(2,n);
   const bumped=resizeSeats(t,n); save(); renderTables([t.id]);
   menu.querySelectorAll(".caps button").forEach(bt=>bt.classList.toggle("active",+bt.dataset.cap===n));
   if(bumped) toast(tr("tBumped",{n:bumped}));
@@ -2736,7 +2955,7 @@ function mergeTargetFor(t){   // the table whose top the dragged centre is over 
   let best=null, bd=Infinity;
   for(const o of state.tables){ if(o===t) continue;
     const dx=t.x-o.x, dy=t.y-o.y, d=Math.hypot(dx,dy); let inside;
-    if(o.shape==="head"){ const g=headGeom(o), a=-(o.rot||0)*Math.PI/180, lx=dx*Math.cos(a)-dy*Math.sin(a), ly=dx*Math.sin(a)+dy*Math.cos(a); inside=Math.abs(lx)<g.tableW/2&&Math.abs(ly)<g.tableH/2; }
+    if(o.shape==="head"||o.shape==="rect"){ const g=o.shape==="head"?headGeom(o):rectGeom(o), a=-(o.rot||0)*Math.PI/180, lx=dx*Math.cos(a)-dy*Math.sin(a), ly=dx*Math.sin(a)+dy*Math.cos(a); inside=Math.abs(lx)<g.tableW/2&&Math.abs(ly)<g.tableH/2; }
     else inside=d<roundGeom(o).discR*0.95;
     if(inside&&d<bd){ best=o; bd=d; } }
   return best;
@@ -2915,7 +3134,7 @@ function focusTable(id, opts={}){
   requestAnimationFrame(()=>{
     if(focusId!==id) return;
     const ext=tableExtent(t), b=visibleBox();
-    const z=clamp(Math.min(b.w*0.82/(ext.rx*2), b.h*0.82/(ext.ry*2)), 0.5, 1.6);
+    const z=clamp(Math.min(b.w*0.82/((ext.zx||ext.rx)*2), b.h*0.82/((ext.zy||ext.ry)*2)), 0.5, 1.6);
     viewTo(t.x, t.y, z, wasOpen || !isNarrow());
   });
 }
@@ -2943,7 +3162,7 @@ function renderFocus(){
     const row=document.createElement("div"); row.className="frow"+(gid?" occ":""); row.dataset.i=i;
     const dotColor=gid?guestColor(gid):(ag?ag.color:"#cfc8bd");
     if(partySel&&gid&&partySel.ids.has(gid)) row.classList.add("sel");
-    row.innerHTML=`${(partySel&&gid)?`<button class="fchk" tabindex="-1"></button>`:""}<span class="fn">${i+1}</span><button class="fdot${gid?"":" empty"}" tabindex="-1" title="${escapeHtml(gid?tr("rowGroup"):tr("rowNewGroup"))}" style="background-color:${safeColor(dotColor)}"></button><input type="text" maxlength="40" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="words" enterkeyhint="${i+1<t.capacity?"next":"done"}" placeholder="${escapeHtml(tr("seatPh"))}" value="${gid?escapeHtml(guestName(gid)):""}"><button class="grip" title="${escapeHtml(tr("gripTitle"))}" tabindex="-1">${ICON("grip")}</button><button class="fx" title="${escapeHtml(tr("unseat"))}" tabindex="-1">✕</button>`;
+    row.innerHTML=`${(partySel&&gid)?`<button class="fchk" tabindex="-1"></button>`:""}<span class="fn">${i+1}</span><button class="fdot${gid?"":" empty"}" tabindex="-1" title="${escapeHtml(gid?tr("rowGroup"):tr("rowNewGroup"))}" style="background-color:${safeColor(dotColor)}"></button><input type="text" maxlength="40" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="words" enterkeyhint="${i+1<t.capacity?"next":"done"}" placeholder="${escapeHtml(tr("seatPh"))}" value="${gid?escapeHtml(guestName(gid)):""}"${ACCESS.ro?" readonly":""}><button class="grip" title="${escapeHtml(tr("gripTitle"))}" tabindex="-1">${ICON("grip")}</button><button class="fx" title="${escapeHtml(tr("unseat"))}" tabindex="-1">✕</button>`;
     if(partySel){ row.addEventListener("pointerdown",e=>{ if(partySel&&t.seats[i]&&!e.target.closest(".grip,.fx,.fdot")) e.preventDefault(); });   // a tick must not take the focus from the name field
       row.addEventListener("click",e=>{ if(!partySel||!t.seats[i]||e.target.closest(".grip,.fx,.fdot")) return; e.preventDefault(); togglePartySel(t.seats[i]); }); }
     const grip=row.querySelector(".grip");
@@ -2966,6 +3185,7 @@ function renderFocus(){
       },120);
     });
     row.querySelector(".fx").addEventListener("click",()=>{ const tb=focusedTable(); if(tb&&tb.seats[i]){ tb.seats[i]=null; save(); renderTables([tb.id]); renderPool(); } });
+    if(t.shape==="rect" && i===Math.ceil(t.capacity/2) && i>0){ const sep=document.createElement("div"); sep.className="fside"; fSeats.appendChild(sep); }   // side A | side B
     fSeats.appendChild(row);
   }
   fSeats.scrollTop=st;
@@ -3016,6 +3236,7 @@ function commitRow(tb,i,text,chosenId){
 }
 // Suggestions under the active row: unseated guests matching the text (active group first when empty).
 function showSug(i,q){
+  if(ACCESS.ro){ hideSug(); return; }
   const tb=focusedTable(); if(!tb) return;
   const nq=norm(q); const cur=tb.seats[i];
   if(cur && (!nq || nq===norm(guestName(cur)))){ hideSug(); return; }   // an occupied row offers nothing until a different name is typed
@@ -3168,6 +3389,7 @@ function endTour(){
   if(!tour) return; const st=tour.steps[tour.i]; if(st&&st.after) st.after();
   hideTip();
   tour=null; $("tour").hidden=true; document.body.classList.remove("touring");
+  setTimeout(maybeDateNudge,1200);
 }
 function showTourStep(){
   const st=tour.steps[tour.i]; if(st.prep) st.prep();
@@ -3210,13 +3432,14 @@ window.addEventListener("resize",()=>{ if(tour) placeTour(); });
 $("helpBtn").addEventListener("click",startTour);
 
 // ============================================================
-//  GUEST SEARCH (sidebar) — filters the unseated list; Enter picks the first match
+//  GUEST SEARCH (sidebar) — filters the unseated list and lists seated matches (→ table); Enter takes the first match
 // ============================================================
 const searchInp=$("guestSearch");
 searchInp.addEventListener("input",()=>{ searchQ=searchInp.value; renderPool(); });
 searchInp.addEventListener("keydown",e=>{ e.stopPropagation();
   if(e.key==="Escape"){ searchInp.value=""; searchQ=""; renderPool(); searchInp.blur(); }
-  if(e.key==="Enter"){ const ids=visiblePoolIds(); if(ids.length){ setPick({type:"guest",guestId:ids[0],from:"pool"}); searchInp.blur(); } } });
+  if(e.key==="Enter"){ const ids=visiblePoolIds(); if(ids.length){ setPick({type:"guest",guestId:ids[0],from:"pool"}); searchInp.blur(); }
+    else { const h=seatedHits()[0]; if(h){ searchInp.blur(); goToSeat(h.t.id,h.i); } } } });
 $("searchClear").addEventListener("click",()=>{ searchInp.value=""; searchQ=""; renderPool(); if(!$("searchWrap").hidden) searchInp.focus(); });
 
 // ============================================================
@@ -3231,6 +3454,14 @@ function addRoundTable(){
   save(); renderTables(); setNav(false); toast(tr("tTableAdded")); focusTable(id,{row:isTouch?null:0});
 }
 $("addTableBtn").addEventListener("click",addRoundTable);
+function addRectTable(){
+  if(!can("tables")){ lockedToast("tables"); return; }
+  const id=nextId(), c=visibleCenter(), cap=Math.min(can("seats")?12:10, maxSeatsFor({shape:"rect"})), g=rectGeom({capacity:cap});   // no seat-count right: the server gives a new table at most 10
+  const n=state.tables.filter(t=>t.shape!=="head").length;
+  state.tables.push({id, label:String(n+1), shape:"rect", x:clamp(c.x,g.tableW/2+20,state.stage.w-g.tableW/2-20), y:clamp(c.y,120,state.stage.h-120), rot:0, capacity:cap, seats:Array(cap).fill(null)});
+  save(); renderTables(); setNav(false); toast(tr("tTableAdded")); focusTable(id,{row:isTouch?null:0});
+}
+$("addRectBtn").addEventListener("click",addRectTable);
 $("addHeadBtn").addEventListener("click",()=>{ if(!can("tables")){ lockedToast("tables"); return; } const c=visibleCenter(); const t=makeHeadTable(nextId()); t.x=clamp(c.x,200,state.stage.w-200); t.y=clamp(c.y,100,state.stage.h-100); state.tables.push(t); save(); renderTables(); setNav(false); toast(tr("tHeadAdded")); focusTable(t.id); });
 $("addGuestBtn").addEventListener("click",()=>{
   const ta=$("guestInput");
@@ -3265,11 +3496,21 @@ function autoSeat(){   // whole invitations first, then families (names sharing 
   for(const c of chunks){
     const fit=tables.filter(t=>freeIdx(t).length>=c.ids.length); if(!fit.length){ leftovers.push(...c.ids); continue; }
     fit.sort((a,b)=>affinity(b,c)-affinity(a,c)||(tables.indexOf(a)-tables.indexOf(b)));
-    const free=freeIdx(fit[0]); c.ids.forEach(id=>{ fit[0].seats[free.shift()]=id; placed++; });
+    const seats=blockSeats(fit[0], c.ids.length); c.ids.forEach((id,k)=>{ fit[0].seats[seats[k]]=id; placed++; });
   }
   for(const t of tables.slice().sort((a,b)=>freeIdx(b).length-freeIdx(a).length)){ const free=freeIdx(t); while(free.length&&leftovers.length){ t.seats[free.shift()]=leftovers.shift(); placed++; } }   // bigger than any free block: split over the emptiest tables
   save(); renderTables(); renderPool(); toast(placed?tr("tAutoSeated",{n:placed}):tr("tNoSeats"));
   checkTips("placed");
+}
+// k free chairs that sit together: grown seat by seat through seatNeighbours (round: a run; long table: along a side and across),
+// else — a fragmented table — each next to the ones already chosen where possible. The caller checked that k chairs are free.
+function blockSeats(t, k){
+  const free=t.seats.map((x,i)=>x?null:i).filter(i=>i!=null), isFree=i=>!t.seats[i];
+  for(const s of free){ const got=[s];
+    while(got.length<k){ const nx=got.flatMap(i=>seatNeighbours(t,i)).find(j=>isFree(j)&&!got.includes(j)); if(nx==null) break; got.push(nx); }
+    if(got.length===k) return got; }
+  const got=[]; while(got.length<k){ const nx=got.flatMap(i=>seatNeighbours(t,i)).find(j=>isFree(j)&&!got.includes(j)); got.push(nx!=null?nx:free.find(j=>!got.includes(j))); }
+  return got;
 }
 $("autoSeatBtn").addEventListener("click",autoSeat);
 function resetPlan(){
@@ -3376,14 +3617,7 @@ $("importPaste").addEventListener("click",()=>{
 $("importFile").addEventListener("click",pickImportFile);
 $("importClose").addEventListener("click",()=>$("importModal").classList.remove("open"));
 ["exportModal","importModal"].forEach(id=>$(id).addEventListener("click",e=>{ if(e.target.id===id) e.currentTarget.classList.remove("open"); }));
-// Merge a guest LIST into the current plan (adds to the pool; never touches tables or existing guests)
-function importGuestList(){
-  const inp=document.createElement("input"); inp.type="file"; inp.accept="application/json,.json";
-  inp.onchange=()=>{ const f=inp.files[0]; if(!f)return; const r=new FileReader();
-    r.onload=()=>{ try{ const d=JSON.parse(r.result); if(d.importGuests) mergeGuestList(d); else if(d.tables) toast(tr("tFullPlan")); else toast(tr("tNotGuestList")); }catch(e){ toast(tr("tInvalidFile")); } };
-    r.readAsText(f); };
-  inp.click();
-}
+// Merge a guest LIST ({importGuests} file, through the import modal) into the current plan (adds to the pool; never touches tables or existing guests)
 function mergeGuestList(data){
   const nameToId={}; state.groups.forEach(g=>nameToId[g.name]=g.id);
   (data.importGroups||[]).forEach(g=>{
@@ -3403,30 +3637,140 @@ function mergeGuestList(data){
   toast(tr("tMerged",{a:added})+(skipped?tr("tMergedSkipped",{s:skipped}):""));
   checkTips("added");
 }
+function downloadBlob(blob, name){ const url=URL.createObjectURL(blob), a=document.createElement("a"); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),60000); }
+function fileBase(){ const cur=currentProfile()||{}; return (cur.name||"").replace(/[^\p{L}\p{N}\-]+/gu,"_").replace(/^_+|_+$/g,"")||"wedding"; }
+// ---- Guest list for Excel: CSV with a UTF-8 BOM and ";" (what Greek / German Excel opens with a double click) ----
+function csvCell(v){ v=String(v==null?"":v); if(/^[=+\-@\t\r]/.test(v)) v="'"+v;   // a cell starting like a formula stays text
+  return /[";\r\n]|^\s|\s$/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
+function statusWord(id){ const s=gStatus(id); return s==="probable"?tr("stProbable"):s==="cut"?tr("stCut"):tr("stConfirmed"); }
+function exportGuestsCsv(){
+  if((currentProfile()||{}).support){ toast(tr("tNoCopySupport"),4000); return; }
+  const tables=state.tables.map((t,k)=>({t,k})).sort((a,b)=>a.t.label.localeCompare(b.t.label,LANG,{numeric:true,sensitivity:"base"})||a.k-b.k).map(x=>x.t);   // "2" before "10"
+  const byName=(a,b)=>rawName(a).localeCompare(rawName(b),LANG,{sensitivity:"base"});
+  const line=(id,label)=>{ const g=guestGroup(id), p=partyOf(id); return [rawName(id), label, g?g.name:"", p?p.name:"", statusWord(id), gNote(id)].map(csvCell).join(";"); };
+  const rows=[[tr("csvName"),tr("csvTable"),tr("csvGroup"),tr("csvParty"),tr("csvStatus"),tr("csvNote")].map(csvCell).join(";")];
+  tables.forEach(t=>t.seats.filter(id=>id&&state.guests[id]).sort(byName).forEach(id=>rows.push(line(id,t.label))));
+  unseatedIds().sort(byName).forEach(id=>rows.push(line(id,"")));   // unseated at the end
+  const name=fileBase()+"-"+tr("csvFile")+".csv";
+  downloadBlob(new Blob(["\uFEFF"+rows.join("\r\n")+"\r\n"],{type:"text/csv;charset=utf-8"}), name); toast(tr("tDownloaded",{n:name}));
+}
+// ---- Names from Excel: paste cells or choose a .csv/.tsv/.txt → preview → add (group / invitation / table columns are optional) ----
+const CSV_COLS={ name:["όνομα","ονοματεπώνυμο","καλεσμένος","καλεσμένοι","name","full name","guest","guests","namen","gast","gäste"],
+  first:["μικρό όνομα","first name","firstname","given name","vorname"], last:["επώνυμο","surname","last name","lastname","family name","nachname","familienname"],
+  table:["τραπέζι","table","tisch"], group:["ομάδα","group","gruppe"], party:["προσκλητήριο","πρόσκληση","invitation","party","einladung"],
+  status:["κατάσταση","status"], note:["σημείωση","σημειώσεις","note","notes","comment","notiz","bemerkung","anmerkung"] };
+function parseDelimited(text){   // CSV / TSV / Excel cells → rows of trimmed cells; the separator (tab, ;, ,) is guessed from the first lines
+  text=String(text||"").replace(/^\uFEFF/,"").replace(/\r\n?/g,"\n");
+  const outside=(l,c)=>{ let n=0,q=false; for(const ch of l){ if(ch==='"') q=!q; else if(ch===c&&!q) n++; } return n; };
+  const sample=text.split("\n").filter(l=>l.trim()).slice(0,30);
+  const sep=["\t",";",","].find(c=>sample.some(l=>outside(l,c)>0))||null;   // tab (a paste from Excel) wins, then ; (Greek Excel), then ,
+  const rows=[]; let row=[], cell="", q=false;
+  for(let i=0;i<text.length;i++){ const ch=text[i];
+    if(q){ if(ch==='"'){ if(text[i+1]==='"'){ cell+='"'; i++; } else q=false; } else cell+=ch; continue; }
+    if(ch==='"' && !cell.trim()){ q=true; cell=""; continue; }
+    if(sep && ch===sep){ row.push(cell); cell=""; continue; }
+    if(ch==="\n"){ row.push(cell); rows.push(row); row=[]; cell=""; continue; }
+    cell+=ch; }
+  if(cell||row.length){ row.push(cell); rows.push(row); }
+  return rows.map(r=>r.map(c=>c.trim().replace(/^'(?=[=+\-@])/,""))).filter(r=>r.some(Boolean)).slice(0,2001);
+}
+function csvStatus(v){ const k=norm(v); if(!k) return "confirmed";
+  const any=key=>["el","en","de"].some(l=>norm(T_ALL[l][key])===k);
+  if(any("stProbable")||["πιθανος","πιθανη","ισως","maybe","vielleicht","?"].includes(k)) return "probable";
+  if(any("stCut")||["οχι","ακυρωση","ακυρο","no","canceled","nein","absage"].includes(k)) return "cut";
+  return "confirmed"; }
+function readCsv(text){   // → {rows (first ones, for the preview), cols (detected), entries [{name,table,group,party,status,note,skip}]}
+  const rows=parseDelimited(text); if(!rows.length) return {rows, cols:null, entries:[]};
+  const cols={}; rows[0].forEach((c,i)=>{ const k=norm(c); for(const f in CSV_COLS) if(cols[f]==null && CSV_COLS[f].some(x=>norm(x)===k)){ cols[f]=i; break; } });
+  const header=cols.name!=null||cols.first!=null||cols.last!=null;
+  const map=header?cols:{name:0}, data=header?rows.slice(1):rows;
+  const at=(r,f)=>map[f]!=null?(r[map[f]]||"").trim():"";
+  const entries=data.map(r=>({ name:[at(r,"name")||at(r,"first"), at(r,"last")].filter(Boolean).join(" ").replace(/\s+/g," ").slice(0,80),
+    table:at(r,"table"), group:at(r,"group"), party:at(r,"party"), status:csvStatus(at(r,"status")), note:at(r,"note") })).filter(e=>e.name);
+  const have={}; Object.values(state.guests).forEach(g=>{ const k=norm(g.name); have[k]=(have[k]||0)+1; });
+  entries.forEach(e=>{ const k=norm(e.name); if(have[k]>0){ have[k]--; e.skip=true; } });   // already on the list (as often as the file has them): a second import adds nothing twice
+  return {rows, cols:header?map:null, wide:rows.some(r=>r.length>1), entries, hasGroup:map.group!=null};
+}
+let csvEnc="", csvTimer=null, csvLast=null;
+const CSV_LABEL={name:"csvName",first:"csvName",last:"csvName",table:"csvTable",group:"csvGroup",party:"csvParty",status:"csvStatus",note:"csvNote"};
+function renderCsvPreview(){
+  const box=$("csvPrev"), txt=$("csvText").value, xlsx=/^PK\u0003\u0004/.test(txt), r=csvLast=xlsx?{entries:[]}:readCsv(txt), add=r.entries.filter(e=>!e.skip).length, dup=r.entries.length-add;
+  const btn=$("csvAdd"); btn.textContent=tr("csvAdd",{n:add}); btn.disabled=!add;
+  if(!txt.trim()){ box.innerHTML=""; return; }
+  if(xlsx){ box.innerHTML=`<div class="acc-live" style="margin-top:10px">${escapeHtml(tr("csvXlsx"))}</div>`; return; }   // a workbook, not text: nothing to add
+  const warn=csvEnc?tr("csvEnc",{e:csvEnc}):txt.includes("\uFFFD")?tr("csvBad"):"";
+  const fields=r.cols?Object.keys(r.cols).sort((a,b)=>r.cols[a]-r.cols[b]):["name"];
+  const colNames=[...new Set(fields.map(f=>tr(CSV_LABEL[f])))];
+  const head=`<tr>${colNames.map(c=>`<th>${escapeHtml(c)}</th>`).join("")}</tr>`;
+  const cell=(e,f)=>f==="name"||f==="first"||f==="last"?e.name:f==="status"?(e.status==="confirmed"?"":tr(e.status==="cut"?"stCut":"stProbable")):e[f];
+  const seen=new Set(), shown=fields.filter(f=>{ const l=CSV_LABEL[f]; if(seen.has(l)) return false; seen.add(l); return true; });
+  const body=r.entries.slice(0,5).map(e=>`<tr${e.skip?' style="opacity:.45"':""}>${shown.map(f=>`<td>${escapeHtml(cell(e,f)||"")}</td>`).join("")}</tr>`).join("");
+  box.innerHTML=(warn?`<div class="acc-live" style="margin-top:10px">${escapeHtml(warn)}</div>`:"")
+    +`<div class="csvsum"><b>${escapeHtml(tr("csvSum",{n:r.entries.length,k:add}))}</b>${dup?escapeHtml(tr("csvSumDup",{d:dup})):""}<div class="muted">${escapeHtml(r.cols?tr("csvCols",{c:colNames.join(" · ")}):r.wide?tr("csvNoHead"):"")}</div></div>`
+    +(body?`<div class="csvt-wrap"><table class="csvt">${head}${body}</table></div>`:"");
+}
+function tableByLabel(v){ const k=norm(v), k2=k.replace(/^(τραπεζι|table|tisch)\s*/,""); return state.tables.find(t=>norm(t.label)===k)||state.tables.find(t=>norm(t.label)===k2)||null; }
+function applyCsvImport(){
+  const r=csvLast||readCsv($("csvText").value), add=r.entries.filter(e=>!e.skip); if(!add.length) return;
+  let seated=0, noRoom=0;
+  add.forEach(e=>{
+    const id="g"+nextId(), g={ name:e.name, groupId:r.hasGroup?null:(state.activeGroupId||null), partyId:null };   // no group column: like typed names, they join the selected group
+    const gname=e.group.slice(0,40).trim();   // the stored length: lookup and creation must agree, or every long name makes a new group
+    if(gname){ let gr=state.groups.find(x=>norm(x.name)===norm(gname));
+      if(!gr){ const color=[...GROUP_PALETTE,...EXTRA_PALETTE].find(c=>!state.groups.some(x=>x.color===c))||GROUP_PALETTE[state.groups.length%GROUP_PALETTE.length]; gr={id:"grp"+nextId(), name:gname, color}; state.groups.push(gr); }
+      g.groupId=gr.id; }
+    if(e.party){ const p=ensureParty(e.party); if(p) g.partyId=p.id; }
+    if(e.status!=="confirmed") g.status=e.status;
+    if(e.note) g.note=e.note.slice(0,200);
+    state.guests[id]=g;
+    if(e.table){ const t=tableByLabel(e.table), i=t?freeSeatFor(t):-1; if(i>=0){ t.seats[i]=id; seated++; } else noRoom++; }   // a free chair at their table, next to someone if possible
+  });
+  pruneParties(); save(); renderAll(); $("csvModal").classList.remove("open");
+  toast(tr("csvDone",{n:add.length})+(seated?tr("csvDoneSeated",{s:seated}):"")+(noRoom?tr("csvDoneNoRoom",{k:noRoom}):""), 5000);
+  checkTips("added");
+}
+function openCsvImport(){ csvEnc=""; csvLast=null; $("csvText").value=""; renderCsvPreview(); setNav(false); $("csvModal").classList.add("open"); }
+$("csvText").addEventListener("input",()=>{ csvEnc=""; clearTimeout(csvTimer); csvTimer=setTimeout(renderCsvPreview,200); });
+$("csvText").addEventListener("keydown",e=>e.stopPropagation());
+$("csvAdd").addEventListener("click",()=>{ clearTimeout(csvTimer); renderCsvPreview(); applyCsvImport(); });
+$("csvFile").addEventListener("click",()=>{
+  const inp=document.createElement("input"); inp.type="file"; inp.accept=".csv,.tsv,.txt,text/csv,text/plain,text/tab-separated-values";
+  inp.onchange=()=>{ const f=inp.files[0]; if(!f) return; if(f.size>2e6){ toast(tr("tInvalidFile")); return; }
+    const rd=new FileReader(); rd.onload=()=>{ const buf=new Uint8Array(rd.result); let txt; csvEnc="";
+      try{ txt=new TextDecoder("utf-8",{fatal:true}).decode(buf); }
+      catch(e){ csvEnc=LANG==="el"?"Windows-1253":"Windows-1252"; try{ txt=new TextDecoder(csvEnc.toLowerCase()).decode(buf); }catch(x){ txt=new TextDecoder().decode(buf); csvEnc=""; } }   // Greek Excel's plain "CSV" is Windows-1253
+      $("csvText").value=txt.replace(/^\uFEFF/,""); renderCsvPreview(); };
+    rd.readAsArrayBuffer(f); };
+  inp.click(); });
+$("csvClose").addEventListener("click",()=>$("csvModal").classList.remove("open"));
+$("csvModal").addEventListener("click",e=>{ if(e.target.id==="csvModal") e.currentTarget.classList.remove("open"); });
 // ⋯ menu: everything that isn't needed every minute
 // Four rows a couple needs, everything else behind «Περισσότερα…» (captioned) — nothing is more than two taps away.
 $("moreBtn").addEventListener("click",e=>{
   const m=$("moremenu"); m.classList.remove("expanded");
   const primary=[]; if(!IS_LAB) primary.push(["share",tr("mShare")]);
-  primary.push(["groups",tr("mGroups")],["print",tr("mPrint")],["tour",tr("mTour")]);
+  const ro=ACCESS.ro;
+  if(ACCESS.locked) primary.push(["keepsake",tr("lifePdf")]);
+  if(!ro) primary.push(["groups",tr("mGroups")]);
+  primary.push(["print",tr("mPrint")],["tour",tr("mTour")],["help",tr("mHelp")]);
   { const cp=currentProfile(); if(!IS_LAB && cp && cp.cloudId) primary.push(["access",tr("mAccess")]); }
   const more=[];
-  if(isNarrow()) more.push(["cap",tr("capPlan")],["newplan",tr("newPlan")],["planmore",tr("planMore")],["cap",tr("tools")],...(can("tables")?[["round",tr("mRound")],["head",tr("mHead")]]:[]),["decor",tr("mDecor")],["auto",tr("mAuto")]);
-  more.push(["cap",tr("capFiles")],["guests",tr("mImportGuests")],["export",tr("mExport")],["import",tr("mImport")]);
-  if(!IS_LAB) more.push(["history",tr("mHistory")]);
-  if(skipDeleteConfirm()) more.push(["askdel",tr("mAskDel")]);
-  more.push(["reset",tr("mReset")]);
+  if(isNarrow()) more.push(["cap",tr("capPlan")],["newplan",tr("newPlan")],["planmore",tr("planMore")],...(ro?[]:[["cap",tr("tools")],...(can("tables")?[["round",tr("mRound")],["rect",tr("mRect")],["head",tr("mHead")]]:[]),["decor",tr("mDecor")],["auto",tr("mAuto")]]));
+  more.push(["cap",tr("capFiles")],["csvout",tr("mCsvOut")],...(ro?[]:[["csvin",tr("mCsvIn")]]),["export",tr("mExport")],...(ro?[]:[["import",tr("mImport")]]));
+  if(!IS_LAB && !ro) more.push(["history",tr("mHistory")]);
+  if(skipDeleteConfirm() && !ro) more.push(["askdel",tr("mAskDel")]);
+  if(!ro) more.push(["reset",tr("mReset")]);
   if(!IS_LAB) more.push(["cap",tr("mLang")],["lang-el","ΕΛ · Ελληνικά"],["lang-en","EN · English"],["lang-de","DE · Deutsch"]);
-  const MI={share:"cloud",groups:"people",print:"print",tour:"help",askdel:"help",access:"people",newplan:"plus",planmore:"edit",round:"table",head:"heart",decor:"decor",auto:"spark",guests:"dl",export:"up",import:"dl",history:"clock"};
+  const MI={keepsake:"heart",share:"cloud",groups:"people",print:"print",tour:"help",help:"chat",askdel:"help",access:"people",newplan:"plus",planmore:"edit",round:"table",rect:"longtable",head:"heart",decor:"decor",auto:"spark",csvout:"up",csvin:"dl",export:"up",import:"dl",history:"clock"};
   const row=([a,l])=>a==="cap"?`<div class="gm-cap">${escapeHtml(l)}</div>`:`<div class="gm-item${a==="reset"?" danger":""}${a==="lang-"+LANG?" on":""}" data-act="${a}">${MI[a]?ICON(MI[a]):'<span class="ic"></span>'}${escapeHtml(l)}</div>`;
   m.innerHTML=primary.map(row).join("")+`<div class="gm-sep"></div><div class="gm-item more" data-act="more"><span class="ic"></span>${escapeHtml(tr("mMore"))} ›</div><div class="gm-more">${more.map(row).join("")}</div>`;
   m.querySelectorAll(".gm-item").forEach(it=>it.onclick=ev=>{ ev.stopPropagation(); const a=it.dataset.act;
     if(a==="more"){ m.classList.add("expanded"); showPopover(m, anchorOf($("moreBtn"))); return; }   // re-place: the menu just grew
     m.style.display="none";
-    if(a==="share") openCloud(); else if(a==="guests") importGuestList(); else if(a==="head") $("addHeadBtn").click(); else if(a==="decor") openDecor();
+    if(a==="share") openCloud(); else if(a==="csvout") exportGuestsCsv(); else if(a==="csvin") openCsvImport(); else if(a==="head") $("addHeadBtn").click(); else if(a==="decor") openDecor();
     else if(a==="newplan") newProfile(); else if(a==="planmore") openProfileMenu(anchorOf($("moreBtn")));
-    else if(a==="access") openAccess();
-    else if(a==="round") addRoundTable(); else if(a==="history") openHistory(); else if(a==="groups") openGroupsModal(); else if(a==="tour") startTour();
+    else if(a==="access") openAccess(); else if(a==="help") openHelp(); else if(a==="keepsake") downloadPdf("keepsake", null);
+    else if(a==="round") addRoundTable(); else if(a==="rect") addRectTable(); else if(a==="history") openHistory(); else if(a==="groups") openGroupsModal(); else if(a==="tour") startTour();
     else if(a==="auto") autoSeat(); else if(a==="export"){ if((currentProfile()||{}).support){ toast(tr("tNoCopySupport"),4000); return; } openExport(); } else if(a==="import") openImport(); else if(a==="print") openPrint(); else if(a==="reset") resetPlan();
     else if(a==="askdel"){ try{ localStorage.removeItem(DEL_SKIP_KEY); localStorage.removeItem(MERGE_SKIP_KEY); }catch(e){} toast(tr("tAskDel"),2500); }
     else if(a.startsWith("lang-")){ const l=a.slice(5); location.href=({el:"seating-planner-el.html",en:"seating-planner.html",de:"seating-planner-de.html"})[l]; } });
@@ -3447,7 +3791,11 @@ function setCloudDot(st){ const b=$("cloudBtn"); if(!b) return;
   $("cloudTxt").textContent={ok:tr("cloudOk"),pending:tr("cloudPending"),err:tr("cloudErr")}[st]||tr("cloudIdle");
   b.classList.toggle("on", st==="ok"); b.classList.toggle("err", st==="err"); b.classList.toggle("pending", st==="pending"); }
 function fmtTime(ms){ try{ return ms? new Date(ms).toLocaleString(LANG):"—"; }catch(e){ return "—"; } }
-function canPush(prof){ return !IS_LAB && !!(prof && prof.cloudId && !prof.readonly && !prof.unsynced && prof.role!=="viewer" && (!prof.support || prof.supportEdit) && (prof.editKey || prof.supportKey || getSyncCode())); }
+function fmtDate(v){   // "YYYY-MM-DD" (a calendar day) or ms (Athens) → «20 Σεπτεμβρίου 2026»
+  const o={day:"numeric",month:"long",year:"numeric"};
+  try{ if(typeof v==="string"){ const [y,m,d]=v.split("-").map(Number); return new Date(Date.UTC(y,m-1,d,12)).toLocaleDateString(LANG,{...o,timeZone:"UTC"}); }
+    return v? new Date(v).toLocaleDateString(LANG,{...o,timeZone:"Europe/Athens"}):"—"; }catch(e){ return String(v||"—"); } }
+function canPush(prof){ return !IS_LAB && !!(prof && prof.cloudId && !prof.readonly && !prof.unsynced && prof.role!=="viewer" && !(prof.life&&prof.life.locked) && !prof.gone && (!prof.support || prof.supportEdit) && (prof.editKey || prof.supportKey || getSyncCode())); }
 let wipeAllowedUntil=0;   // set by deliberate wipes (reset / undo / redo) so the server accepts an empty plan
 const PLAN_ID_RE=/^[A-Za-z0-9_-]{8,64}$/;   // plan ids are opaque handles — never let one rewrite an API path
 function planPath(id){ return SYNC_URL+"/plans/"+encodeURIComponent(id); }
@@ -3500,8 +3848,9 @@ async function cloudPush(snap){
   }
   if(r.status===401||r.status===403){
     if(prof.editKey && prof.editKey!==snap.editKey) return cloudPush({...snap, editKey:prof.editKey, headers:authHeaders(prof)});   // new links made here while this save waited
-    const d=await r.json().catch(()=>({})); accessLost(prof, d.error, d.at); return; }
-  if(r.status===404){ accessLost(prof, "gone"); return; }   // deleted (venue console / erasure): stop retrying
+    const d=await r.json().catch(()=>({})); if(d.error==="locked"){ lifeLocked(prof, d.life); return; } accessLost(prof, d.error, d.at); return; }
+  if(r.status===410){ planGone(prof, true); return; }   // in the venue's trash: the admin may restore it — this change waits
+  if(r.status===404){ accessLost(prof, "gone"); return; }   // deleted for good (erasure): stop retrying
   const d=await r.json(); if(!r.ok) throw new Error(d.error||"update failed");
   prof.cloudUpdated=d.updated; prof.cloudGuests=snap.guests; saveProfilesIdx(); registerUnderCode(prof);
   if(d.enforced && d.plan && prof.id===profiles.activeId){   // the venue locked part of that change: show what was kept
@@ -3516,17 +3865,33 @@ async function cloudPush(snap){
 // The server refused this device (a support session ended, the couple's link was reset, a view link expired…).
 function accessLost(prof, code, at){
   if(!prof) return;
-  if(code==="locked"){ toast(tr("tLockedByVenue",{v:prof.venueName||tr("theVenue")}),4500); pullIfNewer(true); return; }
+  if(code==="locked"){ lifeLocked(prof, null); return; }   // the wedding is over: view only, not an access alarm
   if(prof.readonly && prof._lostShown) return;
   prof.readonly=true; prof._lostShown=true; pendingSnap=null; clearTimeout(cloudTimer); cloudTimer=null;
   saveProfilesIdx(); setCloudDot("err");
   toast(prof.support?tr("supEnded"):code==="key_required"?tr("accViewExpired"):code==="key_reset"?tr("accResetBy",{t:fmtTime(at)}):code==="gone"?tr("accGone"):tr("accLost"),9000);
   if(prof.id===profiles.activeId) applyAccess();
 }
+// The wedding is over (a save came back 403 locked): read only from now on — no "access lost" alarm; the server's copy is what stays.
+function lifeLocked(prof, life){
+  prof.life={...(prof.life||{}), ...(life||{}), locked:true};
+  if(pendingSnap && pendingSnap.profId===prof.id){ pendingSnap=null; clearTimeout(cloudTimer); cloudTimer=null; }
+  saveProfilesIdx(); setCloudDot("ok");
+  if(prof.id===profiles.activeId){ applyAccess(); renderAll(); resetHistory(); toast(tr("tLockedWed"),5000); pullIfNewer(true); }
+}
+// 410: the venue put this wedding in its trash (the admin can restore it for 14 days). Not the permanent "lost" state: read only,
+// a calm note, a slow re-check (startCloudPoll / pullIfNewer); a successful GET brings everything back (adoptAccess), and a
+// change the server refused (dirty) goes up then.
+function planGone(prof, dirty){
+  const first=!prof.gone; prof.gone=true; prof._goneAt=Date.now(); if(dirty) prof.goneDirty=true;
+  if(pendingSnap && pendingSnap.profId===prof.id){ pendingSnap=null; clearTimeout(cloudTimer); cloudTimer=null; }
+  saveProfilesIdx(); setCloudDot("err");
+  if(prof.id===profiles.activeId){ applyAccess(); if(first) toast(tr("goneVenue"),7000); }
+}
 // What the server says about this device's rights on the plan → remembered on the profile.
 function adoptAccess(prof, d){
   if(!prof||!d||!d.role) return false;
-  const before=JSON.stringify([prof.role,prof.perms,prof.owner,prof.venueName,prof.template,prof.couplePerms,prof.supportInfo&&prof.supportInfo.expires]);
+  const before=JSON.stringify([prof.role,prof.perms,prof.owner,prof.venueName,prof.template,prof.couplePerms,prof.supportInfo&&prof.supportInfo.expires,prof.life]);
   prof.role=d.role; prof.perms=d.perms||null; prof.owner=(d.owner&&d.owner.type)||"couple"; prof.venueName=(d.owner&&d.owner.venueName)||"";
   prof.template=!!d.template; prof.couplePerms=d.couplePerms||null; prof.venueContact=(d.owner&&d.owner.venueContact)||""; prof.legacyOpenUntil=d.legacyOpenUntil||0; prof.layoutSet=d.layoutSet!==false;
   if(d.readKey) prof.viewKey=d.readKey;
@@ -3535,10 +3900,13 @@ function adoptAccess(prof, d){
   if(d.audit) prof.audit=d.audit;
   if(d.supportExpires) prof.supportExpires=d.supportExpires;
   if("email" in d){ prof.hasRecEmail=true; prof.recEmail=d.email||""; prof.mailOn=!!d.mail; }
-  return before!==JSON.stringify([prof.role,prof.perms,prof.owner,prof.venueName,prof.template,prof.couplePerms,prof.supportInfo&&prof.supportInfo.expires]);
+  if("life" in d) prof.life=d.life||null;   // wedding date, lock / delete times (the server decides; see renderLifeBar)
+  let back=false; if(prof.gone){ prof.gone=false; prof._goneAt=0; back=true;   // restored from the venue's trash
+    if(prof.id===profiles.activeId){ toast(tr("goneBack"),4000); if(prof.goneDirty){ prof.goneDirty=false; setTimeout(scheduleCloudPush,0); } } }   // after the caller's applyAccess: the refused change goes up
+  return back || before!==JSON.stringify([prof.role,prof.perms,prof.owner,prof.venueName,prof.template,prof.couplePerms,prof.supportInfo&&prof.supportInfo.expires,prof.life]);
 }
 async function cloudFetch(id, prof){ if(!PLAN_ID_RE.test(String(id))) throw new Error("bad id");
-  const r=await fetch(planPath(id),{headers:authHeaders(prof)}); const d=await r.json().catch(()=>({}));
+  const r=await fetch(planPath(id),{headers:authHeaders(prof), cache:"no-store"}); const d=await r.json().catch(()=>({}));   // a 410 is cacheable: a restored wedding must not stay "gone" from the browser cache
   if(!r.ok){ const e=new Error(d.error||"not found"); e.status=r.status; e.code=d.error; throw e; } return d; }
 async function cloudDelete(prof){
   if(!prof||!prof.cloudId) return;
@@ -3580,11 +3948,11 @@ function startCloudPoll(){ if(cloudPoll) return;
     if(pushInFlight||cloudTimer||pendingSnap) return;
     if(interactionBusy()) return;
     if(getSyncCode()) await syncFromCode();
-    const cur=currentProfile(); if(cur&&cur.cloudId&&!(cur.readonly&&cur._lostShown)){
+    const cur=currentProfile(); if(cur&&cur.cloudId&&!(cur.readonly&&cur._lostShown)&&!(cur.gone&&Date.now()-(cur._goneAt||0)<180000)){   // a trashed wedding: every 3 minutes
       try{ const d=await cloudFetch(cur.cloudId, cur);
         if(d.updated && (!cur.cloudUpdated||d.updated>cur.cloudUpdated) && !interactionBusy() && !cloudTimer){ applyPulledPlan(cur,d); toast(tr("cUpdated")); }
         else if(adoptAccess(cur,d)){ saveProfilesIdx(); applyAccess(); renderAll(); resetHistory(); }   // the venue changed what the couple may do: no undo across it
-      }catch(e){ if(e.status===401||e.status===403) accessLost(cur, e.code); else if(e.status===404) accessLost(cur,"gone"); }
+      }catch(e){ if(e.status===401||e.status===403) accessLost(cur, e.code); else if(e.status===410) planGone(cur); else if(e.status===404) accessLost(cur,"gone"); }
     }
   }, 15000);
 }
@@ -3753,7 +4121,7 @@ async function openSharedFromURL(){
     else{ const pid=newProfileId(); prof={ id:pid, name:d.name||tr("sharedPlan"), cloudId:id, editKey:key, viewKey:view, cloudUpdated:d.updated, readonly:!key, previewCouple:preview };
       profiles.profiles.push(prof); profiles.activeId=pid; saveProfilesIdx();
       applyPulledPlan(prof,d); setCloudDot("ok"); toast(key?tr("cOpenedNamed",{n:d.name||""}):tr("cOpenedNamedView",{n:d.name||""})); }
-  }catch(e){ if(gatedVisitor()){ if(e.code==="key_required") alert(tr("accViewExpired")); location.replace("/"); return true; } toast(e.code==="key_required"?tr("accViewExpired"):tr("cOpenFail"),6000); }
+  }catch(e){ if(gatedVisitor()){ if(e.code==="key_required") alert(tr("accViewExpired")); location.replace("/"); return true; } toast(e.code==="key_required"?tr("accViewExpired"):e.status===410?tr("goneVenue"):tr("cOpenFail"),6000); }
   return true;
 }
 // A couple who bought TakeaSeat opens the link we sent: it works once and becomes their own private plan on this device.
@@ -3780,7 +4148,7 @@ function renderClaim(st){
       <div class="mrow"><button class="ibtn" id="claimCopy">${escapeHtml(tr("cCopyEdit"))}</button>${navigator.share?`<button class="ibtn" id="claimShare">${escapeHtml(tr("claimShare"))}</button>`:""}<button class="ibtn primary" id="claimOk">${escapeHtml(tr("claimContinue"))}</button></div>`;
     $("claimCopy").onclick=()=>copyText($("claimLink"));
     const sh=$("claimShare"); if(sh) sh.onclick=()=>{ navigator.share({title:"TakeaSeat", text:tr("claimShareText",{n:st.prof.name}), url:link}).catch(()=>{}); };
-    $("claimOk").onclick=()=>{ $("claimModal").classList.remove("open"); maybeWelcome(); };
+    $("claimOk").onclick=()=>{ $("claimModal").classList.remove("open"); maybeWelcome(); setTimeout(maybeDateNudge,1500); };
   } else {
     const msg=st.step==="used"?tr("claimUsedAt",{t:fmtTime(st.at)}):st.step==="expired"?tr("claimExpired"):tr("claimFail");
     b.innerHTML=`<p class="claim-lead">${escapeHtml(msg)}</p><div class="mrow">${st.step==="fail"?`<button class="ibtn primary" id="claimRetry">${escapeHtml(tr("claimRetry"))}</button>`:`<button class="ibtn primary" id="claimNew">${escapeHtml(tr("recAgain"))}</button>`}
@@ -3873,7 +4241,7 @@ async function pullIfNewer(force){
       if(interactionBusy()){ clearTimeout(conflictTimer); conflictTimer=setTimeout(()=>pullIfNewer(force),4000); return; }   // never apply under the user's fingers — retry
       applyPulledPlan(cur,d); toast(tr("cUpdated")); }
     setCloudDot("ok");
-  }catch(e){ setCloudDot("err"); if(e.status===401||e.status===403){ accessLost(cur, e.code); return; } if(cur.unsynced) toast(tr("cLoadErr",{e:String(e&&e.message||e)}),7000); }
+  }catch(e){ setCloudDot("err"); if(e.status===401||e.status===403){ accessLost(cur, e.code); return; } if(e.status===410){ planGone(cur); return; } if(cur.unsynced) toast(tr("cLoadErr",{e:String(e&&e.message||e)}),7000); }
 }
 // ---- version history (kept on the server on every save) ----
 async function openHistory(){
@@ -3890,6 +4258,9 @@ async function openHistory(){
 }
 $("histClose").addEventListener("click",()=>$("histModal").classList.remove("open"));
 $("histModal").addEventListener("click",e=>{ if(e.target.id==="histModal") e.currentTarget.classList.remove("open"); });
+function openHelp(){ $("helpModal").classList.add("open"); }
+$("helpClose").addEventListener("click",()=>$("helpModal").classList.remove("open"));
+$("helpModal").addEventListener("click",e=>{ if(e.target.id==="helpModal") e.currentTarget.classList.remove("open"); });
 function openCloud(){ if(IS_LAB){ toast(tr("labHint")); return; } renderCloudBody(); $("cloudModal").classList.add("open"); }
 window.addEventListener("hashchange",()=>{ if(!IS_LAB && /[#&]((claim|key|vkey|view|support|verify)=|recover(=|&|$))/.test(location.hash)) openSharedFromURL(); });
 
@@ -3899,42 +4270,87 @@ window.addEventListener("hashchange",()=>{ if(!IS_LAB && /[#&]((claim|key|vkey|v
 const PERM_KEYS=["floor","decor","layout","tables","seats","labels"];
 const PERM_LABEL={floor:"permFloor",decor:"permDecor",layout:"permLayout",tables:"permTables",seats:"permSeats",labels:"permLabels"};
 let ACCESS={role:"couple", restricted:false, preview:false, perms:null};
-function can(k){ return IS_LAB || !ACCESS.perms || ACCESS.perms[k]!==false; }
+function can(k){ return IS_LAB || (!ACCESS.ro && (!ACCESS.perms || ACCESS.perms[k]!==false)); }   // read only: nothing
 function applyAccess(){
   const cur=(profiles&&profiles.profiles)?currentProfile():null;
   const role=(IS_LAB||!cur||!cur.cloudId)?"local":(cur.support?"support":(cur.role||(cur.readonly?"viewer":"couple")));
   const restricted=role==="couple" && cur.owner==="venue" && !!cur.perms;
   const preview=role==="venue" && !!cur.previewCouple && !cur.template && !!cur.couplePerms;
   const perms=restricted?cur.perms:preview?cur.couplePerms:null;
-  ACCESS={role, restricted, preview, perms:perms?{...perms}:null, venueName:(cur&&cur.venueName)||"", template:!!(cur&&cur.template), owner:(cur&&cur.owner)||"couple"};
+  const locked=!IS_LAB && !!(cur && cur.cloudId && cur.life && cur.life.locked);   // after the wedding every role only looks (venues too)
+  const gone=!IS_LAB && !!(cur && cur.cloudId && cur.gone);   // in the venue's trash (410) until the admin restores it
+  const wasRo=!!ACCESS.ro;
+  ACCESS={role, restricted, preview, perms:perms?{...perms}:null, venueName:(cur&&cur.venueName)||"", template:!!(cur&&cur.template), owner:(cur&&cur.owner)||"couple", locked, gone, ro:locked||gone||role==="viewer"};
+  document.body.classList.toggle("ro", ACCESS.ro);
   PERM_KEYS.forEach(k=>document.body.classList.toggle("lock-"+k, !can(k)));
   const fl=$("stageFloor"); if(fl) fl.disabled=!can("floor");
   ["venue","support","viewer"].forEach(r=>document.body.classList.toggle("role-"+r, role===r));
-  renderRoleBadge();
+  renderRoleBadge(); renderLifeBar(); updateUndoButtons();
+  if(wasRo!==ACCESS.ro){ setPick(null); closeMenu(); renderAll(); }   // chairs, chips and seat rows are built read-only (or not)
 }
+// ---- after the wedding: "took place on …, view only, deleted on …" + the keepsake PDF ----
+function lifeText(cur){ const L=(cur&&cur.life)||{};
+  return (L.weddingDate?tr(ACCESS.role==="couple"?"lifeWas":"lifeWasV",{d:fmtDate(L.weddingDate)})+" ":"")+(L.deleteAt&&!L.keep?tr("lifeRoDel",{d:fmtDate(L.deleteAt)}):tr("lifeRo")); }
+function lifeBarKey(){ return PBASE+".lifebar."+((currentProfile()||{}).cloudId||""); }
+function renderLifeBar(){ const bar=$("lifebar"); if(!bar) return; let off=false; try{ off=sessionStorage.getItem(lifeBarKey())==="1"; }catch(e){}
+  bar.hidden=!(ACCESS.locked||ACCESS.gone)||off; $("lifePdf").hidden=!ACCESS.locked;
+  if(!bar.hidden) $("lifeText").textContent=ACCESS.gone?tr("goneVenue"):lifeText(currentProfile()); }
+$("lifeX").addEventListener("click",()=>{ try{ sessionStorage.setItem(lifeBarKey(),"1"); }catch(e){} renderLifeBar(); applyZoom(); });
+$("lifePdf").addEventListener("click",e=>downloadPdf("keepsake", e.currentTarget));
+// ---- the wedding date: the couple sets it on its own plan (the venue in its console); first set free, then a few changes ----
+function dateEditable(){ const cur=currentProfile()||{}, L=cur.life; return !IS_LAB && !!(cur.cloudId && L && L.dateEditable===true); }   // the server decides (extra plans follow the main plan's date)
+function todayAthens(){ try{ return new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Athens",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()); }catch(e){ return new Date().toISOString().slice(0,10); } }
+function ymdPlus(ymd,n){ return new Date(Date.parse(ymd+"T00:00:00Z")+n*864e5).toISOString().slice(0,10); }
+function dateSecHtml(cur){ const L=cur.life; if(!L) return "";
+  const wd=L.weddingDate, ed=dateEditable(), t=todayAthens();
+  let h=`<h4>${escapeHtml(tr("accDate"))}</h4>`+(wd?`<div class="acc-date">${escapeHtml(fmtDate(wd))}</div>`:`<div class="mhint" style="padding:0">${escapeHtml(tr("accDateNone"))}</div>`);
+  if(L.locked) return h+`<div class="mhint" style="padding:4px 0 0">${escapeHtml(lifeText(cur))}</div>`;
+  if(ed) h+=`<div class="acc-row"><input type="date" id="accDateIn" min="${t}" max="${ymdPlus(t,730)}" value="${escapeHtml(wd||"")}"><button class="ibtn primary" id="accDateSave">${escapeHtml(tr(wd?"accDateChange":"accDateSet"))}</button></div>`+(wd&&L.dateChangesLeft!=null?`<div class="mhint" style="padding:6px 0 0">${escapeHtml(tr("accDateLeft",{n:L.dateChangesLeft}))}</div>`:"");
+  else if(wd && ACCESS.role==="couple" && cur.owner!=="venue" && L.dateChangesLeft===0) h+=`<div class="mhint" style="padding:4px 0 0">${escapeHtml(tr("accDateNoMore"))}</div>`;
+  else if(cur.owner==="venue" && ACCESS.role!=="venue") h+=`<div class="mhint" style="padding:4px 0 0">${escapeHtml(tr("accDateByVenue"))}</div>`;
+  return h+`<div class="mhint" style="padding:6px 0 0">${escapeHtml(tr("accDateHint"))}</div>`; }
+function wireDateSec(cur){
+  const ds=$("accDateSave"); if(!ds) return;
+  ds.onclick=async()=>{ const inp=$("accDateIn"), v=inp.value, L=cur.life||{}, t=todayAthens();
+    if(!v){ inp.focus(); return; }
+    if(v<t || v>ymdPlus(t,730)){ toast(tr("accDateBad"),5000); return; }
+    if(v===L.weddingDate) return;
+    const left=L.dateChangesLeft!=null?L.dateChangesLeft:3;
+    if(!confirm(L.weddingDate?tr("accDateConfirmChange",{d:fmtDate(v),n:Math.max(0,left-1)}):tr("accDateConfirm",{d:fmtDate(v),n:left}))) return;
+    ds.disabled=true; let r=null, d={};
+    try{ r=await fetch(planPath(cur.cloudId)+"/date",{method:"POST",headers:authHeaders(cur),body:JSON.stringify({date:v})}); d=await r.json().catch(()=>({})); }catch(e){}
+    if(r && r.ok && d.life){ cur.life=d.life; saveProfilesIdx(); applyAccess(); toast(tr("tDateSet",{d:fmtDate(v)}),4000); await refreshAccess(); if($("accessModal").classList.contains("open")) renderAccessBody(); return; }
+    ds.disabled=false;
+    toast(!r?tr("claimFail"):d.error==="bad_date"?tr("accDateBad"):d.error==="no_more_changes"?tr("accDateNoMore"):d.error==="locked"?tr("tLockedWed"):tr("accFail"),6000);
+    if(d.error==="locked"||d.error==="no_more_changes"){ await refreshAccess(); applyAccess(); if($("accessModal").classList.contains("open")) renderAccessBody(); } };
+}
+// A plan still on the 18-month fallback: once per device and plan, a gentle "set your wedding date" (only for whoever can set it).
+function maybeDateNudge(){ const cur=currentProfile(), L=cur&&cur.life; if(!L || !L.fallback || L.weddingDate || !dateEditable()) return; showTip("date."+cur.cloudId); }
 function renderRoleBadge(){
   const b=$("roleBadge"); if(!b) return; const cur=currentProfile()||{}; const a=ACCESS;
   let cls="", txt="", tip="";
-  if(a.role==="venue"){ cls="r-venue"; txt=a.template?tr("rbTemplate"):a.preview?tr("rbPreview"):tr("rbVenue"); tip=a.template?tr("rbTemplateTip"):tr("rbVenueTip"); }
+  if(a.role==="venue" && !a.locked && !a.gone){ cls="r-venue"; txt=a.template?tr("rbTemplate"):a.preview?tr("rbPreview"):tr("rbVenue"); tip=a.template?tr("rbTemplateTip"):tr("rbVenueTip"); }
   else if(a.role==="support"){ cls="r-support"; txt=tr(cur.supportEdit?"rbSupport":"rbSupportView",{t:fmtTime(cur.supportExpires)}); tip=tr("rbSupportTip"); }
+  else if(a.locked||a.gone){ cls="r-viewer"; txt=tr("rbDone"); tip=a.gone?tr("goneVenue"):lifeText(cur); }
   else if(a.role==="viewer"){ cls="r-viewer"; txt=tr("rbViewer"); tip=tr("rbViewerTip"); }
   else if(a.role==="couple" && cur.supportInfo && cur.supportInfo.expires>Date.now()){ cls="r-support"; txt=tr("rbSupportOn"); tip=tr(cur.supportInfo.by==="venue"?"rbSupportOnVenue":"rbSupportOnTip",{t:fmtTime(cur.supportInfo.expires)}); }
   else if(a.restricted){ cls="r-locked"; txt=tr("rbLocked",{v:a.venueName||tr("theVenue")}); tip=tr("rbLockedTip"); }
   b.hidden=!txt; b.className=cls; b.textContent=txt; b.title=tip;
 }
-$("roleBadge").addEventListener("click",()=>openAccess());
+$("roleBadge").addEventListener("click",()=>{ if((ACCESS.locked||ACCESS.gone) && $("lifebar").hidden){ try{ sessionStorage.removeItem(lifeBarKey()); }catch(e){} renderLifeBar(); applyZoom(); return; } openAccess(); });   // after the wedding the badge brings the strip back
 let lockedToastAt=0;
-function lockedToast(k){ if(Date.now()-lockedToastAt<2500) return; lockedToastAt=Date.now(); toast(tr("tLockedPart",{v:ACCESS.venueName||tr("theVenue"), w:tr(PERM_LABEL[k])}),3500); }
+function roToast(){ if(Date.now()-lockedToastAt<2500) return; lockedToastAt=Date.now(); toast(ACCESS.gone?tr("goneVenue"):ACCESS.locked?tr("tLockedWed"):tr("rbViewerTip"),3500); }
+function lockedToast(k){ if(ACCESS.ro){ roToast(); return; } if(Date.now()-lockedToastAt<2500) return; lockedToastAt=Date.now(); toast(tr("tLockedPart",{v:ACCESS.venueName||tr("theVenue"), w:tr(PERM_LABEL[k])}),3500); }
 function maxSeatsFor(t){ const m=(ACCESS.perms&&ACCESS.perms.maxSeats)||0; return (m && t && t.shape!=="head")? m : 30; }
 // Decor items the venue placed stay the venue's; what the couple adds (photo booth, candy bar…) is theirs to move.
-function featLocked(f){ return !can("decor") && !!f && (f.by==="venue" || (f.by===undefined && ACCESS.owner==="venue")); }
+function featLocked(f){ return ACCESS.ro || !can("decor") && !!f && (f.by==="venue" || (f.by===undefined && ACCESS.owner==="venue")); }
 function permListHtml(p){
   return `<ul class="acc-perms">${PERM_KEYS.map(k=>`<li class="${p[k]?"yes":"no"}">${p[k]?"✓":"🔒"} ${escapeHtml(tr(PERM_LABEL[k]))}${(k==="seats"&&p[k]&&p.maxSeats)?` <span class="no">(${escapeHtml(tr("permMax",{n:p.maxSeats}))})</span>`:""}</li>`).join("")}<li class="yes">✓ ${escapeHtml(tr("permAlways"))}</li></ul>`;
 }
 function auditHtml(list){
   if(!list||!list.length) return `<div class="mhint" style="padding:4px 0 0">${escapeHtml(tr("accLogEmpty"))}</div>`;
-  const WHO={couple:"awCouple",venue:"awVenue",support:"awSupport",admin:"awAdmin"}, WHAT={invite:"atInvite",revoke:"atRevoke",open:"atOpen",save:"atSave",restore:"atRestore",reset:"atReset",claim:"atClaim",claim_reset:"atClaimReset",rotate:"atRotate",recover:"atRecover",email:"atEmail"};
-  return `<ul class="acc-log">${list.slice().reverse().map(e=>`<li><span class="t">${escapeHtml(fmtTime(e.t))}</span><span><b>${escapeHtml(WHO[e.who]?tr(WHO[e.who]):String(e.who))}</b> · ${escapeHtml(WHAT[e.what]?tr(WHAT[e.what],{h:e.h||""}):String(e.what))}</span></li>`).join("")}</ul>`;
+  const WHO={couple:"awCouple",venue:"awVenue",support:"awSupport",admin:"awAdmin",system:"awSystem"}, WHAT={date:"atDate",locked:"atLocked",invite:"atInvite",revoke:"atRevoke",open:"atOpen",save:"atSave",restore:"atRestore",reset:"atReset",claim:"atClaim",claim_reset:"atClaimReset",rotate:"atRotate",recover:"atRecover",email:"atEmail"};
+  return `<ul class="acc-log">${list.slice().reverse().map(e=>`<li><span class="t">${escapeHtml(fmtTime(e.t))}</span><span><b>${escapeHtml(WHO[e.who]?tr(WHO[e.who]):String(e.who))}</b> · ${escapeHtml(WHAT[e.what]?tr(WHAT[e.what],{h:e.h||"",d:e.d?fmtDate(e.d):""}):String(e.what))}</span></li>`).join("")}</ul>`;
 }
 async function refreshAccess(){ const cur=currentProfile(); if(!cur||!cur.cloudId) return;
   try{ const d=await cloudFetch(cur.cloudId, cur); if(adoptAccess(cur,d)){ saveProfilesIdx(); applyAccess(); } else { cur.audit=d.audit||cur.audit; } }catch(e){} }
@@ -3953,7 +4369,9 @@ function renderAccessBody(){
       catch(e){ se.disabled=false; toast(tr("accFail")); return; }
       cur.supportEdit=true; renderAccessBody(); renderRoleBadge(); toast(tr("tSupportEditOn"),4000); };
     return; }
-  if(a.role==="viewer"){ body.innerHTML=sec(`<div class="mhint" style="padding:0">${escapeHtml(tr("rbViewerTip"))}</div>`); return; }
+  const dsec=dateSecHtml(cur);
+  if(a.role==="viewer"){ body.innerHTML=(dsec?sec(dsec):"")+sec(`<div class="mhint" style="padding:0">${escapeHtml(tr("rbViewerTip"))}</div>`); return; }
+  if(dsec) html+=sec(dsec);
   if(cur.owner==="venue" && a.role==="couple"){
     html+=sec(`<h4>${escapeHtml(tr("accSpace",{v:cur.venueName||tr("theVenue")}))}</h4><div class="mhint" style="padding:0">${escapeHtml(tr("accSpaceHint"))}</div>${permListHtml(cur.perms||{})}${cur.venueContact?`<div class="mhint" style="padding:8px 0 0">${escapeHtml(tr("accAskVenue",{c:cur.venueContact}))}</div>`:""}`);
   }
@@ -3982,7 +4400,7 @@ function renderAccessBody(){
         <button class="ibtn" id="accEmailSave">${escapeHtml(tr(cur.recEmail?"accEmailChange":"accEmailSet"))}</button></div>`);
   }
   html+=sec(`<h4>${escapeHtml(tr("accLog"))}</h4>${auditHtml(cur.audit)}`);
-  body.innerHTML=html;
+  body.innerHTML=html; wireDateSec(cur);
   const ro=$("accRotate"); if(ro) ro.onclick=async()=>{ if(!confirm(tr("accRotateConfirm"))) return;
     try{ const r=await fetch(planPath(cur.cloudId)+"/rotate",{method:"POST",headers:authHeaders(cur)}); if(!r.ok) throw 0; const d=await r.json();
       cur.editKey=d.editKey; cur.viewKey=d.readKey; cur.legacyOpenUntil=0; cur.codeOff=true; saveProfilesIdx();
@@ -4020,12 +4438,37 @@ $("cloudModal").addEventListener("click",e=>{ if(e.target.id==="cloudModal") e.c
 //  PRINT
 // ============================================================
 $("printBtn").addEventListener("click",openPrint);
+let pdfChoice="";   // the PDF option stays chosen for this visit (printMode only remembers the name lists)
 function openPrint(){
-  const m=$("printModal"), mode=state.printMode==="parties"?"parties":"names";
-  m.querySelectorAll('input[name="pmode"]').forEach(r=>{ r.checked=r.value===mode; }); m.classList.add("open");
+  const m=$("printModal"), keep=!!ACCESS.locked, mode=(pdfChoice==="keepsake"&&!keep)?"pdf":pdfChoice||(state.printMode==="parties"?"parties":"names");
+  $("pmKeepRow").hidden=!keep;   // the keepsake belongs to a wedding that is over
+  m.querySelectorAll('input[name="pmode"]').forEach(r=>{ r.checked=r.value===mode; }); printGoLabel(); m.classList.add("open");
 }
-$("printGo").addEventListener("click",()=>{ const m=$("printModal"); const r=m.querySelector('input[name="pmode"]:checked'); const mode=(r&&r.value==="parties")?"parties":"names";
+function printPick(){ const r=$("printModal").querySelector('input[name="pmode"]:checked'); return r?r.value:"names"; }
+function printGoLabel(){ const v=printPick(); $("printGo").textContent=(v==="pdf"||v==="keepsake")?tr("pdfGo"):tr("mPrint"); }
+$("printModal").addEventListener("change",printGoLabel);
+$("printGo").addEventListener("click",()=>{ const v=printPick();
+  if(v==="pdf"||v==="keepsake"){ pdfChoice=v; downloadPdf(v==="keepsake"?"keepsake":"floor", $("printGo")); return; }   // the dialog stays open (spinner) until the file is ready
+  pdfChoice=""; const mode=v==="parties"?"parties":"names"; const m=$("printModal");
   if(state.printMode!==mode){ state.printMode=mode; save({noHistory:true}); } m.classList.remove("open"); buildAndPrint(mode); });
+// PDF: the server renders the plan this device shows (local plans, the lab and unsynced edits included) — POST /pdf, stateless.
+let pdfBusy=false;
+async function downloadPdf(mode, btn){
+  if(pdfBusy) return; pdfBusy=true;
+  const cur=currentProfile()||{}, L=cur.life||{};
+  if(btn){ btn.disabled=true; btn.classList.add("busy"); } toast(tr("pdfMaking"),30000);
+  let r=null;
+  try{ r=await fetch(SYNC_URL+"/pdf",{method:"POST",headers:{"Content-Type":"application/json","X-Client":"2"},
+    body:JSON.stringify({ plan:state, name:cur.name||"", weddingDate:L.weddingDate||null, venueName:cur.venueName||"", mode, lang:LANG })}); }catch(e){}
+  try{
+    if(r && r.ok && /pdf/i.test(r.headers.get("Content-Type")||"")){
+      const blob=await r.blob(), cd=r.headers.get("Content-Disposition")||"", m=/filename\*=UTF-8''([^;]+)/i.exec(cd);
+      let name=fileBase()+".pdf"; if(m){ try{ name=decodeURIComponent(m[1]); }catch(e){} }
+      downloadBlob(blob, name); toast(tr("tDownloaded",{n:name}),3500); $("printModal").classList.remove("open");
+    } else toast(!r?tr("claimFail"):r.status===429?tr("recRate"):r.status===413?tr("pdfBig"):r.status===503?tr("pdfOff"):tr("pdfFail"),6000);
+  }catch(e){ toast(tr("pdfFail"),6000); }
+  finally{ pdfBusy=false; if(btn){ btn.disabled=false; btn.classList.remove("busy"); } }
+}
 $("printClose").addEventListener("click",()=>$("printModal").classList.remove("open"));
 function buildAndPrint(mode){
   const area=$("printarea"); const byParties=mode==="parties";
@@ -4049,7 +4492,9 @@ function buildAndPrint(mode){
   const parties=(state.parties||[]).map(p=>({p, m:partyMembers(p.id)})).filter(x=>x.m.length).sort((a,b)=>a.p.name.localeCompare(b.p.name));
   const invHtml=(parties.length&&!byParties)?`<h3 class="pinvh">${escapeHtml(tr("printInvites"))}</h3><div class="pinvs">${parties.map(({p,m})=>`<div class="pinv"><b>${escapeHtml(caseName(p.name))}</b> <span class="n">(${m.length})</span><ul>${m.map(id=>`<li>${escapeHtml(guestName(id))}${tableOf[id]?` <span class="ptag">— ${escapeHtml(tableOf[id])}</span>`:` <span class="ptag">— ${escapeHtml(tr("printNoSeat"))}</span>`}</li>`).join("")}</ul></div>`).join("")}</div>`:"";
   const seated=assignedGuestIds().size, totalSeats=state.tables.reduce((s,t)=>s+t.capacity,0);
-  area.innerHTML=`<h2>${escapeHtml(tr("printTitle"))}</h2>
+  const cur=currentProfile()||{}, wd=cur.life&&cur.life.weddingDate;
+  const meta=[tr("printTitle"), wd?tr("printWed",{d:fmtDate(wd)}):"", tr("printAt",{t:new Date().toLocaleString(LANG,{dateStyle:"short",timeStyle:"short"})})].filter(Boolean).join(" · ");
+  area.innerHTML=`<h2>${escapeHtml(cur.name||tr("printTitle"))}</h2><div class="pmeta">${escapeHtml(meta)}</div>
     <div class="psub">${escapeHtml(tr("printSub",{t:state.tables.length, s:seated, c:totalSeats}))}</div>
     ${legend?`<div class="plegend">${legend}</div>`:""}
     <div class="ptables">${cards}</div>${unHtml}${invHtml}`;
@@ -4129,6 +4574,6 @@ function rasterizeMaterials(){
 setTimeout(rasterizeMaterials, 0);
 // ☁ open a shared link if present, otherwise refresh the active profile from the cloud (the lab never talks to the cloud)
 if(!IS_LAB){ const p0=currentProfile(); if(loadError && p0 && p0.cloudId) toast(tr("cLocalErr",{e:loadError}),7000); }
-if(!IS_LAB) (async()=>{ if(!(await openSharedFromURL())) await pullIfNewer(); if(getSyncCode()) await syncFromCode(); startCloudPoll(); maybeWelcome(); })();
+if(!IS_LAB) (async()=>{ if(!(await openSharedFromURL())) await pullIfNewer(); if(getSyncCode()) await syncFromCode(); startCloudPoll(); maybeWelcome(); setTimeout(maybeDateNudge,2500); })();
 else maybeWelcome();
 </script>

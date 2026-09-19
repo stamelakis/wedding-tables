@@ -554,4 +554,180 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
   }
   delete env.MAIL;
 }
+
+// ---------- 9. after the wedding: view only, keepsake, deletion; dates can't be gamed; trash; renewals ----------
+{
+  const tz = d => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Athens', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+  const today = tz(new Date()), day = n => tz(new Date(Date.now() + n * 86400000));
+  const sent = [];
+  env.MAIL = { enabled: true, from: 'x', send: m => { sent.push(m); return true; } };
+  const V9 = (await call('POST', '/admin/venues', { name: 'Life', license: { type: 'seasonal' } }, OWN)).d, HV = { 'X-Venue-Key': V9.key };
+  ok((await call('POST', '/venues/' + V9.id + '/weddings', { label: 'Past', date: day(-3) }, HV)).status === 400, 'a new wedding cannot be dated in the past');
+  ok((await call('POST', '/venues/' + V9.id + '/weddings', { label: 'Far', date: day(900) }, HV)).status === 400 && raw('venue:' + V9.id).used === 0, 'nor more than two years ahead — and a refused wedding is not counted');
+  let r = await call('POST', '/venues/' + V9.id + '/weddings', { label: 'Γάμος Α', date: day(30) }, HV);
+  const WA = r.d;
+  ok(r.status === 200 && raw('plan:' + WA.planId).weddingDate === day(30) && raw('plan:' + WA.planId).createdAt, 'a wedding is created with its date');
+  let con = (await call('GET', '/venues/' + V9.id, undefined, HV)).d;
+  let row = con.weddings.find(w => w.planId === WA.planId);
+  ok(row.date === day(30) && row.stats && row.life && row.life.locked === false && row.life.deleteAt > row.life.lockAt && row.dateChangesLeft === 3, 'the console shows date, progress and lifecycle', row);
+  // date changes are limited (a paid wedding is not reused for the next couple)
+  for (let i = 1; i <= 3; i++) ok((await call('PATCH', '/venues/' + V9.id + '/weddings/' + WA.planId, { date: day(30 + i) }, HV)).status === 200, 'date change ' + i + ' of 3');
+  r = await call('PATCH', '/venues/' + V9.id + '/weddings/' + WA.planId, { date: day(60) }, HV);
+  ok(r.status === 403 && r.d.error === 'no_more_changes', 'a fourth change is refused');
+  ok((await call('PATCH', '/venues/' + V9.id + '/weddings/' + WA.planId, { date: null }, HV)).status === 400, 'a date cannot be removed');
+  ok(raw('plan:' + WA.planId).audit.filter(e => e.what === 'date').length === 3 && raw('venue:' + V9.id).weddings[0].date === day(33), 'changes are logged and mirrored in the console list');
+  // the couple of a venue wedding does not set the date; a couple who bought directly does
+  ok((await call('POST', '/plans/' + WA.planId + '/date', { date: day(40) }, { 'X-Edit-Key': WA.editKey })).status === 403, 'a venue couple cannot move the date');
+  const K9 = (await call('POST', '/admin/couples', { name: 'Direct', email: 'd9@example.com', weddingDate: day(20) }, OWN)).d.couple;
+  const C9 = (await call('POST', '/claim', { token: raw('couple:' + K9.id).claimToken, nonce: 'n' })).d, HC = { 'X-Edit-Key': C9.editKey };
+  r = await call('GET', '/plans/' + C9.id, undefined, HC);
+  ok(r.d.life && r.d.life.weddingDate === day(20) && r.d.life.dateEditable === true && r.d.life.locked === false, 'the couple sees its date and may change it', r.d.life);
+  ok((await call('POST', '/plans/' + C9.id + '/date', { date: day(21) }, HC)).d.life.weddingDate === day(21), 'the couple moves its date');
+  ok((await call('POST', '/plans/' + C9.id + '/date', { date: day(22) }, { 'X-View-Key': C9.readKey })).status === 403, 'a viewer cannot');
+  ok((await call('GET', '/plans/' + C9.id, undefined, { 'X-View-Key': C9.readKey })).d.life.dateEditable === false, 'a viewer sees the date, not editable');
+  // after the wedding: view only for everyone
+  patchRaw('plan:' + C9.id, o => { o.weddingDate = day(-2); o.plan = layout({ guests: { g1: { name: 'Α' }, g2: { name: 'Β' } } }); o.plan.tables[0].seats[0] = 'g1'; });
+  r = await call('GET', '/plans/' + C9.id, undefined, HC);
+  ok(r.status === 200 && r.d.life.locked && !r.d.life.dateEditable, 'the day after the wedding the plan reads as locked', r.d.life);
+  r = await call('PUT', '/plans/' + C9.id, { plan: layout(), baseUpdated: raw('plan:' + C9.id).updated }, HC);
+  ok(r.status === 403 && r.d.error === 'locked' && r.d.life, 'and refuses every save');
+  ok((await call('POST', '/plans/' + C9.id + '/date', { date: day(5) }, HC)).status === 403, 'the date cannot be moved to reopen it');
+  // PDF
+  ok((await call('GET', '/plans/' + C9.id + '/pdf?mode=keepsake', undefined, HC)).d.error === 'pdf_off', 'without the renderer: pdf_off');
+  const renders = [];
+  env.PDF = { render: async (plan, meta) => { renders.push(meta); return new TextEncoder().encode('%PDF-1.4 fake'); } };
+  let pr = await worker.fetch(new Request('http://t/plans/' + C9.id + '/pdf?mode=keepsake&lang=en', { headers: { ...NEW, 'X-View-Key': C9.readKey } }), env);
+  ok(pr.status === 200 && pr.headers.get('Content-Type') === 'application/pdf' && /keepsake\.pdf/.test(decodeURIComponent(pr.headers.get('Content-Disposition'))) && renders[0].mode === 'keepsake' && renders[0].weddingDate === day(-2), 'the keepsake PDF downloads, also for viewers and after the wedding');
+  ok((await worker.fetch(new Request('http://t/plans/' + C9.id + '/pdf', { headers: NEW }), env)).status === 401, 'not without a key');
+  // housekeeping: lock, keepsake mail once, deletion after the retention days
+  let sw = await mod.sweep(env);
+  const ks = sent.filter(m => m.to === 'd9@example.com' && m.attachments);
+  ok(sw.locked >= 1 && sw.keepsakes === 1 && ks.length === 1 && ks[0].attachments[0].filename.endsWith('.pdf') && /Συγχαρητήρια/.test(ks[0].text) && raw('plan:' + C9.id).keepsakeSentAt, 'the sweep locks it and mails the keepsake with the PDF attached', sw);
+  sw = await mod.sweep(env);
+  ok(sw.keepsakes === 0 && sent.filter(m => m.attachments).length === 1, 'the keepsake goes once');
+  patchRaw('plan:' + C9.id, o => { o.weddingDate = day(-9); });
+  sw = await mod.sweep(env);
+  ok(!m.has('plan:' + C9.id) && raw('couple:' + K9.id).purgedAt && !raw('couple:' + K9.id).email && !m.has('email:d9@example.com'), '7 days after the wedding the plan is deleted and the address forgotten', sw);
+  // the admin's exceptions: keep forever / stay editable (the owner's own wedding), per venue, global
+  const WB = (await call('POST', '/venues/' + V9.id + '/weddings', { label: 'Δικός μας', date: day(10) }, HV)).d;
+  patchRaw('plan:' + WB.planId, o => { o.weddingDate = day(-30); });
+  r = await call('PUT', '/admin/plans/' + WB.planId + '/retention', { keep: true, lockAfter: false }, OWN);
+  ok(r.status === 200 && r.d.life.keep && !r.d.life.locked && r.d.life.deleteAt === null, 'a plan exception: kept and editable', r.d);
+  await mod.sweep(env);
+  ok(m.has('plan:' + WB.planId) && (await call('PUT', '/plans/' + WB.planId, { plan: layout() }, { 'X-Edit-Key': WB.venueKey })).status === 200, 'the excepted plan survives the sweep and still saves');
+  ok((await call('GET', '/admin/settings', undefined, OWN)).d.planExceptions.some(x => x.planId === WB.planId && x.keep), 'the admin sees the exception list');
+  await call('PATCH', '/admin/venues/' + V9.id, { retention: { keepDays: 30 } }, OWN);
+  const WC = (await call('POST', '/venues/' + V9.id + '/weddings', { label: 'Γ', date: day(1) }, HV)).d;
+  patchRaw('plan:' + WC.planId, o => { o.weddingDate = day(-10); });
+  await mod.sweep(env);
+  ok(m.has('plan:' + WC.planId), 'a venue with 30 days keeps its weddings longer');
+  await call('PUT', '/admin/settings', { retention: { keepDays: 3 } }, OWN);
+  ok((await call('GET', '/admin/settings', undefined, OWN)).d.retention.keepDays === 3, 'the global default is editable');
+  await call('PATCH', '/admin/venues/' + V9.id, { retention: null }, OWN);
+  await mod.sweep(env);
+  ok(!m.has('plan:' + WC.planId) && !raw('venue:' + V9.id).weddings.some(w => w.planId === WC.planId), 'back on the (shorter) global default it is deleted and leaves the list');
+  await call('PUT', '/admin/settings', { retention: { keepDays: 7 } }, OWN);
+  // trash: the venue deletes, only the admin restores (14 days)
+  const WD = (await call('POST', '/venues/' + V9.id + '/weddings', { label: 'Σβήστηκε', date: day(50) }, HV)).d;
+  r = await call('DELETE', '/venues/' + V9.id + '/weddings/' + WD.planId, undefined, HV);
+  ok(r.status === 200 && r.d.purgeAt && (await call('GET', '/plans/' + WD.planId, undefined, { 'X-Edit-Key': WD.editKey })).status === 410, 'a deleted wedding is gone for everyone');
+  con = (await call('GET', '/venues/' + V9.id, undefined, HV)).d;
+  ok(!con.weddings.some(w => w.planId === WD.planId) && con.trash.some(t => t.label === 'Σβήστηκε' && !t.planId), 'the console lists it as deleted (no way to restore it there)');
+  const tr = (await call('GET', '/admin/venues/' + V9.id + '/trash', undefined, OWN)).d.trash;
+  ok(tr.length === 1 && tr[0].planId === WD.planId, 'the admin sees it');
+  ok((await call('POST', '/admin/venues/' + V9.id + '/trash/' + WD.planId + '/restore', {}, OWN)).status === 200, 'the admin restores it');
+  ok((await call('GET', '/plans/' + WD.planId, undefined, { 'X-Edit-Key': WD.editKey })).status === 200 && (await call('GET', '/plans/' + WD.planId, undefined, { 'X-Edit-Key': WD.venueKey })).status === 403
+    && (await call('GET', '/venues/' + V9.id, undefined, HV)).d.weddings.some(w => w.planId === WD.planId), 'restored: back in the console, couple link works, the old venue link is renewed');
+  await call('DELETE', '/venues/' + V9.id + '/weddings/' + WD.planId, undefined, HV);
+  patchRaw('plan:' + WD.planId, o => { o.purgeAt = Date.now() - 1; });
+  sw = await mod.sweep(env);
+  ok(!m.has('plan:' + WD.planId) && !(raw('venue:' + V9.id).trash || []).length && sw.trash === 1, 'after 14 days the trash is emptied');
+  // licences: renew automatically unless the venue stops it; the admin marks the invoice
+  const VR = (await call('POST', '/admin/venues', { name: 'Renew', license: { type: 'seasonal', seasonStart: '2025-04-01', seasonEnd: '2025-10-31' } }, OWN)).d;
+  sw = await mod.sweep(env);
+  let lic = raw('venue:' + VR.id).license;
+  ok(sw.renewed === 0 && lic.seasonEnd === '2025-10-31' && lic.renewSkipped === '2025-10-31' && !lic.invoiceDue, 'a season that ended without a reminder is NOT renewed — it is flagged for the admin', lic);
+  const VX = (await call('POST', '/admin/venues', { name: 'Off', license: { type: 'seasonal', seasonStart: '2025-04-01', seasonEnd: '2025-10-31' } }, OWN)).d;
+  patchRaw('venue:' + VX.id, o => { o.active = false; o.renewReminders = { '2025-10-31:7': 1 }; });
+  await mod.sweep(env);
+  ok(raw('venue:' + VX.id).license.seasonEnd === '2025-10-31' && !raw('venue:' + VX.id).license.invoiceDue, 'an inactive venue never renews');
+  patchRaw('venue:' + VR.id, o => { o.renewReminders = { '2025-10-31:7': Date.now() }; });   // the 7-day reminder went out
+  sw = await mod.sweep(env);
+  lic = raw('venue:' + VR.id).license;
+  ok(sw.renewed === 1 && lic.seasonStart === '2026-04-01' && lic.seasonEnd === '2026-10-31' && lic.invoiceDue === true && lic.renewedAt && !lic.renewSkipped, 'after a reminder, a season renews automatically to the same dates next year', lic);
+  ok((await mod.sweep(env)).renewed === 0, 'one renewal, no catching up year after year');
+  const VL = (await call('POST', '/admin/venues', { name: 'Legacy', license: { type: 'seasonal' } }, OWN)).d;
+  patchRaw('venue:' + VL.id, o => { o.license.seasonEnd = '2026-10-31T00:00:00.000Z'; o.license.seasonStart = 'April 1, 2026'; });
+  await mod.sweep(env);
+  ok(raw('venue:' + VL.id).license.seasonEnd === '2026-10-31' && raw('venue:' + VL.id).license.seasonStart === '2026-04-01', 'older licence date formats are normalised');
+  ok((await call('GET', '/venues/' + VR.id, undefined, { 'X-Venue-Key': VR.key })).d.venue.license.invoiceDue === undefined, 'the venue never sees the invoice flag');
+  await call('PATCH', '/admin/venues/' + VR.id, { license: { ...lic, invoiceDue: true, seasonEnd: '2026-10-30' } }, OWN);
+  ok(raw('venue:' + VR.id).license.invoiceDue === true && raw('venue:' + VR.id).license.renewedAt === lic.renewedAt, 'editing the licence keeps the renewal bookkeeping');
+  ok((await call('POST', '/admin/venues/' + VR.id + '/invoiced', {}, OWN)).d.venue.license.invoiceDue === false, 'the admin marks the renewal invoiced');
+  ok((await call('POST', '/venues/' + VR.id + '/renewal', { autoRenew: false }, { 'X-Venue-Key': VR.key })).d.license.autoRenew === false, 'the venue turns renewal off');
+  patchRaw('venue:' + VR.id, o => { o.license.seasonEnd = '2025-10-31'; o.license.seasonStart = '2025-04-01'; });
+  ok((await mod.sweep(env)).renewed === 0, 'and then nothing renews');
+  // review fixes: extra plans follow the main plan; dates frozen after the wedding; restore guard; purge hygiene
+  {
+    const K = (await call('POST', '/admin/couples', { name: 'Extra', email: 'x9@example.com', weddingDate: day(20) }, OWN)).d.couple;
+    ok((await call('POST', '/admin/couples', { name: 'Past', weddingDate: day(-3) }, OWN)).d.error === 'past_date', 'a new couple cannot start with a past date');
+    const M = (await call('POST', '/claim', { token: raw('couple:' + K.id).claimToken, nonce: 'n' })).d, HM = { 'X-Edit-Key': M.editKey };
+    const X = (await call('POST', '/plans', { name: 'extra', plan: layout(), parentId: M.id }, HM)).d, HX = { 'X-Edit-Key': X.editKey };
+    r = await call('GET', '/plans/' + X.id, undefined, HX);
+    ok(r.d.life.weddingDate === day(20) && r.d.life.dateEditable === false && r.d.life.child, 'an extra plan follows the main date and cannot set its own', r.d.life);
+    ok((await call('POST', '/plans/' + X.id + '/date', { date: day(300) }, HX)).status === 403, 'its date route is refused');
+    patchRaw('plan:' + M.id, o => { o.weddingDate = day(-2); o.plan = layout(); });
+    ok((await call('PUT', '/plans/' + X.id, { plan: layout(), baseUpdated: raw('plan:' + X.id).updated }, HX)).status === 403, 'after the wedding the extra plan is locked too');
+    ok((await call('POST', '/plans', { name: 'more', plan: layout(), parentId: X.id }, HX)).d.error === 'wedding_over', 'and no new plans can be made from it');
+    patchRaw('plan:' + M.id, o => { o.weddingDate = day(-9); });
+    await mod.sweep(env);
+    const cp9 = raw('couple:' + K.id);
+    ok(!m.has('plan:' + M.id) && !m.has('plan:' + X.id) && cp9.purgedAt && !JSON.stringify(cp9).includes('x9@example.com') && !cp9.plans.length, 'the main plan takes its extra plans with it; no trace of the address remains', cp9);
+    // stays-editable policy still freezes the date
+    const WE = (await call('POST', '/venues/' + V9.id + '/weddings', { label: 'Edit', date: day(15) }, HV)).d;
+    await call('PUT', '/admin/plans/' + WE.planId + '/retention', { lockAfter: false }, OWN);
+    patchRaw('plan:' + WE.planId, o => { o.weddingDate = day(-3); });
+    ok((await call('PATCH', '/venues/' + V9.id + '/weddings/' + WE.planId, { date: day(200) }, HV)).d.error === 'locked', 'after the wedding the date is frozen even when the plan stays editable');
+    // a finished wedding cannot be restored into an immediate deletion
+    const WR = (await call('POST', '/venues/' + V9.id + '/weddings', { label: 'Old', date: day(15) }, HV)).d;
+    await call('DELETE', '/venues/' + V9.id + '/weddings/' + WR.planId, undefined, HV);
+    patchRaw('plan:' + WR.planId, o => { o.weddingDate = day(-20); });
+    r = await call('POST', '/admin/venues/' + V9.id + '/trash/' + WR.planId + '/restore', {}, OWN);
+    ok(r.status === 409 && r.d.error === 'past_retention' && r.d.deleteAt, 'restoring a wedding past its deletion date is refused with the reason', r.d);
+    await call('PUT', '/admin/plans/' + WR.planId + '/retention', { keep: true }, OWN);
+    ok((await call('POST', '/admin/venues/' + V9.id + '/trash/' + WR.planId + '/restore', {}, OWN)).status === 200, 'with a keep exception it can be restored');
+    // venue can't rename or change perms of a locked wedding
+    const WLk = (await call('POST', '/venues/' + V9.id + '/weddings', { label: 'Lk', date: day(15) }, HV)).d;
+    patchRaw('plan:' + WLk.planId, o => { o.weddingDate = day(-2); });
+    ok((await call('PATCH', '/venues/' + V9.id + '/weddings/' + WLk.planId, { label: 'New' }, HV)).d.error === 'locked', 'a finished wedding cannot be renamed');
+    // old pages keep long tables long
+    const WS = (await call('POST', '/venues/' + V9.id + '/weddings', { label: 'Shape', date: day(15) }, HV)).d;
+    const withRect = layout(); withRect.tables[1].shape = 'rect';
+    await call('PUT', '/plans/' + WS.planId, { plan: withRect, baseUpdated: raw('plan:' + WS.planId).updated }, { 'X-Edit-Key': WS.venueKey });
+    const asRound = layout(); asRound.tables[1].shape = 'round';
+    await call('PUT', '/plans/' + WS.planId, { plan: asRound, baseUpdated: raw('plan:' + WS.planId).updated }, { 'X-Edit-Key': WS.venueKey });
+    ok(raw('plan:' + WS.planId).plan.tables[1].shape === 'rect', 'a page opened before the update cannot turn a long table round');
+  }
+  // renewal reminders: 30 and 7 days before, once each
+  const VM = (await call('POST', '/admin/venues', { name: 'Remind', license: { type: 'seasonal', seasonStart: day(-200), seasonEnd: day(20) } }, OWN)).d;
+  patchRaw('venue:' + VM.id, o => { o.email = 'remind@example.com'; });
+  let before9 = sent.length;
+  await mod.sweep(env);
+  ok(sent.length === before9 + 1 && sent[before9].to === 'remind@example.com' && /ανανεώνεται αυτόματα/.test(sent[before9].text) && /venue\.html/.test(sent[before9].text), 'the venue is reminded 30 days before the renewal');
+  await mod.sweep(env);
+  ok(sent.length === before9 + 1, 'once');
+  patchRaw('venue:' + VM.id, o => { o.license.seasonEnd = day(5); });
+  await mod.sweep(env);
+  ok(sent.length === before9 + 2 && /ανανεώνεται/.test(sent[before9 + 1].subject), 'and again 7 days before');
+  await call('POST', '/venues/' + VM.id + '/renewal', { autoRenew: false }, { 'X-Venue-Key': VM.key });
+  patchRaw('venue:' + VM.id, o => { o.license.seasonEnd = day(25); o.renewReminders = {}; });
+  await mod.sweep(env);
+  ok(sent.length === before9 + 2, 'no reminder when renewal is off');
+  // private admin notes never reach the venue or its couples
+  await call('PATCH', '/admin/venues/' + V9.id, { notes: 'paid cash', contact: '210 1234567' }, OWN);
+  const vv = (await call('GET', '/venues/' + V9.id, undefined, HV)).d.venue, cpv = (await call('GET', '/plans/' + WB.planId, undefined, { 'X-Edit-Key': WB.editKey })).d;
+  ok(!JSON.stringify(vv).includes('paid cash') && !JSON.stringify(cpv).includes('paid cash') && cpv.owner.venueContact === '210 1234567'
+    && (await call('GET', '/admin/venues', undefined, OWN)).d.venues.find(x => x.id === V9.id).notes === 'paid cash', 'admin notes stay private; the public contact reaches the couples');
+  delete env.PDF; delete env.MAIL;
+}
 console.log(`\nall ${n} checks passed`);

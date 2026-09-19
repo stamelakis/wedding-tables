@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Πολιτική Απορρήτου — TakeaSeat / Privacy Policy</title>
-<meta name="description" content="Πολιτική Απορρήτου του TakeaSeat / TakeaSeat Privacy Policy — DRAFT for legal review.">
+<meta name="description" content="Πολιτική Απορρήτου του TakeaSeat / TakeaSeat Privacy Policy.">
 <style>
   :root{
     --paper:#f7f4f1; --paper-2:#efe9e2; --card:#fffdfb;
@@ -34,9 +34,14 @@
   .doc h1{ font-family:var(--serif); font-weight:600; letter-spacing:-.01em; font-size:clamp(28px,4vw,38px); line-height:1.12; margin:6px 0 6px; }
   .updated{ color:var(--faint); font-size:14px; margin:0 0 22px; }
 
-  .banner{ background:var(--amber-bg); border:1px solid var(--amber-line); color:var(--amber-ink); border-radius:14px; padding:16px 18px; margin:0 0 14px; box-shadow:var(--shadow); }
-  .banner strong{ display:block; font-size:15.5px; margin-bottom:3px; }
-  .banner p{ margin:6px 0 0; font-size:14px; line-height:1.6; }
+  /* the one place with the provider's identity (fill the [brackets] after registration) */
+  .idblock{ background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 18px 12px; margin:0 0 10px; box-shadow:var(--shadow); font-size:14.5px; line-height:1.6; }
+  .idblock h2{ font-family:var(--sans); font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent-ink); margin:0 0 8px; font-weight:700; }
+  .idblock dl{ display:grid; grid-template-columns:max-content 1fr; gap:4px 16px; margin:0; }
+  .idblock dt{ color:var(--faint); }
+  .idblock dd{ margin:0; color:var(--ink); overflow-wrap:anywhere; }
+  @media (max-width:560px){ .idblock dl{ grid-template-columns:1fr; gap:0; } .idblock dd{ margin-bottom:7px; } }
+  .tscroll{ overflow-x:auto; }
 
   .note{ background:var(--accent-soft); border:1px solid #dcc9e4; border-radius:12px; padding:13px 16px; font-size:13.5px; color:var(--accent-ink); margin:0 0 30px; }
   .note b{ color:var(--accent-ink); }
@@ -50,6 +55,7 @@
   section.body table{ width:100%; border-collapse:collapse; margin:12px 0; font-size:14.5px; }
   section.body th,section.body td{ border:1px solid var(--line); padding:9px 11px; text-align:left; vertical-align:top; }
   section.body th{ background:var(--paper-2); font-weight:700; }
+  @media (max-width:560px){ section.body table{ font-size:13px; } section.body th,section.body td{ padding:6px 6px; } }
   .divider{ border:none; border-top:2px solid var(--line); margin:46px 0 0; }
   .ph{ background:#fbeecb; border-bottom:1px dashed var(--gold); padding:0 3px; border-radius:3px; font-weight:600; white-space:nowrap; }
   .lead{ color:var(--soft); font-size:16px; }
@@ -79,12 +85,19 @@
 <main class="doc">
   <div class="wrap">
     <h1>Πολιτική Απορρήτου · Privacy Policy</h1>
-    <p class="updated">Τελευταία ενημέρωση / Last updated: 20 Αυγούστου 2026 · 20 August 2026</p>
+    <p class="updated">Έκδοση 19 Σεπτεμβρίου 2026 · Version 19 September 2026</p>
 
-    <div class="banner">
-      <strong>Έκδοση 1.0 — δεν αποτελεί νομική συμβουλή</strong>
-      Version 1.0 — not legal advice.
-      <p>Συνιστάται έλεγχος από δικηγόρο πριν την υπογραφή συμβάσεων με μεγάλα κτήματα. / Legal review is recommended before signing contracts with larger venues.</p>
+    <div class="idblock" id="provider">
+      <h2>Στοιχεία παρόχου · Provider details</h2>
+      <dl>
+        <dt>Επωνυμία · Legal name</dt><dd><span class="ph">[ΕΠΩΝΥΜΙΑ / LEGAL ENTITY NAME]</span> — «TakeaSeat»</dd>
+        <dt>ΑΦΜ · Tax ID (VAT)</dt><dd><span class="ph">[ΑΦΜ / TAX ID]</span></dd>
+        <dt>Αρ. ΓΕΜΗ · GEMI no.</dt><dd><span class="ph">[ΑΡ. ΓΕΜΗ / GEMI NO.]</span></dd>
+        <dt>Έδρα · Address</dt><dd><span class="ph">[ΔΙΕΥΘΥΝΣΗ / ADDRESS]</span></dd>
+        <dt>Email</dt><dd><a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a></dd>
+        <dt>Τηλέφωνο · Phone</dt><dd><a href="tel:+306977355378">+30 697 735 5378</a> · Viber · WhatsApp</dd>
+        <dt>Υποστήριξη · Support</dt><dd>10:00–14:00 &amp; 17:00–21:00 (ώρα Ελλάδας / Greek time)</dd>
+      </dl>
     </div>
 
     <!-- ==================== ΕΛΛΗΝΙΚΑ ==================== -->
@@ -93,82 +106,98 @@
       <p class="lead">Η παρούσα Πολιτική εξηγεί πώς επεξεργαζόμαστε προσωπικά δεδομένα στο πλαίσιο της υπηρεσίας <b>TakeaSeat</b> (https://takeaseat.gr), σύμφωνα με τον Γενικό Κανονισμό για την Προστασία Δεδομένων (ΕΕ) 2016/679 (GDPR) και τον ν. 4624/2019.</p>
 
       <h2>1. Ποιοι είμαστε</h2>
-      <p>Υπεύθυνος λειτουργίας της πλατφόρμας TakeaSeat είναι:</p>
-      <ul>
-        <li>Υπηρεσία: <b>TakeaSeat</b> (Ελλάδα)</li>
-        <li>Τηλέφωνο: +30 697 7355 378</li>
-        <li>Email: <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a></li>
-      </ul>
-      <p>Πλήρη εταιρικά στοιχεία (επωνυμία, ΑΦΜ, έδρα) παρέχονται στους επιχειρηματικούς πελάτες (κτήματα) με τη <a href="/dpa.html">Σύμβαση Επεξεργασίας Δεδομένων (DPA)</a> και στο σχετικό τιμολόγιο.</p>
+      <p>Η υπηρεσία TakeaSeat παρέχεται από την επιχείρηση των <a href="#provider">Στοιχείων παρόχου</a> στην αρχή της σελίδας. Για κάθε θέμα προστασίας δεδομένων: <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a>.</p>
 
-      <h2>2. Ρόλοι — ποιος είναι υπεύθυνος για τι</h2>
-      <p>Το TakeaSeat πωλείται B2B σε κτήματα και χώρους δεξιώσεων γάμου.</p>
+      <h2>2. Ρόλοι — ποιος αποφασίζει για τι</h2>
+      <p>Το TakeaSeat έχει δύο κατηγορίες πελατών: κτήματα και χώρους δεξιώσεων, και ζευγάρια που αγοράζουν απευθείας.</p>
       <ul>
-        <li><b>Το κτήμα (ο πελάτης) είναι ο Υπεύθυνος Επεξεργασίας</b> των λιστών καλεσμένων των ζευγαριών του. Το κτήμα αποφασίζει ποια δεδομένα εισάγονται και για ποιον σκοπό.</li>
-        <li><b>Το TakeaSeat είναι Εκτελών την Επεξεργασία</b> και ενεργεί αποκλειστικά κατ' εντολή του κτήματος, βάσει της <a href="/dpa.html">Σύμβασης Επεξεργασίας Δεδομένων (DPA)</a>.</li>
-        <li>Τα <b>ζευγάρια</b> είναι χρήστες του λογαριασμού του κτήματος.</li>
-        <li>Οι <b>καλεσμένοι του γάμου</b> είναι υποκείμενα των δεδομένων· <b>δεν αλληλεπιδρούν οι ίδιοι με το TakeaSeat</b> — τα ονόματά τους καταχωρούνται από το κτήμα ή το ζευγάρι.</li>
+        <li><b>Γάμοι κτημάτων:</b> το κτήμα είναι ο <b>Υπεύθυνος Επεξεργασίας</b> για τα δεδομένα των γάμων που δημιουργεί (καλεσμένοι και λοιπό περιεχόμενο του σχεδίου). Η TakeaSeat είναι <b>Εκτελών την Επεξεργασία</b> και ενεργεί μόνο κατ' εντολή του κτήματος, βάσει της <a href="/dpa.html">Σύμβασης Επεξεργασίας Δεδομένων (DPA)</a>. Τα ζευγάρια των γάμων αυτών χρησιμοποιούν το σχέδιο με τον σύνδεσμο που τους δίνει το κτήμα.</li>
+        <li><b>Ζευγάρια που αγοράζουν απευθείας:</b> η TakeaSeat παρέχει την υπηρεσία στο ίδιο το ζευγάρι. Το ζευγάρι καταχωρεί τα ονόματα των καλεσμένων του για τον δικό του γάμο και αποφασίζει τι θα γράψει. Μια τέτοια καταχώριση, για την οργάνωση του δικού σας γάμου, είναι κατά κανόνα προσωπική δραστηριότητα, στην οποία ο GDPR δεν εφαρμόζεται (άρθρο 2 παρ. 2 στοιχ. γ)· εφαρμόζεται όμως σε εμάς, που παρέχουμε τα μέσα (αιτιολογική σκέψη 18). Γι' αυτό επεξεργαζόμαστε τα δεδομένα αυτά μόνο για να σας παρέχουμε την υπηρεσία, σύμφωνα με τις επιλογές σας, και τα προστατεύουμε όπως και τα δεδομένα των κτημάτων.</li>
+        <li><b>Η TakeaSeat είναι Υπεύθυνος Επεξεργασίας</b> για τα δεδομένα των πελατών της (στοιχεία επικοινωνίας και email ανάκτησης κτημάτων και ζευγαριών, παραγγελίες, τιμολόγηση), για τα δεδομένα ασφαλείας της υπηρεσίας (π.χ. ημερολόγιο πρόσβασης), για την επικοινωνία με την υποστήριξη και για τα email που στέλνει.</li>
+        <li><b>Οι καλεσμένοι</b> δεν χρησιμοποιούν οι ίδιοι το TakeaSeat· τα ονόματά τους καταχωρούνται από το κτήμα ή το ζευγάρι.</li>
       </ul>
-      <p>Ως προς τα δεδομένα λογαριασμού του ίδιου του κτήματος (στοιχεία επικοινωνίας), το TakeaSeat ενεργεί ως Υπεύθυνος Επεξεργασίας.</p>
 
       <h2>3. Ποια δεδομένα επεξεργαζόμαστε και από πού</h2>
-      <table>
-        <tr><th>Κατηγορία</th><th>Παραδείγματα</th><th>Πηγή</th></tr>
-        <tr><td>Δεδομένα καλεσμένων γάμου</td><td>Ονόματα καλεσμένων· ελεύθερες σημειώσεις (π.χ. πόλη, προτιμήσεις θέσης)· ένδειξη παρουσίας/κατάστασης· διάταξη τραπεζιών.</td><td>Καταχωρούνται από το κτήμα ή το ζευγάρι — όχι από τους ίδιους τους καλεσμένους.</td></tr>
-        <tr><td>Δεδομένα λογαριασμού κτήματος</td><td>Στοιχεία επικοινωνίας του κτήματος/χρήστη.</td><td>Παρέχονται από το κτήμα.</td></tr>
-      </table>
-      <p><b>Δεν επεξεργαζόμαστε δεδομένα πληρωμών</b> μέσα από την εφαρμογή· η τιμολόγηση γίνεται ξεχωριστά/εκτός πλατφόρμας. Δεν επιδιώκουμε τη συλλογή ειδικών κατηγοριών δεδομένων (άρθρο 9). Παρακαλούμε να μην καταχωρούνται ευαίσθητα δεδομένα στις ελεύθερες σημειώσεις.</p>
+      <div class="tscroll"><table>
+        <tr><th>Κατηγορία</th><th>Τι περιλαμβάνει</th><th>Από πού</th></tr>
+        <tr><td>Περιεχόμενο σχεδίου</td><td>Ονόματα καλεσμένων· ομάδες/παρέες· προσκλήσεις (ποιοι καλεσμένοι ανήκουν στην ίδια πρόσκληση, π.χ. μια οικογένεια)· ελεύθερες σημειώσεις· θέσεις και τραπέζια· κάτοψη του χώρου· όνομα και ημερομηνία του γάμου.</td><td>Το κτήμα ή το ζευγάρι — όχι οι ίδιοι οι καλεσμένοι.</td></tr>
+        <tr><td>Ιστορικό εκδόσεων</td><td>Οι 30 τελευταίες εκδόσεις κάθε σχεδίου, για αναίρεση λαθών και επαναφορά.</td><td>Αυτόματα, με κάθε αποθήκευση.</td></tr>
+        <tr><td>Ημερολόγιο πρόσβασης</td><td>Για κάθε σχέδιο καταγράφονται: τα ανοίγματα και οι αποθηκεύσεις από την υποστήριξη (TakeaSeat)· οι προσκλήσεις υποστήριξης και η ανάκλησή τους· οι νέοι σύνδεσμοι (από τον κάτοχο ή από εμάς, μετά από αίτημα)· οι αλλαγές του email ανάκτησης (και όσες κάνουμε εμείς)· οι αλλαγές της ημερομηνίας γάμου· το κλείδωμα μετά τον γάμο· το πρώτο άνοιγμα του συνδέσμου που στείλαμε μετά την αγορά και οι ανακτήσεις, με χονδρικό τύπο συσκευής (π.χ. iPhone, Android, Windows). Κάθε εγγραφή έχει ώρα και ρόλο. Τα συνηθισμένα ανοίγματα και οι αποθηκεύσεις του ζευγαριού ή του κτήματος δεν καταγράφονται. Όχι διεύθυνση IP, όχι πλήρη στοιχεία του φυλλομετρητή. Κρατούνται οι 50 πιο πρόσφατες εγγραφές.</td><td>Αυτόματα· το βλέπει ο κάτοχος του σχεδίου.</td></tr>
+        <tr><td>Προσκλήσεις υποστήριξης</td><td>Πότε μας προσκαλέσατε, για πόσο (24 ώρες έως 7 ημέρες), πότε ανακαλέσατε την πρόσκληση, και κάθε πρόσβασή μας.</td><td>Ο κάτοχος του σχεδίου· αυτόματα.</td></tr>
+        <tr><td>Στοιχεία πελατών</td><td>Κτήματα: επωνυμία, στοιχεία επικοινωνίας, email ανάκτησης, στοιχεία συνδρομής, σημειώσεις της συνεργασίας. Ζευγάρια που αγοράζουν απευθείας: όνομα του σχεδίου, email ανάκτησης, ημερομηνίες αγοράς και γάμου.</td><td>Εσείς.</td></tr>
+        <tr><td>Email που στέλνουμε</td><td>Σύνδεσμοι πρόσβασης και ανάκτησης, επιβεβαιώσεις αλλαγής email, υπενθυμίσεις ανανέωσης, το αναμνηστικό PDF. Δεν κρατάμε αντίγραφο των μηνυμάτων.</td><td>Εμείς, στο email που μας δώσατε.</td></tr>
+        <tr><td>Τεχνικά δεδομένα</td><td>Η διεύθυνση IP κάθε αιτήματος χρησιμοποιείται προσωρινά, στη μνήμη του διακομιστή, για προστασία από κατάχρηση (όριο αιτημάτων)· δεν αποθηκεύεται στα σχέδια ούτε στα αρχεία καταγραφής της εφαρμογής.</td><td>Αυτόματα.</td></tr>
+        <tr><td>Επικοινωνία με την υποστήριξη</td><td>Ό,τι μας γράφετε ή μας λέτε με email, τηλέφωνο, Viber ή WhatsApp.</td><td>Εσείς.</td></tr>
+      </table></div>
+      <p><b>Δεν επεξεργαζόμαστε δεδομένα πληρωμών</b> μέσα στην εφαρμογή· η τιμολόγηση και οι αποδείξεις γίνονται εκτός πλατφόρμας. Δεν επιδιώκουμε τη συλλογή ειδικών κατηγοριών δεδομένων (άρθρο 9)· παρακαλούμε μην τις γράφετε στις ελεύθερες σημειώσεις.</p>
 
       <h2>4. Σκοποί και νομική βάση</h2>
       <ul>
-        <li><b>Παροχή της υπηρεσίας τραπεζολογίου</b> στο κτήμα — νομική βάση: εκτέλεση σύμβασης με το κτήμα (άρθρο 6§1β) και οι κατ' εντολή του κτήματος οδηγίες ως Εκτελών.</li>
-        <li><b>Ως προς τους καλεσμένους</b>, η επεξεργασία στηρίζεται στο έννομο συμφέρον του κτήματος/ζευγαριού (άρθρο 6§1στ) για την οργάνωση της δεξίωσης· τη σχετική στάθμιση και ενημέρωση φέρει το κτήμα ως Υπεύθυνος Επεξεργασίας.</li>
-        <li><b>Ασφάλεια, υποστήριξη και συμμόρφωση</b> — έννομο συμφέρον μας (άρθρο 6§1στ) και έννομη υποχρέωση (άρθρο 6§1γ) όπου εφαρμόζεται.</li>
+        <li><b>Παροχή της υπηρεσίας</b> (σχέδια, συγχρονισμός, PDF, σύνδεσμοι και ανάκτηση, αναμνηστικό, υπενθυμίσεις ανανέωσης): εκτέλεση της σύμβασης με τον πελάτη (άρθρο 6 παρ. 1 β). Για τους γάμους κτημάτων ενεργούμε κατ' εντολή του κτήματος.</li>
+        <li><b>Ασφάλεια και λογοδοσία</b> (ημερολόγιο πρόσβασης, ιστορικό εκδόσεων, προσκλήσεις υποστήριξης, προστασία από κατάχρηση, αντίγραφα ασφαλείας): έννομο συμφέρον — δικό μας και των πελατών μας — να είναι τα σχέδια ασφαλή και να βλέπει ο κάτοχος πότε μπήκαμε και τι άλλαξε στην πρόσβαση (άρθρο 6 παρ. 1 στ).</li>
+        <li><b>Ως προς τους καλεσμένους:</b> στους γάμους κτημάτων, τη νομική βάση την ορίζει το κτήμα ως Υπεύθυνος Επεξεργασίας (συνήθως το έννομο συμφέρον του κτήματος και του ζευγαριού να οργανωθεί η δεξίωση, άρθρο 6 παρ. 1 στ)· για τα ζευγάρια που αγοράζουν απευθείας, βλ. ενότητα 2.</li>
+        <li><b>Λογιστικές και φορολογικές υποχρεώσεις</b> (παραγγελίες, τιμολόγια, αποδείξεις): έννομη υποχρέωση (άρθρο 6 παρ. 1 γ).</li>
+        <li><b>Υποστήριξη:</b> εκτέλεση της σύμβασης και έννομο συμφέρον να απαντάμε στα αιτήματά σας.</li>
       </ul>
+      <p>Δεν χρησιμοποιούμε τα δεδομένα για διαφήμιση ή κατάρτιση προφίλ, δεν τα πουλάμε και δεν λαμβάνουμε αυτοματοποιημένες αποφάσεις για εσάς.</p>
 
       <h2>5. Υπο-εκτελούντες (sub-processors)</h2>
-      <p>Χρησιμοποιούμε περιορισμένο αριθμό παρόχων που ενεργούν ως υπο-εκτελούντες, υπό συμβατικές δεσμεύσεις εμπιστευτικότητας και ασφάλειας:</p>
-      <table>
+      <p>Χρησιμοποιούμε λίγους παρόχους που ενεργούν ως υπο-εκτελούντες, με συμβατικές δεσμεύσεις εμπιστευτικότητας και ασφάλειας:</p>
+      <div class="tscroll"><table>
         <tr><th>Πάροχος</th><th>Ρόλος</th><th>Τοποθεσία</th></tr>
-        <tr><td>Hetzner Online GmbH</td><td>Φιλοξενία διακομιστή &amp; αποθήκευση δεδομένων</td><td>Γερμανία (ΕΕ)</td></tr>
-      </table>
-      <p>Ο παλαιότερος πάροχος <b>Cloudflare</b> βρίσκεται υπό απόσυρση και δεν αποτελεί μέρος της τρέχουσας υποδομής. Θα ενημερώνουμε τη λίστα υπο-εκτελούντων πριν από κάθε νέα προσθήκη, δίνοντας στο κτήμα δυνατότητα αντίρρησης, όπως ορίζει το DPA.</p>
+        <tr><td>Hetzner Online GmbH</td><td>Φιλοξενία του διακομιστή και αποθήκευση των δεδομένων.</td><td>Γερμανία (ΕΕ)</td></tr>
+        <tr><td>Backblaze, Inc. (B2 Cloud Storage)</td><td>Αποθήκευση των αντιγράφων ασφαλείας εκτός διακομιστή. Τα αντίγραφα κρυπτογραφούνται πριν σταλούν, με κλειδί που κρατάμε μόνο εμείς.</td><td>Περιοχή EU Central — Άμστερνταμ, Ολλανδία (ΕΕ)</td></tr>
+        <tr><td>Πάροχος αποστολής email (δεν έχει επιλεγεί ακόμη)</td><td>Αποστολή των email της υπηρεσίας (σύνδεσμοι, αναμνηστικό PDF).</td><td>Θα αναγραφεί εδώ πριν χρησιμοποιηθεί.</td></tr>
+      </table></div>
+      <p>Ενημερώνουμε αυτή τη λίστα πριν χρησιμοποιήσουμε νέο υπο-εκτελούντα· τα κτήματα ειδοποιούνται και μπορούν να αντιταχθούν, όπως ορίζει η <a href="/dpa.html">DPA</a>.</p>
+      <p>Αν επικοινωνήσετε μαζί μας μέσω Viber ή WhatsApp, τα μηνύματα περνούν από τις υπηρεσίες αυτές, σύμφωνα με τους δικούς τους όρους. Μη στέλνετε λίστες καλεσμένων από εκεί· δεν χρειάζεται — με πρόσκληση υποστήριξης βλέπουμε το σχέδιο απευθείας.</p>
 
       <h2>6. Πού αποθηκεύονται τα δεδομένα</h2>
-      <p>Τα δεδομένα φιλοξενούνται σε <b>ιδιόκτητα φιλοξενούμενο (self-hosted) διακομιστή στη Γερμανία</b> (Hetzner) και αποθηκεύονται σε βάση δεδομένων SQLite στον διακομιστή αυτόν. Τηρούνται <b>νυχτερινά κρυπτογραφημένα αντίγραφα ασφαλείας</b> για περίπου 14 ημέρες. Η επεξεργασία γίνεται <b>αποκλειστικά εντός ΕΕ/ΕΟΧ· δεν υπάρχει διαβίβαση εκτός ΕΕ/ΕΟΧ.</b></p>
+      <p>Τα δεδομένα βρίσκονται σε διακομιστή που μισθώνουμε από τη Hetzner στη <b>Γερμανία</b>, σε βάση δεδομένων SQLite. Κάθε νύχτα παίρνουμε <b>κρυπτογραφημένο αντίγραφο ασφαλείας</b>· το κλειδί αποκρυπτογράφησης δεν βρίσκεται στον διακομιστή. Τα αντίγραφα κρατούνται έως 14 ημέρες στον διακομιστή και έως 21 ημέρες εκτός αυτού (Backblaze, Άμστερνταμ). Η επεξεργασία γίνεται <b>αποκλειστικά εντός ΕΕ/ΕΟΧ· δεν υπάρχει διαβίβαση εκτός ΕΕ/ΕΟΧ.</b></p>
 
       <h2>7. Χρόνος διατήρησης</h2>
       <ul>
-        <li>Τα πλάνα διατηρούνται όσο ο λογαριασμός του κτήματος παραμένει ενεργός.</li>
-        <li>Διαγράφονται με τη λήξη/κατάργηση του λογαριασμού ή κατόπιν αιτήματος.</li>
-        <li>Τα αντίγραφα ασφαλείας κυλούν και σβήνουν μετά από περίπου 14 ημέρες.</li>
+        <li><b>Σχέδια</b> (περιεχόμενο, ιστορικό εκδόσεων, ημερολόγιο πρόσβασης, προσκλήσεις υποστήριξης): από την επόμενη ημέρα του γάμου το σχέδιο γίνεται μόνο για προβολή και <b>διαγράφεται 7 ημέρες μετά τον γάμο</b>. Διαφορετικό διάστημα μπορεί να συμφωνηθεί με ένα κτήμα ή ένα ζευγάρι. Σχέδια χωρίς ημερομηνία γάμου γίνονται μόνο για προβολή περίπου 18 μήνες μετά τη δημιουργία τους και διαγράφονται 7 ημέρες αργότερα· για σχέδια που δημιουργήθηκαν πριν τις 19 Σεπτεμβρίου 2026, οι 18 μήνες μετρούν από εκείνη την ημέρα.</li>
+        <li><b>Γάμος που διαγράφει ένα κτήμα:</b> φυλάσσεται 14 ημέρες, για την περίπτωση που το κτήμα μάς ζητήσει να τον επαναφέρουμε, και μετά διαγράφεται οριστικά.</li>
+        <li><b>Κάτοψη-πρότυπο του κτήματος</b> (ο χώρος χωρίς καλεσμένους): όσο διαρκεί η συνεργασία με το κτήμα.</li>
+        <li><b>Email ανάκτησης ζευγαριού:</b> διαγράφεται μαζί με το σχέδιο. Κρατάμε μόνο το όνομα του σχεδίου και τις ημερομηνίες, για τα λογιστικά βιβλία, για όσο ορίζει η φορολογική νομοθεσία.</li>
+        <li><b>Στοιχεία κτήματος:</b> όσο διαρκεί η συνεργασία· τα τιμολόγια, για όσο ορίζει η φορολογική νομοθεσία.</li>
+        <li><b>Επικοινωνία με την υποστήριξη:</b> όσο χρειάζεται για να διεκπεραιωθεί το αίτημά σας.</li>
+        <li><b>Αντίγραφα ασφαλείας:</b> έως 14 ημέρες στον διακομιστή και έως 21 ημέρες εκτός αυτού· μετά σβήνονται αυτόματα. Ό,τι διαγράφεται χάνεται και από τα αντίγραφα το αργότερο σε 21 ημέρες.</li>
       </ul>
+      <p>Αν αγοράσατε απευθείας ως ζευγάρι, μετά τον γάμο σάς στέλνουμε με email ένα αναμνηστικό PDF του σχεδίου, όταν έχουμε το email σας. Ό,τι κρατήσετε εσείς (PDF, εκτυπώσεις) δεν επηρεάζεται από τη διαγραφή.</p>
 
       <h2>8. Μέτρα ασφαλείας (άρθρο 32)</h2>
       <ul>
         <li>HTTPS/TLS σε όλη την κίνηση.</li>
-        <li>Πρόσβαση μέσω συνδέσμων/κλειδιών υψηλής εντροπίας (secret links).</li>
-        <li>Τα διαπιστευτήρια επεξεργασίας παραμένουν στο τμήμα κατακερματισμού (fragment) του URL και <b>δεν αποστέλλονται στον διακομιστή</b>.</li>
-        <li>Κρυπτογραφημένα και δοκιμασμένα αντίγραφα ασφαλείας.</li>
-        <li>Πρόσβαση περιορισμένη αποκλειστικά στον υπεύθυνο λειτουργίας.</li>
+        <li>Πρόσβαση μόνο με μυστικούς συνδέσμους/κλειδιά υψηλής εντροπίας, χωριστά για επεξεργασία, προβολή, κτήμα και υποστήριξη. Κάθε αίτημα ελέγχεται από τον διακομιστή· οι επαναλαμβανόμενες αποτυχημένες προσπάθειες μαντέματος κλειδιού περιορίζονται.</li>
+        <li>Τα κλειδιά βρίσκονται στο τμήμα του συνδέσμου μετά το «#» (fragment), το οποίο ο φυλλομετρητής δεν στέλνει μαζί με τη διεύθυνση της σελίδας· έτσι δεν εμφανίζονται ποτέ στη διεύθυνση (query string) ούτε στα αρχεία καταγραφής του διακομιστή. Η εφαρμογή στέλνει το κλειδί στον διακομιστή μόνο μέσω HTTPS, σε κεφαλίδα (header) του αιτήματος, για να αποδείξει την πρόσβαση.</li>
+        <li>Ημερολόγιο πρόσβασης σε κάθε σχέδιο, ορατό στον κάτοχό του.</li>
+        <li>Νυχτερινά κρυπτογραφημένα αντίγραφα ασφαλείας, με το κλειδί αποκρυπτογράφησης εκτός διακομιστή, και κρυπτογραφημένο αντίγραφο σε δεύτερη τοποθεσία.</li>
+        <li><b>Η δική μας πρόσβαση:</b> η TakeaSeat δεν ανοίγει το σχέδιό σας χωρίς πρόσκλησή σας — κάθε πρόσβαση καταγράφεται. Μας προσκαλείτε με το κουμπί υποστήριξης, για 24 ώρες έως 7 ημέρες. Όταν μας το ζητήσετε, μπορούμε να εκδώσουμε νέο σύνδεσμο αν χάσατε τον δικό σας (οι παλιοί σταματούν) ή να αλλάξουμε το email ανάκτησης (η παλιά διεύθυνση ειδοποιείται)· και τα δύο καταγράφονται στο ημερολόγιο πρόσβασης. Όπως σε κάθε φιλοξενούμενη υπηρεσία, ο διαχειριστής του διακομιστή έχει τεχνικά πρόσβαση στη βάση δεδομένων· τη χρησιμοποιούμε μόνο για τη λειτουργία και την ασφάλεια της υπηρεσίας (π.χ. επαναφορά από αντίγραφο ασφαλείας), όχι για να διαβάζουμε σχέδια.</li>
       </ul>
 
       <h2>9. Δικαιώματά σας</h2>
-      <p>Ως υποκείμενα των δεδομένων έχετε τα δικαιώματα: πρόσβασης, διόρθωσης, διαγραφής, περιορισμού, φορητότητας και εναντίωσης.</p>
-      <p><b>Πώς ασκούνται:</b> Επειδή τα δεδομένα των καλεσμένων φθάνουν σε εμάς μέσω του κτήματος (Υπεύθυνος Επεξεργασίας), τα αιτήματα διαγραφής/άσκησης δικαιωμάτων δρομολογούνται προς/μέσω του κτήματος που ελέγχει τα δεδομένα. Μπορείτε επίσης να επικοινωνήσετε μαζί μας στο <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a> και θα προωθήσουμε το αίτημα στο αρμόδιο κτήμα και θα το συνδράμουμε.</p>
+      <p>Έχετε δικαίωμα πρόσβασης, διόρθωσης, διαγραφής, περιορισμού, φορητότητας και εναντίωσης.</p>
+      <ul>
+        <li><b>Καλεσμένοι γάμου κτήματος:</b> απευθυνθείτε στο κτήμα, που είναι ο Υπεύθυνος Επεξεργασίας. Μπορείτε και σε εμάς· θα προωθήσουμε το αίτημα στο κτήμα και θα το βοηθήσουμε να απαντήσει.</li>
+        <li><b>Καλεσμένοι ζευγαριού που αγόρασε απευθείας:</b> το ζευγάρι μπορεί να διορθώσει ή να σβήσει αμέσως το όνομά σας από το σχέδιο. Μπορείτε και να μας γράψετε· θα διαβιβάσουμε το αίτημα στο ζευγάρι.</li>
+        <li><b>Πελάτες (κτήματα, ζευγάρια):</b> γράψτε μας απευθείας.</li>
+      </ul>
+      <p>Όλα τα αιτήματα στο <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a>· απαντάμε το αργότερο μέσα σε έναν μήνα.</p>
       <p><b>Δικαίωμα καταγγελίας:</b> Έχετε δικαίωμα να υποβάλετε καταγγελία στην <b>Αρχή Προστασίας Δεδομένων Προσωπικού Χαρακτήρα</b> (Λεωφ. Κηφισίας 1-3, Αθήνα, <a href="https://www.dpa.gr" target="_blank" rel="noopener">www.dpa.gr</a>).</p>
 
       <h2>10. Cookies και τοπική αποθήκευση</h2>
-      <p>Δεν χρησιμοποιούμε cookies παρακολούθησης, διαφημιστικά cookies ή εργαλεία αναλυτικών/analytics, ούτε τρίτους ιχνηλάτες (trackers). Η εφαρμογή χρησιμοποιεί μόνο <b>αυστηρώς αναγκαία τοπική αποθήκευση (localStorage)</b> του φυλλομετρητή, ώστε να παραμένετε συνδεδεμένοι και να κρατά το πλάνο εργασίας σας. Καθώς πρόκειται για αυστηρώς αναγκαία λειτουργία και όχι για παρακολούθηση, <b>δεν απαιτείται banner συγκατάθεσης για cookies.</b></p>
+      <p>Δεν χρησιμοποιούμε cookies, ούτε εργαλεία στατιστικών (analytics), διαφημίσεων ή τρίτους ιχνηλάτες (trackers). Η εφαρμογή χρησιμοποιεί μόνο την <b>τοπική αποθήκευση (localStorage)</b> του φυλλομετρητή σας: για να σας κρατά συνδεδεμένους στο σχέδιό σας σε αυτή τη συσκευή και να κρατά ένα αντίγραφο εργασίας του σχεδίου και τις ρυθμίσεις σας (π.χ. γλώσσα). Τα δεδομένα αυτά μένουν στη συσκευή σας και δεν χρησιμοποιούνται για παρακολούθηση· γι' αυτό <b>δεν χρειάζεται μήνυμα συγκατάθεσης για cookies</b>. Σε κοινόχρηστη συσκευή μπορείτε να τα σβήσετε από τις ρυθμίσεις του φυλλομετρητή.</p>
 
-      <h2>11. Δεδομένα ανηλίκων</h2>
-      <p>Η υπηρεσία απευθύνεται σε επιχειρήσεις και δεν συλλέγει εν γνώσει μας δεδομένα ανηλίκων. Δεν απευθυνόμαστε σε παιδιά.</p>
+      <h2>11. Παιδιά</h2>
+      <p>Η υπηρεσία απευθύνεται σε επιχειρήσεις και σε ενήλικες που οργανώνουν γάμο, όχι σε παιδιά. Οι λίστες καλεσμένων μπορεί να περιέχουν ονόματα παιδιών που είναι καλεσμένα· αυτά καταχωρούνται από το κτήμα ή το ζευγάρι και προστατεύονται όπως κάθε άλλο δεδομένο του σχεδίου.</p>
 
       <h2>12. Αλλαγές στην παρούσα Πολιτική</h2>
-      <p>Ενδέχεται να επικαιροποιήσουμε την παρούσα Πολιτική. Θα αναρτούμε τη νέα έκδοση σε αυτή τη σελίδα με ενημερωμένη ημερομηνία «Τελευταία ενημέρωση».</p>
+      <p>Μπορεί να επικαιροποιήσουμε την παρούσα Πολιτική. Η νέα έκδοση αναρτάται σε αυτή τη σελίδα με νέα ημερομηνία έκδοσης· για ουσιώδεις αλλαγές ενημερώνουμε τους πελάτες μας με email.</p>
 
       <h2>13. Επικοινωνία</h2>
-      <p>Για κάθε ζήτημα προστασίας δεδομένων: <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a>.</p>
+      <p>Για κάθε ζήτημα προστασίας δεδομένων: <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a> · τηλέφωνο, Viber, WhatsApp <a href="tel:+306977355378">+30 697 735 5378</a> (10:00–14:00 και 17:00–21:00).</p>
     </section>
 
     <hr class="divider">
@@ -179,82 +208,98 @@
       <p class="lead">This Policy explains how we process personal data in connection with the <b>TakeaSeat</b> service (https://takeaseat.gr), in accordance with the General Data Protection Regulation (EU) 2016/679 (GDPR) and Greek Law 4624/2019.</p>
 
       <h2>1. Who we are</h2>
-      <p>The operator of the TakeaSeat platform is:</p>
-      <ul>
-        <li>Service: <b>TakeaSeat</b> (Greece)</li>
-        <li>Phone: +30 697 7355 378</li>
-        <li>Email: <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a></li>
-      </ul>
-      <p>Full company details (legal name, Tax ID, registered address) are provided to business customers (venues) in the <a href="/dpa.html">Data Processing Agreement (DPA)</a> and on the corresponding invoice.</p>
+      <p>The TakeaSeat service is provided by the business named in the <a href="#provider">Provider details</a> at the top of this page. For any data-protection matter: <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a>.</p>
 
-      <h2>2. Roles — who is responsible for what</h2>
-      <p>TakeaSeat is sold B2B to wedding venues (κτήματα).</p>
+      <h2>2. Roles — who decides what</h2>
+      <p>TakeaSeat has two kinds of customers: wedding venues (κτήματα), and couples who buy directly.</p>
       <ul>
-        <li><b>The venue (customer) is the Data Controller</b> of its couples' guest lists. The venue decides what data is entered and for what purpose.</li>
-        <li><b>TakeaSeat is the Data Processor</b>, acting solely on the venue's documented instructions under the <a href="/dpa.html">Data Processing Agreement (DPA)</a>.</li>
-        <li><b>Couples</b> are users of the venue's account.</li>
-        <li><b>Wedding guests</b> are data subjects who <b>do not interact with TakeaSeat directly</b> — their names are entered by the venue or the couple.</li>
+        <li><b>Venue weddings:</b> the venue is the <b>Data Controller</b> for the data of the weddings it creates (the guests and the rest of the plan's content). TakeaSeat is the <b>Data Processor</b> and acts only on the venue's instructions, under the <a href="/dpa.html">Data Processing Agreement (DPA)</a>. The couples of these weddings use the plan through the link the venue gives them.</li>
+        <li><b>Couples who buy directly:</b> TakeaSeat provides the service to the couple itself. The couple enters its guests' names for its own wedding and decides what to write. Entering them to organise your own wedding is, as a rule, a purely personal activity to which the GDPR does not apply (Art. 2(2)(c)); it does apply to us, as we provide the means (Recital 18). So we process these data only to provide the service to you, following your choices, and protect them just as we protect venue data.</li>
+        <li><b>TakeaSeat is the Data Controller</b> for its customers' data (contact details and recovery emails of venues and couples, orders, invoicing), for the service's security data (e.g. the access log), for support correspondence, and for the emails it sends.</li>
+        <li><b>Guests</b> do not use TakeaSeat themselves; their names are entered by the venue or the couple.</li>
       </ul>
-      <p>For the venue's own account data (contact details), TakeaSeat acts as a Controller.</p>
 
       <h2>3. What data we process, and from whom</h2>
-      <table>
-        <tr><th>Category</th><th>Examples</th><th>Source</th></tr>
-        <tr><td>Wedding guest data</td><td>Guest names; free-text notes (e.g. city, seating preferences); an attendance/status flag; seating arrangement.</td><td>Entered by the venue or couple — not by the guests themselves.</td></tr>
-        <tr><td>Venue account data</td><td>Contact details of the venue/user.</td><td>Provided by the venue.</td></tr>
-      </table>
-      <p><b>We do not process payment data</b> within the app; billing is handled separately/offline. We do not seek to collect special categories of data (Art. 9). Please do not enter sensitive data in free-text notes.</p>
+      <div class="tscroll"><table>
+        <tr><th>Category</th><th>What it includes</th><th>Source</th></tr>
+        <tr><td>Plan content</td><td>Guest names; groups; invitations (which guests belong to the same invitation, e.g. a family); free-text notes; seats and tables; the floor plan; the wedding's name and date.</td><td>The venue or the couple — not the guests themselves.</td></tr>
+        <tr><td>Version history</td><td>The last 30 versions of each plan, to undo mistakes and restore.</td><td>Automatic, with every save.</td></tr>
+        <tr><td>Access log</td><td>For each plan we record: opens and saves by support (TakeaSeat); support invitations and their withdrawal; new links (made by the owner, or by us on request); recovery-email changes (including those we make); wedding-date changes; the lock after the wedding; the first opening of the link we sent after purchase, and recoveries, with a coarse device type (e.g. iPhone, Android, Windows). Each entry has a time and a role. Ordinary opens and saves by the couple or the venue are not recorded. No IP address, no full browser details. The latest 50 entries are kept.</td><td>Automatic; visible to the plan's owner.</td></tr>
+        <tr><td>Support invitations</td><td>When you invited us, for how long (24 hours to 7 days), when you withdrew the invitation, and each access by us.</td><td>The plan's owner; automatic.</td></tr>
+        <tr><td>Customer data</td><td>Venues: business name, contact details, recovery email, subscription details, notes on our arrangement. Couples who buy directly: the plan's name, recovery email, purchase and wedding dates.</td><td>You.</td></tr>
+        <tr><td>Emails we send</td><td>Access and recovery links, email-change confirmations, renewal reminders, the keepsake PDF. We keep no copy of the messages.</td><td>Us, to the address you gave us.</td></tr>
+        <tr><td>Technical data</td><td>The IP address of each request is used briefly, in the server's memory, to protect against abuse (rate limiting); it is not stored in plans or in the application's logs.</td><td>Automatic.</td></tr>
+        <tr><td>Support correspondence</td><td>Whatever you write or tell us by email, phone, Viber or WhatsApp.</td><td>You.</td></tr>
+      </table></div>
+      <p><b>We do not process payment data</b> within the app; invoices and receipts are handled outside the platform. We do not seek to collect special categories of data (Art. 9); please do not enter them in free-text notes.</p>
 
       <h2>4. Purposes and lawful basis</h2>
       <ul>
-        <li><b>Providing the seating-plan service</b> to the venue — lawful basis: performance of the contract with the venue (Art. 6(1)(b)), and the venue's instructions to us as Processor.</li>
-        <li><b>As regards guests</b>, processing relies on the legitimate interest of the venue/couple (Art. 6(1)(f)) in organising the reception; the balancing test and the duty to inform rest with the venue as Controller.</li>
-        <li><b>Security, support and compliance</b> — our legitimate interest (Art. 6(1)(f)) and legal obligation (Art. 6(1)(c)) where applicable.</li>
+        <li><b>Providing the service</b> (plans, sync, PDFs, links and recovery, keepsake, renewal reminders): performance of the contract with the customer (Art. 6(1)(b)). For venue weddings we act on the venue's instructions.</li>
+        <li><b>Security and accountability</b> (access log, version history, support invitations, abuse protection, backups): the legitimate interest — ours and our customers' — in keeping plans safe and letting the owner see when we accessed a plan and what changed about its access (Art. 6(1)(f)).</li>
+        <li><b>As regards guests:</b> for venue weddings, the lawful basis is set by the venue as Controller (usually the legitimate interest of the venue and the couple in organising the reception, Art. 6(1)(f)); for couples who buy directly, see section 2.</li>
+        <li><b>Accounting and tax obligations</b> (orders, invoices, receipts): legal obligation (Art. 6(1)(c)).</li>
+        <li><b>Support:</b> performance of the contract and our legitimate interest in answering your requests.</li>
       </ul>
+      <p>We do not use the data for advertising or profiling, we do not sell them, and we make no automated decisions about you.</p>
 
       <h2>5. Sub-processors</h2>
-      <p>We use a small number of providers acting as sub-processors, under contractual confidentiality and security commitments:</p>
-      <table>
+      <p>We use a few providers acting as sub-processors, under contractual confidentiality and security commitments:</p>
+      <div class="tscroll"><table>
         <tr><th>Provider</th><th>Role</th><th>Location</th></tr>
-        <tr><td>Hetzner Online GmbH</td><td>Server hosting &amp; data storage</td><td>Germany (EU)</td></tr>
-      </table>
-      <p>The legacy provider <b>Cloudflare</b> is being retired and is not part of the current infrastructure. We will update the sub-processor list before adding any new one, giving the venue an opportunity to object, as set out in the DPA.</p>
+        <tr><td>Hetzner Online GmbH</td><td>Server hosting and data storage.</td><td>Germany (EU)</td></tr>
+        <tr><td>Backblaze, Inc. (B2 Cloud Storage)</td><td>Off-site storage of the backups. Backups are encrypted before they are sent, with a key only we hold.</td><td>Region EU Central — Amsterdam, Netherlands (EU)</td></tr>
+        <tr><td>Email delivery provider (not chosen yet)</td><td>Sending the service's emails (links, keepsake PDF).</td><td>Will be listed here before it is used.</td></tr>
+      </table></div>
+      <p>We update this list before using any new sub-processor; venues are notified and may object, as set out in the <a href="/dpa.html">DPA</a>.</p>
+      <p>If you contact us via Viber or WhatsApp, the messages pass through those services under their own terms. Please don't send guest lists that way — there is no need: with a support invitation we see the plan directly.</p>
 
       <h2>6. Where data is stored</h2>
-      <p>Data is hosted on a <b>self-hosted server in Germany</b> (Hetzner) and stored in an SQLite database on that server. <b>Nightly encrypted backups</b> are retained for about 14 days. Processing takes place <b>within the EU/EEA only; there is no transfer outside the EU/EEA.</b></p>
+      <p>Data is held on a server we rent from Hetzner in <b>Germany</b>, in an SQLite database. Every night we take an <b>encrypted backup</b>; the decryption key is not kept on the server. Backups are kept for up to 14 days on the server and up to 21 days off-site (Backblaze, Amsterdam). Processing takes place <b>within the EU/EEA only; there is no transfer outside the EU/EEA.</b></p>
 
       <h2>7. Retention</h2>
       <ul>
-        <li>Plans are retained while the venue account is active.</li>
-        <li>They are deleted on account termination or on request.</li>
-        <li>Backups roll off and are deleted after about 14 days.</li>
+        <li><b>Plans</b> (content, version history, access log, support invitations): from the day after the wedding the plan becomes view-only, and it is <b>deleted 7 days after the wedding</b>. A different period can be agreed with a venue or a couple. Plans without a wedding date become view-only about 18 months after they were created and are deleted 7 days later; for plans created before 19 September 2026, the 18 months count from that day.</li>
+        <li><b>A wedding a venue deletes:</b> is kept for 14 days in case the venue asks us to restore it, then erased for good.</li>
+        <li><b>A venue's template floor plan</b> (the space without guests): for as long as we work with the venue.</li>
+        <li><b>A couple's recovery email:</b> deleted together with the plan. We keep only the plan's name and the dates, for our accounting books, for as long as tax law requires.</li>
+        <li><b>Venue details:</b> for as long as we work with the venue; invoices for as long as tax law requires.</li>
+        <li><b>Support correspondence:</b> for as long as needed to handle your request.</li>
+        <li><b>Backups:</b> up to 14 days on the server and up to 21 days off-site, then erased automatically. Anything deleted is gone from the backups within 21 days at the latest.</li>
       </ul>
+      <p>If you bought directly as a couple, after the wedding we email you a keepsake PDF of the plan, if we have your email address. Whatever you keep yourself (PDFs, printouts) is not affected by the deletion.</p>
 
       <h2>8. Security measures (Art. 32)</h2>
       <ul>
         <li>HTTPS/TLS across all traffic.</li>
-        <li>Access via high-entropy secret links/keys.</li>
-        <li>Edit credentials are kept in the URL fragment and <b>are not sent to the server</b>.</li>
-        <li>Encrypted, tested backups.</li>
-        <li>Access limited to the operator only.</li>
+        <li>Access only with high-entropy secret links/keys, separate for editing, viewing, the venue and support. Every request is checked by the server; repeated failed attempts to guess a key are throttled.</li>
+        <li>Keys are in the part of the link after the "#" (the fragment), which the browser does not send with the page address; so they never appear in the address (query string) or in the server's logs. The app sends the key to the server only over HTTPS, in a request header, to prove access.</li>
+        <li>An access log on every plan, visible to its owner.</li>
+        <li>Nightly encrypted backups, with the decryption key kept off the server, and an encrypted copy in a second location.</li>
+        <li><b>Our own access:</b> TakeaSeat never opens your plan without your invitation — every access is logged. You invite us with the support button, for 24 hours up to 7 days. When you ask us to, we can issue a new link if you lost yours (the old ones stop working) or change the recovery email (the old address is notified); both are recorded in the access log. As with any hosted service, the server's administrator can technically access the database; we use this only to run and secure the service (e.g. restoring a backup), not to read plans.</li>
       </ul>
 
       <h2>9. Your rights</h2>
-      <p>As a data subject you have the rights of: access, rectification, erasure, restriction, data portability, and objection.</p>
-      <p><b>How to exercise them:</b> Because guests' data reaches us via the venue (the Controller), erasure/rights requests are routed to and through the venue that controls the data. You may also contact us at <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a> and we will forward the request to the relevant venue and assist it.</p>
+      <p>You have the rights of access, rectification, erasure, restriction, data portability, and objection.</p>
+      <ul>
+        <li><b>Guests of a venue wedding:</b> contact the venue, which is the Controller. You may also contact us; we will forward the request to the venue and help it respond.</li>
+        <li><b>Guests of a couple who bought directly:</b> the couple can correct or remove your name from the plan straight away. You may also write to us; we will pass the request on to the couple.</li>
+        <li><b>Customers (venues, couples):</b> write to us directly.</li>
+      </ul>
+      <p>All requests to <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a>; we reply within one month at the latest.</p>
       <p><b>Right to complain:</b> You have the right to lodge a complaint with the Greek Data Protection Authority (Hellenic DPA — Αρχή Προστασίας Δεδομένων Προσωπικού Χαρακτήρα, 1-3 Kifisias Ave., Athens, <a href="https://www.dpa.gr" target="_blank" rel="noopener">www.dpa.gr</a>).</p>
 
       <h2>10. Cookies and local storage</h2>
-      <p>We use no tracking cookies, advertising cookies, analytics tools, or third-party trackers. The app uses only <b>strictly necessary browser localStorage</b> to keep you signed in and to hold your working plan. As this is strictly necessary functionality and not tracking, <b>no cookie-consent banner is required.</b></p>
+      <p>We use no cookies, and no analytics, advertising or third-party trackers. The app uses only your browser's <b>local storage (localStorage)</b>: to keep you signed in to your plan on this device and to hold a working copy of the plan and your settings (e.g. language). These data stay on your device and are not used for tracking; so <b>no cookie-consent prompt is needed</b>. On a shared device you can clear them in the browser's settings.</p>
 
-      <h2>11. Children's data</h2>
-      <p>The service is aimed at businesses and does not knowingly collect children's data. We do not direct the service at children.</p>
+      <h2>11. Children</h2>
+      <p>The service is aimed at businesses and at adults organising a wedding, not at children. Guest lists may contain the names of children who are invited; these are entered by the venue or the couple and protected like any other data in the plan.</p>
 
       <h2>12. Changes to this Policy</h2>
-      <p>We may update this Policy. We will post the new version on this page with an updated "Last updated" date.</p>
+      <p>We may update this Policy. The new version is posted on this page with a new version date; for material changes we notify our customers by email.</p>
 
       <h2>13. Contact</h2>
-      <p>For any data-protection matter: <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a>.</p>
+      <p>For any data-protection matter: <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a> · phone, Viber, WhatsApp <a href="tel:+306977355378">+30 697 735 5378</a> (10:00–14:00 and 17:00–21:00, Greek time).</p>
     </section>
   </div>
 </main>

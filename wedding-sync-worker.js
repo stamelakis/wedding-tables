@@ -27,6 +27,9 @@
 //   POST   /claim {token, nonce}  (a couple opens the link TakeaSeat sent — once)
 //   POST   /recover {email, lang} · POST /recover/couple {token, nonce} · POST /recover/venue {token, secret?}
 //   POST   /verify {token} · POST /plans/:id/email {email} · POST /venues/:id/email {email}
+// Lifecycle: every plan has a wedding date (POST /plans/:id/date, venue console, admin). The day after it the plan becomes
+// view-only for everyone and N days later (default 7) it is deleted — the admin can change this globally, per venue, per
+// couple, per plan. Couples who bought directly get a keepsake PDF by mail. GET /plans/:id/pdf renders floor plan / keepsake.
 // Email (env.MAIL, optional): with mail on, every link and key goes straight to the couple's / venue's own email and the
 // admin API never returns one; people recover on their own. Without mail, links are shown to the admin as before.
 //   GET/POST/DELETE /codes/:code  (device linking; the code is a shared secret)
@@ -75,46 +78,140 @@ async function readBody(request) { const b = await request.json().catch(() => nu
 // Links sent by mail carry the record's link generation (lgen): a new email address, a new key or a newer mailed link
 // retires every link sent before it.
 const nextGen = o => { o.lgen = (o.lgen || 0) + 1; return o.lgen; };
-function send(env, to, msg) { if (!mailOn(env) || !to) return false; try { return env.MAIL.send({ to, subject: msg.subject, text: msg.text }) !== false; } catch (e) { return false; } }
+// ---- wedding date & lifecycle ----
+const DAY = 86400000, FALLBACK_DAYS = 548, TRASH_DAYS = 14, DATE_CHANGES = 3, DATE_AHEAD_DAYS = 730, MAX_KEEP_DAYS = 3650;
+const DEFAULT_RETENTION = { keepDays: 7, lockAfter: true, keep: false };
+const ymdOk = s => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && (d => !isNaN(d) && d.toISOString().slice(0, 10) === s)(new Date(s + "T00:00:00Z"));
+const addDays = (ymd, n) => new Date(Date.parse(ymd + "T00:00:00Z") + n * DAY).toISOString().slice(0, 10);
+const addYears = (ymd, n) => { const [y, m, d] = ymd.split("-").map(Number); const dd = (m === 2 && d === 29) ? 28 : d; return `${y + n}-${String(m).padStart(2, "0")}-${String(dd).padStart(2, "0")}`; };
+const todayAthens = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Athens", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+function athensMidnight(ymd) {   // 00:00 Europe/Athens of that day, in ms (EET/EEST; DST never switches at midnight)
+  const utc = Date.parse(ymd + "T00:00:00Z");
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Athens", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
+    .formatToParts(new Date(utc)).filter(x => x.type !== "literal").map(x => [x.type, +x.value]));
+  return utc - (Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute) - utc);
+}
+function normRetention(x) {   // {keepDays?, lockAfter?, keep?} — only what was given; null if nothing
+  if (!x || typeof x !== "object") return null;
+  const o = {};
+  if (x.keepDays != null && x.keepDays !== "") { const k = parseInt(x.keepDays, 10); if (Number.isFinite(k)) o.keepDays = Math.max(0, Math.min(MAX_KEEP_DAYS, k)); }
+  if (typeof x.lockAfter === "boolean") o.lockAfter = x.lockAfter;
+  if (typeof x.keep === "boolean") o.keep = x.keep;
+  return Object.keys(o).length ? o : null;
+}
+function policyOf(settings, ...layers) {   // global settings < venue / couple < plan
+  const out = { ...DEFAULT_RETENTION, ...(normRetention(settings && settings.retention) || {}) };
+  for (const l of layers) Object.assign(out, normRetention(l) || {});
+  return out;
+}
+async function getSettings(env) { return safeParse(await env.PLANS.get("meta:settings")) || {}; }
+async function lifecycleSince(env) {   // plans older than this feature count their fallback from its first day
+  const m = safeParse(await env.PLANS.get("meta:lifecycle"));
+  if (m && m.since) return m.since;
+  const since = Date.now(); await env.PLANS.put("meta:lifecycle", JSON.stringify({ since })); return since;
+}
+// lockAt = the day after the wedding (Athens). No date yet: 18 months after the plan was made (so a plan is never reused forever).
+function lifeOf(rec, pol, since, dateOverride) {
+  if (!rec || rec.template) return { weddingDate: null, lockAt: null, deleteAt: null, over: false, locked: false, keep: true, fallback: false };
+  const wd = ymdOk(rec.weddingDate) ? rec.weddingDate : (ymdOk(dateOverride) ? dateOverride : null);
+  const lockAt = wd ? athensMidnight(addDays(wd, 1)) : (rec.createdAt || since || Date.now()) + FALLBACK_DAYS * DAY;
+  const over = Date.now() >= lockAt;
+  return { weddingDate: wd, lockAt, deleteAt: pol.keep ? null : lockAt + pol.keepDays * DAY, over, locked: over && !!pol.lockAfter, keep: !!pol.keep, fallback: !wd };
+}
+// A couple's extra plans (made with parentId) have no life of their own: they follow the licence's main plan — its date,
+// its lock, its deletion — so one paid wedding can never become a second one.
+async function planLife(env, rec, id, ctx) {
+  ctx = ctx || {};
+  const settings = ctx.settings || await getSettings(env), since = ctx.since || await lifecycleSince(env);
+  const own = ownerOf(rec); let layer = null;
+  if (own.type === "venue") { const v = ctx.venue !== undefined ? ctx.venue : safeParse(await env.PLANS.get("venue:" + own.venueId)); layer = v && v.retention; }
+  else if (rec.coupleId) {
+    const c = ctx.couple !== undefined ? ctx.couple : safeParse(await env.PLANS.get("couple:" + rec.coupleId)); layer = c && c.retention;
+    if (c && c.planId && c.planId !== id) {
+      const main = c.purgedAt ? null : safeParse(await env.PLANS.get("plan:" + c.planId));
+      if (!main) { const now = Date.now(); return { weddingDate: null, lockAt: now, deleteAt: now, over: true, locked: true, keep: false, fallback: false, child: true }; }
+      const L = lifeOf({ ...rec, weddingDate: main.weddingDate || null, createdAt: main.createdAt || rec.createdAt }, policyOf(settings, layer, main.retention, rec.retention), since);
+      return { ...L, child: true };
+    }
+  }
+  return lifeOf(rec, policyOf(settings, layer, rec.retention), since);
+}
+// Setting the date: from today up to 2 years ahead, the first time free then 3 changes, never cleared, not after the wedding.
+// These limits stop one paid wedding from being reused for others; the admin is not limited.
+function applyDate(rec, date, L, byAdmin) {
+  if (date === null && byAdmin) { rec.weddingDate = null; return null; }
+  if (!ymdOk(date)) return "bad_date";
+  if (!byAdmin) {
+    if (L && (L.over || L.locked || L.child)) return L.child ? "unauthorized" : "locked";   // after the wedding the date is frozen, even when the plan stays editable
+    const today = todayAthens();
+    if (date < today || date > addDays(today, DATE_AHEAD_DAYS)) return "bad_date";
+    if (rec.weddingDate && rec.weddingDate !== date) {
+      if ((rec.dateChanges || 0) >= DATE_CHANGES) return "no_more_changes";
+      rec.dateChanges = (rec.dateChanges || 0) + 1;
+    }
+  }
+  rec.weddingDate = date; return null;
+}
+const lifeOut = (L, rec, canEdit) => ({ ...L, dateEditable: !!canEdit && !L.over && !L.locked && !L.child && (!rec.weddingDate || (rec.dateChanges || 0) < DATE_CHANGES),
+  dateChangesLeft: Math.max(0, DATE_CHANGES - (rec.dateChanges || 0)) });
+const PDF_WORDS = { el: ["κάτοψη", "αναμνηστικό"], en: ["floor plan", "keepsake"], de: ["Grundriss", "Erinnerung"] };
+const wellFormed = x => (typeof x.toWellFormed === "function" ? x.toWellFormed() : x);
+const pdfName = (name, mode, lang) => ([...wellFormed(String(name || "TakeaSeat"))].slice(0, 80).join("").replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ").trim() || "TakeaSeat")
+  + " — " + PDF_WORDS[langOf(lang)][mode === "keepsake" ? 1 : 0] + ".pdf";
+function pdfResponse(render, name, mode, lang) {   // render: a Promise of the bytes — consumed after the request left the API queue
+  const body = new ReadableStream({ async start(ctrl) { try { ctrl.enqueue(new Uint8Array(await render)); ctrl.close(); } catch (e) { ctrl.error(e); } } });
+  return new Response(body, { status: 200, headers: { ...CORS, "Content-Type": "application/pdf", "Cache-Control": "no-store",
+    "Content-Disposition": "attachment; filename=\"takeaseat.pdf\"; filename*=UTF-8''" + encodeURIComponent(pdfName(name, mode, lang)) } });
+}
+function send(env, to, msg) { if (!mailOn(env) || !to) return false; try { return env.MAIL.send({ to, subject: msg.subject, text: msg.text, ...(msg.attachments ? { attachments: msg.attachments } : {}) }) !== false; } catch (e) { return false; } }
 // Plain-text emails (names are user text: never HTML). {x} placeholders.
 const MAILS = {
   el: {
-    claim: ["Το τραπεζολόγιό σας — TakeaSeat", "Γεια σας!\n\nΤο τραπεζολόγιο «{name}» σας περιμένει. Ανοίξτε τον σύνδεσμο στο Chrome ή στο Safari και πατήστε «Άνοιγμα του σχεδίου μου»:\n\n{link}\n\nΟ σύνδεσμος ανοίγει μία φορά και ισχύει 30 ημέρες. Μόνο εσείς βλέπετε το σχέδιό σας — ούτε η TakeaSeat.\nΑν χάσετε τον σύνδεσμο, ζητήστε νέο με αυτό το email: {recover}\n\nTakeaSeat"],
+    claim: ["Το τραπεζολόγιό σας — TakeaSeat", "Γεια σας!\n\nΤο τραπεζολόγιο «{name}» σας περιμένει. Ανοίξτε τον σύνδεσμο στο Chrome ή στο Safari και πατήστε «Άνοιγμα του σχεδίου μου»:\n\n{link}\n\nΟ σύνδεσμος ανοίγει μία φορά και ισχύει 30 ημέρες. Η TakeaSeat δεν ανοίγει το σχέδιό σας χωρίς πρόσκλησή σας — κάθε πρόσβαση καταγράφεται.\nΑν χάσετε τον σύνδεσμο, ζητήστε νέο με αυτό το email: {recover}\n\nTakeaSeat"],
     recover: ["Οι σύνδεσμοί σας — TakeaSeat", "Γεια σας!\n\nΖητήσατε πρόσβαση στο TakeaSeat με αυτό το email:\n\n{items}\n\nΚάθε σύνδεσμος ανοίγει μία φορά. Οι σύνδεσμοι ανάκτησης ισχύουν μία ώρα. Αν δεν το ζητήσατε εσείς, αγνοήστε αυτό το μήνυμα — τίποτα δεν αλλάζει.\n\nTakeaSeat"],
     itemCouple: "Τραπεζολόγιο «{name}»: {link}", itemClaim: "Τραπεζολόγιο «{name}» (πρώτο άνοιγμα — ισχύει έως {until}): {link}", itemVenue: "Κονσόλα «{name}» — ορίστε νέο κωδικό: {link}",
     relink: ["Ο σύνδεσμός σας — TakeaSeat", "Γεια σας!\n\nΚατόπιν αιτήματός σας, ορίστε σύνδεσμος για να ανοίξετε ξανά το τραπεζολόγιο «{name}» σε αυτή ή σε νέα συσκευή:\n\n{link}\n\nΙσχύει 7 ημέρες και ανοίγει μία φορά. Αν δεν το ζητήσατε εσείς, αγνοήστε αυτό το μήνυμα.\n\nTakeaSeat"],
     venueReset: ["Νέος κωδικός κονσόλας — TakeaSeat", "Γεια σας,\n\nΟρίστε νέο κωδικό για την κονσόλα «{name}» εδώ (ο σύνδεσμος ισχύει 7 ημέρες και ανοίγει μία φορά):\n\n{link}\n\nΟ τωρινός κωδικός λειτουργεί μέχρι να χρησιμοποιήσετε τον σύνδεσμο. Αν δεν το ζητήσατε εσείς, γράψτε μας στο info@takeaseat.gr.\n\nTakeaSeat"],
-    setup: ["Η κονσόλα του κτήματός σας — TakeaSeat", "Καλώς ήρθατε στο TakeaSeat!\n\nΟρίστε τον κωδικό της κονσόλας για το «{name}» εδώ (ο σύνδεσμος ισχύει 7 ημέρες):\n\n{link}\n\nΜόνο εσείς θα γνωρίζετε τον κωδικό — ούτε η TakeaSeat. Αν τον ξεχάσετε, ζητήστε νέο με αυτό το email από την κονσόλα.\n\nTakeaSeat"],
+    setup: ["Η κονσόλα του κτήματός σας — TakeaSeat", "Καλώς ήρθατε στο TakeaSeat!\n\nΟρίστε τον κωδικό της κονσόλας για το «{name}» εδώ (ο σύνδεσμος ισχύει 7 ημέρες):\n\n{link}\n\nΟ κωδικός δεν εμφανίζεται πουθενά αλλού — ούτε στη διαχείριση της TakeaSeat. Αν τον ξεχάσετε, ζητήστε νέο με αυτό το email από την κονσόλα.\n\nTakeaSeat"],
     verify: ["Επιβεβαίωση email — TakeaSeat", "Γεια σας!\n\nΕπιβεβαιώστε ότι αυτό το email θα χρησιμοποιείται για την ανάκτηση του «{name}» (ο σύνδεσμος ισχύει 24 ώρες):\n\n{link}\n\nΑν δεν το ζητήσατε εσείς, αγνοήστε αυτό το μήνυμα.\n\nTakeaSeat"],
     changed: ["Το email ανάκτησης άλλαξε — TakeaSeat", "Γεια σας,\n\nΤο email ανάκτησης για το «{name}» άλλαξε σε {email} ({by}).\nΑν δεν το περιμένατε, γράψτε μας αμέσως στο info@takeaseat.gr.\n\nTakeaSeat"],
     byOwner: "από εσάς", byAdmin: "από την TakeaSeat, κατόπιν αιτήματος",
+    keepsake: ["Το αναμνηστικό του γάμου σας — TakeaSeat", "Συγχαρητήρια!\n\nΣας στέλνουμε, ως μικρό αναμνηστικό, το τραπεζολόγιο του γάμου σας «{name}» ({date}): όλοι όσοι γιόρτασαν μαζί σας και πού κάθισαν. Θα το βρείτε συνημμένο σε PDF.\n\nΤο σχέδιο είναι πλέον μόνο για προβολή και θα διαγραφεί οριστικά στις {until}. Αν θέλετε να το κρατήσετε, αποθηκεύστε το συνημμένο αρχείο.\n\nΣας ευχόμαστε κάθε ευτυχία!\nTakeaSeat"],
+    renewSoon: ["Η συνδρομή σας ανανεώνεται στις {date} — TakeaSeat", "Γεια σας,\n\nΗ συνδρομή του «{name}» στο TakeaSeat ανανεώνεται αυτόματα στις {date} για την επόμενη σεζόν ({from} – {to}).\n\nΑν δεν θέλετε να ανανεωθεί, απενεργοποιήστε την αυτόματη ανανέωση από την κονσόλα σας έως τότε: {link}\n\nΓια οποιαδήποτε ερώτηση: info@takeaseat.gr · 697 735 5378 (10:00–14:00 και 17:00–21:00).\n\nTakeaSeat"],
+    keepsakeKeep: ["Το αναμνηστικό του γάμου σας — TakeaSeat", "Συγχαρητήρια!\n\nΣας στέλνουμε, ως μικρό αναμνηστικό, το τραπεζολόγιο του γάμου σας «{name}» ({date}): όλοι όσοι γιόρτασαν μαζί σας και πού κάθισαν. Θα το βρείτε συνημμένο σε PDF.\n\nΣας ευχόμαστε κάθε ευτυχία!\nTakeaSeat"],
   },
   en: {
-    claim: ["Your seating plan — TakeaSeat", "Hello!\n\nYour seating plan “{name}” is ready. Open the link in Chrome or Safari and press “Open my plan”:\n\n{link}\n\nThe link opens once and is valid for 30 days. Only you can see your plan — not even TakeaSeat.\nIf you lose the link, ask for a new one with this email: {recover}\n\nTakeaSeat"],
+    claim: ["Your seating plan — TakeaSeat", "Hello!\n\nYour seating plan “{name}” is ready. Open the link in Chrome or Safari and press “Open my plan”:\n\n{link}\n\nThe link opens once and is valid for 30 days. TakeaSeat never opens your plan without your invitation — every access is logged.\nIf you lose the link, ask for a new one with this email: {recover}\n\nTakeaSeat"],
     recover: ["Your links — TakeaSeat", "Hello!\n\nYou asked for access to TakeaSeat with this email:\n\n{items}\n\nEach link opens once. Recovery links are valid for one hour. If this was not you, ignore this message — nothing changes.\n\nTakeaSeat"],
     itemCouple: "Seating plan “{name}”: {link}", itemClaim: "Seating plan “{name}” (first opening — valid until {until}): {link}", itemVenue: "Console “{name}” — set a new key: {link}",
     relink: ["Your link — TakeaSeat", "Hello!\n\nAs you asked, here is a link to open your seating plan “{name}” again on this or a new device:\n\n{link}\n\nIt is valid for 7 days and opens once. If this was not you, ignore this message.\n\nTakeaSeat"],
     venueReset: ["New console key — TakeaSeat", "Hello,\n\nSet a new key for the console “{name}” here (the link is valid for 7 days and opens once):\n\n{link}\n\nYour current key keeps working until you use the link. If this was not you, write to info@takeaseat.gr.\n\nTakeaSeat"],
-    setup: ["Your venue console — TakeaSeat", "Welcome to TakeaSeat!\n\nSet the key of the console for “{name}” here (the link is valid for 7 days):\n\n{link}\n\nOnly you will know the key — not even TakeaSeat. If you forget it, ask for a new one with this email from the console.\n\nTakeaSeat"],
+    setup: ["Your venue console — TakeaSeat", "Welcome to TakeaSeat!\n\nSet the key of the console for “{name}” here (the link is valid for 7 days):\n\n{link}\n\nThe key is not shown anywhere else — not even in TakeaSeat's own admin. If you forget it, ask for a new one with this email from the console.\n\nTakeaSeat"],
     verify: ["Confirm your email — TakeaSeat", "Hello!\n\nPlease confirm that this email will be used to recover “{name}” (the link is valid for 24 hours):\n\n{link}\n\nIf this was not you, ignore this message.\n\nTakeaSeat"],
     changed: ["Your recovery email changed — TakeaSeat", "Hello,\n\nThe recovery email for “{name}” was changed to {email} ({by}).\nIf you did not expect this, write to info@takeaseat.gr right away.\n\nTakeaSeat"],
     byOwner: "by you", byAdmin: "by TakeaSeat, on request",
+    keepsake: ["A keepsake of your wedding — TakeaSeat", "Congratulations!\n\nAs a small keepsake, here is the seating plan of your wedding “{name}” ({date}): everyone who celebrated with you and where they sat. You will find it attached as a PDF.\n\nThe plan is now view-only and will be deleted for good on {until}. If you want to keep it, save the attached file.\n\nWishing you every happiness!\nTakeaSeat"],
+    renewSoon: ["Your subscription renews on {date} — TakeaSeat", "Hello,\n\nThe TakeaSeat subscription of “{name}” renews automatically on {date} for the next season ({from} – {to}).\n\nIf you do not want it to renew, turn automatic renewal off in your console before then: {link}\n\nAny questions: info@takeaseat.gr · +30 697 735 5378 (10:00–14:00 and 17:00–21:00, Greek time).\n\nTakeaSeat"],
+    keepsakeKeep: ["A keepsake of your wedding — TakeaSeat", "Congratulations!\n\nAs a small keepsake, here is the seating plan of your wedding “{name}” ({date}): everyone who celebrated with you and where they sat. You will find it attached as a PDF.\n\nWishing you every happiness!\nTakeaSeat"],
   },
   de: {
-    claim: ["Ihr Sitzplan — TakeaSeat", "Hallo!\n\nIhr Sitzplan „{name}“ ist bereit. Öffnen Sie den Link in Chrome oder Safari und tippen Sie auf „Meinen Plan öffnen“:\n\n{link}\n\nDer Link öffnet einmal und gilt 30 Tage. Nur Sie sehen Ihren Plan — auch TakeaSeat nicht.\nWenn Sie den Link verlieren, fordern Sie mit dieser E-Mail einen neuen an: {recover}\n\nTakeaSeat"],
+    claim: ["Ihr Sitzplan — TakeaSeat", "Hallo!\n\nIhr Sitzplan „{name}“ ist bereit. Öffnen Sie den Link in Chrome oder Safari und tippen Sie auf „Meinen Plan öffnen“:\n\n{link}\n\nDer Link öffnet einmal und gilt 30 Tage. TakeaSeat öffnet Ihren Plan nie ohne Ihre Einladung — jeder Zugriff wird protokolliert.\nWenn Sie den Link verlieren, fordern Sie mit dieser E-Mail einen neuen an: {recover}\n\nTakeaSeat"],
     recover: ["Ihre Links — TakeaSeat", "Hallo!\n\nSie haben mit dieser E-Mail Zugang zu TakeaSeat angefordert:\n\n{items}\n\nJeder Link öffnet einmal. Wiederherstellungslinks gelten eine Stunde. Wenn Sie das nicht waren, ignorieren Sie diese Nachricht — nichts ändert sich.\n\nTakeaSeat"],
     itemCouple: "Sitzplan „{name}“: {link}", itemClaim: "Sitzplan „{name}“ (erstes Öffnen — gültig bis {until}): {link}", itemVenue: "Konsole „{name}“ — neuen Schlüssel festlegen: {link}",
     relink: ["Ihr Link — TakeaSeat", "Hallo!\n\nWie gewünscht, hier ein Link, um Ihren Sitzplan „{name}“ auf diesem oder einem neuen Gerät wieder zu öffnen:\n\n{link}\n\nEr gilt 7 Tage und öffnet einmal. Wenn Sie das nicht waren, ignorieren Sie diese Nachricht.\n\nTakeaSeat"],
     venueReset: ["Neuer Konsolen-Schlüssel — TakeaSeat", "Hallo,\n\nLegen Sie hier einen neuen Schlüssel für die Konsole „{name}“ fest (der Link gilt 7 Tage und öffnet einmal):\n\n{link}\n\nIhr jetziger Schlüssel funktioniert, bis Sie den Link benutzen. Wenn Sie das nicht waren, schreiben Sie an info@takeaseat.gr.\n\nTakeaSeat"],
-    setup: ["Ihre Location-Konsole — TakeaSeat", "Willkommen bei TakeaSeat!\n\nLegen Sie hier den Schlüssel der Konsole für „{name}“ fest (der Link gilt 7 Tage):\n\n{link}\n\nNur Sie kennen den Schlüssel — auch TakeaSeat nicht. Wenn Sie ihn vergessen, fordern Sie in der Konsole mit dieser E-Mail einen neuen an.\n\nTakeaSeat"],
+    setup: ["Ihre Location-Konsole — TakeaSeat", "Willkommen bei TakeaSeat!\n\nLegen Sie hier den Schlüssel der Konsole für „{name}“ fest (der Link gilt 7 Tage):\n\n{link}\n\nDer Schlüssel wird nirgendwo sonst angezeigt — auch nicht in der Verwaltung von TakeaSeat. Wenn Sie ihn vergessen, fordern Sie in der Konsole mit dieser E-Mail einen neuen an.\n\nTakeaSeat"],
     verify: ["E-Mail bestätigen — TakeaSeat", "Hallo!\n\nBitte bestätigen Sie, dass diese E-Mail zur Wiederherstellung von „{name}“ verwendet wird (der Link gilt 24 Stunden):\n\n{link}\n\nWenn Sie das nicht waren, ignorieren Sie diese Nachricht.\n\nTakeaSeat"],
     changed: ["Ihre Wiederherstellungs-E-Mail wurde geändert — TakeaSeat", "Hallo,\n\nDie Wiederherstellungs-E-Mail für „{name}“ wurde auf {email} geändert ({by}).\nWenn Sie das nicht erwartet haben, schreiben Sie sofort an info@takeaseat.gr.\n\nTakeaSeat"],
     byOwner: "von Ihnen", byAdmin: "von TakeaSeat, auf Anfrage",
+    keepsake: ["Eine Erinnerung an Ihre Hochzeit — TakeaSeat", "Herzlichen Glückwunsch!\n\nAls kleine Erinnerung senden wir Ihnen den Sitzplan Ihrer Hochzeit „{name}“ ({date}): alle, die mit Ihnen gefeiert haben, und wo sie saßen. Sie finden ihn als PDF im Anhang.\n\nDer Plan ist jetzt nur noch lesbar und wird am {until} endgültig gelöscht. Wenn Sie ihn behalten möchten, speichern Sie die angehängte Datei.\n\nAlles Glück der Welt!\nTakeaSeat"],
+    renewSoon: ["Ihr Abonnement verlängert sich am {date} — TakeaSeat", "Hallo,\n\nDas TakeaSeat-Abonnement von „{name}“ verlängert sich am {date} automatisch für die nächste Saison ({from} – {to}).\n\nWenn Sie keine Verlängerung wünschen, schalten Sie die automatische Verlängerung vorher in Ihrer Konsole aus: {link}\n\nFragen: info@takeaseat.gr · +30 697 735 5378 (10:00–14:00 und 17:00–21:00, griechische Zeit).\n\nTakeaSeat"],
+    keepsakeKeep: ["Eine Erinnerung an Ihre Hochzeit — TakeaSeat", "Herzlichen Glückwunsch!\n\nAls kleine Erinnerung senden wir Ihnen den Sitzplan Ihrer Hochzeit „{name}“ ({date}): alle, die mit Ihnen gefeiert haben, und wo sie saßen. Sie finden ihn als PDF im Anhang.\n\nAlles Glück der Welt!\nTakeaSeat"],
   },
 };
 const fmtDay = (t, lang) => { try { return new Date(t).toLocaleDateString(langOf(lang) === "de" ? "de-DE" : langOf(lang) === "en" ? "en-GB" : "el-GR", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Athens" }); } catch (e) { return new Date(t).toISOString().slice(0, 10); } };
 const fill = (t, v) => String(t).replace(/\{(\w+)\}/g, (m, k) => (v[k] != null ? String(v[k]) : m));
-function mailMsg(lang, kind, v) { const L = MAILS[langOf(lang)]; return { subject: L[kind][0], text: fill(L[kind][1], v) }; }
+function mailMsg(lang, kind, v) { const L = MAILS[langOf(lang)]; return { subject: fill(L[kind][0], v), text: fill(L[kind][1], v) }; }
 async function indexEmail(env, email, kind, id, add) {
   if (!email) return;
   await kvUpdate(env, "email:" + email, ix => { ix = ix || {}; ix.couples = ix.couples || []; ix.venues = ix.venues || []; const k = kind === "venue" ? "venues" : "couples";
@@ -174,11 +271,123 @@ export async function sweep(env) {
     const c = safeParse(await env.PLANS.get(k));
     if (!c || now - (c.createdAt || 0) > CLAIM_TTL + 86400000) { await env.PLANS.delete(k); out.claim++; }
   }
+  Object.assign(out, await lifecycleSweep(env, now), await renewSweep(env, now));
+  return out;
+}
+// After the wedding: view only (+ a keepsake PDF by mail to couples who bought directly), deleted keepDays later.
+async function lifecycleSweep(env, now) {
+  const out = { locked: 0, keepsakes: 0, purged: 0, trash: 0 };
+  const settings = await getSettings(env), since = await lifecycleSince(env);
+  const venues = new Map(), couples = new Map();
+  const cached = async (map, key) => { if (!map.has(key)) map.set(key, safeParse(await env.PLANS.get(key))); return map.get(key); };
+  for (const k of (await env.PLANS.list("plan:")) || []) {
+    const id = k.slice(5), rec = safeParse(await env.PLANS.get(k)); if (!rec) continue;
+    const own = ownerOf(rec);
+    if (rec.deletedAt) {   // a venue's trash
+      if (now >= (rec.purgeAt || rec.deletedAt + TRASH_DAYS * DAY)) {
+        await purgePlan(env, id); out.trash++;
+        if (own.type === "venue") await kvUpdate(env, "venue:" + own.venueId, v => { if (!v) return null; v.trash = (v.trash || []).filter(t => t.planId !== id); return v; });
+      }
+      continue;
+    }
+    if (rec.template) continue;
+    const v = own.type === "venue" ? await cached(venues, "venue:" + own.venueId) : null;
+    const c = rec.coupleId ? await cached(couples, "couple:" + rec.coupleId) : null;
+    const L = await planLife(env, rec, id, { settings, since, venue: v, couple: c });
+    if (!L.over) continue;
+    if (L.locked && !rec.lockedAt) {
+      await kvUpdate(env, k, cur => { if (!cur) return null; cur.lockedAt = now; cur.support = null; addAudit(cur, "system", "locked"); return cur; });
+      await removeIndex(env, "support:index", id); out.locked++;
+      if (own.type === "venue" && rec.support) await mirrorVenueSupport(env, own.venueId, id, null);
+    }
+    // The keepsake: once, to a couple who bought directly (main plan) — before any deletion; if it could not be made or
+    // sent, the plan waits up to 3 more days for another try rather than disappearing without it.
+    let holdPurge = false;
+    if (!rec.keepsakeSentAt && c && c.planId === id && c.email && mailOn(env) && env.PDF && typeof env.PDF.render === "function"
+        && isPlan(rec.plan) && rec.plan.tables.length) {
+      let sent = false;
+      try {
+        const lang = langOf(c.lang), goneSoon = L.deleteAt && now < L.deleteAt;
+        const pdf = await env.PDF.render(rec.plan, { name: rec.name, weddingDate: L.weddingDate, venueName: "", mode: "keepsake", lang });
+        const msg = mailMsg(lang, goneSoon ? "keepsake" : "keepsakeKeep", { name: rec.name, date: L.weddingDate ? fmtDay(Date.parse(L.weddingDate + "T12:00:00Z"), lang) : "",
+          until: goneSoon ? fmtDay(L.deleteAt - 1, lang) : "" });
+        sent = send(env, c.email, { ...msg, attachments: [{ filename: pdfName(rec.name, "keepsake", lang), content: pdf, contentType: "application/pdf" }] });
+        if (sent) { await kvUpdate(env, k, cur => { if (!cur) return null; cur.keepsakeSentAt = now; return cur; }); out.keepsakes++; }
+      } catch (e) { console.error("keepsake failed for a plan: " + ((e && e.message) || e)); }
+      if (!sent && L.deleteAt && now < L.deleteAt + 3 * DAY) holdPurge = true;
+    }
+    if (L.deleteAt && now >= L.deleteAt && !holdPurge) {
+      await purgePlan(env, id); out.purged++;
+      if (own.type === "venue") await kvUpdate(env, "venue:" + own.venueId, vv => { if (!vv) return null; vv.weddings = (vv.weddings || []).filter(w => w.planId !== id); return vv; });
+      else if (c && c.planId === id) {   // the licence keeps its name and dates for the books; every address and the extra plans go
+        for (const pid of (c.plans || [])) { const pr = safeParse(await env.PLANS.get("plan:" + pid)); if (pr && pr.coupleId === c.id) { await purgePlan(env, pid); out.purged++; } }
+        if (c.claimToken) await env.PLANS.delete("claim:" + c.claimToken);
+        await kvUpdate(env, "couple:" + c.id, cp => { if (!cp) return null;
+          Object.assign(cp, { purgedAt: now, plans: [], email: "", contact: "", pendingVerify: null, claimToken: null, mailed: false, mailedTo: null, emailVerified: false }); return cp; });
+        couples.delete("couple:" + c.id);
+        if (c.email) { await indexEmail(env, c.email, "couple", c.id, false); await forgetEmail(env, c.email); }
+      } else if (c) await kvUpdate(env, "couple:" + c.id, cp => { if (!cp) return null; cp.plans = (cp.plans || []).filter(x => x !== id); return cp; });
+      console.log("lifecycle: deleted a " + own.type + " plan after the wedding");
+    }
+  }
+  if (out.purged || out.trash) {   // device-link rows must not keep the names of plans that no longer exist
+    for (const k of (await env.PLANS.list("code:")) || []) {
+      const idx = safeParse(await env.PLANS.get(k)); if (!idx || !Array.isArray(idx.plans)) continue;
+      const keep = [];
+      for (const e of idx.plans) if (e && e.id && await env.PLANS.get("plan:" + e.id)) keep.push(e);
+      if (keep.length !== idx.plans.length) await kvUpdate(env, k, cur => { if (!cur || !Array.isArray(cur.plans)) return null; const ids = new Set(keep.map(e => e.id)); cur.plans = cur.plans.filter(e => e && ids.has(e.id)); return cur; });
+    }
+  }
+  return out;
+}
+// Seasonal licences renew by themselves (same dates, next year) unless the venue turned renewal off; the admin invoices.
+// The venue is reminded by mail 30 and 7 days before (it can turn renewal off in its console until then).
+function nextSeason(lic) {
+  const len = ymdOk(lic.seasonStart) ? (Date.parse(lic.seasonEnd) - Date.parse(lic.seasonStart)) / DAY : 364;
+  const years = Math.max(1, Math.ceil((len + 1) / 366));
+  return { start: ymdOk(lic.seasonStart) ? addYears(lic.seasonStart, years) : addDays(lic.seasonEnd, 1), end: addYears(lic.seasonEnd, years) };
+}
+async function renewSweep(env, now) {
+  const out = { renewed: 0, reminded: 0 };
+  for (const k of (await env.PLANS.list("venue:")) || []) {
+    let v = safeParse(await env.PLANS.get(k)), L = v && v.license;
+    if (L && ((L.seasonEnd && !ymdOk(L.seasonEnd)) || (L.seasonStart && !ymdOk(L.seasonStart)))) {   // older records: one date format everywhere
+      const r0 = await kvUpdate(env, k, cur => { if (!cur || !cur.license) return null; cur.license = { ...cur.license, seasonStart: normYmd(cur.license.seasonStart), seasonEnd: normYmd(cur.license.seasonEnd) }; return cur; });
+      v = r0.obj; L = v && v.license;
+    }
+    if (L && L.type !== "per_wedding" && L.autoRenew !== false && ymdOk(L.seasonEnd) && v.email && mailOn(env) && v.active !== false) {
+      const renewAt = Date.parse(L.seasonEnd) + DAY, left = (renewAt - now) / DAY;
+      for (const d of [7, 30]) {   // the nearest pending reminder only (a venue created late gets one mail, not two)
+        const tag = L.seasonEnd + ":" + d;
+        if (left > 0 && left <= d && !(v.renewReminders || {})[tag]) {
+          const ns = nextSeason(L), lang = langOf(v.lang);
+          const ok = send(env, v.email, mailMsg(lang, "renewSoon", { name: v.name, date: fmtDay(renewAt, lang), from: fmtDay(Date.parse(ns.start + "T12:00:00Z"), lang), to: fmtDay(Date.parse(ns.end + "T12:00:00Z"), lang), link: baseUrl(env) + "/venue.html" }));
+          if (ok) { await kvUpdate(env, k, cur => { if (!cur) return null; cur.renewReminders = { ...(cur.renewReminders || {}), [L.seasonEnd + ":7"]: d === 7 ? now : (cur.renewReminders || {})[L.seasonEnd + ":7"], [L.seasonEnd + ":30"]: now }; return cur; }); out.reminded++; }
+          break;
+        }
+      }
+    }
+    if (!L || L.type === "per_wedding" || L.autoRenew === false || !ymdOk(L.seasonEnd) || now <= Date.parse(L.seasonEnd) + DAY) continue;
+    // The terms promise a reminder 30 and 7 days before: no reminder sent (no email, mail off, a season that ended before
+    // this feature) or an inactive venue → no automatic renewal; the admin sees the flag and renews by hand if agreed.
+    const reminded = !!((v.renewReminders || {})[L.seasonEnd + ":7"] || (v.renewReminders || {})[L.seasonEnd + ":30"]);
+    if (!reminded || v.active === false) {
+      if (L.renewSkipped !== L.seasonEnd) { await kvUpdate(env, k, cur => { if (!cur || !cur.license) return null; cur.license = { ...cur.license, renewSkipped: cur.license.seasonEnd }; return cur; });
+        console.log("licence: venue " + v.id + " season ended without automatic renewal (" + (v.active === false ? "inactive" : "no reminder sent") + ")"); }
+      continue;
+    }
+    const r = await kvUpdate(env, k, cur => { const lic = cur && cur.license; if (!lic || lic.autoRenew === false || !ymdOk(lic.seasonEnd) || now <= Date.parse(lic.seasonEnd) + DAY) return null;
+      const { start, end } = nextSeason(lic);
+      cur.license = { ...lic, seasonStart: start, seasonEnd: end, renewedAt: now, invoiceDue: true, renewSkipped: null };
+      cur.renewals = [...(cur.renewals || []), { at: now, from: start, to: end }].slice(-20);
+      return cur; });
+    if (r.obj && r.obj.license && r.obj.license.renewedAt === now) { out.renewed++; console.log("licence: venue " + v.id + " renewed automatically to " + r.obj.license.seasonEnd); }
+  }
   return out;
 }
 async function forgetEmail(env, email) { if (email) { await env.PLANS.delete("rlmail:recover:" + email); await env.PLANS.delete("rlmail:verify:" + email); } }
 function json(obj, status = 200) {
-  return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", ...CORS } });
+  return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...CORS } });   // never cached: a 410 must not outlive a restore
 }
 function safeParse(raw) { try { return raw ? JSON.parse(raw) : null; } catch (e) { return null; } }
 function tooBig(v) { try { return JSON.stringify(v ?? null).length > MAX_PLAN_BYTES; } catch (e) { return true; } }
@@ -360,11 +569,14 @@ export default {
           let coupleId = null, ok = !!env.OWNER_KEY && eq(request.headers.get("X-Owner-Key") || "", env.OWNER_KEY);
           if (!ok && body.parentId) {
             const parent = safeParse(await env.PLANS.get("plan:" + String(body.parentId)));
-            if (parent && ownerOf(parent).type === "couple" && eq(request.headers.get("X-Edit-Key") || "", parent.editKey)) { ok = true; coupleId = parent.coupleId || null; }
+            if (parent && ownerOf(parent).type === "couple" && eq(request.headers.get("X-Edit-Key") || "", parent.editKey)) {
+              if ((await planLife(env, parent, String(body.parentId))).over) return json({ error: "wedding_over" }, 403);   // no new plans after the wedding
+              ok = true; coupleId = parent.coupleId || null;
+            }
           }
           if (!ok) return json({ error: "not_allowed" }, 403);
           const id = rnd(22), editKey = rnd(28), readKey = rnd(24);
-          const rec = { name: String(body.name || "Untitled").slice(0, 120), plan: body.plan ?? null, editKey, readKey, owner: { type: "couple" }, coupleId, keyGen: 0, updated: Date.now() };
+          const rec = { name: String(body.name || "Untitled").slice(0, 120), plan: body.plan ?? null, editKey, readKey, owner: { type: "couple" }, coupleId, keyGen: 0, createdAt: Date.now(), updated: Date.now() };
           if (coupleId) {   // an extra plan of a couple who bought TakeaSeat: recorded on the licence (erased with it)
             const lic = await kvUpdate(env, "couple:" + coupleId, cp => { if (!cp || cp.deletedAt) return null; cp.plans = [...(cp.plans || []), id]; return cp; });
             if (!lic.obj || lic.obj.deletedAt) return json({ error: "not_allowed" }, 403);
@@ -376,6 +588,7 @@ export default {
         if (!id) return json({ error: "not found" }, 404);
         const rec = safeParse(await env.PLANS.get(key));
         if (!rec) return (parts.length === 2 && request.method === "DELETE") ? json({ ok: true }) : json({ error: "not found" }, 404);
+        if (rec.deletedAt) return json({ error: "deleted" }, 410);   // in the venue's trash: only the admin can bring it back
         const a = await access(request, env, id, rec);
 
         if (parts.length === 2 && request.method === "GET") {
@@ -409,11 +622,13 @@ export default {
             out.audit = (rec.audit || []).slice(-20);
             if (rec.resetAt) out.resetAt = rec.resetAt;
           }
+          out.life = lifeOut(await planLife(env, rec, id), rec, (a.role === "couple" && a.owner.type === "couple") || a.role === "venue");   // lifeOut: never for extra plans
           return json(out);
         }
         if (parts.length === 2 && request.method === "PUT") {
           if (!a) return denied(request, rec);
           if (!a.write) return json({ error: "read_only" }, 403);
+          { const L = await planLife(env, rec, id); if (L.locked) return json({ error: "locked", life: lifeOut(L, rec, false) }, 403); }   // after the wedding: view only
           const body = await request.json().catch(() => ({}));
           if (body.baseUpdated != null && rec.updated && body.baseUpdated < rec.updated) {
             return json({ error: "conflict", updated: rec.updated, name: rec.name, plan: rec.plan }, 409);
@@ -423,6 +638,10 @@ export default {
             if (!isPlan(body.plan)) return json({ error: "bad_plan" }, 422);
             if (tooBig(body.plan)) return json({ error: "plan too large" }, 413);
             plan = pinCounters(rec.plan, body.plan);
+            if (rec.plan && Array.isArray(rec.plan.tables)) {
+              const longs = new Set(rec.plan.tables.filter(t => t && t.shape === "rect").map(t => String(t.id)));
+              if (longs.size) plan.tables.forEach(t => { if (t && t.shape === "round" && longs.has(String(t.id))) t.shape = "rect"; });
+            }
             const actsForVenue = a.owner.type === "venue" && (a.role === "venue" || a.role === "support");   // on a venue plan only the venue can invite support
             if (actsForVenue) plan = stampVenue(rec.plan, plan);
             else if (a.restricted && a.layoutSet) { const e = enforcePerms(rec.plan, plan, a.perms, true); enforced = reverted(e, plan); plan = e; }
@@ -469,6 +688,7 @@ export default {
         if (parts.length === 3 && parts[2] === "restore" && request.method === "POST") {
           if (!a) return denied(request, rec);
           if (!a.write) return json({ error: "read_only" }, 403);
+          { const L = await planLife(env, rec, id); if (L.locked) return json({ error: "locked", life: lifeOut(L, rec, false) }, 403); }
           const body = await request.json().catch(() => ({}));
           const h = safeParse(await env.PLANS.get("hist:" + id)) || [];
           const v = h.find(x => x.updated === Number(body.updated));
@@ -522,6 +742,34 @@ export default {
           await kvUpdate(env, "couple:" + c.id, cp => { if (!cp) return null; cp.pendingVerify = t; return cp; });
           if (!send(env, email, mailMsg(b.lang || c.lang, "verify", { name: c.name, link: plannerUrl(env, b.lang || c.lang) + "#verify=" + t }))) return json({ error: "mail_failed" }, 503);
           return json({ ok: true, pending: maskEmail(email) });
+        }
+        if (parts.length === 3 && parts[2] === "date" && request.method === "POST") {   // the wedding date: the couple on its own plan, the venue on its wedding
+          if (!a) return denied(request, rec);
+          if (!((a.role === "couple" && a.owner.type === "couple") || (a.role === "venue" && !rec.template))) return json({ error: "unauthorized" }, 403);
+          const b = await readBody(request);
+          const L = await planLife(env, rec, id);
+          if (L.child) return json({ error: "unauthorized" }, 403);   // an extra plan follows the main plan's date
+          let err = null;
+          const r = await kvUpdate(env, key, cur => { if (!cur) return null; const before = cur.weddingDate || null; err = applyDate(cur, b.date, L, false);
+            if (err) return { __res: null };
+            if (before !== cur.weddingDate) addAudit(cur, a.role, "date", 0, { d: cur.weddingDate });
+            return cur; });
+          if (err) return json({ error: err }, err === "bad_date" ? 400 : 403);
+          if (!r.obj) return json({ error: "not found" }, 404);
+          if (a.owner.type === "venue") await kvUpdate(env, "venue:" + a.owner.venueId, v => { if (!v) return null; const w = (v.weddings || []).find(x => x.planId === id); if (!w || w.date === r.obj.weddingDate) return null; w.date = r.obj.weddingDate; return v; });
+          return json({ ok: true, life: lifeOut(await planLife(env, r.obj, id), r.obj, true) });
+        }
+        if (parts.length === 3 && parts[2] === "pdf" && request.method === "GET") {   // floor plan / keepsake — also after the wedding
+          if (!a) return denied(request, rec);
+          if (!env.PDF || typeof env.PDF.render !== "function") return json({ error: "pdf_off" }, 503);
+          const q = new URL(request.url).searchParams;
+          const mode = q.get("mode") === "keepsake" ? "keepsake" : "floor", lang = langOf(q.get("lang"));
+          const L = await planLife(env, rec, id);
+          let venueName = "";
+          if (a.owner.type === "venue") { const v = safeParse(await env.PLANS.get("venue:" + a.owner.venueId)); venueName = v ? v.name : ""; }
+          const render = env.PDF.render(isPlan(rec.plan) ? rec.plan : { tables: [] }, { name: rec.name, weddingDate: L.weddingDate, venueName, mode, lang });
+          render.catch(() => {});   // failures surface while the body streams (the server answers 500)
+          return pdfResponse(render, rec.name, mode, lang);
         }
         if (parts.length === 3 && parts[2] === "legacy-off" && request.method === "POST") {
           if (!a) return denied(request, rec);
@@ -690,12 +938,38 @@ export default {
           const st = (mailOn(env) && typeof env.MAIL.status === "function") ? env.MAIL.status() : {};
           return json({ enabled: mailOn(env), from: mailOn(env) ? String(env.MAIL.from || "") : "", ...st });
         }
+        if (parts[1] === "settings" && parts.length === 2) {   // what happens after a wedding, for everyone (overridable below)
+          if (request.method === "GET") {
+            const st = await getSettings(env), ids = safeParse(await env.PLANS.get("retention:index")) || [];
+            const ex = [];
+            for (const pid of ids) { const r = safeParse(await env.PLANS.get("plan:" + pid)); if (r && r.retention) ex.push({ planId: pid, ...r.retention, weddingDate: r.weddingDate || null, owner: ownerOf(r).type }); }
+            const pol = policyOf(st);
+            return json({ retention: { keepDays: pol.keepDays, lockAfter: pol.lockAfter }, planExceptions: ex });
+          }
+          if (request.method === "PUT" || request.method === "PATCH") {
+            const ret = normRetention((await readBody(request)).retention) || {};
+            const r = await kvUpdate(env, "meta:settings", st => { st = st || {}; const pol = policyOf(st);
+              st.retention = { keepDays: ret.keepDays ?? pol.keepDays, lockAfter: ret.lockAfter ?? pol.lockAfter }; return st; });
+            console.log("admin: lifecycle settings " + JSON.stringify(r.obj.retention));
+            return json({ ok: true, retention: r.obj.retention });
+          }
+        }
+        if (parts[1] === "plans" && parts.length === 4 && parts[3] === "retention" && (request.method === "PUT" || request.method === "DELETE")) {
+          const pid = parts[2], ret = request.method === "PUT" ? normRetention(await readBody(request)) : null;
+          if (request.method === "PUT" && !ret) return json({ error: "bad_request" }, 400);
+          const r = await kvUpdate(env, "plan:" + pid, rec => { if (!rec) return null; if (ret) rec.retention = ret; else delete rec.retention; return rec; });
+          if (!r.obj) return json({ error: "not found" }, 404);
+          if (ret) await addIndex(env, "retention:index", pid); else await removeIndex(env, "retention:index", pid);
+          console.log("admin: plan exception " + (ret ? JSON.stringify(ret) : "removed") + " for " + pid);
+          const L = await planLife(env, r.obj, pid);
+          return json({ ok: true, life: { weddingDate: L.weddingDate, lockAt: L.lockAt, deleteAt: L.deleteAt, locked: L.locked, keep: L.keep } });
+        }
         if (parts[1] === "venues") {
           if (parts.length === 2 && request.method === "POST") {
             const b = await readBody(request);
             const id = rnd(10), key = id + "." + rnd(28), email = normEmail(b.email), lang = langOf(b.lang);
             if (b.email && !email) return json({ error: "bad_email" }, 400);
-            const v = { id, name: String(b.name || "Venue").slice(0, 120), contact: String(b.contact || "").slice(0, 200), email, lang,
+            const v = { id, name: String(b.name || "Venue").slice(0, 120), contact: String(b.contact || "").slice(0, 200), notes: String(b.notes || "").slice(0, 1000), email, lang,
               key, keyRotated: false, license: normLicense(b.license), used: 0, weddings: [], active: true, createdAt: Date.now(), defaultPerms: { ...VENUE_DEFAULT } };
             // With mail and an address, the venue sets its own key from the e-mailed link: the admin never sees one.
             let mailed = false;
@@ -734,15 +1008,48 @@ export default {
             await rotateVenueCredentials(env, v.id, newKey, false);
             return json({ ok: true, key: newKey, mailed: false });
           }
+          if (parts.length === 4 && parts[3] === "invoiced" && request.method === "POST") {   // the renewal invoice was sent
+            const r = await kvUpdate(env, "venue:" + parts[2], v => { if (!v) return null; v.license = { ...normLicense(v.license, v.license), invoiceDue: false }; return v; });
+            if (!r.obj) return json({ error: "not found" }, 404);
+            return json({ venue: adminVenue(r.obj) });
+          }
+          if (parts[3] === "trash" && parts.length >= 4) {   // weddings a venue deleted: 14 days, restored only here
+            const v = safeParse(await env.PLANS.get("venue:" + parts[2])); if (!v) return json({ error: "not found" }, 404);
+            if (parts.length === 4 && request.method === "GET")
+              return json({ trash: (v.trash || []).map(t => ({ planId: t.planId, label: t.label, deletedAt: t.deletedAt, purgeAt: t.purgeAt, date: t.date || null })) });
+            const t = (v.trash || []).find(x => x.planId === parts[4]);
+            if (parts.length === 6 && parts[5] === "restore" && request.method === "POST") {
+              if (!t) return json({ error: "not found" }, 404);
+              const tp = safeParse(await env.PLANS.get("plan:" + t.planId));
+              if (tp) { const L = await planLife(env, tp, t.planId, { venue: v }); if (L.deleteAt && L.deleteAt <= Date.now() + 3600000) return json({ error: "past_retention", deleteAt: L.deleteAt }, 409); }
+              const r = await kvUpdate(env, "plan:" + t.planId, rec => { if (!rec || !rec.deletedAt) return null; const o = ownerOf(rec); if (o.type !== "venue" || o.venueId !== v.id) return null;
+                delete rec.deletedAt; delete rec.purgeAt; rec.venueKey = rnd(28); rec.venueGen = (rec.venueGen || 0) + 1; return rec; });   // fresh venue link: the console key may have changed meanwhile
+              if (!r.obj || r.obj.deletedAt || ownerOf(r.obj).venueId !== v.id) return json({ error: "gone" }, 410);
+              await kvUpdate(env, "venue:" + v.id, cur => { if (!cur) return null; cur.trash = (cur.trash || []).filter(x => x.planId !== t.planId);
+                cur.weddings = [...(cur.weddings || []), { planId: t.planId, label: r.obj.name || t.label, createdAt: r.obj.createdAt || t.deletedAt, editKey: r.obj.editKey,
+                  venueKey: r.obj.venueKey, perms: normPerms(r.obj.perms, ALL_OPEN), layoutSet: !!r.obj.layoutAt, date: r.obj.weddingDate || null }]; return cur; });
+              console.log("admin: restored wedding " + t.planId + " of venue " + v.id);
+              return json({ ok: true });
+            }
+            if (parts.length === 5 && request.method === "DELETE") {   // erase now (e.g. an erasure request)
+              if (t) await purgeVenuePlan(env, v.id, t.planId);
+              await kvUpdate(env, "venue:" + v.id, cur => { if (!cur) return null; cur.trash = (cur.trash || []).filter(x => x.planId !== parts[4]); return cur; });
+              console.log("admin: erased deleted wedding " + parts[4] + " of venue " + v.id);
+              return json({ ok: true });
+            }
+            return json({ error: "not found" }, 404);
+          }
           if (parts.length === 3 && (request.method === "PATCH" || request.method === "PUT")) {
             const b = await readBody(request);
             const email = b.email != null ? normEmail(b.email) : null;
             if (b.email != null && String(b.email).trim() && !email) return json({ error: "bad_email" }, 400);
             const r = await kvUpdate(env, "venue:" + parts[2], v => { if (!v) return null; const old = v.email || "";
               if (b.name != null) v.name = String(b.name).slice(0, 120);
-              if (b.contact != null) v.contact = String(b.contact).slice(0, 200);
+              if (b.contact != null) v.contact = String(b.contact).slice(0, 200);   // PUBLIC: shown to this venue's couples
+              if (b.notes != null) v.notes = String(b.notes).slice(0, 1000);        // private: admin only
+              if (b.retention !== undefined) { const ret = normRetention(b.retention); if (ret) v.retention = ret; else delete v.retention; }
               if (b.active != null) v.active = !!b.active;
-              if (b.license) v.license = normLicense(b.license);
+              if (b.license) v.license = normLicense(b.license, v.license);
               if (b.lang != null) v.lang = langOf(b.lang);
               if (email != null && email !== old) { v.email = email; v.emailVerified = false; v.pendingVerify = null; nextGen(v); }   // links sent to the old address retire
               return { __obj: v, __res: old }; });
@@ -758,6 +1065,8 @@ export default {
             if (dv) {
               for (const w of (dv.weddings || [])) if (w && w.planId) await purgeVenuePlan(env, dv.id, w.planId);
               if (dv.templateId) await purgeVenuePlan(env, dv.id, dv.templateId);
+              for (const t of (dv.trash || [])) if (t && t.planId) await purgeVenuePlan(env, dv.id, t.planId);
+              console.log("admin: erased venue " + dv.id);
               await indexEmail(env, dv.email, "venue", dv.id, false); await forgetEmail(env, dv.email);
             }
             await env.PLANS.delete("venue:" + parts[2]);
@@ -772,10 +1081,14 @@ export default {
             const b = await readBody(request);
             const email = normEmail(b.email), lang = langOf(b.lang);
             if (b.email && !email) return json({ error: "bad_email" }, 400);
+            if (b.weddingDate && !ymdOk(b.weddingDate)) return json({ error: "bad_date" }, 400);
+            if (b.weddingDate && b.weddingDate < todayAthens() && b.allowPast !== true) return json({ error: "past_date" }, 400);
             const cid = rnd(10), planId = rnd(22), token = rnd(32);
             const name = String(b.name || "Wedding").slice(0, 120);
-            await env.PLANS.put("plan:" + planId, JSON.stringify({ name, plan: null, editKey: rnd(28), readKey: rnd(24), owner: { type: "couple" }, coupleId: cid, keyGen: 0, updated: Date.now(), audit: [] }));
+            await env.PLANS.put("plan:" + planId, JSON.stringify({ name, plan: null, editKey: rnd(28), readKey: rnd(24), owner: { type: "couple" }, coupleId: cid, keyGen: 0,
+              weddingDate: b.weddingDate || null, createdAt: Date.now(), updated: Date.now(), audit: [] }));
             const c = { id: cid, name, contact: String(b.contact || "").slice(0, 200), email, lang, createdAt: Date.now(), claimAt: Date.now(), planId, claimToken: token, claimedAt: null };
+            const cret = normRetention(b.retention); if (cret) c.retention = cret;
             const mailed = !!(email && mailOn(env)) && mailClaim(c, token);
             c.mailed = mailed; if (mailed) c.mailedTo = email;
             await env.PLANS.put("couple:" + cid, JSON.stringify(c));
@@ -794,10 +1107,17 @@ export default {
             const b = await readBody(request);
             const email = b.email != null ? normEmail(b.email) : null;
             if (b.email != null && String(b.email).trim() && !email) return json({ error: "bad_email" }, 400);
+            if (b.weddingDate !== undefined && b.weddingDate !== null && b.weddingDate !== "" && !ymdOk(b.weddingDate)) return json({ error: "bad_date" }, 400);
+            if (b.weddingDate !== undefined) {   // the admin may set any date (or clear it)
+              const cc = safeParse(await env.PLANS.get("couple:" + parts[2]));
+              if (cc) await kvUpdate(env, "plan:" + cc.planId, rec => { if (!rec || rec.coupleId !== cc.id) return null; const before = rec.weddingDate || null;
+                applyDate(rec, b.weddingDate || null, null, true); if (before === rec.weddingDate) return null; addAudit(rec, "admin", "date", 0, { d: rec.weddingDate }); return rec; });
+            }
             const r = await kvUpdate(env, "couple:" + parts[2], c => { if (!c) return null; const old = c.email || "";
               if (b.name != null) c.name = String(b.name).slice(0, 120);
               if (b.contact != null) c.contact = String(b.contact).slice(0, 200);
               if (b.lang != null) c.lang = langOf(b.lang);
+              if (b.retention !== undefined) { const ret = normRetention(b.retention); if (ret) c.retention = ret; else delete c.retention; }
               if (email != null && email !== old) { c.email = email; c.emailVerified = false; c.pendingVerify = null; nextGen(c); }   // links sent to the old address retire
               return { __obj: c, __res: old }; });
             if (!r.obj) return json({ error: "not found" }, 404);
@@ -846,6 +1166,7 @@ export default {
           if (parts.length === 3 && request.method === "DELETE") {   // erasure on request
             const c = safeParse(await env.PLANS.get("couple:" + parts[2]));
             if (c) {
+              console.log("admin: erased couple " + c.id);
               for (const pid of [c.planId, ...(c.plans || [])]) { const pr = safeParse(await env.PLANS.get("plan:" + pid)); if (pr && pr.coupleId === c.id) await purgePlan(env, pid); }
               if (c.claimToken) await env.PLANS.delete("claim:" + c.claimToken);
               await indexEmail(env, c.email, "couple", c.id, false); await forgetEmail(env, c.email);
@@ -899,9 +1220,18 @@ export default {
             if (t) template = { planId: v.templateId, venueKey: t.venueKey, updated: t.updated, tables: planStats(t.plan).tables, supportExpires: supportActive(t) ? t.support.expires : null }; }
           const gate = canCreateWedding(v);
           const live = x => (x && x > Date.now()) ? x : null;
+          const settings = await getSettings(env), since = await lifecycleSince(env), rows = [];
+          for (const w of (v.weddings || [])) {   // date, progress and lifecycle of each wedding
+            const p = await ownPlan(w.planId);
+            const L = p ? lifeOf(p, policyOf(settings, v.retention, p.retention), since) : null;
+            rows.push({ planId: w.planId, label: w.label, createdAt: w.createdAt, editKey: w.editKey, venueKey: w.venueKey,
+              perms: normPerms(w.perms, ALL_OPEN), layoutSet: w.layoutSet !== false, supportExpires: live(w.supportExpires),
+              date: p ? (p.weddingDate || null) : (w.date || null), updated: p ? p.updated : null, stats: p ? planStats(p.plan) : null,
+              life: L ? { lockAt: L.lockAt, deleteAt: L.deleteAt, over: L.over, locked: L.locked, keep: L.keep, fallback: L.fallback } : null,
+              dateChangesLeft: p ? Math.max(0, DATE_CHANGES - (p.dateChanges || 0)) : 0 });
+          }
           return json({ venue: { ...publicVenue(v), email: v.email || "", emailVerified: !!v.emailVerified, mail: mailOn(env) }, template, defaultPerms: normPerms(v.defaultPerms, ALL_OPEN), canCreate: gate.ok, reason: gate.reason,
-            weddings: (v.weddings || []).map(w => ({ planId: w.planId, label: w.label, createdAt: w.createdAt, editKey: w.editKey, venueKey: w.venueKey,
-              perms: normPerms(w.perms, ALL_OPEN), layoutSet: w.layoutSet !== false, supportExpires: live(w.supportExpires) })) });
+            weddings: rows, trash: (v.trash || []).map(t => ({ label: t.label, deletedAt: t.deletedAt, purgeAt: t.purgeAt, date: t.date || null })) });
         }
         // The venue sets its OWN key: from then on the admin can't read it, and every per-wedding venue link is renewed.
         if (parts.length === 3 && parts[2] === "rotate" && request.method === "POST") {
@@ -923,6 +1253,13 @@ export default {
           await kvUpdate(env, vkey, cur => { if (!cur) return null; cur.pendingVerify = t; return cur; });
           if (!send(env, email, mailMsg(b.lang || v.lang, "verify", { name: v.name, link: baseUrl(env) + "/venue.html#verify=" + t }))) return json({ error: "mail_failed" }, 503);
           return json({ ok: true, pending: maskEmail(email) });
+        }
+        if (parts.length === 3 && parts[2] === "renewal" && request.method === "POST") {   // the venue stops (or restarts) the automatic renewal
+          const b = await readBody(request);
+          if (typeof b.autoRenew !== "boolean") return json({ error: "bad_request" }, 400);
+          const r = await kvUpdate(env, vkey, cur => { if (!cur) return null; cur.license = { ...normLicense(cur.license, cur.license), autoRenew: b.autoRenew }; return cur; });
+          console.log("venue " + v.id + ": auto-renewal " + (b.autoRenew ? "on" : "off"));
+          return json({ ok: true, license: publicLicense(r.obj.license) });
         }
         // What a couple may change in NEW weddings (and, if asked, in every existing one).
         if (parts.length === 3 && parts[2] === "defaults" && (request.method === "PUT" || request.method === "PATCH")) {
@@ -948,7 +1285,7 @@ export default {
           }
           const id = rnd(22);
           const rec = { name: String(b.name || v.name).slice(0, 120), plan, editKey: rnd(28), venueKey: rnd(28), readKey: rnd(24),
-            owner: { type: "venue", venueId: v.id }, venueId: v.id, template: true, perms: { ...ALL_OPEN }, keyGen: 0, venueGen: 0, updated: Date.now() };
+            owner: { type: "venue", venueId: v.id }, venueId: v.id, template: true, perms: { ...ALL_OPEN }, keyGen: 0, venueGen: 0, createdAt: Date.now(), updated: Date.now() };
           await env.PLANS.put("plan:" + id, JSON.stringify(rec));
           await kvUpdate(env, vkey, cur => { if (!cur) return null; cur.templateId = id; return cur; });
           return json({ planId: id, venueKey: rec.venueKey, updated: rec.updated });
@@ -957,6 +1294,8 @@ export default {
           const gate = canCreateWedding(v);
           if (!gate.ok) return json({ error: gate.reason }, 403);
           const b = await readBody(request);
+          const dated = {};
+          if (b.date != null && b.date !== "") { const e = applyDate(dated, b.date, null, false); if (e) return json({ error: e }, 400); }   // checked before a wedding is counted
           let plan = null;
           if (v.templateId) { const t = await ownPlan(v.templateId); if (t) plan = layoutOnly(t.plan); }
           const id = rnd(22), editKey = rnd(28), venueKey = rnd(28);
@@ -964,10 +1303,10 @@ export default {
           const now = Date.now();
           // Locks apply once the venue has put its layout in: from the template now, or at the venue's first save.
           const rec = { name: String(b.label || "Wedding").slice(0, 120), plan, editKey, venueKey, readKey: rnd(24),
-            owner: { type: "venue", venueId: v.id }, venueId: v.id, perms, layoutAt: plan ? now : null, keyGen: 0, venueGen: 0, updated: now };
+            owner: { type: "venue", venueId: v.id }, venueId: v.id, perms, layoutAt: plan ? now : null, keyGen: 0, venueGen: 0, weddingDate: dated.weddingDate || null, createdAt: now, updated: now };
           await env.PLANS.put("plan:" + id, JSON.stringify(rec));
           await kvUpdate(env, vkey, cur => { if (!cur) return null;
-            cur.weddings = cur.weddings || []; cur.weddings.push({ planId: id, label: rec.name, createdAt: now, editKey, venueKey, perms, layoutSet: !!plan });
+            cur.weddings = cur.weddings || []; cur.weddings.push({ planId: id, label: rec.name, createdAt: now, editKey, venueKey, perms, layoutSet: !!plan, date: rec.weddingDate });
             cur.used = (cur.used || 0) + 1; return cur; });
           return json({ planId: id, editKey, venueKey, updated: now, fromTemplate: !!plan });
         }
@@ -975,27 +1314,47 @@ export default {
         if (parts.length === 4 && parts[2] === "weddings" && (request.method === "PATCH" || request.method === "PUT")) {
           const b = await readBody(request);
           const w = (v.weddings || []).find(x => x.planId === parts[3]);
-          if (!w || !(await ownPlan(parts[3]))) return json({ error: "not found" }, 404);
+          const wp = w ? await ownPlan(parts[3]) : null;
+          if (!w || !wp) return json({ error: "not found" }, 404);
+          if ((b.label != null || b.perms) && (await planLife(env, wp, parts[3], { venue: v })).locked) return json({ error: "locked" }, 403);
           const label = b.label != null ? String(b.label).trim().slice(0, 120) : null;
           if (b.label != null && !label) return json({ error: "missing label" }, 400);
           const perms = b.perms ? normPerms(b.perms, normPerms(w.perms, ALL_OPEN)) : null;
+          let date = null;
+          if (b.date !== undefined) {   // same limits as everywhere: a wedding date is not a way to reuse a paid wedding
+            const p = await ownPlan(parts[3]), L = await planLife(env, p, parts[3], { venue: v });
+            let err = null;
+            const r = await kvUpdate(env, "plan:" + parts[3], rec => { if (!rec) return null; const before = rec.weddingDate || null; err = applyDate(rec, b.date, L, false);
+              if (err) return { __res: null }; if (before === rec.weddingDate) return { __res: null }; addAudit(rec, "venue", "date", 0, { d: rec.weddingDate }); return rec; });
+            if (err) return json({ error: err }, err === "bad_date" ? 400 : 403);
+            date = (r.obj && r.obj.weddingDate) || null;
+          }
           await kvUpdate(env, vkey, cur => { if (!cur) return null; const cw = (cur.weddings || []).find(x => x.planId === parts[3]); if (!cw) return null;
-            if (label) cw.label = label; if (perms) cw.perms = perms; return cur; });
+            if (label) cw.label = label; if (perms) cw.perms = perms; if (date) cw.date = date; return cur; });
           await kvUpdate(env, "plan:" + parts[3], rec => { if (!rec) return null;
             if (label) rec.name = label;          // metadata: `updated` stays, so nobody's next save conflicts
             if (perms) rec.perms = perms;
             return rec; });
-          return json({ ok: true, label: label || w.label, perms: perms || normPerms(w.perms, ALL_OPEN) });
+          return json({ ok: true, label: label || w.label, perms: perms || normPerms(w.perms, ALL_OPEN), date: date || w.date || null });
         }
-        if (parts.length === 4 && parts[2] === "weddings" && request.method === "DELETE") {
-          const mine = (v.weddings || []).some(w => w.planId === parts[3]);
-          await kvUpdate(env, vkey, cur => { if (!cur) return null; cur.weddings = (cur.weddings || []).filter(w => w.planId !== parts[3]); return cur; });
-          if (mine) await purgeVenuePlan(env, v.id, parts[3]);   // only its own weddings
-          return json({ ok: true });
+        if (parts.length === 4 && parts[2] === "weddings" && request.method === "DELETE") {   // into the trash for 14 days (only TakeaSeat restores)
+          const w = (v.weddings || []).find(x => x.planId === parts[3]);
+          if (!w) return json({ ok: true });
+          const p = await ownPlan(parts[3]), now = Date.now(), purgeAt = now + TRASH_DAYS * DAY;
+          if (p) {
+            await kvUpdate(env, "plan:" + parts[3], rec => { if (!rec) return null; rec.deletedAt = now; rec.purgeAt = purgeAt; rec.support = null; return rec; });
+            await removeIndex(env, "support:index", parts[3]);
+          }
+          await kvUpdate(env, vkey, cur => { if (!cur) return null; cur.weddings = (cur.weddings || []).filter(x => x.planId !== parts[3]);
+            if (p) cur.trash = [...(cur.trash || []), { planId: parts[3], label: w.label, deletedAt: now, purgeAt, date: p.weddingDate || null }];
+            return cur; });
+          console.log("venue " + v.id + ": wedding " + parts[3] + " moved to the trash");
+          return json({ ok: true, purgeAt: p ? purgeAt : null });
         }
       }
       return json({ error: "not found" }, 404);
     } catch (e) {
+      console.error("api error " + request.method + " " + new URL(request.url).pathname.replace(/[A-Za-z0-9]{16,}/g, "…") + ": " + ((e && e.stack) || e));
       return json({ error: "server error" }, 500);      // never leak internal exception text
     }
   },
@@ -1103,17 +1462,25 @@ function rnd(n) {
 }
 
 // ---- venue helpers ----
-function normLicense(l) {
-  l = l || {};
+// A licence date as YYYY-MM-DD (Athens); older records may hold other date strings.
+const normYmd = s => { if (!s) return null; if (ymdOk(s)) return s; const t = Date.parse(s); return isNaN(t) ? null : new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Athens", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(t)); };
+function normLicense(l, prev) {   // renewal bookkeeping (renewedAt, invoiceDue, renewSkipped) only ever comes from the stored licence
+  l = l || {}; prev = prev || {};
   const type = l.type === "per_wedding" ? "per_wedding" : "seasonal";
+  const seasonEnd = normYmd(l.seasonEnd);
   return {
     type,
-    seasonStart: l.seasonStart || null,
-    seasonEnd: l.seasonEnd || null,
+    seasonStart: normYmd(l.seasonStart),
+    seasonEnd,
+    renewSkipped: (prev.renewSkipped && prev.renewSkipped === seasonEnd) ? prev.renewSkipped : null,
     quota: Math.max(0, parseInt(l.quota, 10) || 0),
     cap: Math.max(0, parseInt(l.cap, 10) || 0),
+    autoRenew: typeof l.autoRenew === "boolean" ? l.autoRenew : (typeof prev.autoRenew === "boolean" ? prev.autoRenew : true),
+    renewedAt: prev.renewedAt || null,
+    invoiceDue: !!prev.invoiceDue,
   };
 }
+const publicLicense = l => { if (!l) return l; const { invoiceDue, ...rest } = l; return { autoRenew: true, ...rest, seasonStart: normYmd(l.seasonStart), seasonEnd: normYmd(l.seasonEnd) }; };
 function canCreateWedding(v) {
   if (!v.active) return { ok: false, reason: "inactive" };
   const L = v.license || {};
@@ -1128,11 +1495,12 @@ function canCreateWedding(v) {
   return { ok: true };
 }
 function publicVenue(v) {   // returned to the venue itself (no key)
-  return { id: v.id, name: v.name, contact: v.contact, license: v.license, used: v.used || 0,
+  return { id: v.id, name: v.name, contact: v.contact, license: publicLicense(v.license), used: v.used || 0,
     active: v.active, createdAt: v.createdAt, weddingCount: (v.weddings || []).length, keyRotated: !!(v.keyRotated || v.keyPrivate), hasTemplate: !!v.templateId };
 }
 function adminVenue(v) {     // returned to the owner — counts only: no plan ids, no keys, no wedding names
-  return { ...publicVenue(v), email: v.email || "", emailVerified: !!v.emailVerified, lang: v.lang || "el" };
+  return { ...publicVenue(v), email: v.email || "", emailVerified: !!v.emailVerified, lang: v.lang || "el", notes: v.notes || "", retention: v.retention || null,
+    license: v.license ? { autoRenew: true, ...v.license } : v.license, trashCount: (v.trash || []).length, renewals: (v.renewals || []).slice(-5) };
 }
 async function adminCouple(env, c) {   // licence metadata only — never the plan id, a key, or anything inside the plan
   const rec = safeParse(await env.PLANS.get("plan:" + c.planId));
@@ -1141,7 +1509,9 @@ async function adminCouple(env, c) {   // licence metadata only — never the pl
     exists: !!rec, deletedAt: c.deletedAt || null, lastEdit: rec ? rec.updated : null, pendingClaim: !!c.claimToken,
     claimToken: (c.claimToken && !c.mailed) ? c.claimToken : null,   // a link that went by mail is never shown to the admin
     claimIssuedAt: c.claimToken ? (c.claimAt || c.resetAt || c.createdAt) : null,
-    support: supportActive(rec) ? { expires: rec.support.expires } : null };
+    support: supportActive(rec) ? { expires: rec.support.expires } : null,
+    weddingDate: rec ? (rec.weddingDate || null) : null, retention: c.retention || null, keepsakeSentAt: rec ? (rec.keepsakeSentAt || null) : null, purgedAt: c.purgedAt || null,
+    life: rec ? (L => ({ lockAt: L.lockAt, deleteAt: L.deleteAt, over: L.over, locked: L.locked, keep: L.keep, fallback: L.fallback }))(await planLife(env, rec, c.planId, { couple: c })) : null };
 }
 async function addIndex(env, key, id) { await kvUpdate(env, key, ids => { ids = Array.isArray(ids) ? ids : []; if (ids.includes(id)) return null; ids.push(id); return ids; }); }
 async function removeIndex(env, key, id) { await kvUpdate(env, key, ids => Array.isArray(ids) && ids.includes(id) ? ids.filter(x => x !== id) : null); }

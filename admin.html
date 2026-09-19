@@ -22,8 +22,30 @@
   .btn.danger{ color:var(--danger); border-color:#e3b4ac; background:#fbeeec; } .btn.sm{ padding:5px 9px; font-size:12.5px; }
   .btn.ghost{ border-color:transparent; background:transparent; color:var(--soft); }
   .btn:disabled{ opacity:.5; cursor:not-allowed; }
-  input,select{ font:inherit; font-size:14px; padding:9px 11px; border:1px solid var(--line); border-radius:9px; background:var(--card); color:var(--ink); width:100%; }
+  input,select,textarea{ font:inherit; font-size:14px; padding:9px 11px; border:1px solid var(--line); border-radius:9px; background:var(--card); color:var(--ink); width:100%; }
+  textarea{ resize:vertical; min-height:64px; }
+  input:disabled{ opacity:.55; }
+  [aria-invalid="true"]{ border-color:var(--danger); outline-color:var(--danger); }
   label{ font-size:12px; font-weight:700; color:var(--soft); text-transform:uppercase; letter-spacing:.04em; display:block; margin-bottom:4px; }
+  label .hint{ text-transform:none; letter-spacing:0; font-weight:500; color:var(--faint); }
+  /* a checkbox with its text */
+  label.chk{ display:flex; align-items:flex-start; gap:8px; text-transform:none; letter-spacing:0; font-size:14px; font-weight:500; color:var(--ink); margin:0; cursor:pointer; }
+  label.chk input{ width:auto; margin:3px 0 0; flex:none; }
+  label.chk.sm{ font-size:13px; color:var(--soft); margin-top:6px; }
+  .inl{ display:inline-block; width:88px; padding:6px 9px; }
+  .subh{ font-size:14px; font-weight:700; margin:18px 0 10px; padding-top:14px; border-top:1px solid var(--line); }
+  .subh .muted{ font-weight:500; }
+  /* dialogs (venue / couple edit, deleted weddings) */
+  dialog.dlg{ border:none; padding:0; border-radius:14px; background:var(--card); color:var(--ink); width:min(640px, calc(100% - 24px)); max-height:calc(100% - 24px); overflow:auto; box-shadow:0 20px 60px rgba(40,30,20,.28); }
+  dialog.dlg::backdrop{ background:rgba(37,33,28,.42); }
+  .dlg .dhead{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:14px 18px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--card); z-index:1; }
+  .dlg .dhead h2{ margin:0; }
+  .dlg .dbody{ padding:16px 18px; }
+  .dlg .dfoot{ display:flex; justify-content:flex-end; gap:8px; padding:12px 18px; border-top:1px solid var(--line); position:sticky; bottom:0; background:var(--card); }
+  .titem{ display:flex; gap:12px; align-items:flex-start; padding:12px 0; border-top:1px solid var(--line); }
+  .titem:first-child{ border-top:none; padding-top:0; }
+  .titem .grow{ flex:1; min-width:0; }
+  .linkbtn{ font:inherit; font-size:12.5px; font-weight:600; background:none; border:none; padding:0; color:var(--accent-ink); text-decoration:underline; cursor:pointer; }
   .card{ background:var(--card); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); padding:18px; }
   .login{ max-width:420px; margin:8vh auto 0; text-align:center; }
   .grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
@@ -46,6 +68,7 @@
   .badge.warn{ background:var(--amber-soft); color:var(--amber); }
   .badge.sup{ background:var(--sup-soft); color:var(--sup); white-space:normal; }
   .badge.tpl{ background:var(--card2); color:var(--soft); }
+  .badge.long{ white-space:normal; }
   .mark{ font-size:12px; cursor:help; }
   .vok{ color:var(--good); font-weight:700; cursor:help; }
   .mailbar{ margin-top:14px; padding:8px 12px; border-radius:10px; font-size:13.5px; background:var(--card2); color:var(--soft); border:1px solid var(--line); }
@@ -80,7 +103,8 @@
     table.cards td[data-l]{ display:flex; gap:10px; align-items:baseline; }
     table.cards td[data-l]::before{ content:attr(data-l); flex:0 0 76px; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--faint); font-weight:700; }
     table.cards td.acts-cell{ padding-top:8px; }
-    .sreq{ flex-direction:column; gap:8px; }
+    .sreq, .titem{ flex-direction:column; gap:8px; }
+    .dlg .dhead, .dlg .dbody, .dlg .dfoot{ padding-left:14px; padding-right:14px; }
   }
 </style>
 </head>
@@ -167,11 +191,98 @@ function copy(t){ (navigator.clipboard?navigator.clipboard.writeText(t):Promise.
 function copySilently(t, msg){ try{ if(navigator.clipboard) navigator.clipboard.writeText(t).then(()=>toast(msg)).catch(()=>{}); }catch(e){} }
 const byNewest=(a,b)=>(b.createdAt||0)-(a.createdAt||0);
 
+// "YYYY-MM-DD" (a calendar day, no time zone) → "01 Nov 2026"
+function fmtYmd(s){ const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s||"")); if(!m) return s?String(s):"—";
+  return new Date(+m[1], +m[2]-1, +m[3]).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}); }
+function ymdPlus(s, n){ const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s||"")); if(!m) return null;
+  const d=new Date(Date.UTC(+m[1], +m[2]-1, +m[3]+n)); return d.toISOString().slice(0,10); }
+const isYmd=s=>/^\d{4}-\d{2}-\d{2}$/.test(String(s||""));
+// Today in Athens (the server's calendar), "YYYY-MM-DD"; the browser's own day if the time zone is unknown.
+const todayYmd=()=>{ try{ const s=new Intl.DateTimeFormat("en-CA",{ timeZone:"Europe/Athens", year:"numeric", month:"2-digit", day:"2-digit" }).format(new Date()); if(isYmd(s)) return s; }catch(e){}
+  const t=new Date(); return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`; };
+const MAX_KEEP_DAYS=3650;   // the server's limit for "delete N days after the wedding"
+
 function licenseText(L){ L=L||{};
-  return L.type==="per_wedding" ? `Per-wedding · quota ${L.quota||"∞"}`
-    : `Seasonal · ${fmtDate(L.seasonStart)} → ${fmtDate(L.seasonEnd)}${L.cap?` · cap ${L.cap}`:""}`; }
+  if(L.type==="per_wedding") return L.quota ? `Per-wedding · quota ${L.quota}` : "Per-wedding · unlimited";
+  const win=(L.seasonStart||L.seasonEnd) ? `${fmtYmd(L.seasonStart)} → ${fmtYmd(L.seasonEnd)}` : "no season dates (never expires)";
+  return `Seasonal · ${win} · ${L.cap?`max ${L.cap} at a time`:"no maximum"}`; }
+// Seasonal licences renew by themselves at seasonEnd + 1 day unless automatic renewal is off — but only for an active venue
+// whose renewal reminder e-mail actually went out; otherwise the server skips it and sets license.renewSkipped = that seasonEnd.
+function renewalHtml(v){ const L=(v&&v.license)||{};
+  if(L.type==="per_wedding") return "";
+  if(L.renewSkipped) return `<div style="margin-top:4px"><span class="badge warn long">Season ended ${esc(fmtYmd(L.renewSkipped))} — not renewed automatically (no reminder could be sent). Renew by editing the licence.</span></div>`;
+  if(!isYmd(L.seasonEnd)) return "";
+  if(L.autoRenew===false) return `<div class="muted">renewal off</div>`;
+  const at=ymdPlus(L.seasonEnd,1), when=esc(fmtYmd(at));
+  if(!v.active) return `<div class="muted">auto-renews ${when} — not while the venue is disabled</div>`;
+  if(!v.email) return `<div class="muted">auto-renews ${when} — only once a reminder is e-mailed: add the venue's email</div>`;
+  if(mailInfo && !mailInfo.enabled) return `<div class="muted">auto-renews ${when} — only once a reminder is e-mailed: email is off</div>`;
+  return at<todayYmd() ? `<div class="muted">season ended — the renewal is checked within the hour</div>` : `<div class="muted">auto-renews ${when}</div>`; }
+
+// ---------------------------------------------------------------- after the wedding (retention)
+let settingsCache=null;   // GET /admin/settings → {retention:{keepDays, lockAfter}, planExceptions:[…]}
+const globalRet=()=>{ const r=(settingsCache&&settingsCache.retention)||{};
+  return { keepDays:Number.isFinite(+r.keepDays)&&r.keepDays!=null?+r.keepDays:7, lockAfter:r.lockAfter!==false }; };
+const daysText=n=>`${n} day${n===1?"":"s"}`;
+// A retention override ({keepDays?, lockAfter?, keep?}) in words; "" when there is none.
+function retentionText(r){ if(!r) return "";
+  const p=[];
+  if(r.keep===true) p.push("kept forever"); else if(r.keepDays!=null) p.push(`deleted ${daysText(+r.keepDays)} after`);
+  if(r.keep===false && r.keepDays==null) p.push("deleted as usual");
+  if(r.lockAfter===false) p.push("stays editable"); else if(r.lockAfter===true) p.push("view-only after");
+  return p.join(" · "); }
+// Two choices, each "same as everyone" or its own value: view-only after the wedding, and when the plan is deleted.
+function retentionFields(p, r){ r=r||{}; const g=globalRet();
+  const lock=r.lockAfter===true?"1":r.lockAfter===false?"0":"";
+  const del=r.keep===true?"keep":r.keepDays!=null?"days":"";
+  return `<div class="grid">
+    <div><label for="${p}lock">After the wedding</label>
+      <select id="${p}lock">
+        <option value=""${lock===""?" selected":""}>Default (${g.lockAfter?"view-only":"stays editable"})</option>
+        <option value="1"${lock==="1"?" selected":""}>View-only from the day after</option>
+        <option value="0"${lock==="0"?" selected":""}>Stays editable</option>
+      </select></div>
+    <div><label for="${p}del">Deletion</label>
+      <select id="${p}del">
+        <option value=""${del===""?" selected":""}>Default (${esc(daysText(g.keepDays))} after the wedding)</option>
+        <option value="days"${del==="days"?" selected":""}>After a number of days…</option>
+        <option value="keep"${del==="keep"?" selected":""}>Keep forever</option>
+      </select>
+      <div class="row" id="${p}dayswrap" style="margin-top:6px;${del==="days"?"":"display:none"}"><input type="number" class="inl" id="${p}days" min="0" max="${MAX_KEEP_DAYS}" value="${r.keepDays!=null?esc(r.keepDays):""}" placeholder="${esc(g.keepDays)}"><span class="muted">days after the wedding</span></div>
+    </div>
+  </div>`; }
+function wireRetention(p, scope){
+  const del=scope.querySelector("#"+p+"del"), wrap=scope.querySelector("#"+p+"dayswrap");
+  del.addEventListener("change",()=>{ wrap.style.display=del.value==="days"?"":"none"; if(del.value==="days") scope.querySelector("#"+p+"days").focus(); });
+}
+// → { ret } (null = same as everyone) or { error, el }
+function readRetention(p, scope){
+  const lock=scope.querySelector("#"+p+"lock").value, del=scope.querySelector("#"+p+"del").value, o={};
+  if(lock) o.lockAfter=lock==="1";
+  if(del==="keep") o.keep=true;
+  if(del==="days"){ const el=scope.querySelector("#"+p+"days"), n=el.value.trim()===""?NaN:Number(el.value);
+    if(!Number.isInteger(n) || n<0 || n>MAX_KEEP_DAYS) return { error:`Enter the number of days (0–${MAX_KEEP_DAYS})`, el };
+    o.keepDays=n; }
+  return { ret:Object.keys(o).length?o:null };
+}
+
+// ---------------------------------------------------------------- dialog
+function openDialog(html){
+  let d=document.getElementById("dlg");
+  if(!d){ d=document.createElement("dialog"); d.id="dlg"; d.className="dlg"; document.body.appendChild(d); }
+  delete d.dataset.ctx; d.innerHTML=html; d.scrollTop=0;
+  d.querySelectorAll("[data-dclose]").forEach(b=>b.onclick=()=>closeDialog());
+  if(!d.open){ try{ d.showModal(); }catch(e){ d.setAttribute("open",""); } }
+  return d;
+}
+function closeDialog(){ const d=document.getElementById("dlg"); if(!d) return; if(d.open){ try{ d.close(); }catch(e){ d.removeAttribute("open"); } } delete d.dataset.ctx; d.innerHTML=""; }
+const dlgHead=title=>`<div class="dhead"><h2>${title}</h2><button class="btn sm ghost" data-dclose title="Close">✕</button></div>`;
+// A missing or wrong field: say what is needed and put the cursor there.
+function invalid(el, msg){ toast(msg); if(el){ el.setAttribute("aria-invalid","true"); el.focus();
+  el.addEventListener("input",()=>el.removeAttribute("aria-invalid"),{ once:true }); el.addEventListener("change",()=>el.removeAttribute("aria-invalid"),{ once:true }); } }
 
 function renderLogin(err){
+  closeDialog();
   app.innerHTML=`<div class="card login">
     <h1>Owner Admin</h1>
     <p class="muted" style="margin:6px 0 16px">Venues, couples and the support invitations they send.</p>
@@ -185,31 +296,66 @@ function renderLogin(err){
   document.getElementById("ok").addEventListener("keydown",e=>{ if(e.key==="Enter") go(); });
 }
 
-function licenseFields(prefix){
+// Licence fields (create form and «Edit…»). An empty field never means "unlimited": the season dates (seasonal) or the quota
+// (per-wedding) are required unless «Unlimited» is ticked, and a seasonal maximum is a number unless «No maximum» is ticked.
+function licenseFields(prefix, L){
+  const isNew=!L;   // a new venue starts with nothing ticked except «No maximum» and «Renews automatically»
+  L=L||{ type:"seasonal", autoRenew:true };
+  const per=L.type==="per_wedding", unl=per ? !L.quota : !(L.seasonStart||L.seasonEnd);
   return `<div class="grid">
-    <div class="full"><label>License</label>
+    <div class="full"><label for="${prefix}type">License type</label>
       <select id="${prefix}type">
-        <option value="seasonal">Seasonal (unlimited weddings in a date window)</option>
-        <option value="per_wedding">Per-wedding (a fixed number of weddings)</option>
+        <option value="seasonal"${per?"":" selected"}>Seasonal (weddings within a season)</option>
+        <option value="per_wedding"${per?" selected":""}>Per-wedding (a fixed number of weddings)</option>
       </select></div>
-    <div class="seasonal"><label>Season start</label><input type="date" id="${prefix}start"></div>
-    <div class="seasonal"><label>Season end</label><input type="date" id="${prefix}end"></div>
-    <div class="seasonal"><label>Cap (optional, concurrent)</label><input type="number" id="${prefix}cap" min="0" placeholder="0 = unlimited"></div>
-    <div class="perw" style="display:none"><label>Wedding quota</label><input type="number" id="${prefix}quota" min="1" placeholder="e.g. 20"></div>
+    <div class="seasonal lim"><label for="${prefix}start">Season start</label><input type="date" id="${prefix}start" value="${esc(isYmd(L.seasonStart)?L.seasonStart:"")}"></div>
+    <div class="seasonal lim"><label for="${prefix}end">Season end</label><input type="date" id="${prefix}end" value="${esc(isYmd(L.seasonEnd)?L.seasonEnd:"")}"></div>
+    <div class="perw lim"><label for="${prefix}quota">Wedding quota</label><input type="number" id="${prefix}quota" min="1" placeholder="e.g. 20" value="${per&&L.quota?esc(L.quota):""}"></div>
+    <div class="full"><label class="chk"><input type="checkbox" id="${prefix}unl"${unl&&!isNew?" checked":""}> <span>Unlimited — <span data-unltxt></span></span></label></div>
+    <div class="seasonal"><label for="${prefix}cap">Max weddings at a time</label><input type="number" id="${prefix}cap" min="1" placeholder="e.g. 40" value="${!per&&L.cap?esc(L.cap):""}">
+      <label class="chk sm"><input type="checkbox" id="${prefix}nocap"${!per&&L.cap?"":" checked"}> No maximum</label></div>
+    <div class="seasonal renew"><label>Renewal</label>
+      <label class="chk"><input type="checkbox" id="${prefix}renew"${L.autoRenew===false?"":" checked"}> Renews automatically</label>
+      <div class="muted" style="margin-top:4px">The day after the season ends it runs again for the same dates next year; it then shows «invoice due» here. The venue can turn this off in its console.</div></div>
   </div>`;
 }
 function wireLicenseToggle(prefix, scope){
-  const sel=scope.querySelector("#"+prefix+"type");
-  const upd=()=>{ const per=sel.value==="per_wedding";
+  const q=s=>scope.querySelector("#"+prefix+s);
+  const sel=q("type"), unl=q("unl"), nocap=q("nocap");
+  const upd=()=>{ const per=sel.value==="per_wedding", u=unl.checked;
     scope.querySelectorAll(".seasonal").forEach(e=>e.style.display=per?"none":"");
-    scope.querySelectorAll(".perw").forEach(e=>e.style.display=per?"":"none"); };
-  sel.addEventListener("change",upd); upd();
+    scope.querySelectorAll(".perw").forEach(e=>e.style.display=per?"":"none");
+    scope.querySelectorAll(".lim").forEach(e=>{ if(u) e.style.display="none"; });
+    scope.querySelectorAll(".renew").forEach(e=>e.style.display=(per||u)?"none":"");
+    scope.querySelector("[data-unltxt]").textContent=per?"no quota, any number of weddings":"no season dates, the licence never expires";
+    q("cap").disabled=nocap.checked; if(nocap.checked) q("cap").removeAttribute("aria-invalid"); };
+  sel.addEventListener("change",upd); unl.addEventListener("change",upd);
+  nocap.addEventListener("change",()=>{ upd(); if(!nocap.checked) q("cap").focus(); });
+  upd();
 }
+// → { license } or { error, el }
 function readLicense(prefix, scope){
-  const type=scope.querySelector("#"+prefix+"type").value;
-  if(type==="per_wedding") return { type, quota:parseInt(scope.querySelector("#"+prefix+"quota").value)||0 };
-  return { type:"seasonal", seasonStart:scope.querySelector("#"+prefix+"start").value||null,
-    seasonEnd:scope.querySelector("#"+prefix+"end").value||null, cap:parseInt(scope.querySelector("#"+prefix+"cap").value)||0 };
+  const q=s=>scope.querySelector("#"+prefix+s);
+  const type=q("type").value==="per_wedding"?"per_wedding":"seasonal", unl=q("unl").checked;
+  const autoRenew=q("renew").checked;
+  const num=el=>{ const v=el.value.trim(); return v===""?NaN:Number(v); };
+  if(type==="per_wedding"){
+    if(unl) return { license:{ type, quota:0, seasonStart:null, seasonEnd:null, cap:0, autoRenew } };
+    const n=num(q("quota"));
+    if(!Number.isInteger(n) || n<1) return { error:"Enter the wedding quota — or tick «Unlimited»", el:q("quota") };
+    return { license:{ type, quota:n, seasonStart:null, seasonEnd:null, cap:0, autoRenew } };
+  }
+  let seasonStart=null, seasonEnd=null, cap=0;
+  if(!unl){
+    seasonStart=q("start").value||null; seasonEnd=q("end").value||null;
+    if(!isYmd(seasonStart)) return { error:"Enter the season start — or tick «Unlimited»", el:q("start") };
+    if(!isYmd(seasonEnd)) return { error:"Enter the season end — or tick «Unlimited»", el:q("end") };
+    if(seasonEnd<seasonStart) return { error:"The season ends before it starts", el:q("end") };
+  }
+  if(!q("nocap").checked){ const n=num(q("cap"));
+    if(!Number.isInteger(n) || n<1) return { error:"Enter the maximum number of weddings — or tick «No maximum»", el:q("cap") };
+    cap=n; }
+  return { license:{ type, seasonStart, seasonEnd, quota:0, cap, autoRenew } };
 }
 
 // ---------------------------------------------------------------- dashboard
@@ -218,7 +364,7 @@ function renderDashboard(venues){
   app.innerHTML=`
     <div class="row between" style="align-items:flex-start;margin-bottom:6px">
       <div><h1>Owner Admin</h1>
-        <p class="lead">You cannot open couples' plans. Couples and venues can invite support; their invitations appear below.</p></div>
+        <p class="lead">You open a couple's or venue's plan only when they invite support — every access is logged. Their invitations appear below.</p></div>
       <button class="btn" id="logout">Sign out</button>
     </div>
     ${mailBarHtml()}
@@ -235,10 +381,11 @@ function renderDashboard(venues){
         <div class="card">
           <h2>Add a couple</h2>
           <div class="grid">
-            <div><label>Couple name</label><input id="cname" placeholder="e.g. Μαρία & Νίκος"></div>
-            <div><label>Email (optional)</label><input id="cemail" type="email" placeholder="for their link and recovery" autocomplete="off"></div>
-            <div><label>Contact (optional)</label><input id="ccontact" placeholder="phone / notes"></div>
-            <div><label>Language</label><select id="clang">${langOptions("el")}</select></div>
+            <div><label for="cname">Couple name</label><input id="cname" maxlength="120" placeholder="e.g. Μαρία & Νίκος"></div>
+            <div><label for="cemail">Email (optional)</label><input id="cemail" type="email" placeholder="for their link and recovery" autocomplete="off"></div>
+            <div><label for="cdate">Wedding date (optional)</label><input id="cdate" type="date" min="${esc(todayYmd())}"></div>
+            <div><label for="clang">Language</label><select id="clang">${langOptions("el")}</select></div>
+            <div class="full"><label for="ccontact">Private notes <span class="hint">— only you see this</span></label><input id="ccontact" maxlength="200" placeholder="phone, how they found us, anything"></div>
           </div>
           <div class="row fw" style="margin-top:14px"><button class="btn primary" id="createC">Create couple</button>
             ${mailOn()?`<span class="muted">With an email, the link goes straight to the couple — you won't see it.</span>`:""}</div>
@@ -254,10 +401,11 @@ function renderDashboard(venues){
         <div class="card">
           <h2>Add a venue</h2>
           <div class="grid">
-            <div><label>Venue name</label><input id="nname" placeholder="e.g. Κτήμα Ηλιοβασίλεμα"></div>
-            <div><label>Email (optional)</label><input id="nemail" type="email" placeholder="for the setup link and recovery" autocomplete="off"></div>
-            <div><label>Contact (optional)</label><input id="ncontact" placeholder="phone / notes"></div>
-            <div><label>Language</label><select id="nlang">${langOptions("el")}</select></div>
+            <div><label for="nname">Venue name</label><input id="nname" maxlength="120" placeholder="e.g. Κτήμα Ηλιοβασίλεμα"></div>
+            <div><label for="nemail">Email (optional)</label><input id="nemail" type="email" placeholder="for the setup link and recovery" autocomplete="off"></div>
+            <div><label for="ncontact">Public contact <span class="hint">— shown to this venue's couples</span></label><input id="ncontact" maxlength="200" placeholder="e.g. 210 123 4567 · info@venue.gr"></div>
+            <div><label for="nlang">Language</label><select id="nlang">${langOptions("el")}</select></div>
+            <div class="full"><label for="nnotes">Private notes <span class="hint">— only you see this</span></label><textarea id="nnotes" maxlength="1000" rows="2" placeholder="price agreed, contact person, invoicing details…"></textarea></div>
           </div>
           <div style="margin-top:12px" id="licwrap">${licenseFields("n")}</div>
           <div class="row fw" style="margin-top:14px"><button class="btn primary" id="createV">Create venue</button>
@@ -266,6 +414,32 @@ function renderDashboard(venues){
         </div>
         <div id="vpanel"></div>
         <div class="card tablewrap" id="vtable">${venuesTableHtml(venues)}</div>
+      </div>
+    </div>
+
+    <div class="section" id="lifeSection">
+      <h2>After the wedding</h2>
+      <div class="stack">
+        <div class="card">
+          <p class="lead" style="margin:0 0 12px">For every plan — unless a venue, a couple or one plan has its own setting («Edit…» on its row, or an exception below).</p>
+          <div id="gbox"><div class="empty">Loading…</div></div>
+        </div>
+        <div class="card">
+          <h2>Exceptions <span class="muted" id="xcount"></span></h2>
+          <p class="muted" style="margin:-6px 0 10px">Single plans with their own rule — e.g. a couple who asked for more time.</p>
+          <div class="tablewrap" id="xlist"><div class="empty">Loading…</div></div>
+          <div class="subh">Add an exception</div>
+          <div class="grid">
+            <div class="full"><label for="xplan">Plan link or plan id</label><input id="xplan" autocomplete="off" placeholder="paste a link with ?plan=… or the plan id"></div>
+            <div class="full">
+              <label class="chk"><input type="checkbox" id="xkeep"> Keep forever (never delete)</label>
+              <label class="chk" style="margin-top:6px"><input type="checkbox" id="xedit"> Stay editable after the wedding</label>
+              <label class="chk" style="margin-top:6px;align-items:center"><input type="checkbox" id="xmore" style="margin-top:0"> Extra days: delete
+                <input type="number" class="inl" id="xdays" min="0" max="${MAX_KEEP_DAYS}" placeholder="30"> days after the wedding</label>
+            </div>
+          </div>
+          <div class="row fw" style="margin-top:14px"><button class="btn primary" id="xadd">Add exception</button></div>
+        </div>
       </div>
     </div>`;
   document.getElementById("logout").onclick=()=>{ setKey(""); renderLogin(); };
@@ -277,7 +451,9 @@ function renderDashboard(venues){
     await Promise.all([refreshSupport(), refreshCouples()]); b.disabled=false; };
   document.getElementById("vtable").addEventListener("click", onRowAction());
   document.getElementById("ctable").addEventListener("click", onCoupleAction);
-  refreshSupport(); refreshCouples();
+  wireExceptionForm();
+  document.getElementById("xlist").addEventListener("click", onExceptionAction);
+  refreshSupport(); refreshCouples(); refreshSettings();
 }
 
 // ---------------------------------------------------------------- support requests
@@ -305,8 +481,9 @@ async function refreshSupport(){
 }
 
 // ---------------------------------------------------------------- couples (direct)
-function coupleGone(c){ return !!(c.deletedAt || !c.exists); }
+function coupleGone(c){ return !!(c.deletedAt || c.purgedAt || !c.exists); }
 function coupleStatusHtml(c){
+  if(c.purgedAt && !c.deletedAt) return `<span class="badge off">Deleted after the wedding</span><div class="muted">${esc(fmtDate(c.purgedAt))}</div>`;
   if(coupleGone(c)) return `<span class="badge off">Deleted by the couple</span>${c.deletedAt?`<div class="muted">${esc(fmtDate(c.deletedAt))}</div>`:""}`;
   if(c.pendingClaim){
     const exp=(c.claimIssuedAt||c.resetAt||c.createdAt||0)+CLAIM_DAYS*86400000, expired=Date.now()>exp;
@@ -318,25 +495,41 @@ function coupleStatusHtml(c){
   if(c.claimedAt) return `<span class="badge per">Opened ${esc(fmtDate(c.claimedAt))}</span>${c.resetAt?`<div class="muted">after a reset on ${esc(fmtDate(c.resetAt))}</div>`:""}`;
   return "—";
 }
+// The wedding date and what happens after it (the server computes the dates; this only shows them).
+function coupleWeddingHtml(c){
+  const L=c.life||null, out=[];
+  if(c.weddingDate) out.push(`<strong>${esc(fmtYmd(c.weddingDate))}</strong>`);
+  else if(!coupleGone(c)) out.push(`<span class="muted" title="${L&&L.lockAt?esc("Without a date the plan counts as over on "+fmtDate(L.lockAt)):""}">No date yet</span>`);
+  if(c.purgedAt) out.push(`<div><span class="badge off">Deleted ${esc(fmtDate(c.purgedAt))}</span></div>`);
+  else if(L && L.over && !coupleGone(c)){
+    if(L.keep) out.push(`<div><span class="badge per">Kept</span>${L.locked?` <span class="muted">view-only</span>`:""}</div>`);
+    else out.push(`<div><span class="badge warn long">${L.locked?"View-only":"Over"} — ${L.deleteAt<=Date.now()?"deletion due (next hourly check)":"deleted on "+esc(fmtDate(L.deleteAt))}</span></div>`);
+  }
+  if(c.keepsakeSentAt) out.push(`<div class="muted">🎁 Keepsake sent ${esc(fmtDate(c.keepsakeSentAt))}</div>`);
+  const rt=retentionText(c.retention);
+  if(rt) out.push(`<div class="muted" title="This couple's own after-the-wedding setting">⚙ ${esc(rt)}</div>`);
+  return out.join("") || `<span class="muted">—</span>`;
+}
 function coupleRowHtml(c){
   const gone=coupleGone(c);
   // The plan is stamped when it is created; only a later timestamp is a real edit by the couple.
   const edited=!gone && c.lastEdit && c.lastEdit > (c.createdAt||0)+5000;
   return `<tr data-id="${esc(c.id)}">
-    <td><strong>${esc(c.name)}</strong>${emailHtml(c)}${c.contact?`<div class="muted">${esc(c.contact)}</div>`:""}</td>
-    <td data-l="Created">${esc(fmtDate(c.createdAt))}</td>
+    <td><strong>${esc(c.name)}</strong>${emailHtml(c)}${c.contact?`<div class="muted" title="Private notes — only you see this">📝 ${esc(c.contact)}</div>`:""}<div class="muted">Added ${esc(fmtDate(c.createdAt))}</div></td>
+    <td data-l="Wedding">${coupleWeddingHtml(c)}</td>
     <td data-l="Status"><div>${coupleStatusHtml(c)}${c.support?`<div style="margin-top:4px"><span class="badge sup">🛟 support until ${esc(fmtDateTime(c.support.expires))}</span></div>`:""}</div></td>
     <td data-l="Last edit">${edited?esc(fmtDateTime(c.lastEdit)):`<span class="muted">—</span>`}</td>
     <td class="acts-cell"><div class="row acts">
       ${c.pendingClaim&&c.claimToken?`<button class="btn sm" data-a="copy">Copy link</button>`:""}
       ${!gone&&c.email&&mailOn()?`<button class="btn sm" data-a="send">Send link</button>`:""}
+      ${gone?"":`<button class="btn sm" data-a="edit">Edit…</button>`}
       ${gone?"":`<button class="btn sm" data-a="reset">New link…</button>`}
       ${gone?"":`<button class="btn sm" data-a="email">Email…</button>`}
       <button class="btn sm danger" data-a="del">Delete…</button>
     </div></td></tr>`;
 }
 function couplesTableHtml(list){
-  return `<table class="cards"><thead><tr><th>Couple</th><th>Created</th><th>Status</th><th>Last edit</th><th></th></tr></thead>
+  return `<table class="cards"><thead><tr><th>Couple</th><th>Wedding</th><th>Status</th><th>Last edit</th><th></th></tr></thead>
     <tbody>${list.length? list.map(coupleRowHtml).join("") : `<tr><td colspan="5" class="empty">No couples yet.</td></tr>`}</tbody></table>`;
 }
 async function refreshCouples(){
@@ -397,16 +590,23 @@ async function createCouple(){
   const contact=document.getElementById("ccontact").value.trim();
   const email=document.getElementById("cemail").value.trim();
   const sel=document.getElementById("clang").value, lang=PLANNER_FILE[sel]?sel:"el";
+  const dateEl=document.getElementById("cdate"), weddingDate=dateEl.value||"";
+  if(dateEl.validity && dateEl.validity.badInput){ invalid(dateEl, "That date isn't complete"); return; }
+  const PAST_DATE="The wedding date can't be in the past — a new couple's plan would be deleted at once";
+  if(weddingDate && weddingDate<todayYmd()){ invalid(dateEl, PAST_DATE); return; }
   btn.disabled=true;
-  const res=await req("/admin/couples",{ method:"POST", body:JSON.stringify({ name, contact, email, lang }) });
+  const res=await req("/admin/couples",{ method:"POST", body:JSON.stringify({ name, contact, email, lang, ...(weddingDate?{ weddingDate }:{}) }) });
   if(!document.getElementById("createC")) return;
   btn.disabled=false;
   const c=res.d && res.d.couple;
-  if(!res.ok || !c || !(res.d.mailed || res.d.claimToken)){ failToast(res, badEmail(res)?BAD_EMAIL:"Create failed"); return; }
+  if(!res.ok || !c || !(res.d.mailed || res.d.claimToken)){
+    const err=res.d && res.d.error;
+    if(err==="past_date"){ invalid(dateEl, PAST_DATE); return; }
+    failToast(res, badEmail(res)?BAD_EMAIL:err==="bad_date"?"That wedding date isn't valid":"Create failed"); return; }
   rememberLang(c.id, lang);
   if(res.d.mailed) showCoupleSent(c.id, `✅ Couple created — link sent to ${esc(c.email||email)}`, CLAIM_NOTE);
   else showClaimPanel(c.id, c.name, res.d.claimToken, "new");
-  nameEl.value=""; document.getElementById("ccontact").value=""; document.getElementById("cemail").value="";
+  nameEl.value=""; document.getElementById("ccontact").value=""; document.getElementById("cemail").value=""; dateEl.value="";
   toast(res.d.mailed?"Link sent to "+(c.email||email):"Couple created"); refreshCouples();
 }
 async function onCoupleAction(e){
@@ -418,6 +618,8 @@ async function onCoupleAction(e){
     if(!c.claimToken) return;
     showClaimPanel(c.id, c.name, c.claimToken, "link");
     copy(claimLink(c.claimToken, coupleLang(c.id)));
+  } else if(a==="edit"){
+    openCoupleEdit(c);
   } else if(a==="send"){
     btn.disabled=true;
     const res=await req(path+"/send",{ method:"POST", body:"{}" });
@@ -474,6 +676,50 @@ async function onCoupleAction(e){
   }
 }
 
+// «Edit…» on a couple: name, wedding date (the admin may set any date or clear it), private notes, after-the-wedding setting.
+function lifeLineHtml(L){
+  if(!L || !L.lockAt) return "";
+  const lock=L.locked?"View-only since":L.over?"Over since":"Over on";
+  return `<div class="muted" style="margin-top:6px">${lock} ${esc(fmtDate(L.lockAt))}${L.fallback?" (no date — 18 months after it was made)":""} · ${L.keep?"kept, never deleted":"deleted on "+esc(fmtDate(L.deleteAt))}</div>`;
+}
+function openCoupleEdit(c){
+  const d=openDialog(`${dlgHead("Edit couple")}
+    <div class="dbody">
+      <div class="grid">
+        <div class="full"><label for="ce_name">Couple name</label><input id="ce_name" maxlength="120" value="${esc(c.name)}"></div>
+        <div class="full"><label for="ce_date">Wedding date</label>
+          <div class="row"><input type="date" id="ce_date" value="${esc(isYmd(c.weddingDate)?c.weddingDate:"")}" style="max-width:220px"><button type="button" class="linkbtn" id="ce_clear">Clear date</button></div>
+          <div class="muted" style="margin-top:4px">You can set any date, or clear it. Couples can only pick today up to two years ahead, and change it 3 times.</div>
+          ${lifeLineHtml(c.life)}</div>
+        <div class="full"><label for="ce_notes">Private notes <span class="hint">— only you see this</span></label><textarea id="ce_notes" maxlength="200" rows="2">${esc(c.contact||"")}</textarea></div>
+      </div>
+      <div class="subh">After the wedding <span class="muted">— this couple only</span></div>
+      ${retentionFields("ce_", c.retention)}
+    </div>
+    <div class="dfoot"><button class="btn" data-dclose>Cancel</button><button class="btn primary" id="ce_save">Save</button></div>`);
+  wireRetention("ce_", d);
+  d.querySelector("#ce_clear").onclick=()=>{ d.querySelector("#ce_date").value=""; };
+  d.querySelector("#ce_save").onclick=()=>saveCoupleEdit(c, d);
+}
+async function saveCoupleEdit(c, d){
+  const q=s=>d.querySelector(s), btn=q("#ce_save"); if(btn.disabled) return;
+  const name=q("#ce_name").value.trim(); if(!name){ invalid(q("#ce_name"), "Enter the couple's name"); return; }
+  const dateEl=q("#ce_date"); if(dateEl.validity && dateEl.validity.badInput){ invalid(dateEl, "That date isn't complete"); return; }
+  const date=dateEl.value||"", oldDate=isYmd(c.weddingDate)?c.weddingDate:"";
+  const r=readRetention("ce_", d); if(r.error){ invalid(r.el, r.error); return; }
+  const body={ name, contact:q("#ce_notes").value.trim(), retention:r.ret };
+  if(date!==oldDate){
+    if(date && date<todayYmd() && !confirm(`${fmtYmd(date)} is in the past.\n\nThe plan becomes view-only and — unless it is kept — may be deleted at the next hourly check. Continue?`)) return;
+    if(!date && !confirm(`Clear the wedding date of "${c.name}"?\n\nWithout a date the plan counts as over 18 months after it was made.`)) return;
+    body.weddingDate=date||null;
+  }
+  btn.disabled=true;
+  const res=await req("/admin/couples/"+encodeURIComponent(c.id),{ method:"PATCH", body:JSON.stringify(body) });
+  btn.disabled=false;
+  if(!res.ok){ failToast(res, res.d&&res.d.error==="bad_date"?"That wedding date isn't valid":res.status===404?"This couple no longer exists — refreshing":"Could not save"); if(res.status===404){ closeDialog(); refreshCouples(); } return; }
+  closeDialog(); toast("Saved"); refreshCouples();
+}
+
 // ---------------------------------------------------------------- venues
 function venuesTableHtml(venues){
   return `<table class="cards"><thead><tr><th>Venue</th><th>License</th><th>Weddings</th><th>Status</th><th></th></tr></thead>
@@ -488,14 +734,19 @@ async function refreshVenues(){
 function rowHtml(v){
   const L=v.license||{};
   const usage = L.type==="per_wedding" ? `${v.used||0}/${L.quota||"∞"}` : `${v.weddingCount||0}${L.cap?`/${L.cap}`:""}`;
+  const notes=String(v.notes||""), rt=retentionText(v.retention);
   return `<tr data-id="${esc(v.id)}">
-    <td><strong>${esc(v.name)}</strong>${v.keyRotated?` <span class="mark" title="Only the venue knows its key">🔒</span>`:""}${v.hasTemplate?` <span class="badge tpl" title="The venue has saved a default space">template ✓</span>`:""}${emailHtml(v)}${v.contact?`<div class="muted">${esc(v.contact)}</div>`:""}</td>
-    <td data-l="License"><div><span class="badge ${L.type==='per_wedding'?'per':'season'}">${L.type==='per_wedding'?'Per-wedding':'Seasonal'}</span><div class="muted">${esc(licenseText(L))}</div></div></td>
-    <td data-l="Weddings">${esc(usage)}</td>
+    <td><strong>${esc(v.name)}</strong>${v.keyRotated?` <span class="mark" title="Only the venue knows its key">🔒</span>`:""}${v.hasTemplate?` <span class="badge tpl" title="The venue has saved a default space">template ✓</span>`:""}${emailHtml(v)}
+      ${v.contact?`<div class="muted" title="Public contact — shown to this venue's couples">☎ ${esc(v.contact)}</div>`:""}
+      ${notes?`<div class="muted" title="${esc(notes)}">📝 ${esc(notes.length>90?notes.slice(0,90)+"…":notes)}</div>`:""}</td>
+    <td data-l="License"><div><span class="badge ${L.type==='per_wedding'?'per':'season'}">${L.type==='per_wedding'?'Per-wedding':'Seasonal'}</span><div class="muted">${esc(licenseText(L))}</div>${renewalHtml(v)}
+      ${L.invoiceDue?`<div class="row fw" style="gap:6px;margin-top:4px"><span class="badge warn long">Renewed ${esc(fmtDate(L.renewedAt))} — invoice due</span><button class="btn sm" data-a="invoiced" title="The renewal invoice has been sent">Invoiced ✓</button></div>`:""}
+      ${rt?`<div class="muted" title="This venue's own after-the-wedding setting">⚙ After the wedding: ${esc(rt)}</div>`:""}</div></td>
+    <td data-l="Weddings"><div>${esc(usage)}${v.trashCount>0?`<div><button class="linkbtn" data-a="trash">Deleted weddings (${esc(v.trashCount)})</button></div>`:""}</div></td>
     <td data-l="Status">${v.active?`<span class="badge season">Active</span>`:`<span class="badge off">Off</span>`}</td>
     <td class="acts-cell"><div class="row acts">
       <button class="btn sm" data-a="key">Key</button>
-      <button class="btn sm" data-a="email">Email…</button>
+      <button class="btn sm" data-a="edit">Edit…</button>
       <button class="btn sm" data-a="toggle">${v.active?"Disable":"Enable"}</button>
       <button class="btn sm danger" data-a="del">Delete</button>
     </div></td></tr>`;
@@ -561,12 +812,13 @@ async function resetVenueKey(v){
   toast("New key ready"); refreshVenues();
 }
 async function createVenue(){
-  const name=document.getElementById("nname").value.trim(); if(!name){ toast("Enter a venue name"); return; }
-  const contact=document.getElementById("ncontact").value.trim();
+  const nameEl=document.getElementById("nname"), name=nameEl.value.trim(); if(!name){ invalid(nameEl, "Enter a venue name"); return; }
+  const contact=document.getElementById("ncontact").value.trim(), notes=document.getElementById("nnotes").value.trim();
   const email=document.getElementById("nemail").value.trim(), lang=document.getElementById("nlang").value;
-  const license=readLicense("n", document.getElementById("licwrap"));
+  const lic=readLicense("n", document.getElementById("licwrap")); if(lic.error){ invalid(lic.el, lic.error); return; }
+  const license=lic.license;
   const btn=document.getElementById("createV"); if(btn.disabled) return; btn.disabled=true;
-  const res=await req("/admin/venues",{method:"POST",body:JSON.stringify({name,contact,email,lang,license})});
+  const res=await req("/admin/venues",{method:"POST",body:JSON.stringify({name,contact,notes,email,lang,license})});
   if(!document.getElementById("createV")) return;
   btn.disabled=false;
   if(!res.ok || !res.d || !(res.d.mailed || res.d.key)){ failToast(res, badEmail(res)?BAD_EMAIL:"Create failed"); return; }
@@ -578,8 +830,141 @@ async function createVenue(){
     box.innerHTML=venueKeyBoxHtml("✅ Venue created — give this to the venue:", res.d.key, "", false);
     wireKeyBox(box, res.d.key, null);
   }
-  ["nname","ncontact","nemail"].forEach(id=>{ document.getElementById(id).value=""; });
+  ["nname","ncontact","nemail","nnotes"].forEach(id=>{ document.getElementById(id).value=""; });
+  const lw=document.getElementById("licwrap"); lw.innerHTML=licenseFields("n"); wireLicenseToggle("n", lw);   // the next venue starts clean
   toast(res.d.mailed?"Setup link sent":"Venue created"); refreshVenues();
+}
+// «Edit…» on a venue: everything the admin sets (the email change keeps its confirmation).
+function renewalsHtml(v){
+  const list=(Array.isArray(v.renewals)?v.renewals:[]).slice().reverse();
+  if(!list.length) return "";
+  return `<div class="muted" style="margin-top:10px">Renewed automatically: ${list.map(x=>`${esc(fmtDate(x.at))} (→ ${esc(fmtYmd(x.from))} – ${esc(fmtYmd(x.to))})`).join(" · ")}</div>`;
+}
+// The form's current values (checkboxes as ticked/unticked) — to tell which parts the admin actually changed.
+function formState(box){ return box ? JSON.stringify([...box.querySelectorAll("input,select,textarea")].map(e=>e.type==="checkbox"?e.checked:e.value)) : ""; }
+// The dialog is filled from a fresh GET, not the cached list: the venue may have changed things since (e.g. cancelled its renewal).
+async function openVenueEdit(v){
+  const ctx="venue:"+v.id;
+  let d=openDialog(`${dlgHead(`Edit venue — ${esc(v.name)}`)}<div class="dbody"><div class="empty">Loading…</div></div>
+    <div class="dfoot"><button class="btn" data-dclose>Cancel</button></div>`);
+  d.dataset.ctx=ctx;
+  const res=await req("/admin/venues/"+encodeURIComponent(v.id));
+  if(!d.open || d.dataset.ctx!==ctx) return;
+  const fv=res.ok && res.d && res.d.venue;
+  if(!fv){ if(res.status!==403){ closeDialog(); failToast(res, res.status===404?"This venue no longer exists — refreshing":"Could not load the venue — try again"); if(res.status===404) refreshVenues(); } return; }
+  d=openDialog(`${dlgHead("Edit venue")}
+    <div class="dbody">
+      <div class="grid">
+        <div class="full"><label for="ve_name">Venue name</label><input id="ve_name" maxlength="120" value="${esc(fv.name)}"></div>
+        <div><label for="ve_email">Email <span class="hint">— setup and recovery links</span></label><input id="ve_email" type="email" autocomplete="off" value="${esc(fv.email||"")}"></div>
+        <div><label for="ve_lang">Language</label><select id="ve_lang">${langOptions(PLANNER_FILE[fv.lang]?fv.lang:"el")}</select></div>
+        <div class="full"><label for="ve_contact">Public contact <span class="hint">— shown to this venue's couples</span></label><input id="ve_contact" maxlength="200" value="${esc(fv.contact||"")}" placeholder="e.g. 210 123 4567 · info@venue.gr"></div>
+        <div class="full"><label for="ve_notes">Private notes <span class="hint">— only you see this</span></label><textarea id="ve_notes" maxlength="1000" rows="3">${esc(fv.notes||"")}</textarea></div>
+        <div class="full"><label class="chk"><input type="checkbox" id="ve_active"${fv.active?" checked":""}> <span>Active <span class="muted">— when off, the venue can't create new weddings</span></span></label></div>
+      </div>
+      <div class="subh">License</div>
+      ${renewalHtml(fv)}
+      <div id="ve_lic" style="margin-top:8px">${licenseFields("ve_", fv.license||{ type:"seasonal", autoRenew:true })}</div>
+      ${renewalsHtml(fv)}
+      <div class="subh">After the wedding <span class="muted">— this venue's weddings</span></div>
+      <div id="vr_box">${retentionFields("vr_", fv.retention)}</div>
+    </div>
+    <div class="dfoot"><button class="btn" data-dclose>Cancel</button><button class="btn primary" id="ve_save">Save</button></div>`);
+  d.dataset.ctx=ctx;
+  wireLicenseToggle("ve_", d); wireRetention("vr_", d);
+  const initial={ lic:formState(d.querySelector("#ve_lic")), ret:formState(d.querySelector("#vr_box")) };
+  d.querySelector("#ve_save").onclick=()=>saveVenueEdit(fv, d, initial);
+}
+// Only what the admin changed is sent: a licence or «Active» the admin didn't touch is never written back.
+async function saveVenueEdit(v, d, initial){
+  const q=s=>d.querySelector(s), btn=q("#ve_save"); if(btn.disabled) return;
+  const body={};
+  const name=q("#ve_name").value.trim(); if(!name){ invalid(q("#ve_name"), "Enter a venue name"); return; }
+  if(name!==(v.name||"")) body.name=name;
+  const contact=q("#ve_contact").value.trim(); if(contact!==(v.contact||"")) body.contact=contact;
+  const notes=q("#ve_notes").value.trim(); if(notes!==(v.notes||"")) body.notes=notes;
+  const sel=q("#ve_lang").value, lang=PLANNER_FILE[sel]?sel:"el"; if(lang!==(PLANNER_FILE[v.lang]?v.lang:"el")) body.lang=lang;
+  const active=q("#ve_active").checked; if(active!==!!v.active) body.active=active;
+  if(formState(q("#ve_lic"))!==initial.lic){ const lic=readLicense("ve_", d); if(lic.error){ invalid(lic.el, lic.error); return; } body.license=lic.license; }
+  if(formState(q("#vr_box"))!==initial.ret){ const r=readRetention("vr_", d); if(r.error){ invalid(r.el, r.error); return; } body.retention=r.ret; }
+  const email=q("#ve_email").value.trim(), emailChanged=email.toLowerCase()!==(v.email||"").toLowerCase();
+  if(emailChanged){
+    if(v.email && !confirm(`Change the email of "${v.name}"?\n\nFrom: ${v.email}\nTo: ${email||"(none)"}${mailOn()?"\n\nThe old address gets an email saying TakeaSeat changed it.":""}`)) return;
+    body.email=email;
+  }
+  if(!Object.keys(body).length){ closeDialog(); toast("Nothing changed"); return; }
+  btn.disabled=true;
+  const res=await req("/admin/venues/"+encodeURIComponent(v.id),{ method:"PATCH", body:JSON.stringify(body) });
+  btn.disabled=false;
+  if(!res.ok){
+    if(badEmail(res)){ invalid(q("#ve_email"), BAD_EMAIL); return; }
+    failToast(res, res.status===404?"This venue no longer exists — refreshing":"Could not save");
+    if(res.status===404){ closeDialog(); refreshVenues(); }
+    return; }
+  closeDialog();
+  toast(emailChanged?(email?"Saved — email changed":"Saved — email removed"):"Saved"); refreshVenues();
+}
+// Restore refused (409 past_retention): the wedding's own deletion date has passed, so it would be erased again at once.
+function showPastRetention(item, t, deleteAt){
+  if(!item) return;
+  let box=item.querySelector("[data-past]");
+  if(!box){ box=document.createElement("div"); box.dataset.past=""; box.className="keybox note"; box.style.marginTop="8px"; item.querySelector(".grow").appendChild(box); }
+  box.innerHTML=`<div>This wedding is past its deletion date${deleteAt?` (${esc(fmtDate(deleteAt))})`:""}. To bring it back, first add an exception for plan <span class="mono" style="word-break:break-all">${esc(t.planId)}</span> (Keep forever or extra days) in «After the wedding», then restore.</div>
+    <div class="row fw" style="margin-top:8px"><button class="btn sm primary" data-t="keeprestore">Add keep-forever exception and restore</button></div>`;
+}
+// Weddings the venue deleted: 14 days in the trash; only the admin restores (when the venue asks) or erases them now.
+function openTrash(v){
+  const d=openDialog(`${dlgHead(`Deleted weddings — ${esc(v.name)}`)}
+    <div class="dbody"><div class="empty">Loading…</div></div>
+    <div class="dfoot"><button class="btn" data-dclose>Close</button></div>`);
+  d.dataset.ctx="trash:"+v.id;
+  loadTrash(v, d);
+}
+async function loadTrash(v, d){
+  const ctx="trash:"+v.id;
+  const res=await req("/admin/venues/"+encodeURIComponent(v.id)+"/trash");
+  if(!d.open || d.dataset.ctx!==ctx) return;
+  const body=d.querySelector(".dbody"); if(!body) return;
+  if(!res.ok || !res.d){ if(res.status!==403) body.innerHTML=`<div class="empty">${res.status===404?"This venue no longer exists.":"Could not load the deleted weddings — try again."}</div>`; return; }
+  const list=(res.d.trash||[]).slice().sort((a,b)=>(b.deletedAt||0)-(a.deletedAt||0));
+  body.innerHTML=`<p class="muted" style="margin:0 0 14px">The venue deleted these weddings. Each is erased for good 14 days after it was deleted. Only you can bring one back — and only when the venue asks.</p>`
+    +(list.length ? list.map(t=>`<div class="titem" data-pid="${esc(t.planId)}">
+        <div class="grow"><strong>${esc(t.label||"Untitled")}</strong>
+          <div class="muted">Wedding: ${t.date?esc(fmtYmd(t.date)):"no date"} · deleted ${esc(fmtDateTime(t.deletedAt))}</div>
+          <div class="muted">Erased for good on ${esc(fmtDate(t.purgeAt))} (${esc(relTime(t.purgeAt))})</div></div>
+        <div class="row acts"><button class="btn sm" data-t="restore">Restore…</button><button class="btn sm danger" data-t="erase">Erase now…</button></div>
+      </div>`).join("") : `<div class="empty">No deleted weddings.</div>`);
+  body.onclick=async e=>{
+    const btn=e.target.closest("button[data-t]"); if(!btn) return;
+    const item=btn.closest("[data-pid]"), t=list.find(x=>x.planId===(item&&item.dataset.pid)); if(!t) return;
+    const path="/admin/venues/"+encodeURIComponent(v.id)+"/trash/"+encodeURIComponent(t.planId);
+    const label=t.label||"Untitled";
+    if(btn.dataset.t==="restore"){
+      if(!confirm(`Only restore when the venue asked you to.\n\nRestore "${label}"? It goes back into the console of ${v.name}.`)) return;
+      btn.disabled=true; const r=await req(path+"/restore",{ method:"POST", body:"{}" }); btn.disabled=false;
+      if(r.status===409 && r.d && r.d.error==="past_retention"){ showPastRetention(item, t, r.d.deleteAt); return; }
+      if(!r.ok){ failToast(r, r.status===410?"It can no longer be restored":r.status===404?"It is no longer in the trash":"Restore failed"); }
+      else toast(`"${label}" restored`);
+    } else if(btn.dataset.t==="keeprestore"){
+      // The wedding is past its after-the-wedding deletion date: keep it forever first (an existing exception keeps its other parts), then restore.
+      if(!confirm(`Keep "${label}" forever and restore it?\n\nThis adds a «Keep forever» exception for plan ${t.planId}; you can remove it later under «After the wedding».`)) return;
+      btn.disabled=true;
+      const ex=((settingsCache&&settingsCache.planExceptions)||[]).find(x=>x.planId===t.planId)||{};
+      const ret={ ...(ex.lockAfter!=null?{ lockAfter:ex.lockAfter }:{}), keep:true };
+      const p=await req("/admin/plans/"+encodeURIComponent(t.planId)+"/retention",{ method:"PUT", body:JSON.stringify(ret) });
+      if(!p.ok){ btn.disabled=false; failToast(p, p.status===404?"It is no longer in the trash":"Could not add the exception — nothing was restored"); if(p.status!==403){ refreshVenues(); loadTrash(v, d); } return; }
+      refreshSettings();
+      const r=await req(path+"/restore",{ method:"POST", body:"{}" }); btn.disabled=false;
+      if(!r.ok){ failToast(r, r.status===410?"It can no longer be restored (the keep-forever exception was added)":r.status===404?"It is no longer in the trash":"The exception was added, but the restore failed — try «Restore…» again"); }
+      else toast(`"${label}" kept forever and restored`);
+    } else if(btn.dataset.t==="erase"){
+      if(!confirm(`Erase "${label}" now?\n\nThe plan, its guest list and its history are deleted for good. This cannot be undone.`)) return;
+      btn.disabled=true; const r=await req(path,{ method:"DELETE" }); btn.disabled=false;
+      if(!r.ok){ failToast(r, "Erase failed"); }
+      else toast(`"${label}" erased`);
+    }
+    refreshVenues(); loadTrash(v, d);
+  };
 }
 function onRowAction(){ return async e=>{
   const btn=e.target.closest("button[data-a]"); if(!btn) return;
@@ -592,15 +977,12 @@ function onRowAction(){ return async e=>{
     if(res.d.key){ showVenueKey(v, res.d.key, "current"); copySilently(res.d.key, "Key copied"); }
     else showVenueOwnKey(v);
   }
-  else if(btn.dataset.a==="email"){
-    const next=prompt(`Email for "${v.name}" — setup and recovery links go here (leave empty to remove):`, v.email||"");
-    if(next==null) return;
-    const email=next.trim();
-    if(email.toLowerCase()===(v.email||"")) return;
-    if(v.email && !confirm(`Change the email of "${v.name}"?\n\nFrom: ${v.email}\nTo: ${email||"(none)"}${mailOn()?"\n\nThe old address gets an email saying TakeaSeat changed it.":""}`)) return;
-    btn.disabled=true; const res=await req(path,{method:"PATCH",body:JSON.stringify({email})}); btn.disabled=false;
-    if(res.ok){ toast(email?"Email saved":"Email removed"); refreshVenues(); }
-    else failToast(res, badEmail(res)?BAD_EMAIL:"Failed"); }
+  else if(btn.dataset.a==="edit") openVenueEdit(v);
+  else if(btn.dataset.a==="trash") openTrash(v);
+  else if(btn.dataset.a==="invoiced"){
+    btn.disabled=true; const res=await req(path+"/invoiced",{method:"POST",body:"{}"}); btn.disabled=false;
+    if(res.ok){ toast("Marked as invoiced"); refreshVenues(); }
+    else failToast(res, res.status===404?"This venue no longer exists":"Failed"); }
   else if(btn.dataset.a==="toggle"){
     btn.disabled=true; const res=await req(path,{method:"PATCH",body:JSON.stringify({active:!v.active})}); btn.disabled=false;
     if(res.ok){ toast(v.active?"Disabled":"Enabled"); refreshVenues(); } else failToast(res, "Failed"); }
@@ -612,6 +994,111 @@ function onRowAction(){ return async e=>{
       toast("Deleted"); refreshVenues(); refreshSupport(); }
     else failToast(res, "Failed"); }
 }; }
+
+// ---------------------------------------------------------------- after the wedding: global default + plan exceptions
+async function refreshSettings(){
+  if(!document.getElementById("gbox")) return;
+  const res=await req("/admin/settings");
+  const gbox=document.getElementById("gbox"), xlist=document.getElementById("xlist"); if(!gbox || !xlist) return;
+  if(!res.ok || !res.d){ if(res.status!==403){ gbox.innerHTML=`<div class="empty">Could not load the settings — reload the page.</div>`; xlist.innerHTML=""; } return; }
+  settingsCache={ retention:res.d.retention||{}, planExceptions:Array.isArray(res.d.planExceptions)?res.d.planExceptions:[] };
+  renderGlobal(); renderExceptions();
+}
+function renderGlobal(){
+  const box=document.getElementById("gbox"); if(!box) return;
+  const g=globalRet();
+  box.innerHTML=`<label class="chk"><input type="checkbox" id="glock"${g.lockAfter?" checked":""}> Plans become view-only the day after the wedding</label>
+    <div class="row fw" style="margin-top:12px;font-size:14px">Delete <input type="number" class="inl" id="gdays" min="0" max="${MAX_KEEP_DAYS}" value="${esc(g.keepDays)}"> days after the wedding</div>
+    <div class="muted" style="margin-top:8px">Until then anyone with access can still open the plan and download its PDF. A plan without a wedding date counts as over 18 months after it was made.</div>
+    <div class="row fw" style="margin-top:14px"><button class="btn primary" id="gsave">Save</button></div>`;
+  document.getElementById("gsave").onclick=saveGlobal;
+}
+async function saveGlobal(){
+  const btn=document.getElementById("gsave"), el=document.getElementById("gdays"); if(!btn || btn.disabled) return;
+  const n=el.value.trim()===""?NaN:Number(el.value), lockAfter=document.getElementById("glock").checked, g=globalRet();
+  if(!Number.isInteger(n) || n<0 || n>MAX_KEEP_DAYS){ invalid(el, `Enter the number of days (0–${MAX_KEEP_DAYS})`); return; }
+  if(n===g.keepDays && lockAfter===g.lockAfter){ toast("Nothing changed"); return; }
+  if(n<g.keepDays && !confirm(`Delete plans ${daysText(n)} after the wedding instead of ${daysText(g.keepDays)}?\n\nPlans whose wedding was more than ${daysText(n)} ago are deleted at the next hourly check (unless they have their own setting). This cannot be undone.`)) return;
+  btn.disabled=true;
+  const res=await req("/admin/settings",{ method:"PUT", body:JSON.stringify({ retention:{ keepDays:n, lockAfter } }) });
+  btn.disabled=false;
+  if(!res.ok || !res.d){ failToast(res, "Could not save the settings"); return; }
+  settingsCache={ ...(settingsCache||{}), retention:res.d.retention||{ keepDays:n, lockAfter } };
+  renderGlobal(); toast("Saved");
+}
+function exceptionRule(x){ return retentionText(x) || "—"; }
+function exceptionsHtml(list){
+  if(!list.length) return `<div class="empty">No exceptions — every plan follows the rules above (or its venue's / couple's).</div>`;
+  return `<table class="cards"><thead><tr><th>Plan</th><th>Rule</th><th>Wedding</th><th>Owner</th><th></th></tr></thead><tbody>
+    ${list.map(x=>`<tr data-pid="${esc(x.planId)}">
+      <td><span class="mono" style="font-size:12.5px;word-break:break-all">${esc(x.planId)}</span></td>
+      <td data-l="Rule">${esc(exceptionRule(x))}</td>
+      <td data-l="Wedding">${x.weddingDate?esc(fmtYmd(x.weddingDate)):`<span class="muted">no date</span>`}</td>
+      <td data-l="Owner">${x.owner==="venue"?`<span class="badge season">Venue</span>`:x.owner==="couple"?`<span class="badge per">Couple</span>`:`<span class="badge off">${esc(x.owner||"—")}</span>`}</td>
+      <td class="acts-cell"><div class="row acts"><button class="btn sm danger" data-x="remove">Remove</button></div></td>
+    </tr>`).join("")}</tbody></table>`;
+}
+function renderExceptions(){
+  const box=document.getElementById("xlist"); if(!box) return;
+  const list=(settingsCache&&settingsCache.planExceptions)||[];
+  box.innerHTML=exceptionsHtml(list);
+  const n=document.getElementById("xcount"); if(n) n.textContent=list.length?`(${list.length})`:"";
+}
+// A pasted planner link (…?plan=<id>#…) or a bare plan id → the id; "" if neither.
+function planIdFrom(s){
+  s=String(s||"").trim(); if(!s) return "";
+  let id="";
+  try{ id=new URL(s).searchParams.get("plan")||""; }catch(e){}
+  if(!id){ const m=/[?&]plan=([^&#\s]+)/.exec(s); if(m){ try{ id=decodeURIComponent(m[1]); }catch(e){ id=m[1]; } } }
+  if(!id && /^[A-Za-z0-9_-]{6,64}$/.test(s)) id=s;
+  return /^[A-Za-z0-9_-]{6,64}$/.test(id)?id:"";
+}
+function wireExceptionForm(){
+  const q=id=>document.getElementById(id);
+  const upd=()=>{ q("xmore").disabled=q("xkeep").checked; q("xdays").disabled=q("xkeep").checked; };
+  q("xkeep").addEventListener("change",upd);
+  q("xdays").addEventListener("input",()=>{ if(q("xdays").value!=="") q("xmore").checked=true; });
+  q("xmore").addEventListener("change",()=>{ if(q("xmore").checked) q("xdays").focus(); });
+  q("xplan").addEventListener("keydown",e=>{ if(e.key==="Enter") addException(); });
+  q("xadd").onclick=addException; upd();
+}
+async function addException(){
+  const q=id=>document.getElementById(id), btn=q("xadd"); if(!btn || btn.disabled) return;
+  const pid=planIdFrom(q("xplan").value);
+  if(!pid){ invalid(q("xplan"), "Paste a plan link (with ?plan=…) or a plan id"); return; }
+  const body={};
+  if(q("xkeep").checked) body.keep=true;
+  if(q("xedit").checked) body.lockAfter=false;
+  if(!body.keep && q("xmore").checked){
+    const n=q("xdays").value.trim()===""?NaN:Number(q("xdays").value);
+    if(!Number.isInteger(n) || n<0 || n>MAX_KEEP_DAYS){ invalid(q("xdays"), `Enter the number of days (0–${MAX_KEEP_DAYS})`); return; }
+    body.keepDays=n;
+  }
+  if(!Object.keys(body).length){ toast("Choose what the exception does"); return; }
+  const had=((settingsCache&&settingsCache.planExceptions)||[]).some(x=>x.planId===pid);
+  if(had && !confirm(`Plan ${pid} already has an exception. Replace it?`)) return;
+  btn.disabled=true;
+  const res=await req("/admin/plans/"+encodeURIComponent(pid)+"/retention",{ method:"PUT", body:JSON.stringify(body) });
+  btn.disabled=false;
+  if(!res.ok || !res.d){ failToast(res, res.status===404?"No plan with that id — check the link":"Could not save the exception"); return; }
+  const L=res.d.life||{};
+  q("xplan").value=""; q("xdays").value=""; ["xkeep","xedit","xmore"].forEach(id=>q(id).checked=false); q("xmore").disabled=false; q("xdays").disabled=false;
+  toast(L.keep?"Exception saved — the plan is kept":L.deleteAt?"Exception saved — deleted on "+fmtDate(L.deleteAt):"Exception saved");
+  refreshSettings();
+}
+async function onExceptionAction(e){
+  const btn=e.target.closest("button[data-x]"); if(!btn) return;
+  const tr=btn.closest("tr"); if(!tr) return;
+  const pid=tr.dataset.pid;
+  if(btn.dataset.x==="remove"){
+    if(!confirm(`Remove the exception for plan ${pid}?\n\nThe plan follows the normal rules again — if its wedding is long past, it may be deleted at the next hourly check.`)) return;
+    btn.disabled=true;
+    const res=await req("/admin/plans/"+encodeURIComponent(pid)+"/retention",{ method:"DELETE" });
+    btn.disabled=false;
+    if(!res.ok){ failToast(res, res.status===404?"That plan no longer exists":"Could not remove the exception"); if(res.status===404) refreshSettings(); return; }
+    toast("Exception removed"); refreshSettings();
+  }
+}
 
 async function load(silent){
   if(!getKey()){ renderLogin(); return; }

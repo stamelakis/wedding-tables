@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Σύμβαση Επεξεργασίας Δεδομένων — TakeaSeat / Data Processing Agreement</title>
-<meta name="description" content="Σύμβαση Επεξεργασίας Δεδομένων (Άρθρο 28 GDPR) — TakeaSeat Data Processing Agreement — DRAFT for legal review.">
+<meta name="description" content="Σύμβαση Επεξεργασίας Δεδομένων (Άρθρο 28 GDPR) — TakeaSeat Data Processing Agreement.">
 <style>
   :root{
     --paper:#f7f4f1; --paper-2:#efe9e2; --card:#fffdfb;
@@ -33,9 +33,14 @@
   .doc h1{ font-family:var(--serif); font-weight:600; letter-spacing:-.01em; font-size:clamp(26px,3.6vw,34px); line-height:1.14; margin:6px 0 6px; }
   .updated{ color:var(--faint); font-size:14px; margin:0 0 22px; }
 
-  .banner{ background:var(--amber-bg); border:1px solid var(--amber-line); color:var(--amber-ink); border-radius:14px; padding:16px 18px; margin:0 0 14px; box-shadow:var(--shadow); }
-  .banner strong{ display:block; font-size:15.5px; margin-bottom:3px; }
-  .banner p{ margin:6px 0 0; font-size:14px; line-height:1.6; }
+  /* the one place with the provider's identity (fill the [brackets] after registration) */
+  .idblock{ background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 18px 12px; margin:0 0 14px; box-shadow:var(--shadow); font-size:14.5px; line-height:1.6; }
+  .idblock h2{ font-family:var(--sans); font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent-ink); margin:0 0 8px; font-weight:700; }
+  .idblock dl{ display:grid; grid-template-columns:max-content 1fr; gap:4px 16px; margin:0; }
+  .idblock dt{ color:var(--faint); }
+  .idblock dd{ margin:0; color:var(--ink); overflow-wrap:anywhere; }
+  @media (max-width:560px){ .idblock dl{ grid-template-columns:1fr; gap:0; } .idblock dd{ margin-bottom:7px; } }
+  .tscroll{ overflow-x:auto; }
 
   .note{ background:var(--accent-soft); border:1px solid #dcc9e4; border-radius:12px; padding:13px 16px; font-size:13.5px; color:var(--accent-ink); margin:0 0 30px; }
   .note b{ color:var(--accent-ink); }
@@ -48,6 +53,7 @@
   section.body table{ width:100%; border-collapse:collapse; margin:10px 0; font-size:14px; }
   section.body th,section.body td{ border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
   section.body th{ background:var(--paper-2); font-weight:700; }
+  @media (max-width:560px){ section.body table{ font-size:13px; } section.body th,section.body td{ padding:6px 6px; } }
   .parties{ background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 18px; margin:14px 0; font-size:15px; box-shadow:var(--shadow); }
   .divider{ border:none; border-top:2px solid var(--line); margin:46px 0 0; }
   .ph{ background:#fbeecb; border-bottom:1px dashed var(--gold); padding:0 3px; border-radius:3px; font-weight:600; }
@@ -84,16 +90,23 @@
 <main class="doc">
   <div class="wrap">
     <h1>Σύμβαση Επεξεργασίας Δεδομένων<br>Data Processing Agreement</h1>
-    <p class="updated">Άρθρο 28 GDPR · Τελευταία ενημέρωση / Last updated: 20 Αυγούστου 2026 · 20 August 2026</p>
+    <p class="updated">Άρθρο 28 GDPR · Έκδοση 19 Σεπτεμβρίου 2026 · Version 19 September 2026</p>
 
-    <div class="banner">
-      <strong>ΠΡΟΧΕΙΡΟ — να ελεγχθεί από νομικό πριν τη δημοσίευση</strong>
-      DRAFT — have a lawyer review before publishing.
-      <p>Το κείμενο αυτό είναι σχέδιο εργασίας και δεν αποτελεί νομική συμβουλή. Πρέπει να ελεγχθεί και να εγκριθεί από δικηγόρο πριν υπογραφεί ή δημοσιευθεί. / This document is a working draft, not legal advice, and must be reviewed and approved by a lawyer before it is signed or published.</p>
+    <div class="idblock" id="provider">
+      <h2>Στοιχεία παρόχου (Εκτελών) · Provider details (Processor)</h2>
+      <dl>
+        <dt>Επωνυμία · Legal name</dt><dd><span class="ph">[ΕΠΩΝΥΜΙΑ / LEGAL ENTITY NAME]</span> — «TakeaSeat»</dd>
+        <dt>ΑΦΜ · Tax ID (VAT)</dt><dd><span class="ph">[ΑΦΜ / TAX ID]</span></dd>
+        <dt>Αρ. ΓΕΜΗ · GEMI no.</dt><dd><span class="ph">[ΑΡ. ΓΕΜΗ / GEMI NO.]</span></dd>
+        <dt>Έδρα · Address</dt><dd><span class="ph">[ΔΙΕΥΘΥΝΣΗ / ADDRESS]</span></dd>
+        <dt>Email</dt><dd><a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a></dd>
+        <dt>Τηλέφωνο · Phone</dt><dd><a href="tel:+306977355378">+30 697 735 5378</a> · Viber · WhatsApp</dd>
+        <dt>Υποστήριξη · Support</dt><dd>10:00–14:00 &amp; 17:00–21:00 (ώρα Ελλάδας / Greek time)</dd>
+      </dl>
     </div>
 
     <div class="note">
-      <b>Προς συμπλήρωση πριν την υπογραφή / Fill in before signing:</b> τα πεδία σε <span class="ph">[αγκύλες]</span> (επωνυμία & ΑΦΜ & διεύθυνση του TakeaSeat και του Κτήματος) πρέπει να συμπληρωθούν πριν την υπογραφή.
+      <b>Προς συμπλήρωση κατά την υπογραφή / Fill in when signing:</b> τα στοιχεία του Κτήματος σε <span class="ph">[αγκύλες]</span>. / The Venue's details in <span class="ph">[brackets]</span>.
     </div>
 
     <!-- ==================== ΕΛΛΗΝΙΚΑ ==================== -->
@@ -102,41 +115,70 @@
       <div class="parties">
         Η παρούσα Σύμβαση Επεξεργασίας Δεδομένων («DPA») συνάπτεται μεταξύ:<br><br>
         <b>(Α) του Υπευθύνου Επεξεργασίας</b> — του Κτήματος: <span class="ph">[ΕΠΩΝΥΜΙΑ ΚΤΗΜΑΤΟΣ]</span>, ΑΦΜ <span class="ph">[ΑΦΜ]</span>, <span class="ph">[ΔΙΕΥΘΥΝΣΗ]</span> («Υπεύθυνος»), και<br><br>
-        <b>(Β) του Εκτελούντος την Επεξεργασία</b> — TakeaSeat: <span class="ph">[ΕΠΩΝΥΜΙΑ / LEGAL ENTITY NAME]</span>, ΑΦΜ <span class="ph">[ΑΦΜ / TAX ID]</span>, <span class="ph">[ΔΙΕΥΘΥΝΣΗ / ADDRESS]</span>, τηλ. +30 697 7355 378, info@takeaseat.gr («Εκτελών»).<br><br>
+        <b>(Β) του Εκτελούντος την Επεξεργασία</b> — της TakeaSeat, με τα στοιχεία του πλαισίου <a href="#provider">«Στοιχεία παρόχου»</a> στην αρχή της σελίδας («Εκτελών»).<br><br>
         Συμπληρώνει τους <a href="/terms.html">Όρους Χρήσης</a> και υπερισχύει σε περίπτωση σύγκρουσης ως προς την επεξεργασία δεδομένων.
       </div>
 
       <h2>1. Αντικείμενο και διάρκεια</h2>
-      <p>Ο Εκτελών επεξεργάζεται προσωπικά δεδομένα για λογαριασμό του Υπευθύνου με σκοπό την παροχή της υπηρεσίας τραπεζολογίου TakeaSeat. Η διάρκεια ταυτίζεται με τη διάρκεια των Όρων Χρήσης / του ενεργού λογαριασμού και λήγει με την ολοκλήρωση της διαγραφής/επιστροφής δεδομένων.</p>
+      <p>Ο Εκτελών επεξεργάζεται προσωπικά δεδομένα για λογαριασμό του Υπευθύνου με σκοπό την παροχή της υπηρεσίας τραπεζολογίου TakeaSeat για τους γάμους του Κτήματος. Η διάρκεια ταυτίζεται με τη διάρκεια της συνδρομής και των Όρων Χρήσης και λήγει με την ολοκλήρωση της διαγραφής ή επιστροφής των δεδομένων.</p>
 
       <h2>2. Φύση και σκοπός της επεξεργασίας</h2>
-      <p>Αποθήκευση, οργάνωση, εμφάνιση και συγχρονισμός λιστών καλεσμένων και διατάξεων τραπεζιών, ώστε το Κτήμα και τα ζευγάρια να σχεδιάζουν την κάθισμα των καλεσμένων. Η επεξεργασία γίνεται αποκλειστικά κατ' εντολή του Υπευθύνου.</p>
+      <p>Αποθήκευση, οργάνωση, εμφάνιση και συγχρονισμός λιστών καλεσμένων, ομάδων, προσκλήσεων, σημειώσεων, θέσεων και κάτοψης, ώστε το Κτήμα και τα ζευγάρια του να σχεδιάζουν πού θα καθίσουν οι καλεσμένοι· δημιουργία αρχείων PDF (κάτοψη, λίστες)· τήρηση ιστορικού εκδόσεων, ημερολογίου πρόσβασης και αντιγράφων ασφαλείας. Η επεξεργασία γίνεται αποκλειστικά κατ' εντολή του Υπευθύνου.</p>
 
       <h2>3. Κατηγορίες δεδομένων και υποκειμένων</h2>
       <ul>
-        <li><b>Υποκείμενα:</b> καλεσμένοι γάμου· ζευγάρια (χρήστες)· εκπρόσωποι του Κτήματος.</li>
-        <li><b>Δεδομένα:</b> ονόματα καλεσμένων· ελεύθερες σημειώσεις (π.χ. πόλη, προτιμήσεις θέσης)· ένδειξη παρουσίας/κατάστασης· διάταξη τραπεζιών· στοιχεία επικοινωνίας λογαριασμού Κτήματος.</li>
-        <li><b>Δεν προβλέπεται</b> επεξεργασία δεδομένων πληρωμών ή ειδικών κατηγοριών (άρθρο 9).</li>
+        <li><b>Υποκείμενα:</b> καλεσμένοι των γάμων· τα ζευγάρια του Κτήματος (χρήστες)· εκπρόσωποι και προσωπικό του Κτήματος που χρησιμοποιούν την υπηρεσία.</li>
+        <li><b>Δεδομένα:</b> περιεχόμενο σχεδίου (ονόματα καλεσμένων, ομάδες, προσκλήσεις, ελεύθερες σημειώσεις, θέσεις, κάτοψη, όνομα και ημερομηνία του γάμου)· ημερολόγιο πρόσβασης ανά σχέδιο (πρόσβαση της υποστήριξης, προσκλήσεις υποστήριξης και ανάκλησή τους, νέοι σύνδεσμοι, αλλαγές email ανάκτησης και ημερομηνίας γάμου, κλείδωμα μετά τον γάμο· ώρα και ρόλος, και σε ορισμένες εγγραφές χονδρικός τύπος συσκευής· όχι τα συνηθισμένα ανοίγματα του Κτήματος ή του ζευγαριού· οι 50 πιο πρόσφατες εγγραφές)· προσκλήσεις υποστήριξης· οι 30 τελευταίες εκδόσεις κάθε σχεδίου.</li>
+        <li><b>Δεν προβλέπεται</b> επεξεργασία δεδομένων πληρωμών ή ειδικών κατηγοριών (άρθρο 9)· ο Υπεύθυνος ζητά από τα ζευγάρια του να μην τις καταχωρούν στις σημειώσεις.</li>
+        <li>Τα στοιχεία λογαριασμού του ίδιου του Κτήματος (email ανάκτησης, στοιχεία επικοινωνίας, τιμολόγηση) τα επεξεργάζεται η TakeaSeat ως Υπεύθυνος Επεξεργασίας, κατά την <a href="/privacy.html">Πολιτική Απορρήτου</a>, και δεν καλύπτονται από την παρούσα.</li>
       </ul>
 
-      <h2>4. Υποχρεώσεις του Εκτελούντος</h2>
+      <h2>4. Διατήρηση και διαγραφή (εντολές του Υπευθύνου)</h2>
+      <p>Με την παρούσα ο Υπεύθυνος δίνει στον Εκτελούντα τις εξής τεκμηριωμένες εντολές, τις οποίες η υπηρεσία εφαρμόζει αυτόματα:</p>
       <ul>
-        <li>Επεξεργάζεται δεδομένα <b>μόνο βάσει τεκμηριωμένων εντολών</b> του Υπευθύνου (περιλαμβανομένων των Όρων και της χρήσης της πλατφόρμας).</li>
+        <li>Από την επόμενη ημέρα του γάμου (00:00, ώρα Ελλάδας) το σχέδιο γίνεται μόνο για προβολή, για όλους.</li>
+        <li>Το σχέδιο διαγράφεται, μαζί με το ιστορικό εκδόσεων και το ημερολόγιο πρόσβασης, <b>7 ημέρες μετά τον γάμο</b>, εκτός αν ο Υπεύθυνος συμφωνήσει με τον Εκτελούντα διαφορετικό διάστημα (π.χ. με email).</li>
+        <li>Σχέδια χωρίς ημερομηνία γάμου γίνονται μόνο για προβολή περίπου 18 μήνες μετά τη δημιουργία τους και διαγράφονται 7 ημέρες αργότερα· για σχέδια που δημιουργήθηκαν πριν τις 19 Σεπτεμβρίου 2026, οι 18 μήνες μετρούν από εκείνη την ημέρα.</li>
+        <li>Γάμος που διαγράφει το Κτήμα φυλάσσεται 14 ημέρες και επαναφέρεται μόνο αν το ζητήσει το Κτήμα· μετά διαγράφεται οριστικά.</li>
+        <li>Τα αντίγραφα ασφαλείας (νυχτερινά, κρυπτογραφημένα) κρατούνται έως 14 ημέρες στον διακομιστή και έως 21 ημέρες εκτός αυτού, και μετά σβήνονται.</li>
+        <li>Με τη λήξη της σύμβασης, ο Εκτελών <b>διαγράφει ή επιστρέφει</b> τα δεδομένα, κατ' επιλογή του Υπευθύνου, εκτός αν ο νόμος επιβάλλει τη διατήρησή τους.</li>
+      </ul>
+
+      <h2>5. Υποχρεώσεις του Εκτελούντος</h2>
+      <ul>
+        <li>Επεξεργάζεται δεδομένα <b>μόνο βάσει τεκμηριωμένων εντολών</b> του Υπευθύνου (η παρούσα, οι Όροι Χρήσης και οι ρυθμίσεις που κάνει το Κτήμα στην πλατφόρμα)· αν κατά τη γνώμη του μια εντολή παραβιάζει τον νόμο, ενημερώνει αμέσως τον Υπεύθυνο.</li>
         <li>Διασφαλίζει την <b>εμπιστευτικότητα</b> των προσώπων που επεξεργάζονται δεδομένα.</li>
-        <li>Εφαρμόζει τα <b>μέτρα ασφαλείας του άρθρου 32</b>: HTTPS/TLS· πρόσβαση μέσω συνδέσμων/κλειδιών υψηλής εντροπίας· διαπιστευτήρια στο fragment του URL (δεν αποστέλλονται στον διακομιστή)· κρυπτογραφημένα, δοκιμασμένα αντίγραφα ασφαλείας· πρόσβαση περιορισμένη στον υπεύθυνο λειτουργίας.</li>
-        <li>Δεσμεύει τους <b>υπο-εκτελούντες</b> με ισοδύναμες υποχρεώσεις προστασίας δεδομένων. Εγκεκριμένος υπο-εκτελών: <b>Hetzner Online GmbH (Γερμανία, ΕΕ)</b> — φιλοξενία &amp; αποθήκευση. (Ο παλαιός Cloudflare αποσύρεται.) Ο Εκτελών ενημερώνει για κάθε νέο υπο-εκτελούντα, με δικαίωμα αντίρρησης του Υπευθύνου.</li>
-        <li><b>Συνδράμει</b> τον Υπεύθυνο σε αιτήματα υποκειμένων (DSARs) και στην εκπλήρωση των υποχρεώσεων των άρθρων 32-36 (ασφάλεια, παραβιάσεις, DPIA).</li>
-        <li>Με τη λήξη, <b>διαγράφει ή επιστρέφει</b> τα δεδομένα κατ' επιλογή του Υπευθύνου· τα αντίγραφα ασφαλείας σβήνουν εντός ~14 ημερών.</li>
+        <li><b>Συνδράμει</b> τον Υπεύθυνο σε αιτήματα υποκειμένων και στην εκπλήρωση των υποχρεώσεων των άρθρων 32–36 GDPR (ασφάλεια, παραβιάσεις, εκτίμηση αντικτύπου).</li>
         <li>Θέτει στη διάθεση του Υπευθύνου τις αναγκαίες πληροφορίες και <b>επιτρέπει ελέγχους (audits)</b> κατόπιν εύλογης προειδοποίησης.</li>
       </ul>
 
-      <h2>5. Γνωστοποίηση παραβιάσεων</h2>
-      <p>Ο Εκτελών ενημερώνει τον Υπεύθυνο <b>χωρίς αδικαιολόγητη καθυστέρηση</b> μόλις αντιληφθεί παραβίαση δεδομένων προσωπικού χαρακτήρα, παρέχοντας τις διαθέσιμες πληροφορίες ώστε ο Υπεύθυνος να εκπληρώσει τις υποχρεώσεις των άρθρων 33-34.</p>
+      <h2>6. Μέτρα ασφαλείας και πρόσβαση του Εκτελούντος (άρθρο 32)</h2>
+      <ul>
+        <li>HTTPS/TLS σε όλη την κίνηση.</li>
+        <li>Πρόσβαση μόνο με μυστικούς συνδέσμους/κλειδιά υψηλής εντροπίας, χωριστά για επεξεργασία, προβολή, κτήμα και υποστήριξη· κάθε αίτημα ελέγχεται από τον διακομιστή και οι επαναλαμβανόμενες αποτυχημένες προσπάθειες περιορίζονται.</li>
+        <li>Τα κλειδιά βρίσκονται στο fragment του συνδέσμου (μετά το «#»), ποτέ στη διεύθυνση (query string) ή στα αρχεία καταγραφής του διακομιστή· η εφαρμογή τα στέλνει στον διακομιστή μόνο μέσω HTTPS, σε κεφαλίδα (header) του αιτήματος.</li>
+        <li>Ημερολόγιο πρόσβασης ανά σχέδιο, ορατό στο Κτήμα.</li>
+        <li>Νυχτερινά κρυπτογραφημένα αντίγραφα ασφαλείας, με το κλειδί αποκρυπτογράφησης εκτός διακομιστή, και κρυπτογραφημένο αντίγραφο σε δεύτερη τοποθεσία εντός ΕΕ.</li>
+        <li><b>Πρόσβαση του Εκτελούντος:</b> η TakeaSeat δεν ανοίγει τα σχέδια του Κτήματος χωρίς πρόσκλησή του — κάθε πρόσβαση καταγράφεται. Το Κτήμα μάς προσκαλεί για συγκεκριμένο γάμο με το κουμπί υποστήριξης (24 ώρες έως 7 ημέρες) και μπορεί να ανακαλέσει την πρόσκληση οποτεδήποτε. Ενέργειες του διαχειριστή που αφορούν το Κτήμα (νέο κλειδί κονσόλας, αλλαγή email ανάκτησης, επαναφορά διαγραμμένου γάμου) γίνονται μόνο κατόπιν αιτήματος του Κτήματος, και το Κτήμα ενημερώνεται. Όπως σε κάθε φιλοξενούμενη υπηρεσία, ο διαχειριστής του διακομιστή έχει τεχνικά πρόσβαση στη βάση δεδομένων· τη χρησιμοποιεί μόνο για τη λειτουργία και την ασφάλεια της υπηρεσίας (π.χ. επαναφορά από αντίγραφο ασφαλείας), όχι για να διαβάζει σχέδια.</li>
+      </ul>
 
-      <h2>6. Διεθνείς διαβιβάσεις</h2>
-      <p>Η επεξεργασία γίνεται <b>αποκλειστικά εντός ΕΕ/ΕΟΧ (Γερμανία)</b>. <b>Δεν υφίσταται διαβίβαση εκτός ΕΕ/ΕΟΧ.</b> Τυχόν μελλοντική διαβίβαση θα προϋποθέτει κατάλληλες εγγυήσεις (κεφάλαιο V GDPR) και προηγούμενη έγκριση.</p>
+      <h2>7. Υπο-εκτελούντες</h2>
+      <p>Ο Υπεύθυνος παρέχει γενική έγκριση για τους παρακάτω υπο-εκτελούντες. Ο Εκτελών τους δεσμεύει με ισοδύναμες υποχρεώσεις προστασίας δεδομένων και παραμένει υπεύθυνος απέναντι στον Υπεύθυνο για αυτούς.</p>
+      <div class="tscroll"><table>
+        <tr><th>Πάροχος</th><th>Ρόλος</th><th>Τοποθεσία</th></tr>
+        <tr><td>Hetzner Online GmbH</td><td>Φιλοξενία του διακομιστή και αποθήκευση των δεδομένων.</td><td>Γερμανία (ΕΕ)</td></tr>
+        <tr><td>Backblaze, Inc. (B2 Cloud Storage)</td><td>Αποθήκευση των αντιγράφων ασφαλείας εκτός διακομιστή· κρυπτογραφούνται πριν σταλούν, με κλειδί που κρατά μόνο ο Εκτελών.</td><td>Περιοχή EU Central — Άμστερνταμ, Ολλανδία (ΕΕ)</td></tr>
+        <tr><td>Πάροχος αποστολής email (δεν έχει επιλεγεί ακόμη)</td><td>Αποστολή των email της υπηρεσίας.</td><td>Θα αναγραφεί εδώ πριν χρησιμοποιηθεί.</td></tr>
+      </table></div>
+      <p>Πριν χρησιμοποιήσει νέο υπο-εκτελούντα (όπως τον πάροχο email), ο Εκτελών ενημερώνει τον Υπεύθυνο με email και ενημερώνει τη λίστα αυτή και την <a href="/privacy.html">Πολιτική Απορρήτου</a>. Ο Υπεύθυνος μπορεί να αντιταχθεί για εύλογο λόγο· αν η αντίρρηση δεν επιλυθεί, μπορεί να καταγγείλει τη σύμβαση.</p>
 
-      <h2>7. Υπογραφές</h2>
+      <h2>8. Γνωστοποίηση παραβιάσεων</h2>
+      <p>Ο Εκτελών ενημερώνει τον Υπεύθυνο <b>χωρίς αδικαιολόγητη καθυστέρηση</b> μόλις αντιληφθεί παραβίαση δεδομένων προσωπικού χαρακτήρα, παρέχοντας τις διαθέσιμες πληροφορίες ώστε ο Υπεύθυνος να εκπληρώσει τις υποχρεώσεις των άρθρων 33–34.</p>
+
+      <h2>9. Διεθνείς διαβιβάσεις</h2>
+      <p>Η επεξεργασία γίνεται <b>αποκλειστικά εντός ΕΕ/ΕΟΧ (Γερμανία, Ολλανδία)</b>. <b>Δεν υφίσταται διαβίβαση εκτός ΕΕ/ΕΟΧ.</b> Τυχόν μελλοντική διαβίβαση θα προϋποθέτει κατάλληλες εγγυήσεις (κεφάλαιο V GDPR) και προηγούμενη έγκριση του Υπευθύνου.</p>
+
+      <h2>10. Υπογραφές</h2>
       <div class="sign">
         <div class="box">
           <h3>Υπεύθυνος Επεξεργασίας (Κτήμα)</h3>
@@ -147,7 +189,7 @@
         </div>
         <div class="box">
           <h3>Εκτελών την Επεξεργασία (TakeaSeat)</h3>
-          <div class="fld">Επωνυμία: <span class="ph">[ΕΠΩΝΥΜΙΑ / LEGAL ENTITY NAME]</span></div>
+          <div class="fld">Επωνυμία: όπως στα <a href="#provider">Στοιχεία παρόχου</a></div>
           <div class="fld">Ονοματεπώνυμο / Ιδιότητα:<span class="line"></span></div>
           <div class="fld">Υπογραφή:<span class="line"></span></div>
           <div class="fld">Ημερομηνία:<span class="line"></span></div>
@@ -163,41 +205,70 @@
       <div class="parties">
         This Data Processing Agreement ("DPA") is entered into between:<br><br>
         <b>(A) the Data Controller</b> — the Venue: <span class="ph">[VENUE LEGAL NAME]</span>, Tax ID <span class="ph">[ΑΦΜ]</span>, <span class="ph">[ADDRESS]</span> ("Controller"), and<br><br>
-        <b>(B) the Data Processor</b> — TakeaSeat: <span class="ph">[ΕΠΩΝΥΜΙΑ / LEGAL ENTITY NAME]</span>, Tax ID <span class="ph">[ΑΦΜ / TAX ID]</span>, <span class="ph">[ΔΙΕΥΘΥΝΣΗ / ADDRESS]</span>, tel. +30 697 7355 378, info@takeaseat.gr ("Processor").<br><br>
+        <b>(B) the Data Processor</b> — TakeaSeat, with the details given in the <a href="#provider">Provider details</a> box at the top of this page ("Processor").<br><br>
         It supplements the <a href="/terms.html">Terms of Service</a> and prevails in the event of conflict regarding data processing.
       </div>
 
       <h2>1. Subject-matter and duration</h2>
-      <p>The Processor processes personal data on behalf of the Controller for the purpose of providing the TakeaSeat seating-plan service. The duration matches that of the Terms of Service / the active account and ends upon completion of data deletion/return.</p>
+      <p>The Processor processes personal data on behalf of the Controller for the purpose of providing the TakeaSeat seating-plan service for the Venue's weddings. The duration matches that of the subscription and the Terms of Service, and ends upon completion of the deletion or return of the data.</p>
 
       <h2>2. Nature and purpose of processing</h2>
-      <p>Storing, organising, displaying, and syncing guest lists and table layouts, so the Venue and couples can plan guest seating. Processing is carried out solely on the Controller's instructions.</p>
+      <p>Storing, organising, displaying, and syncing guest lists, groups, invitations, notes, seating and floor plans, so the Venue and its couples can plan where guests sit; producing PDF files (floor plan, lists); keeping a version history, an access log and backups. Processing is carried out solely on the Controller's instructions.</p>
 
       <h2>3. Categories of data and data subjects</h2>
       <ul>
-        <li><b>Data subjects:</b> wedding guests; couples (users); Venue representatives.</li>
-        <li><b>Data:</b> guest names; free-text notes (e.g. city, seating preferences); an attendance/status flag; table layout; Venue account contact details.</li>
-        <li><b>No processing</b> of payment data or special categories (Art. 9) is envisaged.</li>
+        <li><b>Data subjects:</b> wedding guests; the Venue's couples (users); Venue representatives and staff who use the service.</li>
+        <li><b>Data:</b> plan content (guest names, groups, invitations, free-text notes, seating, floor plan, the wedding's name and date); an access log per plan (support access, support invitations and their withdrawal, new links, recovery-email and wedding-date changes, the lock after the wedding; time and role, and for some entries a coarse device type; not the ordinary opens by the Venue or the couple; the latest 50 entries); support invitations; the last 30 versions of each plan.</li>
+        <li><b>No processing</b> of payment data or special categories (Art. 9) is envisaged; the Controller asks its couples not to enter them in notes.</li>
+        <li>The Venue's own account data (recovery email, contact details, invoicing) are processed by TakeaSeat as a Controller, under the <a href="/privacy.html">Privacy Policy</a>, and are not covered by this DPA.</li>
       </ul>
 
-      <h2>4. Processor obligations</h2>
+      <h2>4. Retention and deletion (the Controller's instructions)</h2>
+      <p>By this DPA the Controller gives the Processor the following documented instructions, which the service applies automatically:</p>
       <ul>
-        <li>Process data <b>only on the documented instructions</b> of the Controller (including the Terms and use of the platform).</li>
+        <li>From the day after the wedding (00:00, Greek time) the plan becomes view-only, for everyone.</li>
+        <li>The plan is deleted, together with its version history and access log, <b>7 days after the wedding</b>, unless the Controller agrees a different period with the Processor (e.g. by email).</li>
+        <li>Plans without a wedding date become view-only about 18 months after they were created and are deleted 7 days later; for plans created before 19 September 2026, the 18 months count from that day.</li>
+        <li>A wedding the Venue deletes is kept for 14 days and restored only if the Venue asks; it is then erased for good.</li>
+        <li>Backups (nightly, encrypted) are kept for up to 14 days on the server and up to 21 days off-site, and are then erased.</li>
+        <li>On termination of the contract, the Processor <b>deletes or returns</b> the data, at the Controller's choice, unless the law requires them to be kept.</li>
+      </ul>
+
+      <h2>5. Processor obligations</h2>
+      <ul>
+        <li>Process data <b>only on the documented instructions</b> of the Controller (this DPA, the Terms of Service, and the settings the Venue makes in the platform); if, in its opinion, an instruction infringes the law, inform the Controller immediately.</li>
         <li>Ensure the <b>confidentiality</b> of persons processing the data.</li>
-        <li>Implement the <b>Article 32 security measures</b>: HTTPS/TLS; access via high-entropy secret links/keys; credentials kept in the URL fragment (not sent to the server); encrypted, tested backups; access limited to the operator.</li>
-        <li>Bind <b>sub-processors</b> to equivalent data-protection obligations. Approved sub-processor: <b>Hetzner Online GmbH (Germany, EU)</b> — hosting &amp; storage. (Legacy Cloudflare is being retired.) The Processor gives notice of any new sub-processor, with the Controller's right to object.</li>
-        <li><b>Assist</b> the Controller with data-subject requests (DSARs) and with obligations under Articles 32-36 (security, breaches, DPIA).</li>
-        <li>On termination, <b>delete or return</b> the data at the Controller's choice; backups are erased within ~14 days.</li>
+        <li><b>Assist</b> the Controller with data-subject requests and with obligations under Articles 32–36 GDPR (security, breaches, impact assessments).</li>
         <li>Make available the information necessary and <b>allow audits</b> on reasonable notice.</li>
       </ul>
 
-      <h2>5. Breach notification</h2>
-      <p>The Processor notifies the Controller <b>without undue delay</b> after becoming aware of a personal data breach, providing the available information so the Controller can meet its Article 33-34 obligations.</p>
+      <h2>6. Security measures and the Processor's access (Art. 32)</h2>
+      <ul>
+        <li>HTTPS/TLS across all traffic.</li>
+        <li>Access only with high-entropy secret links/keys, separate for editing, viewing, the venue and support; every request is checked by the server and repeated failed attempts are throttled.</li>
+        <li>Keys are in the link's fragment (after the "#"), never in the address (query string) or in the server's logs; the app sends them to the server only over HTTPS, in a request header.</li>
+        <li>An access log per plan, visible to the Venue.</li>
+        <li>Nightly encrypted backups, with the decryption key kept off the server, and an encrypted copy in a second location within the EU.</li>
+        <li><b>The Processor's access:</b> TakeaSeat never opens the Venue's plans without the Venue's invitation — every access is logged. The Venue invites us for a specific wedding with the support button (24 hours up to 7 days) and can withdraw the invitation at any time. Administrator actions concerning the Venue (a new console key, a change of recovery email, restoring a deleted wedding) are taken only at the Venue's request, and the Venue is informed. As with any hosted service, the server's administrator can technically access the database; this is used only to run and secure the service (e.g. restoring a backup), not to read plans.</li>
+      </ul>
 
-      <h2>6. International transfers</h2>
-      <p>Processing takes place <b>within the EU/EEA only (Germany)</b>. <b>There is no transfer outside the EU/EEA.</b> Any future transfer would require appropriate safeguards (GDPR Chapter V) and prior approval.</p>
+      <h2>7. Sub-processors</h2>
+      <p>The Controller gives general authorisation for the sub-processors below. The Processor binds them to equivalent data-protection obligations and remains liable to the Controller for them.</p>
+      <div class="tscroll"><table>
+        <tr><th>Provider</th><th>Role</th><th>Location</th></tr>
+        <tr><td>Hetzner Online GmbH</td><td>Server hosting and data storage.</td><td>Germany (EU)</td></tr>
+        <tr><td>Backblaze, Inc. (B2 Cloud Storage)</td><td>Off-site storage of the backups; they are encrypted before they are sent, with a key only the Processor holds.</td><td>Region EU Central — Amsterdam, Netherlands (EU)</td></tr>
+        <tr><td>Email delivery provider (not chosen yet)</td><td>Sending the service's emails.</td><td>Will be listed here before it is used.</td></tr>
+      </table></div>
+      <p>Before using a new sub-processor (such as the email provider), the Processor informs the Controller by email and updates this list and the <a href="/privacy.html">Privacy Policy</a>. The Controller may object on reasonable grounds; if the objection cannot be resolved, the Controller may terminate the contract.</p>
 
-      <h2>7. Signatures</h2>
+      <h2>8. Breach notification</h2>
+      <p>The Processor notifies the Controller <b>without undue delay</b> after becoming aware of a personal data breach, providing the available information so the Controller can meet its Article 33–34 obligations.</p>
+
+      <h2>9. International transfers</h2>
+      <p>Processing takes place <b>within the EU/EEA only (Germany, Netherlands)</b>. <b>There is no transfer outside the EU/EEA.</b> Any future transfer would require appropriate safeguards (GDPR Chapter V) and the Controller's prior approval.</p>
+
+      <h2>10. Signatures</h2>
       <div class="sign">
         <div class="box">
           <h3>Data Controller (Venue)</h3>
@@ -208,7 +279,7 @@
         </div>
         <div class="box">
           <h3>Data Processor (TakeaSeat)</h3>
-          <div class="fld">Entity: <span class="ph">[ΕΠΩΝΥΜΙΑ / LEGAL ENTITY NAME]</span></div>
+          <div class="fld">Entity: as in the <a href="#provider">Provider details</a></div>
           <div class="fld">Name / Title:<span class="line"></span></div>
           <div class="fld">Signature:<span class="line"></span></div>
           <div class="fld">Date:<span class="line"></span></div>

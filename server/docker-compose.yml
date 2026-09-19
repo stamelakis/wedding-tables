@@ -15,6 +15,12 @@ services:
     security_opt: ["no-new-privileges:true"]
     mem_limit: 512m
     pids_limit: 256
+    # docker's default json-file log grows without limit: keep at most 3 x 10 MB
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     env_file:
       - server.env          # OWNER_KEY=... (kept out of git)
     volumes:

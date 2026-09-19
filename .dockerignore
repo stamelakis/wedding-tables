@@ -1,0 +1,8 @@
+# Docker build context: never send private or local-only files to the daemon
+ACCESS.local.md
+*.local.*
+hermes/
+.git
+.claude
+**/node_modules
+server/data
