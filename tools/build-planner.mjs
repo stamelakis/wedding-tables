@@ -51,6 +51,47 @@ const src = lf(fs.readFileSync(path.join(root, 'planner.src.html'), 'utf8'));
   if (problems.length) { console.error('i18n problems:\n  ' + problems.join('\n  ')); process.exit(1); }
 }
 
+// ---- undeclared-identifier guard: `name = …` where `name` is never bound anywhere in the file ----
+// The planner runs in strict mode, so such an assignment throws a ReferenceError the moment that path is taken — it
+// shipped once (invRename kept assigning invRen after the declaration was deleted, killing every rename and merge),
+// and neither `node --check` nor the i18n guard sees it. Deliberately coarse: it only asks whether a name is bound
+// SOMEWHERE, which is exactly what a leftover assignment after a refactor fails.
+{
+  const bound = new Set(), problems = [];
+  const add = x => { if (/^[A-Za-z_$][\w$]*$/.test(x || '')) bound.add(x); };
+  for (const m of src.matchAll(/\b(?:let|const|var|function|class)\s+([A-Za-z_$][\w$]*)/g)) add(m[1]);
+  for (const m of src.matchAll(/\b(?:let|const|var)\s+([^;\n]{0,400})/g)) {   // further declarators and destructuring, inside the declaration only
+    const names = m[1].replace(/\([^()]*\)/g, ' ').replace(/=\s*[^,]*?(?=,|$)/g, ' ');   // drop call arguments, then each initialiser
+    for (const id of names.matchAll(/[A-Za-z_$][\w$]*/g)) add(id[0]);
+  }
+  for (const m of src.matchAll(/\(([^()]{0,300}?)\)\s*(?:=>|\{)/g)) m[1].split(',').forEach(p => add(p.trim().replace(/^\.\.\./, '').split(/[=:\s]/)[0]));   // parameters
+  for (const m of src.matchAll(/(^|[^\w$.])([A-Za-z_$][\w$]*)\s*=>/gm)) add(m[2]);   // single-parameter arrows
+  for (const m of src.matchAll(/\bcatch\s*\(\s*([A-Za-z_$][\w$]*)/g)) add(m[1]);
+  // Quoted text, comments and template literals hold plenty of `name=` (a CSS rule, an SVG attribute, charset=utf-8).
+  let inBlock = false, inTpl = false;
+  const strip = ln => {
+    let out = '';
+    for (let i = 0; i < ln.length; i++) {
+      const c = ln[i], two = ln.slice(i, i + 2);
+      if (c === '\\') { i++; continue; }
+      if (inBlock) { if (two === '*/') { inBlock = false; i++; } continue; }
+      if (inTpl) { if (c === '`') inTpl = false; continue; }
+      if (two === '/*') { inBlock = true; i++; continue; }
+      if (two === '//' && ln[i - 1] !== ':') break;
+      if (c === '`') { inTpl = true; continue; }
+      if (c === '"' || c === "'") { const j = ln.indexOf(c, i + 1); if (j < 0) break; i = j; continue; }
+      out += c;
+    }
+    return out;
+  };
+  const GLOBALS = new Set(['window', 'document', 'location', 'history', 'navigator', 'localStorage', 'sessionStorage', 'console']);
+  src.split('\n').map(strip).forEach((ln, i) => {
+    for (const m of ln.matchAll(/(?:^|[;{}]|\)\s)\s*([A-Za-z_$][\w$]*)\s*=(?![=>])/g))
+      if (!bound.has(m[1]) && !GLOBALS.has(m[1])) problems.push(`planner.src.html:${i + 1}  ${m[1]} is assigned but never declared`);
+  });
+  if (problems.length) { console.error('undeclared identifiers:\n  ' + problems.join('\n  ')); process.exit(1); }
+}
+
 const TITLES = {
   el: 'Οργάνωση Τραπεζιών Γάμου — TakeaSeat',
   en: 'Wedding Seating Planner — TakeaSeat',

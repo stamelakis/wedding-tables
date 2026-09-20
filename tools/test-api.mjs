@@ -801,4 +801,87 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     && (await call('GET', '/admin/venues', undefined, OWN)).d.venues.find(x => x.id === V9.id).notes === 'paid cash', 'admin notes stay private; the public contact reaches the couples');
   delete env.PDF; delete env.MAIL;
 }
+// ---------- 10. the owner forgot the admin key: recovery by mail, the key itself never stored ----------
+{
+  const sent = [];
+  ok((await call('POST', '/admin/recover', { email: 'a@b.gr' })).status === 503, 'without mail there is no admin recovery');
+  env.MAIL = { enabled: true, from: 'x', send: x => { sent.push(x); return true; } };
+  const last = () => sent[sent.length - 1];
+  const tokOf = re => re.exec(last().text)[1];
+  const RECOVER = /#recover=([A-Za-z0-9]+)/, CONFIRM = /#verify=([A-Za-z0-9]+)/;
+  const setAddress = async (email, lang) => {   // an address counts only once it is confirmed from the address itself
+    const put = await call('PUT', '/admin/owner', { email, lang }, OWN);
+    if (put.status !== 200) return put;
+    return call('POST', '/verify', { token: tokOf(CONFIRM), nonce: 'v' });
+  };
+  const freshLink = async email => {   // the limits are per address, and the tests burn through them on purpose
+    m.delete('rlmail:owner:' + email); m.delete('rlmailday:owner:' + email);
+    await call('POST', '/admin/recover', { email });
+    return tokOf(RECOVER);
+  };
+  ok((await call('GET', '/admin/owner', undefined, OWN)).d.email === '', 'no recovery address at first');
+  r = await call('PUT', '/admin/owner', { email: 'Owner@Example.com', lang: 'el' }, OWN);
+  ok(r.status === 200 && r.d.email === '' && r.d.pending === 'owner@example.com' && last().to === 'owner@example.com' && CONFIRM.test(last().text),
+    'a new recovery address is pending, not live, until it is confirmed', r.d);
+  let before = sent.length;
+  ok((await call('POST', '/admin/recover', { email: 'owner@example.com' })).status === 200 && sent.length === before,
+    'an address that was never confirmed cannot ask for an admin key');
+  r = await call('POST', '/verify', { token: tokOf(CONFIRM), nonce: 'v' });
+  ok(r.status === 200 && (await call('GET', '/admin/owner', undefined, OWN)).d.emailVerified === true, 'the confirmation link makes it the recovery address');
+  ok((await call('PUT', '/admin/owner', { email: 'nope' }, OWN)).status === 400, 'a malformed address is refused');
+  ok((await call('GET', '/admin/owner', undefined, { 'X-Owner-Key': 'wrong' })).status === 403, 'only the admin sees it');
+  before = sent.length;
+  ok((await call('POST', '/admin/recover', { email: 'someone@else.com' })).status === 200 && sent.length === before, 'a wrong address gets the same answer and no mail');
+  ok((await call('POST', '/admin/recover', { email: 'owner@example.com' })).status === 200 && sent.length === before + 1 && RECOVER.test(last().text), 'the right address gets the link');
+  const tokA = tokOf(RECOVER);
+  await call('POST', '/admin/recover', { email: 'owner@example.com' });   // a second link, while the first is still in flight
+  const tokB = tokOf(RECOVER);
+  ok((await call('POST', '/admin/recover/claim', { token: 'x'.repeat(32), nonce: 'n' })).status === 404, 'an unknown link is refused');
+  before = sent.length;
+  r = await call('POST', '/admin/recover/claim', { token: tokB, nonce: 'dev' }, {});
+  const key1 = r.d.key;
+  ok(r.status === 200 && key1 && key1.length >= 32 && sent.length === before + 1 && /Νέο κλειδί/.test(last().subject), 'the link issues a new admin key and says so by mail');
+  ok(!JSON.stringify(raw('meta:owner')).includes(key1) && raw('meta:owner').keyHash.length === 64, 'only the hash of the key is stored');
+  ok((await call('GET', '/admin/venues', undefined, { 'X-Owner-Key': key1 })).status === 200, 'the mailed key opens the admin console');
+  ok((await call('GET', '/admin/venues', undefined, OWN)).status === 200, 'the server.env key keeps working');
+  ok((await call('POST', '/admin/recover/claim', { token: tokB, nonce: 'dev' })).status === 410
+    && (await call('GET', '/admin/venues', undefined, { 'X-Owner-Key': key1 })).status === 200,
+    'the same link, same device, never makes a second key');   // the retry path: it must not replace the key he already filed away
+  ok((await call('POST', '/admin/recover/claim', { token: tokA, nonce: 'z' })).status === 410
+    && (await call('GET', '/admin/venues', undefined, { 'X-Owner-Key': key1 })).status === 200,
+    'an older link still in flight cannot replace it either');
+  // changing the address retires the links sent to the old one, and tells it
+  const tokC = await freshLink('owner@example.com');
+  m.delete('rlmail:ownerset:owner2@example.com');
+  await setAddress('owner2@example.com');
+  ok((await call('POST', '/admin/recover/claim', { token: tokC, nonce: 'd3' })).status === 410, 'a link sent to the old address stops when the address changes');
+  ok(sent.filter(x => x.to === 'owner@example.com').some(x => /άλλαξε/.test(x.subject)), 'the old address is told about the change');
+  ok((await call('PATCH', '/admin/owner', { lang: 'en' }, OWN)).d.email === 'owner2@example.com', 'a PATCH with only a language keeps the address');
+  // the mail limits: 3 an hour and 8 a day for the same address
+  m.delete('rlmail:owner:owner2@example.com'); m.delete('rlmailday:owner:owner2@example.com');
+  const links = () => sent.filter(x => x.to === 'owner2@example.com' && RECOVER.test(x.text)).length;
+  before = links();
+  for (let i = 0; i < 5; i++) await call('POST', '/admin/recover', { email: 'owner2@example.com' });
+  ok(links() - before === 3, 'at most 3 recovery mails an hour', links() - before);
+  for (let round = 0; round < 3; round++) { m.delete('rlmail:owner:owner2@example.com'); for (let i = 0; i < 3; i++) await call('POST', '/admin/recover', { email: 'owner2@example.com' }); }
+  ok(links() - before === 8, 'and at most 8 a day, however the hours are spread', links() - before);
+  // revoking
+  const key2 = (await call('POST', '/admin/recover/claim', { token: await freshLink('owner2@example.com'), nonce: 'd4' })).d.key;
+  ok((await call('DELETE', '/admin/owner/key', undefined, OWN)).d.hasRecoveryKey === false
+    && (await call('GET', '/admin/venues', undefined, { 'X-Owner-Key': key2 })).status === 403, 'the admin can revoke the mailed key');
+  const key3 = (await call('POST', '/admin/recover/claim', { token: await freshLink('owner2@example.com'), nonce: 'd5' })).d.key;
+  ok((await call('DELETE', '/admin/owner/key', undefined, { 'X-Owner-Key': key3 })).status === 409, 'the mailed key cannot throw itself away');
+  const savedOwner = env.OWNER_KEY; env.OWNER_KEY = '';
+  ok((await call('GET', '/admin/venues', undefined, { 'X-Owner-Key': key3 })).status === 200, 'without a server key the mailed key still opens the console');
+  ok((await call('DELETE', '/admin/owner/key', undefined, { 'X-Owner-Key': key3 })).status === 409, 'it refuses to revoke the only way in');
+  env.OWNER_KEY = savedOwner;
+  // the sender going down must not strand a link that is already in his mailbox
+  const tokD = await freshLink('owner2@example.com');
+  delete env.MAIL;
+  ok((await call('POST', '/admin/recover', { email: 'owner2@example.com' })).status === 503, 'with the sender off no new link is issued');
+  r = await call('POST', '/admin/recover/claim', { token: tokD, nonce: 'd6' });
+  ok(r.status === 200 && r.d.key && (await call('GET', '/admin/venues', undefined, { 'X-Owner-Key': r.d.key })).status === 200, 'but a link already sent still opens the console');
+  ok((await call('PUT', '/admin/owner', { email: '' }, OWN)).d.email === '', 'the address can be removed without a confirmation');
+  ok((await call('PUT', '/admin/owner', { email: 'x@y.gr' }, OWN)).status === 503, 'and a new one cannot be set while the sender is off — it could not be confirmed');
+}
 console.log(`\nall ${n} checks passed`);

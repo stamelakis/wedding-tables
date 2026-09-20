@@ -34,6 +34,7 @@
 // admin API never returns one; people recover on their own. Without mail, links are shown to the admin as before.
 //   GET/POST/DELETE /codes/:code  (device linking; the code is a shared secret)
 //   /admin/venues[/:id[/reset-key]] · /admin/couples[/:id[/reset]] · GET /admin/support          (X-Owner-Key)
+//   POST /admin/recover {email} · POST /admin/recover/claim {token, nonce}   (public: the owner forgot the admin key)
 //   /venues/:id · /rotate · /defaults · /template · /weddings[/:planId]                           (X-Venue-Key)
 
 const CORS = {
@@ -72,7 +73,7 @@ const langOf = l => (typeof l === "string" && Object.prototype.hasOwnProperty.ca
 const baseUrl = env => String(env.PUBLIC_URL || "https://takeaseat.gr").replace(/\/+$/, "");   // never from the request's Host
 const plannerUrl = (env, lang) => baseUrl(env) + "/" + PLANNER_FILE[langOf(lang)];
 const RECOVER_TTL = 3600000, SETUP_TTL = 7 * 86400000, VERIFY_TTL = 86400000, TOKEN_RETRY = 15 * 60000;
-const MAILS_PER_HOUR = 3;
+const MAILS_PER_HOUR = 3, OWNER_MAILS_PER_DAY = 8;   // an admin mailbox should never be usable as a bullhorn
 // A JSON object body, or {} (never null / an array / a string).
 async function readBody(request) { const b = await request.json().catch(() => null); return (b && typeof b === "object" && !Array.isArray(b)) ? b : {}; }
 // Links sent by mail carry the record's link generation (lgen): a new email address, a new key or a newer mailed link
@@ -198,6 +199,11 @@ const MAILS = {
     changed: ["Το email ανάκτησης άλλαξε — TakeaSeat", "Γεια σας,\n\nΤο email ανάκτησης για το «{name}» άλλαξε σε {email} ({by}).\nΑν δεν το περιμένατε, γράψτε μας αμέσως στο info@takeaseat.gr.\n\nTakeaSeat"],
     byOwner: "από εσάς", byAdmin: "από την TakeaSeat, κατόπιν αιτήματος",
     keepsake: ["Το αναμνηστικό του γάμου σας — TakeaSeat", "Συγχαρητήρια!\n\nΣας στέλνουμε, ως μικρό αναμνηστικό, το τραπεζολόγιο του γάμου σας «{name}» ({date}): όλοι όσοι γιόρτασαν μαζί σας και πού κάθισαν. Θα το βρείτε συνημμένο σε PDF.\n\nΤο σχέδιο είναι πλέον μόνο για προβολή και θα διαγραφεί οριστικά στις {until}. Αν θέλετε να το κρατήσετε, αποθηκεύστε το συνημμένο αρχείο.\n\nΣας ευχόμαστε κάθε ευτυχία!\nTakeaSeat"],
+    ownerVerify: ["Επιβεβαίωση διεύθυνσης ανάκτησης — TakeaSeat", "Γεια σας,\n\nΑυτή η διεύθυνση ζητήθηκε ως διεύθυνση ανάκτησης για τη διαχείριση του TakeaSeat. Ανοίξτε τον σύνδεσμο για να την επιβεβαιώσετε:\n\n{link}\n\nΜέχρι να την επιβεβαιώσετε δεν ισχύει. Ο σύνδεσμος ισχύει μία ημέρα. Αν δεν το ζητήσατε εσείς, αγνοήστε αυτό το μήνυμα.\n\nTakeaSeat"],
+    ownerRecover: ["Πρόσβαση στη διαχείριση TakeaSeat", "Γεια σας,\n\nΖητήθηκε νέο κλειδί διαχείρισης για το TakeaSeat. Ανοίξτε τον σύνδεσμο και πατήστε το κουμπί για να δημιουργηθεί:\n\n{link}\n\nΟ σύνδεσμος ισχύει μία ώρα και ανοίγει μία φορά. Αν δεν το ζητήσατε εσείς, αγνοήστε αυτό το μήνυμα — δεν αλλάζει τίποτα.\n\nTakeaSeat"],
+    ownerNewKey: ["Νέο κλειδί διαχείρισης — TakeaSeat", "Γεια σας,\n\nΔημιουργήθηκε νέο κλειδί διαχείρισης στις {at} μέσω του συνδέσμου ανάκτησης. Το προηγούμενο κλειδί ανάκτησης έπαψε να ισχύει.\n\nΑν δεν το κάνατε εσείς, μπείτε αμέσως στη διαχείριση και ακυρώστε το ή αλλάξτε το κλειδί στον διακομιστή.\n\nTakeaSeat"],
+    ownerEmailSet: ["Διεύθυνση ανάκτησης διαχείρισης — TakeaSeat", "Γεια σας,\n\nΑυτή η διεύθυνση ορίστηκε ως διεύθυνση ανάκτησης για τη διαχείριση του TakeaSeat. Από εδώ θα μπορείτε να ζητήσετε νέο κλειδί αν το ξεχάσετε.\n\nTakeaSeat"],
+    ownerEmailChanged: ["Η διεύθυνση ανάκτησης άλλαξε — TakeaSeat", "Γεια σας,\n\nΗ διεύθυνση ανάκτησης της διαχείρισης άλλαξε σε {email}. Αν δεν το κάνατε εσείς, ελέγξτε αμέσως τον διακομιστή.\n\nTakeaSeat"],
     renewSoon: ["Η συνδρομή σας ανανεώνεται στις {date} — TakeaSeat", "Γεια σας,\n\nΗ συνδρομή του «{name}» στο TakeaSeat ανανεώνεται αυτόματα στις {date} για την επόμενη σεζόν ({from} – {to}).\n\nΑν δεν θέλετε να ανανεωθεί, απενεργοποιήστε την αυτόματη ανανέωση από την κονσόλα σας έως τότε: {link}\n\nΓια οποιαδήποτε ερώτηση: info@takeaseat.gr · 697 735 5378 (10:00–14:00 και 17:00–21:00).\n\nTakeaSeat"],
     keepsakeKeep: ["Το αναμνηστικό του γάμου σας — TakeaSeat", "Συγχαρητήρια!\n\nΣας στέλνουμε, ως μικρό αναμνηστικό, το τραπεζολόγιο του γάμου σας «{name}» ({date}): όλοι όσοι γιόρτασαν μαζί σας και πού κάθισαν. Θα το βρείτε συνημμένο σε PDF.\n\nΣας ευχόμαστε κάθε ευτυχία!\nTakeaSeat"],
   },
@@ -212,6 +218,11 @@ const MAILS = {
     changed: ["Your recovery email changed — TakeaSeat", "Hello,\n\nThe recovery email for “{name}” was changed to {email} ({by}).\nIf you did not expect this, write to info@takeaseat.gr right away.\n\nTakeaSeat"],
     byOwner: "by you", byAdmin: "by TakeaSeat, on request",
     keepsake: ["A keepsake of your wedding — TakeaSeat", "Congratulations!\n\nAs a small keepsake, here is the seating plan of your wedding “{name}” ({date}): everyone who celebrated with you and where they sat. You will find it attached as a PDF.\n\nThe plan is now view-only and will be deleted for good on {until}. If you want to keep it, save the attached file.\n\nWishing you every happiness!\nTakeaSeat"],
+    ownerVerify: ["Confirm the recovery address — TakeaSeat", "Hello,\n\nThis address was asked to be the recovery address for the TakeaSeat admin console. Open the link to confirm it:\n\n{link}\n\nUntil you confirm it, it does not count. The link is valid for one day. If this was not you, ignore this message.\n\nTakeaSeat"],
+    ownerRecover: ["TakeaSeat admin access", "Hello,\n\nA new admin key was requested for TakeaSeat. Open the link and press the button to create it:\n\n{link}\n\nThe link is valid for one hour and opens once. If this was not you, ignore this message — nothing changes.\n\nTakeaSeat"],
+    ownerNewKey: ["New admin key — TakeaSeat", "Hello,\n\nA new admin key was created on {at} through the recovery link. The previous recovery key stopped working.\n\nIf this was not you, open the admin console at once and revoke it, or change the key on the server.\n\nTakeaSeat"],
+    ownerEmailSet: ["Admin recovery address — TakeaSeat", "Hello,\n\nThis address is now the recovery address for the TakeaSeat admin console. From here you can ask for a new key if you forget it.\n\nTakeaSeat"],
+    ownerEmailChanged: ["The admin recovery address changed — TakeaSeat", "Hello,\n\nThe admin recovery address was changed to {email}. If this was not you, check the server right away.\n\nTakeaSeat"],
     renewSoon: ["Your subscription renews on {date} — TakeaSeat", "Hello,\n\nThe TakeaSeat subscription of “{name}” renews automatically on {date} for the next season ({from} – {to}).\n\nIf you do not want it to renew, turn automatic renewal off in your console before then: {link}\n\nAny questions: info@takeaseat.gr · +30 697 735 5378 (10:00–14:00 and 17:00–21:00, Greek time).\n\nTakeaSeat"],
     keepsakeKeep: ["A keepsake of your wedding — TakeaSeat", "Congratulations!\n\nAs a small keepsake, here is the seating plan of your wedding “{name}” ({date}): everyone who celebrated with you and where they sat. You will find it attached as a PDF.\n\nWishing you every happiness!\nTakeaSeat"],
   },
@@ -226,6 +237,11 @@ const MAILS = {
     changed: ["Ihre Wiederherstellungs-E-Mail wurde geändert — TakeaSeat", "Hallo,\n\nDie Wiederherstellungs-E-Mail für „{name}“ wurde auf {email} geändert ({by}).\nWenn Sie das nicht erwartet haben, schreiben Sie sofort an info@takeaseat.gr.\n\nTakeaSeat"],
     byOwner: "von Ihnen", byAdmin: "von TakeaSeat, auf Anfrage",
     keepsake: ["Eine Erinnerung an Ihre Hochzeit — TakeaSeat", "Herzlichen Glückwunsch!\n\nAls kleine Erinnerung senden wir Ihnen den Sitzplan Ihrer Hochzeit „{name}“ ({date}): alle, die mit Ihnen gefeiert haben, und wo sie saßen. Sie finden ihn als PDF im Anhang.\n\nDer Plan ist jetzt nur noch lesbar und wird am {until} endgültig gelöscht. Wenn Sie ihn behalten möchten, speichern Sie die angehängte Datei.\n\nAlles Glück der Welt!\nTakeaSeat"],
+    ownerVerify: ["Wiederherstellungsadresse bestätigen — TakeaSeat", "Hallo,\n\nDiese Adresse wurde als Wiederherstellungsadresse für die TakeaSeat-Verwaltung angefordert. Öffnen Sie den Link, um sie zu bestätigen:\n\n{link}\n\nBis zur Bestätigung gilt sie nicht. Der Link ist einen Tag gültig. Wenn Sie das nicht waren, ignorieren Sie diese Nachricht.\n\nTakeaSeat"],
+    ownerRecover: ["TakeaSeat-Verwaltungszugang", "Hallo,\n\nFür TakeaSeat wurde ein neuer Verwaltungsschlüssel angefordert. Öffnen Sie den Link und drücken Sie die Schaltfläche, um ihn zu erstellen:\n\n{link}\n\nDer Link gilt eine Stunde und öffnet einmal. Wenn Sie das nicht waren, ignorieren Sie diese Nachricht — es ändert sich nichts.\n\nTakeaSeat"],
+    ownerNewKey: ["Neuer Verwaltungsschlüssel — TakeaSeat", "Hallo,\n\nAm {at} wurde über den Wiederherstellungslink ein neuer Verwaltungsschlüssel erstellt. Der vorherige Wiederherstellungsschlüssel gilt nicht mehr.\n\nWenn Sie das nicht waren, öffnen Sie sofort die Verwaltung und widerrufen Sie ihn, oder ändern Sie den Schlüssel auf dem Server.\n\nTakeaSeat"],
+    ownerEmailSet: ["Wiederherstellungsadresse der Verwaltung — TakeaSeat", "Hallo,\n\nDiese Adresse ist jetzt die Wiederherstellungsadresse für die TakeaSeat-Verwaltung. Von hier aus können Sie einen neuen Schlüssel anfordern, wenn Sie ihn vergessen.\n\nTakeaSeat"],
+    ownerEmailChanged: ["Die Wiederherstellungsadresse wurde geändert — TakeaSeat", "Hallo,\n\nDie Wiederherstellungsadresse der Verwaltung wurde auf {email} geändert. Wenn Sie das nicht waren, prüfen Sie sofort den Server.\n\nTakeaSeat"],
     renewSoon: ["Ihr Abonnement verlängert sich am {date} — TakeaSeat", "Hallo,\n\nDas TakeaSeat-Abonnement von „{name}“ verlängert sich am {date} automatisch für die nächste Saison ({from} – {to}).\n\nWenn Sie keine Verlängerung wünschen, schalten Sie die automatische Verlängerung vorher in Ihrer Konsole aus: {link}\n\nFragen: info@takeaseat.gr · +30 697 735 5378 (10:00–14:00 und 17:00–21:00, griechische Zeit).\n\nTakeaSeat"],
     keepsakeKeep: ["Eine Erinnerung an Ihre Hochzeit — TakeaSeat", "Herzlichen Glückwunsch!\n\nAls kleine Erinnerung senden wir Ihnen den Sitzplan Ihrer Hochzeit „{name}“ ({date}): alle, die mit Ihnen gefeiert haben, und wo sie saßen. Sie finden ihn als PDF im Anhang.\n\nAlles Glück der Welt!\nTakeaSeat"],
   },
@@ -268,10 +284,27 @@ async function takeToken(env, token, kinds, nonce) {
   });
   return r.res || { error: "token_invalid" };
 }
-async function mailAllowed(env, email, bucket) {   // at most MAILS_PER_HOUR recovery (or confirmation) mails per address
+async function mailAllowed(env, email, bucket, perDay) {   // at most MAILS_PER_HOUR recovery (or confirmation) mails per address
   const r = await kvUpdate(env, "rlmail:" + bucket + ":" + email, a => { a = (Array.isArray(a) ? a : []).filter(t => Date.now() - t < 3600000);
     if (a.length >= MAILS_PER_HOUR) return { __res: false }; a.push(Date.now()); return { __obj: a, __res: true }; });
-  return !!r.res;
+  if (!r.res || !perDay) return !!r.res;
+  const d = await kvUpdate(env, "rlmailday:" + bucket + ":" + email, a => { a = (Array.isArray(a) ? a : []).filter(t => Date.now() - t < 86400000);
+    if (a.length >= perDay) return { __res: false }; a.push(Date.now()); return { __obj: a, __res: true }; });
+  return !!d.res;
+}
+// The admin key: the one in server.env, or a recovery key the owner issued by mail. Only its SHA-256 is stored, so a
+// copy of the database never hands anyone the admin console.
+async function sha256hex(x) {
+  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(x)));
+  return [...new Uint8Array(b)].map(v => v.toString(16).padStart(2, "0")).join("");
+}
+const ownerRec = async env => safeParse(await env.PLANS.get("meta:owner")) || {};
+async function ownerOk(request, env) {
+  const k = request.headers.get("X-Owner-Key") || "";
+  if (!k) return false;
+  if (env.OWNER_KEY && eq(k, env.OWNER_KEY)) return true;
+  const o = await ownerRec(env);
+  return !!o.keyHash && eq(await sha256hex(k), o.keyHash);
 }
 async function markMailed(env, cid, email) { await kvUpdate(env, "couple:" + cid, cp => { if (!cp) return null; cp.mailed = true; cp.mailedTo = email; return cp; }); }
 // Housekeeping (the server runs it hourly): expired one-time links, old rate-limit rows, old claim rows.
@@ -587,7 +620,7 @@ export default {
           const body = await request.json().catch(() => ({}));
           if (body.plan != null && !isPlan(body.plan)) return json({ error: "bad_plan" }, 422);
           if (tooBig(body.plan)) return json({ error: "plan too large" }, 413);
-          let coupleId = null, ok = !!env.OWNER_KEY && eq(request.headers.get("X-Owner-Key") || "", env.OWNER_KEY);
+          let coupleId = null, ok = await ownerOk(request, env);
           if (!ok && body.parentId) {
             const parent = safeParse(await env.PLANS.get("plan:" + String(body.parentId)));
             if (parent && ownerOf(parent).type === "couple" && eq(request.headers.get("X-Edit-Key") || "", parent.editKey)) {
@@ -910,10 +943,22 @@ export default {
       }
       if (parts[0] === "verify" && parts.length === 1 && request.method === "POST") {
         const b = await readBody(request);
-        const t = await takeToken(env, b.token, ["verify-couple", "verify-venue"], b.nonce);
+        const t = await takeToken(env, b.token, ["verify-couple", "verify-venue", "verify-owner"], b.nonce);
         if (t.error) return json({ error: t.error }, t.error === "token_invalid" ? 404 : 410);
         if (t.again) return json({ ok: true, email: t.data.email });
         const email = normEmail(t.data.email); if (!email) return json({ error: "token_invalid" }, 404);
+        if (t.data.kind === "verify-owner") {   // the address becomes the way back into the admin console only from here
+          const tk = String(b.token);
+          const r = await kvUpdate(env, "meta:owner", cur => { cur = cur || {}; if (cur.pendingVerify !== tk) return { __res: null };
+            const old = cur.email || "";
+            return { __obj: { ...cur, email, emailVerified: true, pendingVerify: null, pendingEmail: "", lgen: (cur.lgen || 0) + 1 }, __res: old }; });
+          if (r.res === null) return json({ error: "token_used" }, 410);   // a newer confirmation link replaced this one
+          const lang = langOf(r.obj && r.obj.lang);
+          if (r.res && r.res !== email) send(env, r.res, mailMsg(lang, "ownerEmailChanged", { email: maskEmail(email) }));
+          else send(env, email, mailMsg(lang, "ownerEmailSet", {}));
+          console.log("admin: the recovery address was confirmed");
+          return json({ ok: true, email });
+        }
         if (t.data.kind === "verify-couple") {
           const tk = String(b.token);
           const r = await kvUpdate(env, "couple:" + t.data.cid, c => { if (!c) return null; if (c.pendingVerify !== tk) return { __res: null };
@@ -972,8 +1017,74 @@ export default {
       }
       // ---------------- admin (owner key): venues, couples, support invitations — never plan contents ----------------
       if (parts[0] === "admin") {
-        if (!env.OWNER_KEY) return json({ error: "admin disabled — set OWNER_KEY" }, 503);
-        if (!eq(request.headers.get("X-Owner-Key") || "", env.OWNER_KEY)) return json({ error: "unauthorized" }, 403);
+        // Public — the owner forgot the admin key. The answer never says whether an address is the right one.
+        if (parts[1] === "recover" && request.method === "POST" && (parts.length === 2 || (parts.length === 3 && parts[2] === "claim"))) {
+          if (parts.length === 2 && !mailOn(env)) return json({ error: "mail_off" }, 503);   // a link already in a mailbox stays usable
+          const b = await readBody(request);
+          const o = await ownerRec(env);
+          if (parts.length === 2) {
+            const email = normEmail(b.email); if (!email) return json({ error: "bad_email" }, 400);
+            if (o.email && o.emailVerified && email === o.email && await mailAllowed(env, email, "owner", OWNER_MAILS_PER_DAY)) {
+              const t = await mintToken(env, { kind: "owner-recover", lg: o.lgen || 0, email }, RECOVER_TTL);
+              send(env, email, mailMsg(o.lang, "ownerRecover", { link: baseUrl(env) + "/admin.html#recover=" + t }));
+              console.log("admin: recovery link sent to the owner's address");
+            }
+            return json({ ok: true });
+          }
+          const t = await takeToken(env, b.token, ["owner-recover"], b.nonce);   // one link, one key
+          if (t.error) return json({ error: t.error }, t.error === "token_invalid" ? 404 : 410);
+          if (t.again) return json({ error: "token_used" }, 410);   // the key for this link was already made and mailed: never mint a second one
+          if (!o.email || o.email !== t.data.email || (o.lgen || 0) !== (t.data.lg || 0)) return json({ error: "token_used" }, 410);   // the address changed after the link was sent
+          const key = rnd(40), hash = await sha256hex(key), now = Date.now();
+          // Retires any earlier recovery key AND every link still in flight — the key he has just filed away is the only one.
+          await kvUpdate(env, "meta:owner", cur => { cur = cur || {}; return { ...cur, keyHash: hash, keyAt: now, lgen: (cur.lgen || 0) + 1 }; });
+          send(env, o.email, mailMsg(o.lang, "ownerNewKey", { at: fmtDay(now, o.lang) }));
+          console.log("admin: a new admin key was issued through the recovery link");
+          return json({ ok: true, key });
+        }
+        const dbKey = !!(await ownerRec(env)).keyHash;
+        if (!env.OWNER_KEY && !dbKey) return json({ error: "admin disabled — set OWNER_KEY" }, 503);
+        if (!(await ownerOk(request, env))) return json({ error: "unauthorized" }, 403);
+        // The owner's recovery address — the only way back into the admin console without opening the server.
+        if (parts[1] === "owner" && parts.length === 2 && (request.method === "GET" || request.method === "PUT" || request.method === "PATCH")) {
+          const o = await ownerRec(env);
+          const state = x => ({ email: x.email || "", emailVerified: !!x.emailVerified, pending: x.pendingEmail || "", lang: langOf(x.lang), hasRecoveryKey: !!x.keyHash, keyAt: x.keyAt || null, mail: mailOn(env) });
+          if (request.method === "GET") return json(state(o));
+          const b = await readBody(request);
+          const hasEmail = Object.prototype.hasOwnProperty.call(b, "email");
+          if (request.method === "PUT" && !hasEmail) return json({ error: "bad_email" }, 400);
+          if (!hasEmail) {   // PATCH without an address touches nothing but the language of the mails
+            const r = await kvUpdate(env, "meta:owner", cur => { cur = cur || {}; return { ...cur, lang: langOf(b.lang || cur.lang) }; });
+            return json({ ok: true, ...state(r.obj) });
+          }
+          const email = (b.email === "" || b.email === null) ? "" : normEmail(b.email);
+          if (b.email !== "" && b.email !== null && !email) return json({ error: "bad_email" }, 400);
+          if (!email) {   // removing the address needs no confirmation — it takes nothing away from anyone
+            const r = await kvUpdate(env, "meta:owner", cur => { cur = cur || {}; const old = cur.email || "";
+              return { __obj: { ...cur, email: "", emailVerified: false, pendingVerify: null, pendingEmail: "", lang: langOf(b.lang || cur.lang), lgen: (cur.lgen || 0) + 1 }, __res: old }; });   // links already sent stop
+            if (r.res) send(env, r.res, mailMsg(r.obj.lang, "ownerEmailChanged", { email: "\u2014" }));
+            console.log("admin: recovery address removed");
+            return json({ ok: true, ...state(r.obj) });
+          }
+          // A new address counts only once it is confirmed FROM that address: one typo must never become the only way in,
+          // and a stranger who reaches this console once must not be able to keep it. Same rule as couples and venues.
+          if (!mailOn(env)) return json({ error: "mail_off" }, 503);
+          if (!(await mailAllowed(env, email, "ownerset", OWNER_MAILS_PER_DAY))) return json({ error: "rate_limited" }, 429);
+          const lang = langOf(b.lang || o.lang);
+          const tok = await mintToken(env, { kind: "verify-owner", email }, VERIFY_TTL);
+          if (!send(env, email, mailMsg(lang, "ownerVerify", { link: baseUrl(env) + "/admin.html#verify=" + tok }))) return json({ error: "mail_failed" }, 503);
+          const r = await kvUpdate(env, "meta:owner", cur => { cur = cur || {}; return { ...cur, lang, pendingVerify: tok, pendingEmail: email }; });   // the live address does not change yet
+          console.log("admin: a confirmation link was sent to a new recovery address");
+          return json({ ok: true, ...state(r.obj) });
+        }
+        if (parts[1] === "owner" && parts[2] === "key" && parts.length === 3 && request.method === "DELETE") {
+          // "There is another way in" means the env key AUTHENTICATES, not merely that it is set: a key that no longer
+          // matches (a stray space in server.env, a rotated file nobody reloaded) would leave nothing behind.
+          if (!env.OWNER_KEY || !eq(request.headers.get("X-Owner-Key") || "", env.OWNER_KEY)) return json({ error: "would_lock_out" }, 409);
+          const r = await kvUpdate(env, "meta:owner", cur => { if (!cur) return null; return { ...cur, keyHash: null, keyAt: null, lgen: (cur.lgen || 0) + 1 }; });
+          console.log("admin: the mailed admin key was revoked");
+          return json({ ok: true, hasRecoveryKey: false });
+        }
         if (parts[1] === "mail" && parts.length === 2 && request.method === "GET") {
           const st = (mailOn(env) && typeof env.MAIL.status === "function") ? env.MAIL.status() : {};
           return json({ enabled: mailOn(env), from: mailOn(env) ? String(env.MAIL.from || "") : "", ...st });

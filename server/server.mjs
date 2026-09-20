@@ -52,7 +52,7 @@ if (process.env.KV_BACKEND === 'memory') {
   };
   console.log('KV backend: sqlite at ' + DB_PATH);
 }
-const env = { OWNER_KEY: process.env.OWNER_KEY || '', PLANS, PUBLIC_URL: process.env.PUBLIC_URL || 'https://takeaseat.gr' };
+const env = { OWNER_KEY: (process.env.OWNER_KEY || '').trim(), PLANS, PUBLIC_URL: process.env.PUBLIC_URL || 'https://takeaseat.gr' };   // a stray space in server.env would silently make the admin key unusable
 // ---- mail: sent after the response, one at a time (the API answers in the same time whether or not a mail goes out) ----
 const MAIL_FROM = process.env.MAIL_FROM || '';
 let transport = null;
@@ -207,7 +207,7 @@ http.createServer(async (req, res) => {
       res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '60' }); res.end('{"error":"rate_limited"}'); return;
     }
     // e-mail requests: 20 an hour per IP (each address is also limited to 3 an hour by the worker)
-    if (req.method === 'POST' && (canon === '/recover' || /^\/(plans|venues)\/[^/]+\/email$/.test(canon)) && !rateOk(ip + ':mail', 20, 3600000)) {
+    if ((req.method === 'POST' || req.method === 'PUT') && (canon === '/recover' || canon === '/admin/recover' || canon === '/admin/owner' || /^\/(plans|venues)\/[^/]+\/email$/.test(canon)) && !rateOk(ip + ':mail', 20, 3600000)) {
       res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '3600' }); res.end('{"error":"rate_limited"}'); return;
     }
     if (isCreate && await diskLow()) {
@@ -247,7 +247,7 @@ http.createServer(async (req, res) => {
       body: ['GET', 'HEAD', 'OPTIONS'].includes(req.method) ? undefined : body,
     });
     const r = await serial(() => worker.fetch(request, env));
-    failed = r.status === 401 || r.status === 403 || ((r.status === 404 || r.status === 410) && /^\/(claim|recover\/|verify)/.test(canon));
+    failed = r.status === 401 || r.status === 403 || ((r.status === 404 || r.status === 410) && /^\/(claim|recover\/|verify|admin\/recover)/.test(canon));
     const buf = Buffer.from(await r.arrayBuffer());
     const headers = {}; r.headers.forEach((v, k) => { headers[k] = v; });
     res.writeHead(r.status, headers);

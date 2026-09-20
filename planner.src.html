@@ -122,6 +122,12 @@ __ROBOTS__
   body.ro .ffoot, body.ro #fSettings, body.ro .chip.add, body.ro .chip .gmore{ display:none !important; }
   body.ro .frow .fdot, body.ro .chip .dot{ pointer-events:none; }
   body.ro .gchip, body.ro .pparty{ cursor:default; }
+  /* Invitations follow ACCESS.ro only (never a can() key): a couple whose layout the venue locked must still be able to fix
+     its own family groupings. A viewer keeps the panel — counting invitations is exactly what a viewer needs — but sees
+     facts, not affordances. Hidden by class, never by a second set of JS branches. */
+  body.ro .gtick, body.ro #invNewSide, body.ro #invSheet .invx, body.ro .invtop .invmore,
+  body.ro .invnew-guest, body.ro #invFoot [data-a="new"]{ display:none !important; }
+  body.ro .gchip.tickable{ cursor:default; }
   .feature.flocked{ cursor:default; }
   body.lock-floor #stageResize{ display:none !important; }
   body.lock-tables #addTableBtn, body.lock-tables #addRectBtn, body.lock-tables #addHeadBtn, body.lock-tables #menuDelete{ display:none !important; }
@@ -132,7 +138,7 @@ __ROBOTS__
 
   /* ---------- Main layout ---------- */
   #main{ flex:1; display:flex; min-height:0; position:relative; }
-  #sidebar{ width:var(--sidebar-w); flex:none; background:var(--card); border-right:1px solid var(--line); display:flex; flex-direction:column; min-height:0; }
+  #sidebar{ position:relative; width:var(--sidebar-w); flex:none; background:var(--card); border-right:1px solid var(--line); display:flex; flex-direction:column; min-height:0; }
   .side-scroll{ flex:1; overflow-y:auto; min-height:0; overscroll-behavior:contain; }
   .sec{ padding:12px 14px 12px; border-bottom:1px solid var(--line); }
   .sec:last-child{ border-bottom:none; }
@@ -166,7 +172,114 @@ __ROBOTS__
   body.touch .chip .gmore{ opacity:.45; }
   #pool{ display:flex; flex-direction:column; gap:5px; min-height:44px; }
   #pool.dragover{ outline:2px dashed var(--accent); outline-offset:-4px; border-radius:10px; background:var(--accent-soft); }
-  .gchip{ display:flex; align-items:center; gap:6px; padding:7px 6px 7px 4px; border-radius:10px; background:var(--paper); border:1px solid var(--line); border-left:5px solid #ccc; cursor:grab; user-select:none; font-size:13px; transition:box-shadow .12s,background .12s; }
+  .gchip{ position:relative; display:flex; align-items:center; gap:6px; padding:7px 6px 7px 4px; border-radius:10px; background:var(--paper); border:1px solid var(--line); border-left:5px solid #ccc; cursor:grab; user-select:none; font-size:13px; transition:box-shadow .12s,background .12s; }
+  /* "this person belongs to an invitation" — one binary, decorative pip. Its 3 px outward bleed lives inside the
+     Guests section's 14 px gutter (the .search sticky rule paints it); shrink that padding and the pip clips. */
+  .gchip.hasinv::after{ content:""; position:absolute; top:-3px; right:-3px; width:8px; height:8px; border-radius:50%;
+    background:var(--accent); box-shadow:0 0 0 2px var(--card); pointer-events:none; }
+  body.touch .gchip.hasinv::after{ width:9px; height:9px; }
+  /* ::before, never ::after — .frow .fdot::after is the dot's own inner ring and must survive */
+  .frow .fdot.hasinv::before{ content:""; position:absolute; top:-2px; right:-2px; left:auto; bottom:auto;
+    width:8px; height:8px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 2px #fff;
+    pointer-events:none; z-index:1; }
+  .fsug div.hasinv{ position:relative; padding-right:22px; }
+  .fsug div.hasinv::after{ content:""; position:absolute; right:9px; top:50%; margin-top:-4px; width:8px; height:8px;
+    border-radius:50%; background:var(--accent); pointer-events:none; }
+  .invbtn{ width:100%; height:38px; justify-content:flex-start; gap:8px; margin-bottom:8px; color:var(--accent-ink); }
+  .invbtn .n{ margin-left:auto; font-size:11.5px; color:var(--faint); font-variant-numeric:tabular-nums; }
+  .invbtn .ch{ width:15px; height:15px; color:var(--faint); flex:none; }
+
+  /* ---------- Invitations take over the left panel: INDEX (body.invlist) and FILL (body.invfill) ---------- */
+  body.invlist #toolsSec, body.invfill #toolsSec,
+  body.invlist #addNames, body.invfill #addNames,
+  body.invlist #groupList, body.invfill #groupList,
+  body.invlist #invLooseWrap, body.invfill #invLooseWrap,
+  body.invlist .invbtn, body.invfill .invbtn,
+  body.invlist .sec>.sec-title, body.invfill .sec>.sec-title{ display:none !important; }
+  body.invlist #pool{ display:none; }                      /* INDEX replaces the list entirely */
+  body.invlist #invSheet, body.invfill #invIndex{ display:none; }
+  /* the one search field of the panel stays put in both states (on PC it already was) */
+  body.invlist .search, body.invfill .search{ position:sticky; top:0; z-index:6; background:var(--card);
+    padding:2px 0 6px; margin:-2px 0 4px; box-shadow:-14px 0 0 var(--card), 14px 0 0 var(--card); }
+  #invHead{ position:sticky; top:var(--invhead-top,44px); z-index:4; background:var(--card); padding:6px 0 8px;
+    box-shadow:-14px 0 0 var(--card), 14px 0 0 var(--card); }
+  #invFoot{ position:sticky; bottom:0; z-index:5; background:var(--card); border-top:1px solid var(--line);
+    padding:8px 14px; display:flex; gap:6px; flex:none; }
+  @media (min-width:901px){ body.invlist #invFoot{ display:none !important; } }
+  .invtop{ display:flex; align-items:center; gap:8px; }
+  .invtop .sec-title{ margin:0; }
+  .invtop .invsum{ margin-left:auto; font-size:11px; color:var(--faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .invtop .invx{ flex:none; width:30px; height:30px; padding:0; }
+  #invNewSide{ width:100%; height:36px; margin-top:8px; }
+  #invIndex{ display:flex; flex-direction:column; gap:3px; }
+  .invrow{ display:flex; align-items:center; gap:8px; width:100%; min-height:34px; padding:5px 6px 5px 9px; text-align:left;
+    border:1px solid var(--line); border-radius:9px; background:var(--paper); cursor:pointer; font-size:13px; color:inherit;
+    font-family:inherit; transition:box-shadow .12s,background .12s; }
+  .invrow:hover{ background:#fff; box-shadow:var(--shadow-1); }
+  .invrow b{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
+  .invrow .n{ flex:none; color:var(--faint); font-size:11.5px; font-variant-numeric:tabular-nums; }
+  .invrow .ch{ width:14px; height:14px; color:var(--faint); flex:none; }
+  .invrow.loose{ background:transparent; border-style:dashed; color:var(--soft); }
+  .invrow.loose b{ font-weight:400; }
+  body.touch .invrow{ min-height:44px; }
+  #invIndex .gm-cap{ position:sticky; top:var(--invcap-top,88px); z-index:2; background:var(--card); padding:8px 4px 3px;
+    box-shadow:-14px 0 0 var(--card), 14px 0 0 var(--card); }
+
+  /* FILL — band A is #invHead (the switcher), band B is #invSheet (the members strip, sticky under it),
+     band C is #pool (the tick list), band D is #invFoot. Nothing here is a modal. */
+  body.invfill #invSheet{ position:sticky; top:var(--invcap-top,108px); z-index:3; background:var(--card);
+    padding:0 0 8px; box-shadow:-14px 0 0 var(--card), 14px 0 0 var(--card); }
+  .invname{ flex:1; min-width:0; display:flex; align-items:center; gap:4px; border:1px solid transparent; background:none;
+    border-radius:9px; padding:3px 6px; cursor:pointer; font:inherit; color:inherit; text-align:left; }
+  .invname:hover{ background:var(--paper); border-color:var(--line); }
+  .invname b{ flex:1; min-width:0; font-family:var(--serif); font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .invname .ic{ width:15px; height:15px; color:var(--faint); flex:none; }
+  input.invname{ display:block; height:34px; padding:0 9px; border:1px solid var(--accent); border-radius:9px;
+    font-family:var(--serif); font-size:15px; background:#fff; cursor:text; }
+  input.invname:focus{ outline:none; box-shadow:0 0 0 3px var(--accent-soft); }
+  .invtop .invmore{ flex:none; width:30px; height:30px; padding:0; font-size:15px; }
+  #invSheet .members{ display:flex; flex-wrap:wrap; gap:4px; max-height:96px; overflow-y:auto; overscroll-behavior:contain; }
+  #invSheet .mchip{ display:inline-flex; align-items:center; gap:2px; max-width:100%; padding:3px 2px 3px 8px;
+    border-radius:999px; background:var(--accent-soft); color:var(--accent-ink); font-size:12.5px; }
+  #invSheet .mchip>.nm{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #invSheet .mchip .invt{ max-width:80px; padding:2px 7px; font-size:11px; background:#fff; }
+  #invSheet .mchip .invx{ width:22px; height:22px; font-size:12px; }
+  body.touch #invSheet .mchip{ padding:6px 2px 6px 10px; }
+  body.touch #invSheet .mchip .invx{ width:28px; height:28px; }
+  #invSheet .sheet-empty{ font-size:12.5px; color:var(--soft); padding:2px 2px 4px; }
+  #invSheet .kbline{ display:none; }
+  /* the keyboard is up at 375 px: the strip folds to one line so band C keeps five 44 px rows on screen */
+  body.kb.invfill #invSheet .members{ display:none; }
+  body.kb.invfill #invSheet .sheet-empty{ display:none; }
+  body.kb.invfill #invSheet .kbline{ display:flex; align-items:center; gap:6px; width:100%; min-height:34px;
+    border:1px dashed var(--line); border-radius:9px; padding:0 10px; background:var(--paper); font-size:12.5px;
+    color:var(--soft); cursor:pointer; }
+  #invSeg{ display:flex; margin:0 0 8px; }
+  #invSeg.seg button{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #invSeg.seg button .n{ color:var(--faint); font-size:11px; margin-left:4px; font-variant-numeric:tabular-nums; }
+  #invSeg.seg button.on .n{ color:#fff; opacity:.8; }
+  .gchip.tickable{ cursor:pointer; }
+  .gchip.tickable .acts, .gchip.tickable .grip{ display:none; }
+  .gtick{ flex:none; width:22px; height:22px; border:1.5px solid var(--soft); border-radius:6px; background:#fff;
+    display:inline-flex; align-items:center; justify-content:center; color:#fff; font-size:13px; line-height:1; }
+  body.touch .gtick{ width:24px; height:24px; }
+  .gchip.tickable.on{ background:var(--accent-soft); outline:1.5px solid var(--accent); outline-offset:-1px; }
+  .gchip.tickable.on .gtick{ background:var(--accent); border-color:var(--accent); }
+  .gchip.tickable.sel{ box-shadow:0 0 0 3px var(--accent-soft); }
+  .gchip.tickable .ann{ flex:none; max-width:40%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    color:var(--faint); font-size:11.5px; }
+  body.touch.invfill .gchip.tickable{ min-height:44px; }
+  .invnew-guest{ display:flex; align-items:center; gap:7px; width:100%; min-height:40px; margin-top:4px; padding:7px 9px;
+    border:1px dashed var(--accent); border-radius:10px; background:var(--accent-soft); color:var(--accent-ink);
+    font:inherit; font-size:12.5px; text-align:left; cursor:pointer; }
+  .invnew-guest.sel{ box-shadow:0 0 0 3px var(--accent-soft); }
+  body.touch .invnew-guest{ min-height:44px; }
+  .seat.invhi{ box-shadow:0 0 0 3px #fff, 0 0 0 5px var(--accent); }
+  .frow.invhi{ background:var(--accent-soft); border-radius:9px; }
+  #invswitch{ width:min(300px,92vw); max-height:min(70vh,440px); overflow-y:auto; overscroll-behavior:contain; }
+  #invswitch .gm-item .n{ flex:none; }
+  #invswitch .gm-item .nm{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #invswitch .gm-item .tk{ width:14px; flex:none; color:var(--accent); font-weight:700; }
   .gchip:hover{ box-shadow:var(--shadow-1); background:#fff; }
   .gchip:active{ cursor:grabbing; }
   .gchip .nm{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -201,72 +314,16 @@ __ROBOTS__
   .pparty .n{ color:var(--faint); font-size:11px; }
   .pparty .pedit{ border:none; background:none; color:var(--faint); cursor:pointer; padding:2px 4px; border-radius:6px; opacity:.6; }
   .pparty .pedit:hover{ opacity:1; background:var(--card); color:var(--ink); }
-  /* ---------- Invitations editor: every invitation with its people and their tables — a modal on PC, a bottom sheet on phones ---------- */
-  #invModal .modal{ display:flex; flex-direction:column; overflow:hidden; width:min(640px,94vw); height:min(640px,84vh); }   /* PC: a steady frame — cards open and close inside it */
-  #invModal .modal-head{ justify-content:flex-start; gap:8px; flex:none; position:relative; }
-  #invModal .modal-head strong{ flex:none; }
+  /* ---------- Invitations: the member-row vocabulary, now used by band B of the sheet ---------- */
   .invsum{ flex:1; min-width:0; font-size:12px; color:var(--faint); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-variant-numeric:tabular-nums; }
-  #invUndo{ border-color:transparent; background:transparent; }
-  #invUndo[hidden], #invNewBtn[hidden]{ display:none; }
-  .invbar{ flex:none; display:flex; gap:8px; align-items:center; padding:10px 16px; border-bottom:1px solid var(--line); }
-  .invsearch{ position:relative; flex:1; min-width:0; display:block; }
-  .invsearch .ic{ position:absolute; left:10px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--faint); }
-  #invModal .invsearch input{ width:100%; height:36px; padding:0 10px 0 32px; border:1px solid var(--line); border-radius:10px; background:var(--paper); font-size:13.5px; }
-  #invModal .invsearch input:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); background:#fff; }
-  #invNewBtn{ height:36px; }
-  #invNewBtn .sm{ display:none; }
-  #invBody{ flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:4px 16px 16px; position:relative; }
   .invro{ padding:8px 2px 0 !important; }
-  .invc{ border:1px solid var(--line); border-radius:12px; margin-top:8px; background:var(--card); }
-  .invc.open{ border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
-  .invh{ display:flex; align-items:center; gap:8px; padding:9px 8px 5px 12px; min-height:40px; }
-  .invh[data-a]{ cursor:pointer; user-select:none; }
-  .invh b{ flex:1; min-width:0; font-family:var(--serif); font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .invh .n{ font-size:12px; color:var(--faint); white-space:nowrap; font-variant-numeric:tabular-nums; }
-  .invh .chev{ display:inline-flex; color:var(--faint); transition:transform .15s; }
-  .invh .chev .ic{ width:16px; height:16px; }
-  .invc.open .invh .chev{ transform:rotate(180deg); }
-  #invModal .invh input{ flex:1; min-width:0; height:34px; padding:0 10px; border:1px solid var(--accent); border-radius:9px; font-family:var(--serif); font-size:15px; background:#fff; }
-  #invModal .invh input:focus, #invModal .invadd input:focus{ outline:none; box-shadow:0 0 0 3px var(--accent-soft); }
-  .invm{ display:flex; align-items:center; gap:8px; padding:2px 8px 2px 12px; min-height:32px; font-size:13.5px; }
-  .invc>.invm:last-child{ padding-bottom:6px; }
-  .invm .dot{ width:9px; height:9px; border-radius:50%; flex:none; box-shadow:inset 0 0 0 1px rgba(0,0,0,.12); }
-  .invm .nm{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .invm.hit .nm{ background:#fff3c4; border-radius:4px; padding:0 3px; }
   .invt{ flex:none; max-width:42%; border:none; background:var(--paper); color:var(--accent-ink); border-radius:999px; padding:4px 10px; font-size:12px; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .invt:hover{ background:var(--accent-soft); }
   .invt.none{ background:none; color:var(--faint); cursor:default; padding:4px 2px; }
-  .invmv{ position:relative; flex:none; display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:8px; color:var(--soft); font-size:15px; }
-  .invmv:hover{ background:var(--paper); color:var(--ink); }
-  .invmv select{ position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; }
   .invx{ flex:none; width:30px; height:30px; border:none; background:none; color:var(--faint); border-radius:8px; cursor:pointer; font-size:14px; }
   .invx:hover{ color:var(--danger); background:var(--paper); }
-  .invacts{ display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:8px 10px 10px; border-top:1px dashed var(--line); }
-  .invacts .ibtn{ height:36px; justify-content:flex-start; min-width:0; }
-  .invacts .ibtn span{ overflow:hidden; text-overflow:ellipsis; }
-  .invadd{ padding:8px 10px 10px; border-top:1px dashed var(--line); }
-  .invadd .row{ display:flex; gap:6px; }
-  #invModal .invadd input{ flex:1; min-width:0; height:36px; padding:0 10px; border:1px solid var(--accent); border-radius:9px; font-size:13.5px; background:#fff; }
-  .invadd .ibtn{ height:36px; flex:none; }
-  .invsug{ max-height:min(40vh,260px); overflow-y:auto; overscroll-behavior:contain; margin-top:6px; }
-  .invsug .gm-item{ white-space:normal; padding:7px 8px; }
-  .invsug .gm-item .nm{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .invsug .gm-item .n{ margin-left:auto; flex:none; max-width:48%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .invdraft .hint{ font-size:12.5px; color:var(--soft); padding:0 12px 6px; }
-  body.inv-open #placemenu{ z-index:320; }   /* «Τοποθέτηση όλων σε τραπέζι…» opens the table list over the editor */
+  body.invfill #placemenu{ z-index:320; }   /* «Τοποθέτηση όλων σε τραπέζι…» opens the table list over everything */
   #delModal{ z-index:340; }                   /* an "are you sure" always sits above the sheet that asked */
-  @media (max-width:900px){
-    #invModal{ align-items:flex-end; }
-    #invModal .modal{ width:100vw; height:min(86vh, calc(100vh - var(--appbar-h))); height:min(86dvh, calc(100dvh - var(--appbar-h))); max-height:none; border-radius:18px 18px 0 0; padding-bottom:env(safe-area-inset-bottom); margin-bottom:var(--kb); box-shadow:0 -10px 40px rgba(0,0,0,.25); }
-    body.kb #invModal .modal{ height:calc(100vh - var(--kb) - var(--appbar-h)); height:calc(100dvh - var(--kb) - var(--appbar-h)); }   /* typing: the sheet owns everything above the keyboard */
-    #invModal .modal-head::after{ content:""; position:absolute; top:5px; left:50%; width:36px; height:4px; margin-left:-18px; border-radius:2px; background:var(--line-2); }   /* the sheet's grabber, like the seat sheet */
-    .invbar{ padding:8px 12px; }
-    #invBody{ padding:2px 12px 14px; }
-    .invmv, .invx{ width:34px; height:34px; }
-    #invNewBtn .lg{ display:none; }   /* phone: «＋ Νέο» leaves the search its room */
-    #invNewBtn .sm{ display:inline; }
-    .invacts .ibtn.w{ grid-column:1 / -1; }   /* phone: the two long actions get a whole row each */
-  }
   .pparty .pedit .ic{ width:13px; height:13px; }
   .pparty.picked{ outline:2px solid var(--accent); outline-offset:1px; border-radius:8px; background:var(--accent-soft); }
   .gchip.inparty{ margin-left:12px; }
@@ -635,6 +692,21 @@ __ROBOTS__
     body.nav-open #navScrim{ display:block; }
     .side-scroll{ padding-bottom:env(safe-area-inset-bottom); display:flex; flex-direction:column; }
     .side-scroll>.sec{ flex:none; }
+    /* the sidebar IS the drawer, so the invitations arrive here unchanged — only reach, keyboard and touch size differ */
+    #invFoot{ order:3; padding-bottom:calc(8px + env(safe-area-inset-bottom)); bottom:var(--kb); }
+    #invFoot .ibtn{ flex:1; height:44px; justify-content:center; }
+    body.invlist .side-scroll>.sec, body.invfill .side-scroll>.sec{ flex:1; }   /* the Guests section owns the drawer */
+    /* the A–Z rail: one thumb, 80 invitations or 300 names */
+    #invRail{ position:absolute; right:1px; top:var(--invcap-top,108px); bottom:64px; width:18px; z-index:7;
+      display:flex; flex-direction:column; justify-content:center; align-items:center; touch-action:none;
+      font-size:9px; font-weight:700; color:var(--faint); user-select:none; }
+    #invRail[hidden]{ display:none !important; }   /* an author display: wins over the attribute — say it explicitly */
+    /* while the rail is up it owns the right edge: give the section its width back so no row ends under it */
+    body.invrail .side-scroll>.sec{ padding-right:32px; }
+    body.invrail #invHead, body.invrail #invSheet, body.invrail .search{ box-shadow:-14px 0 0 var(--card), 32px 0 0 var(--card); }
+    #invRail b{ display:block; line-height:1.05; padding:0 2px; font-weight:700; }
+    #invRail.on{ color:var(--accent-ink); }
+    body.kb #invRail{ display:none; }
     #toolsSec{ order:2; border-bottom:none; border-top:1px solid var(--line); }   /* phone: guests first, tools folded below (couples mostly get the venue's layout) */
     #addTableBtn.primary{ background:var(--card); color:var(--ink); border-color:var(--line); }   /* the drawer's one primary button is «Προσθήκη στη λίστα» */
     #stagewrap{ padding-bottom:calc(90px + env(safe-area-inset-bottom)); }
@@ -742,6 +814,23 @@ __ROBOTS__
   #printarea .pinv ul{ margin:2px 0 0 14px; padding:0; line-height:1.45; }
   #printarea .pinvl{ list-style:none; margin:0; padding:0; font-size:12.5px; line-height:1.6; }
   #printarea .pinvl .pn{ color:#888; font-size:11px; margin-left:4px; }
+  #printarea .pinvh .psn{ font-family:var(--sans); font-size:11.5px; font-weight:400; color:#777; margin-left:8px; }
+  /* «Όλα τα ονόματα» — one entry per invitation (members underneath) or per guest without one */
+  #printarea .palpha{ list-style:none; margin:0; padding:0; font-size:12.5px; line-height:1.5;
+    column-width:58mm; column-count:3; column-gap:8mm; }
+  #printarea .palpha li{ break-inside:avoid; padding:2px 0; border-bottom:1px dotted #e4e4e4; }
+  #printarea .palpha .pal{ display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 5px; }
+  #printarea .palpha .gdot{ display:inline-block; width:9px; height:9px; border-radius:50%; flex:none; }
+  #printarea .palpha .gdot.none{ background:transparent; border:1px solid #ccc; }
+  #printarea .palpha .an{ flex:1 1 55%; min-width:0; overflow-wrap:anywhere; }
+  #printarea .palpha .ast{ color:#a00; font-size:11px; }
+  #printarea .palpha .at{ flex:0 1 auto; min-width:0; color:#666; font-size:11px; overflow-wrap:anywhere; }
+  #printarea .palpha .at.none{ color:#bbb; font-style:italic; }
+  #printarea .palpha .ac{ flex:0 1 auto; min-width:0; color:#888; font-size:11px; overflow-wrap:anywhere; }
+  #printarea .palpha .pam{ margin:1px 0 0 14px; color:#555; font-size:11px; line-height:1.45; overflow-wrap:anywhere; }
+  #printarea .palpha .pam .mt{ color:#888; }
+  #printarea .palpha .pam .mt.none{ color:#bbb; font-style:italic; }
+  #printarea .palpha .empty{ color:#bbb; }
 </style>
 </head>
 <body>
@@ -824,7 +913,17 @@ __ROBOTS__
       <div class="sec">
         <div class="sec-title"><span data-t="guests"></span><span class="cnt" id="poolCount"></span></div>
         <div class="search" id="searchWrap"><span class="ico"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg></span><input id="guestSearch" data-t-ph="searchPh" autocomplete="off" spellcheck="false" enterkeyhint="search" inputmode="search"><button class="clr" id="searchClear" type="button">✕</button></div>
+        <div class="chips" id="invLooseWrap" hidden></div>
         <div class="chips" id="groupList"></div>
+        <button class="ibtn invbtn" id="invBtn">
+          <svg class="ic" aria-hidden="true"><use href="#i-mail"/></svg>
+          <span data-t="invTitle"></span>
+          <span class="n" id="invBtnN"></span>
+          <svg class="ic ch" aria-hidden="true"><use href="#i-right"/></svg>
+        </button>
+        <div id="invHead" hidden></div>
+        <div id="invIndex" hidden></div>
+        <div id="invSheet" hidden></div>
         <div id="pool"></div>
         <details class="addnames" id="addNames">
           <summary data-t="addNames"></summary>
@@ -833,7 +932,9 @@ __ROBOTS__
           <button class="ibtn primary" id="addGuestBtn" style="width:100%;height:36px" data-t="addToList"></button>
         </details>
       </div>
+      <div id="invFoot" hidden></div>
     </div>
+    <div id="invRail" hidden></div>
   </aside>
 
   <div id="stagewrap"><div id="stage"></div></div>
@@ -890,6 +991,7 @@ __ROBOTS__
   </div>
 </div>
 <div id="groupmenu" class="popover"></div>
+<div id="invswitch" class="popover"></div>
 <div id="placemenu" class="popover"></div>
 <div id="guesteditor" class="popover"></div>
 <div id="featuremenu" class="popover"></div>
@@ -897,21 +999,12 @@ __ROBOTS__
 <div id="moremenu" class="popover"></div>
 <div id="viewmenu" class="popover"></div>
 <div id="palette" class="popover"></div>
-<div id="invModal" class="modal-back">
-  <div class="modal">
-    <div class="modal-head"><strong data-t="invTitle"></strong><span class="invsum" id="invSum"></span><button class="ibtn sq" id="invUndo" data-t-title="undo" disabled><svg class="ic" aria-hidden="true"><use href="#i-undo"/></svg></button><button class="mx" id="invClose">✕</button></div>
-    <div class="invbar">
-      <label class="invsearch"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg><input id="invSearch" type="text" data-t-ph="invSearchPh" autocomplete="off" spellcheck="false" enterkeyhint="search"></label>
-      <button class="ibtn primary" id="invNewBtn" data-t-title="invNew"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg><span class="lg" data-t="invNew"></span><span class="sm" data-t="invNewShort"></span></button>
-    </div>
-    <div id="invBody"></div>
-  </div>
-</div>
 <div id="printModal" class="modal-back">
   <div class="modal narrow">
     <div class="modal-head"><strong data-t="printTitleM"></strong><button class="mx" id="printClose">✕</button></div>
     <div class="mbody">
-      <label class="imode"><input type="radio" name="pmode" value="names" checked><span data-t="pmNames"></span></label>
+      <label class="imode"><input type="radio" name="pmode" value="alpha" checked><span data-t="pmAll"></span></label>
+      <label class="imode" style="margin-top:6px"><input type="radio" name="pmode" value="names"><span data-t="pmNames"></span></label>
       <label class="imode" style="margin-top:6px"><input type="radio" name="pmode" value="parties"><span data-t="pmParties"></span></label>
       <label class="imode" style="margin-top:6px"><input type="radio" name="pmode" value="pdf"><span data-t="pmPdf"></span></label>
       <label class="imode" style="margin-top:6px" id="pmKeepRow" hidden><input type="radio" name="pmode" value="keepsake"><span data-t="pmKeep"></span></label>
@@ -1124,7 +1217,7 @@ el:{
   geParty:"Προσκλητήριο", gePartyPh:"π.χ. Οικ. Παπαδόπουλου", gripParty:"Τοποθέτηση όλου του προσκλητηρίου…", partyRename:"Μετονομασία / διάλυση προσκλητηρίου", partyRenamePrompt:"Όνομα προσκλητηρίου (κενό = διάλυση):",
   pbParty:"{n} · {c} άτομα", tPartyPartial:"{n}/{m} του προσκλητηρίου στο «{t}» — δεν χωρούν όλοι", printInvites:"Προσκλητήρια", printNoSeat:"χωρίς θέση",
   mInv:"Προσκλητήρια…", invTitle:"Προσκλητήρια", invSum:"{p} προσκλητήρια · {n}", invSum1:"1 προσκλητήριο · {n}", invSearchPh:"Αναζήτηση προσκλητηρίου ή ονόματος…", invNew:"Νέο προσκλητήριο", invNewShort:"Νέο", invNewPh:"Όνομα προσκλητηρίου (π.χ. Οικ. Παπαδόπουλου)", invDraftHint:"Προσθέστε άτομα — ένα προσκλητήριο χωρίς άτομα δεν κρατιέται.", invOne:"1 άτομο", invPeople:"{n} άτομα", invSeatedN:"{s} με θέση", invEmpty:"Δεν υπάρχουν ακόμη προσκλητήρια. Πατήστε «Νέο προσκλητήριο» — ή γράψτε «Οικ. Παπαδόπουλου:» πάνω από τα ονόματα όταν τα προσθέτετε στη λίστα.", invRo:"Μόνο προβολή — εδώ δεν γίνονται αλλαγές.",
-  invAdd:"Προσθήκη ατόμων", invAddPh:"Γράψτε ένα όνομα…", invAddLoose:"Χωρίς προσκλητήριο", invAddDone:"Τέλος", invInOther:"στο «{p}»", invSeatAll:"Τοποθέτηση όλων σε τραπέζι…", invAllThere:"Όλοι κάθονται ήδη στο «{t}»", invRename:"Μετονομασία", invDelete:"Διαγραφή", invDelConfirm:"Διαγραφή του προσκλητηρίου «{n}»; Τα {k} άτομα μένουν στη λίστα ως μεμονωμένοι καλεσμένοι, στις θέσεις τους.", invRemove:"Αφαίρεση από το προσκλητήριο", invMoveTo:"Μετακίνηση σε άλλο προσκλητήριο", invMoveCap:"Μετακίνηση σε:", invMoveNew:"＋ Νέο προσκλητήριο…", invNewPrompt:"Όνομα του νέου προσκλητηρίου:", invJump:"Δείτε τη θέση στην κάτοψη", invEditTip:"Επεξεργασία προσκλητηρίου", geInvEdit:"Προσκλητήριο: {n} — επεξεργασία",
+  invAdd:"Προσθήκη ατόμων", invAddPh:"Γράψτε ένα όνομα…", invAddLoose:"Χωρίς προσκλητήριο", invLooseShort:"{n} χωρίς", invLooseChip:"χωρίς προσκλητήριο", invLooseN:"{n} άτομα χωρίς προσκλητήριο", invLooseN1:"1 άτομο χωρίς προσκλητήριο", invBackAll:"Όλα τα προσκλητήρια", invSwitchCap:"Αλλαγή προσκλητηρίου", invSheetEmpty:"Κανένα άτομο ακόμη — τσεκάρετε ονόματα παρακάτω.", invFilterAll:"Όλοι", invFilterLoose:"Χωρίς", invFilterIn:"Σε αυτό", invNewGuest:"＋ Προσθήκη «{n}» στη λίστα και σε αυτό το προσκλητήριο", tGuestCreatedInv:"Ο/Η {g} μπήκε στη λίστα και στο «{p}»", invNotKept:"Το «{n}» δεν κρατήθηκε — δεν είχε ονόματα.", invSeatsUnchanged:"Η προσθήκη σε προσκλητήριο δεν αλλάζει θέσεις.", invKeptSeat:" — η θέση δεν άλλαξε", invTip:"Προσκλητήρια: ομαδοποιήστε τα ονόματα ανά οικογένεια — μετρώνται και κάθονται μαζί.", invAddDone:"Τέλος", invInOther:"στο «{p}»", invSeatAll:"Τοποθέτηση όλων σε τραπέζι…", invAllThere:"Όλοι κάθονται ήδη στο «{t}»", invRename:"Μετονομασία", invDelete:"Διαγραφή", invDelConfirm:"Διαγραφή του προσκλητηρίου «{n}»; Τα {k} άτομα μένουν στη λίστα ως μεμονωμένοι καλεσμένοι, στις θέσεις τους.", invRemove:"Αφαίρεση από το προσκλητήριο", invMoveTo:"Μετακίνηση σε άλλο προσκλητήριο", invMoveCap:"Μετακίνηση σε:", invMoveNew:"＋ Νέο προσκλητήριο…", invNewPrompt:"Όνομα του νέου προσκλητηρίου:", invJump:"Δείτε τη θέση στην κάτοψη", invEditTip:"Επεξεργασία / προσθήκη ατόμων", geInvEdit:"Προσκλητήριο: {n} — επεξεργασία",
   tInvAdded:"«{g}» → «{p}»", tInvAddedMoved:"«{g}» → «{p}» (ήταν στο «{a}»)", tInvRemoved:"«{g}» βγήκε από το «{p}»", tInvGone:" — το «{p}» έμεινε χωρίς άτομα και αφαιρέθηκε", tInvMoved:"«{g}» μετακινήθηκε στο «{b}» (από το «{a}»)", tInvMerged:"Συγχωνεύτηκε με το «{n}» ({k} άτομα)", tInvDeleted:"Διαγράφηκε το προσκλητήριο «{n}» — οι καλεσμένοι έμειναν · ↶ για αναίρεση",
   labCap:"Η δωρεάν δοκιμή έχει έως {n} τραπέζια. Για ολόκληρο τον γάμο σας:", labCapCut:"Κρατήθηκαν τα πρώτα {n} τραπέζια — {k} ακόμη δεν μπήκαν (οι καλεσμένοι τους είναι στη λίστα).", labCapSkip:"{k} τραπέζια του αρχείου δεν χωρούν (οι καλεσμένοι τους είναι στη λίστα).",
   gripTitle:"Τοποθέτηση σε τραπέζι…", pmFor:"Θέση για: {n}", pmFloor:"Διαλέξτε καρέκλα στην κάτοψη", tPlaced:"{n} → {t}",
@@ -1152,7 +1245,7 @@ el:{
   poolEmpty:"Όλοι οι καλεσμένοι έχουν θέση 🎉", poolEmptyNew:"Δεν υπάρχουν καλεσμένοι ακόμη.<br>Προσθέστε ονόματα παρακάτω ↓", poolEmptyGroup:"Κανείς χωρίς θέση σε αυτή την ομάδα — δείτε «Όλοι»", noMatch:"Κανένα όνομα δεν ταιριάζει",
   chipEdit:"Επεξεργασία ονόματος & ομάδας", chipRemove:"Αφαίρεση καλεσμένου", groupTip:"Κλικ: επιλογή · Διπλό κλικ: μετονομασία · Δεξί κλικ: χρώμα / διαγραφή", groupMore:"Μετονομασία / χρώμα / διαγραφή",
   prevTable:"Προηγούμενο τραπέζι", nextTable:"Επόμενο τραπέζι", tableSettings:"Ρυθμίσεις τραπεζιού", close:"Κλείσιμο",
-  seatPh:"κενή θέση", unseat:"Αφαίρεση από τη θέση", fill:"Γέμισμα", clearTable:"Άδειασμα", tableGroup:"Ομάδα τραπεζιού…", partyNew:"Προσκλητήριο…", partySelHint:"Πατήστε τα ονόματα που ανήκουν στο ίδιο προσκλητήριο", psCount:"{n} επιλεγμένα", psNamePh:"Όνομα προσκλητηρίου (π.χ. ΚΟΤΣΩΝΑΣ)", psOk:"Δημιουργία", partyN:"Προσκλητήριο {n}", tPartyMade:"Προσκλητήριο «{n}»: {k} ονόματα", tPartyNone:"Πατήστε πρώτα τα ονόματα που θέλετε", printTitleM:"Εκτύπωση & PDF", pmPdf:"Κάτοψη (PDF) — ο χώρος με τα τραπέζια και τα ονόματα, σε μία σελίδα", pmKeep:"Αναμνηστικό PDF — εξώφυλλο, κάτοψη και ποιος κάθισε πού", pdfGo:"Λήψη PDF", pdfMaking:"Δημιουργία PDF…", pdfBig:"Το σχέδιο είναι πολύ μεγάλο για PDF.", pdfOff:"Το PDF δεν είναι διαθέσιμο αυτή τη στιγμή — δοκιμάστε αργότερα ή χρησιμοποιήστε την εκτύπωση.", pdfFail:"Δεν δημιουργήθηκε το PDF — δοκιμάστε ξανά.", printWed:"Γάμος: {d}", printAt:"Εκτύπωση: {t}", pmNames:"Ονόματα ανά τραπέζι", pmParties:"Προσκλητήρια ανά τραπέζι (πόσα άτομα από κάθε προσκλητήριο)", nameCase:"Γραφή", nc_asis:"Όπως γράφτηκαν", nc_upper:"ΚΕΦΑΛΑΙΑ", nc_lower:"Πεζά", tLowerHint:"Πεζά με αρχικό κεφαλαίο — οι τόνοι επιστρέφουν μόνο σε γνωστά μικρά ονόματα· τα υπόλοιπα διορθώστε τα με το χέρι.", confirmMerge:"Συγχώνευση «{a}» στο «{b}»; Τα {n} άτομα μετακινούνται και το «{b}» θα έχει {c} θέσεις.", mergeTitle:"Συγχώνευση τραπεζιών", mergeOk:"Συγχώνευση", dragMerge:"Συγχώνευση με «{b}»", tTablesMerged:"«{a}» → «{b}»: {n} άτομα, {c} θέσεις — ↶ για αναίρεση", tMergeTooBig:"Δεν γίνεται: το «{b}» θα χρειαζόταν {c} θέσεις (μέγιστο 30).", tgCap:"Όλοι στο «{n}» → ομάδα", tgEmpty:"Κανείς δεν κάθεται ακόμη στο «{n}».", tGrouped:"«{g}»: όλοι στο «{n}» ({k})", tUngrouped:"Χωρίς ομάδα: όλοι στο «{n}» ({k})", clearConfirm:"Να επιστρέψουν όλοι οι καλεσμένοι του «{n}» στους χωρίς θέση;",
+  seatPh:"κενή θέση", unseat:"Αφαίρεση από τη θέση", fill:"Γέμισμα", clearTable:"Άδειασμα", tableGroup:"Ομάδα τραπεζιού…", partyNew:"Προσκλητήριο…", partySelHint:"Πατήστε τα ονόματα που ανήκουν στο ίδιο προσκλητήριο", psCount:"{n} επιλεγμένα", psNamePh:"Όνομα προσκλητηρίου (π.χ. ΚΟΤΣΩΝΑΣ)", psOk:"Δημιουργία", partyN:"Προσκλητήριο {n}", tPartyMade:"Προσκλητήριο «{n}»: {k} ονόματα", tPartyNone:"Πατήστε πρώτα τα ονόματα που θέλετε", printTitleM:"Εκτύπωση & PDF", pmPdf:"Κάτοψη (PDF) — ο χώρος με τα τραπέζια και τα ονόματα, σε μία σελίδα", pmKeep:"Αναμνηστικό PDF — εξώφυλλο, κάτοψη και ποιος κάθισε πού", pdfGo:"Λήψη PDF", pdfMaking:"Δημιουργία PDF…", pdfBig:"Το σχέδιο είναι πολύ μεγάλο για PDF.", pdfOff:"Το PDF δεν είναι διαθέσιμο αυτή τη στιγμή — δοκιμάστε αργότερα ή χρησιμοποιήστε την εκτύπωση.", pdfFail:"Δεν δημιουργήθηκε το PDF — δοκιμάστε ξανά.", printWed:"Γάμος: {d}", printAt:"Εκτύπωση: {t}", pmAll:"Όλα αλφαβητικά — κάθε προσκλητήριο με τα άτομά του, και χωριστά όσοι δεν έχουν", printAllH:"Αλφαβητικά — προσκλητήρια και καλεσμένοι", printAllSub:"{g} καλεσμένοι · {s} με θέση · {u} χωρίς θέση", pmNames:"Ονόματα ανά τραπέζι", pmParties:"Προσκλητήρια ανά τραπέζι (πόσα άτομα από κάθε προσκλητήριο)", nameCase:"Γραφή", nc_asis:"Όπως γράφτηκαν", nc_upper:"ΚΕΦΑΛΑΙΑ", nc_lower:"Πεζά", tLowerHint:"Πεζά με αρχικό κεφαλαίο — οι τόνοι επιστρέφουν μόνο σε γνωστά μικρά ονόματα· τα υπόλοιπα διορθώστε τα με το χέρι.", confirmMerge:"Συγχώνευση «{a}» στο «{b}»; Τα {n} άτομα μετακινούνται και το «{b}» θα έχει {c} θέσεις.", mergeTitle:"Συγχώνευση τραπεζιών", mergeOk:"Συγχώνευση", dragMerge:"Συγχώνευση με «{b}»", tTablesMerged:"«{a}» → «{b}»: {n} άτομα, {c} θέσεις — ↶ για αναίρεση", tMergeTooBig:"Δεν γίνεται: το «{b}» θα χρειαζόταν {c} θέσεις (μέγιστο 30).", tgCap:"Όλοι στο «{n}» → ομάδα", tgEmpty:"Κανείς δεν κάθεται ακόμη στο «{n}».", tGrouped:"«{g}»: όλοι στο «{n}» ({k})", tUngrouped:"Χωρίς ομάδα: όλοι στο «{n}» ({k})", clearConfirm:"Να επιστρέψουν όλοι οι καλεσμένοι του «{n}» στους χωρίς θέση;",
   fillNone:"Δεν υπάρχουν καλεσμένοι χωρίς θέση εκεί", filled:"Τοποθετήθηκαν {n}", createNew:"＋ Νέος καλεσμένος «{n}»", renameTo:"Μετονομασία σε «{n}»", moreMatches:"…και άλλοι {n} — συνεχίστε να γράφετε",
   pbHint:"→ πατήστε μια θέση", pbUnseat:"↩ Χωρίς θέση", pbEdit:"Επεξεργασία", pbCancel:"Άκυρο",
   menuTitle:"Ρυθμίσεις τραπεζιού", menuTitleHead:"Ρυθμίσεις νυφικού τραπεζιού", menuTitleRect:"Ρυθμίσεις μακριού τραπεζιού", capLabelRect:"Θέσεις (και στις δύο μακριές πλευρές)", capLabel:"Θέσεις", capLabelHead:"Συνολικές θέσεις (οι 2 είναι οι ακριανές)", labelPh:"Όνομα / αριθμός τραπεζιού", deleteTable:"Διαγραφή", focusSeats:"Ονόματα",
@@ -1268,7 +1361,7 @@ en:{
   geParty:"Invitation", gePartyPh:"e.g. The Smiths", gripParty:"Seat the whole invitation…", partyRename:"Rename / dissolve invitation", partyRenamePrompt:"Invitation name (empty = dissolve):",
   pbParty:"{n} · {c} people", tPartyPartial:"{n}/{m} of the invitation at “{t}” — not everyone fits", printInvites:"Invitations", printNoSeat:"no seat",
   mInv:"Invitations…", invTitle:"Invitations", invSum:"{p} invitations · {n}", invSum1:"1 invitation · {n}", invSearchPh:"Search invitations or names…", invNew:"New invitation", invNewShort:"New", invNewPh:"Invitation name (e.g. The Smiths)", invDraftHint:"Add people — an invitation without people is not kept.", invOne:"1 person", invPeople:"{n} people", invSeatedN:"{s} seated", invEmpty:"No invitations yet. Press “New invitation” — or type “The Smiths:” above the names when you add them to the list.", invRo:"View only — nothing can be changed here.",
-  invAdd:"Add people", invAddPh:"Type a name…", invAddLoose:"Not in an invitation", invAddDone:"Done", invInOther:"in “{p}”", invSeatAll:"Seat everyone at a table…", invAllThere:"Everyone already sits at “{t}”", invRename:"Rename", invDelete:"Delete", invDelConfirm:"Delete the invitation “{n}”? Its {k} people stay on the list as individual guests, in their seats.", invRemove:"Remove from the invitation", invMoveTo:"Move to another invitation", invMoveCap:"Move to:", invMoveNew:"+ New invitation…", invNewPrompt:"Name of the new invitation:", invJump:"Show the seat on the floor plan", invEditTip:"Edit invitation", geInvEdit:"Invitation: {n} — edit",
+  invAdd:"Add people", invAddPh:"Type a name…", invAddLoose:"Not in an invitation", invLooseShort:"{n} without", invLooseChip:"not in an invitation", invLooseN:"{n} people not in an invitation", invLooseN1:"1 person not in an invitation", invBackAll:"All invitations", invSwitchCap:"Switch invitation", invSheetEmpty:"Nobody yet — tick names from the list below.", invFilterAll:"Everyone", invFilterLoose:"Not yet", invFilterIn:"In this one", invNewGuest:"+ Add “{n}” to the list and to this invitation", tGuestCreatedInv:"{g} was added to the list and to “{p}”", invNotKept:"“{n}” was not kept — it had no names.", invSeatsUnchanged:"Adding someone to an invitation does not change seats.", invKeptSeat:" — the seat did not change", invTip:"Invitations: group names by household — they are counted and seated together.", invAddDone:"Done", invInOther:"in “{p}”", invSeatAll:"Seat everyone at a table…", invAllThere:"Everyone already sits at “{t}”", invRename:"Rename", invDelete:"Delete", invDelConfirm:"Delete the invitation “{n}”? Its {k} people stay on the list as individual guests, in their seats.", invRemove:"Remove from the invitation", invMoveTo:"Move to another invitation", invMoveCap:"Move to:", invMoveNew:"+ New invitation…", invNewPrompt:"Name of the new invitation:", invJump:"Show the seat on the floor plan", invEditTip:"Edit / add people", geInvEdit:"Invitation: {n} — edit",
   tInvAdded:"“{g}” → “{p}”", tInvAddedMoved:"“{g}” → “{p}” (was in “{a}”)", tInvRemoved:"“{g}” left “{p}”", tInvGone:" — “{p}” has no one left and was removed", tInvMoved:"“{g}” moved to “{b}” (from “{a}”)", tInvMerged:"Merged with “{n}” ({k} people)", tInvDeleted:"Invitation “{n}” deleted — the guests stay · ↶ to undo",
   labCap:"The free trial has up to {n} tables. For your whole wedding:", labCapCut:"Kept the first {n} tables — {k} more were left out (their guests are on the list).", labCapSkip:"{k} tables from the file do not fit (their guests are on the list).",
   gripTitle:"Place at a table…", pmFor:"Seat for: {n}", pmFloor:"Pick a chair on the floor", tPlaced:"{n} → {t}",
@@ -1296,7 +1389,7 @@ en:{
   poolEmpty:"Everyone has a seat 🎉", poolEmptyNew:"No guests yet.<br>Add names below ↓", poolEmptyGroup:"No unseated guests in this group — see “All”", noMatch:"No name matches",
   chipEdit:"Edit name & group", chipRemove:"Remove guest", groupTip:"Click: select · Double-click: rename · Right-click: colour / delete", groupMore:"Rename / colour / delete",
   prevTable:"Previous table", nextTable:"Next table", tableSettings:"Table settings", close:"Close",
-  seatPh:"empty seat", unseat:"Remove from seat", fill:"Fill", clearTable:"Clear", tableGroup:"Table group…", partyNew:"Invitation…", partySelHint:"Tap the names that share one invitation", psCount:"{n} selected", psNamePh:"Invitation name (e.g. the Smiths)", psOk:"Create", partyN:"Invitation {n}", tPartyMade:"Invitation “{n}”: {k} names", tPartyNone:"Tap the names you want first", printTitleM:"Print & PDF", pmPdf:"Floor plan (PDF) — the space with its tables and names, on one page", pmKeep:"Keepsake PDF — cover, floor plan and who sat where", pdfGo:"Download PDF", pdfMaking:"Making the PDF…", pdfBig:"This plan is too large for a PDF.", pdfOff:"The PDF is not available right now — try again later or use printing.", pdfFail:"The PDF could not be made — please try again.", printWed:"Wedding: {d}", printAt:"Printed: {t}", pmNames:"Names per table", pmParties:"Invitations per table (how many people of each)", nameCase:"Letter case", nc_asis:"As typed", nc_upper:"UPPERCASE", nc_lower:"Lowercase", tLowerHint:"Capitalised words — Greek accents come back only for known first names; fix the rest by hand.", confirmMerge:"Merge “{a}” into “{b}”? Its {n} people move over and “{b}” will have {c} seats.", mergeTitle:"Merge tables", mergeOk:"Merge", dragMerge:"Merge into “{b}”", tTablesMerged:"“{a}” → “{b}”: {n} people, {c} seats — ↶ to undo", tMergeTooBig:"Not possible: “{b}” would need {c} seats (30 at most).", tgCap:"Everyone at “{n}” → group", tgEmpty:"Nobody is seated at “{n}” yet.", tGrouped:"“{g}”: everyone at “{n}” ({k})", tUngrouped:"No group: everyone at “{n}” ({k})", clearConfirm:"Send everyone at “{n}” back to the unseated list?",
+  seatPh:"empty seat", unseat:"Remove from seat", fill:"Fill", clearTable:"Clear", tableGroup:"Table group…", partyNew:"Invitation…", partySelHint:"Tap the names that share one invitation", psCount:"{n} selected", psNamePh:"Invitation name (e.g. the Smiths)", psOk:"Create", partyN:"Invitation {n}", tPartyMade:"Invitation “{n}”: {k} names", tPartyNone:"Tap the names you want first", printTitleM:"Print & PDF", pmPdf:"Floor plan (PDF) — the space with its tables and names, on one page", pmKeep:"Keepsake PDF — cover, floor plan and who sat where", pdfGo:"Download PDF", pdfMaking:"Making the PDF…", pdfBig:"This plan is too large for a PDF.", pdfOff:"The PDF is not available right now — try again later or use printing.", pdfFail:"The PDF could not be made — please try again.", printWed:"Wedding: {d}", printAt:"Printed: {t}", pmAll:"All, A–Z — each invitation with its people, and separately everyone who has none", printAllH:"A–Z — invitations and guests", printAllSub:"{g} guests · {s} seated · {u} without a seat", pmNames:"Names per table", pmParties:"Invitations per table (how many people of each)", nameCase:"Letter case", nc_asis:"As typed", nc_upper:"UPPERCASE", nc_lower:"Lowercase", tLowerHint:"Capitalised words — Greek accents come back only for known first names; fix the rest by hand.", confirmMerge:"Merge “{a}” into “{b}”? Its {n} people move over and “{b}” will have {c} seats.", mergeTitle:"Merge tables", mergeOk:"Merge", dragMerge:"Merge into “{b}”", tTablesMerged:"“{a}” → “{b}”: {n} people, {c} seats — ↶ to undo", tMergeTooBig:"Not possible: “{b}” would need {c} seats (30 at most).", tgCap:"Everyone at “{n}” → group", tgEmpty:"Nobody is seated at “{n}” yet.", tGrouped:"“{g}”: everyone at “{n}” ({k})", tUngrouped:"No group: everyone at “{n}” ({k})", clearConfirm:"Send everyone at “{n}” back to the unseated list?",
   fillNone:"No unseated guests there", filled:"Seated {n}", createNew:"＋ New guest “{n}”", renameTo:"Rename to “{n}”", moreMatches:"…and {n} more — keep typing",
   pbHint:"→ tap a seat", pbUnseat:"↩ Unseat", pbEdit:"Edit", pbCancel:"Cancel",
   menuTitle:"Table settings", menuTitleHead:"Head table settings", menuTitleRect:"Long table settings", capLabelRect:"Seats (on both long sides)", capLabel:"Seats", capLabelHead:"Total seats (2 are the ends)", labelPh:"Table name / number", deleteTable:"Delete", focusSeats:"Names",
@@ -1412,7 +1505,7 @@ de:{
   geParty:"Einladung", gePartyPh:"z. B. Familie Müller", gripParty:"Ganze Einladung platzieren…", partyRename:"Einladung umbenennen / auflösen", partyRenamePrompt:"Name der Einladung (leer = auflösen):",
   pbParty:"{n} · {c} Personen", tPartyPartial:"{n}/{m} der Einladung an „{t}“ — nicht alle passen", printInvites:"Einladungen", printNoSeat:"ohne Platz",
   mInv:"Einladungen…", invTitle:"Einladungen", invSum:"{p} Einladungen · {n}", invSum1:"1 Einladung · {n}", invSearchPh:"Einladung oder Namen suchen…", invNew:"Neue Einladung", invNewShort:"Neu", invNewPh:"Name der Einladung (z. B. Familie Müller)", invDraftHint:"Fügen Sie Personen hinzu — eine Einladung ohne Personen wird nicht gespeichert.", invOne:"1 Person", invPeople:"{n} Personen", invSeatedN:"{s} mit Platz", invEmpty:"Noch keine Einladungen. Tippen Sie auf „Neue Einladung“ — oder schreiben Sie „Familie Müller:“ über die Namen, wenn Sie sie zur Liste hinzufügen.", invRo:"Nur Ansicht — hier kann nichts geändert werden.",
-  invAdd:"Personen hinzufügen", invAddPh:"Namen eingeben…", invAddLoose:"Ohne Einladung", invAddDone:"Fertig", invInOther:"in „{p}“", invSeatAll:"Alle an einen Tisch setzen…", invAllThere:"Alle sitzen schon an „{t}“", invRename:"Umbenennen", invDelete:"Löschen", invDelConfirm:"Einladung „{n}“ löschen? Die {k} Personen bleiben als einzelne Gäste auf der Liste, auf ihren Plätzen.", invRemove:"Aus der Einladung entfernen", invMoveTo:"In eine andere Einladung verschieben", invMoveCap:"Verschieben nach:", invMoveNew:"+ Neue Einladung…", invNewPrompt:"Name der neuen Einladung:", invJump:"Platz im Plan zeigen", invEditTip:"Einladung bearbeiten", geInvEdit:"Einladung: {n} — bearbeiten",
+  invAdd:"Personen hinzufügen", invAddPh:"Namen eingeben…", invAddLoose:"Ohne Einladung", invLooseShort:"{n} ohne", invLooseChip:"ohne Einladung", invLooseN:"{n} Personen ohne Einladung", invLooseN1:"1 Person ohne Einladung", invBackAll:"Alle Einladungen", invSwitchCap:"Einladung wechseln", invSheetEmpty:"Noch niemand — Namen aus der Liste unten antippen.", invFilterAll:"Alle", invFilterLoose:"Ohne", invFilterIn:"In dieser", invNewGuest:"+ „{n}“ zur Liste und zu dieser Einladung hinzufügen", tGuestCreatedInv:"{g} wurde zur Liste und zu „{p}“ hinzugefügt", invNotKept:"„{n}“ wurde nicht gespeichert — ohne Namen.", invSeatsUnchanged:"Eine Einladung ändert keine Sitzplätze.", invKeptSeat:" — der Platz bleibt", invTip:"Einladungen: Namen nach Haushalt gruppieren — sie werden gezählt und zusammen gesetzt.", invAddDone:"Fertig", invInOther:"in „{p}“", invSeatAll:"Alle an einen Tisch setzen…", invAllThere:"Alle sitzen schon an „{t}“", invRename:"Umbenennen", invDelete:"Löschen", invDelConfirm:"Einladung „{n}“ löschen? Die {k} Personen bleiben als einzelne Gäste auf der Liste, auf ihren Plätzen.", invRemove:"Aus der Einladung entfernen", invMoveTo:"In eine andere Einladung verschieben", invMoveCap:"Verschieben nach:", invMoveNew:"+ Neue Einladung…", invNewPrompt:"Name der neuen Einladung:", invJump:"Platz im Plan zeigen", invEditTip:"Bearbeiten / Personen hinzufügen", geInvEdit:"Einladung: {n} — bearbeiten",
   tInvAdded:"„{g}“ → „{p}“", tInvAddedMoved:"„{g}“ → „{p}“ (war in „{a}“)", tInvRemoved:"„{g}“ aus „{p}“ entfernt", tInvGone:" — „{p}“ ist leer und wurde entfernt", tInvMoved:"„{g}“ nach „{b}“ verschoben (aus „{a}“)", tInvMerged:"Mit „{n}“ zusammengeführt ({k} Personen)", tInvDeleted:"Einladung „{n}“ gelöscht — die Gäste bleiben · ↶ zum Rückgängigmachen",
   labCap:"Die kostenlose Testversion hat bis zu {n} Tische. Für Ihre ganze Hochzeit:", labCapCut:"Die ersten {n} Tische wurden übernommen — {k} weitere nicht (ihre Gäste stehen auf der Liste).", labCapSkip:"{k} Tische aus der Datei passen nicht mehr (ihre Gäste stehen auf der Liste).",
   gripTitle:"An einen Tisch setzen…", pmFor:"Platz für: {n}", pmFloor:"Stuhl auf der Fläche wählen", tPlaced:"{n} → {t}",
@@ -1440,7 +1533,7 @@ de:{
   poolEmpty:"Alle Gäste haben einen Platz 🎉", poolEmptyNew:"Noch keine Gäste.<br>Namen unten hinzufügen ↓", poolEmptyGroup:"Niemand ohne Platz in dieser Gruppe — siehe „Alle“", noMatch:"Kein Name passt",
   chipEdit:"Name & Gruppe bearbeiten", chipRemove:"Gast entfernen", groupTip:"Klick: auswählen · Doppelklick: umbenennen · Rechtsklick: Farbe / löschen", groupMore:"Umbenennen / Farbe / löschen",
   prevTable:"Vorheriger Tisch", nextTable:"Nächster Tisch", tableSettings:"Tisch-Einstellungen", close:"Schließen",
-  seatPh:"freier Platz", unseat:"Vom Platz entfernen", fill:"Füllen", clearTable:"Leeren", tableGroup:"Tischgruppe…", partyNew:"Einladung…", partySelHint:"Tippen Sie die Namen an, die zu einer Einladung gehören", psCount:"{n} ausgewählt", psNamePh:"Name der Einladung (z. B. Familie Müller)", psOk:"Anlegen", partyN:"Einladung {n}", tPartyMade:"Einladung „{n}“: {k} Namen", tPartyNone:"Zuerst die Namen antippen", printTitleM:"Drucken & PDF", pmPdf:"Grundriss (PDF) — der Raum mit Tischen und Namen, auf einer Seite", pmKeep:"Erinnerungs-PDF — Titelblatt, Grundriss und wer wo saß", pdfGo:"PDF herunterladen", pdfMaking:"PDF wird erstellt…", pdfBig:"Dieser Plan ist zu groß für ein PDF.", pdfOff:"Das PDF ist gerade nicht verfügbar — bitte später erneut versuchen oder drucken.", pdfFail:"Das PDF konnte nicht erstellt werden — bitte erneut versuchen.", printWed:"Hochzeit: {d}", printAt:"Gedruckt: {t}", pmNames:"Namen pro Tisch", pmParties:"Einladungen pro Tisch (wie viele Personen je Einladung)", nameCase:"Schreibweise", nc_asis:"Wie eingegeben", nc_upper:"GROSSBUCHSTABEN", nc_lower:"Kleinbuchstaben", tLowerHint:"Groß-/Kleinschreibung — griechische Akzente kommen nur bei bekannten Vornamen zurück; den Rest bitte von Hand.", confirmMerge:"„{a}“ in „{b}“ zusammenführen? Die {n} Personen ziehen um und „{b}“ bekommt {c} Plätze.", mergeTitle:"Tische zusammenführen", mergeOk:"Zusammenführen", dragMerge:"Zusammenführen mit „{b}“", tTablesMerged:"„{a}“ → „{b}“: {n} Personen, {c} Plätze — ↶ macht es rückgängig", tMergeTooBig:"Geht nicht: „{b}“ bräuchte {c} Plätze (höchstens 30).", tgCap:"Alle an „{n}“ → Gruppe", tgEmpty:"An „{n}“ sitzt noch niemand.", tGrouped:"„{g}“: alle an „{n}“ ({k})", tUngrouped:"Keine Gruppe: alle an „{n}“ ({k})", clearConfirm:"Alle Gäste von „{n}“ zurück in die Liste ohne Platz?",
+  seatPh:"freier Platz", unseat:"Vom Platz entfernen", fill:"Füllen", clearTable:"Leeren", tableGroup:"Tischgruppe…", partyNew:"Einladung…", partySelHint:"Tippen Sie die Namen an, die zu einer Einladung gehören", psCount:"{n} ausgewählt", psNamePh:"Name der Einladung (z. B. Familie Müller)", psOk:"Anlegen", partyN:"Einladung {n}", tPartyMade:"Einladung „{n}“: {k} Namen", tPartyNone:"Zuerst die Namen antippen", printTitleM:"Drucken & PDF", pmPdf:"Grundriss (PDF) — der Raum mit Tischen und Namen, auf einer Seite", pmKeep:"Erinnerungs-PDF — Titelblatt, Grundriss und wer wo saß", pdfGo:"PDF herunterladen", pdfMaking:"PDF wird erstellt…", pdfBig:"Dieser Plan ist zu groß für ein PDF.", pdfOff:"Das PDF ist gerade nicht verfügbar — bitte später erneut versuchen oder drucken.", pdfFail:"Das PDF konnte nicht erstellt werden — bitte erneut versuchen.", printWed:"Hochzeit: {d}", printAt:"Gedruckt: {t}", pmAll:"Alles A–Z — jede Einladung mit ihren Personen, und getrennt alle ohne", printAllH:"A–Z — Einladungen und Gäste", printAllSub:"{g} Gäste · {s} mit Platz · {u} ohne Platz", pmNames:"Namen pro Tisch", pmParties:"Einladungen pro Tisch (wie viele Personen je Einladung)", nameCase:"Schreibweise", nc_asis:"Wie eingegeben", nc_upper:"GROSSBUCHSTABEN", nc_lower:"Kleinbuchstaben", tLowerHint:"Groß-/Kleinschreibung — griechische Akzente kommen nur bei bekannten Vornamen zurück; den Rest bitte von Hand.", confirmMerge:"„{a}“ in „{b}“ zusammenführen? Die {n} Personen ziehen um und „{b}“ bekommt {c} Plätze.", mergeTitle:"Tische zusammenführen", mergeOk:"Zusammenführen", dragMerge:"Zusammenführen mit „{b}“", tTablesMerged:"„{a}“ → „{b}“: {n} Personen, {c} Plätze — ↶ macht es rückgängig", tMergeTooBig:"Geht nicht: „{b}“ bräuchte {c} Plätze (höchstens 30).", tgCap:"Alle an „{n}“ → Gruppe", tgEmpty:"An „{n}“ sitzt noch niemand.", tGrouped:"„{g}“: alle an „{n}“ ({k})", tUngrouped:"Keine Gruppe: alle an „{n}“ ({k})", clearConfirm:"Alle Gäste von „{n}“ zurück in die Liste ohne Platz?",
   fillNone:"Dort gibt es keine Gäste ohne Platz", filled:"{n} platziert", createNew:"＋ Neuer Gast „{n}“", renameTo:"Umbenennen in „{n}“", moreMatches:"…und {n} weitere — weiter tippen",
   pbHint:"→ Platz antippen", pbUnseat:"↩ Platz freigeben", pbEdit:"Bearbeiten", pbCancel:"Abbrechen",
   menuTitle:"Tisch-Einstellungen", menuTitleHead:"Brauttisch-Einstellungen", menuTitleRect:"Einstellungen der langen Tafel", capLabelRect:"Plätze (an beiden Längsseiten)", capLabel:"Plätze", capLabelHead:"Plätze gesamt (2 davon an den Enden)", labelPh:"Tischname / -nummer", deleteTable:"Löschen", focusSeats:"Namen",
@@ -1820,7 +1913,7 @@ function sanitizePlan(s){ if(!s||typeof s!=="object") return s;
     if(!(s.tableFontScale>=0.6&&s.tableFontScale<=2.4)) s.tableFontScale=1;
     if(!["full","short","initials"].includes(s.nameMode)) s.nameMode="full";
     if(!["asis","upper","lower"].includes(s.nameCase)) s.nameCase="asis";
-    if(!["names","parties"].includes(s.printMode)) s.printMode="names";
+    if(!["alpha","names","parties"].includes(s.printMode)) s.printMode="alpha";
     if(s.activeGroupId!=null && !s.groups.some(g=>g.id===s.activeGroupId)) s.activeGroupId=null;
   return s; }
 function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
@@ -1829,6 +1922,8 @@ function STATUS_TXT(s){ return s==="probable"?tr("stProbable"):s==="cut"?tr("stC
 function gStatus(id){ return state.guests[id]?.status || "confirmed"; }
 function gNote(id){ return state.guests[id]?.note || ""; }
 function statusTitle(id){ const s=gStatus(id); const n=gNote(id); return (STATUS_TXT(s)?` · ⚠ ${STATUS_TXT(s)}`:"") + (n?` · ${n}`:""); }
+function hasInv(id){ const g=state.guests[id]; return !!(g && g.partyId); }   // the pip: belongs to an invitation, nothing more
+function invTitle(id){ const p=partyOf(id); return p?` · ✉ ${caseName(p.name)}`:""; }   // hovering any name anywhere says WHICH invitation
 function statusTag(id){ const s=gStatus(id); return STATUS_TXT(s)?`<span class="stag${s==="cut"?" cut":""}">${STATUS_TXT(s)}</span>`:""; }
 
 // ---------- text measuring (so seats grow to fit the name) ----------
@@ -1904,7 +1999,7 @@ function buildSeat(t,i,relx,rely,fs,seatH){
     seat.style.backgroundColor=col; seat.style.width=seatWidthFor(shown,fs)+"px";   // colour only: the CSS gradient keeps the pill's sheen
     if(gStatus(gid)!=="confirmed"){ seat.style.borderStyle="dashed"; seat.style.borderColor="rgba(255,255,255,.9)"; seat.style.backgroundClip="padding-box"; }   // not-yet-confirmed: white dashes inside the pill, visible on any floor
     seat.innerHTML=`<span class="nm">${escapeHtml(shown)}</span>`;
-    seat.title=guestName(gid)+(guestGroup(gid)?` · ${guestGroup(gid).name}`:"")+statusTitle(gid);
+    seat.title=guestName(gid)+(guestGroup(gid)?` · ${guestGroup(gid).name}`:"")+statusTitle(gid)+invTitle(gid);
     seat.draggable=!isTouch&&!ACCESS.ro; seat.dataset.guestId=gid;   // touch moves with seatHold — no native (iOS) drag session competing
   }else{
     seat.style.width="34px";
@@ -2103,6 +2198,7 @@ function renderTables(only){
   }
   updateStats();
   if(focusId!=null) renderFocus();
+  if(invMode==="fill") renderInvHighlight();   // rebuilt pills lost the ring: put it back
 }
 
 // Group chips: the active chip filters the guest list AND is the group new names join.
@@ -2134,11 +2230,13 @@ function makeGroupChip(g, count, isAll){
 }
 
 let searchQ="";
+let invLooseFilter=false;   // the NORMAL-state "χωρίς προσκλητήριο" pool chip, armed from the INDEX's loose row
 function unseatedIds(){ const assigned=assignedGuestIds(); return Object.keys(state.guests).filter(id=>!assigned.has(id)); }
 function visiblePoolIds(){
   const q=norm(searchQ); let ids=unseatedIds();
-  if(q) return ids.filter(id=>norm(guestName(id)).includes(q)||(partyOf(id)&&norm(partyOf(id).name).includes(q)));   // a search looks across all groups (and invitation names)
-  if(state.activeGroupId) ids=ids.filter(id=>state.guests[id].groupId===state.activeGroupId);
+  if(q) ids=ids.filter(id=>norm(guestName(id)).includes(q)||(partyOf(id)&&norm(partyOf(id).name).includes(q)));   // a search looks across all groups (and invitation names)
+  else if(state.activeGroupId) ids=ids.filter(id=>state.guests[id].groupId===state.activeGroupId);
+  if(invLooseFilter) ids=ids.filter(id=>!state.guests[id].partyId);   // the INDEX's "sweep up the loose names" loop
   return ids;
 }
 function seatedHits(){   // a search also finds names that already sit somewhere (table order, then seat order)
@@ -2146,8 +2244,39 @@ function seatedHits(){   // a search also finds names that already sit somewhere
   state.tables.forEach(t=>t.seats.forEach((id,i)=>{ if(id&&state.guests[id]&&(norm(guestName(id)).includes(q)||(partyOf(id)&&norm(partyOf(id).name).includes(q)))) out.push({id,t,i}); }));
   return out;
 }
+function partyCounts(){   // {byId:{pid:n}, loose, live} in ONE pass — partyMembers() per invitation is O(parties × guests)
+  const byId={}; let loose=0;
+  for(const id in state.guests){ const pid=state.guests[id].partyId; if(pid) byId[pid]=(byId[pid]||0)+1; else loose++; }
+  return {byId, loose, live:(state.parties||[]).filter(p=>byId[p.id]).length};
+}
+function renderInvBtn(){   // the plan-level answer to "who is and is not in an invitation": a dot answers one name, a count answers 300
+  const c=partyCounts(), loose=c.loose, n=c.live;
+  $("invBtnN").textContent=loose?`${n} · ${tr("invLooseShort",{n:loose})}`:String(n);
+  const wrap=$("invLooseWrap"); wrap.hidden=!invLooseFilter;
+  if(invLooseFilter && !wrap.firstChild){
+    const c=document.createElement("button"); c.type="button"; c.className="chip active";
+    c.innerHTML=`${ICON("mail")}<span>${escapeHtml(tr("invLooseChip"))}</span><span class="gmore">✕</span>`;
+    c.title=tr("invLooseChip"); c.addEventListener("click",()=>{ invLooseFilter=false; renderPool(); });
+    wrap.appendChild(c);
+  } else if(!invLooseFilter) wrap.innerHTML="";
+}
+// Band C's data: EVERY guest, seated and unseated, flat and alphabetical — on paper you tick from the complete list.
+function invTickIds(){
+  const q=norm(searchQ), cur=invOpenId;
+  const ok=id=>{
+    if(q && !(norm(guestName(id)).includes(q)||(partyOf(id)&&norm(partyOf(id).name).includes(q)))) return false;
+    if(invFilter==="loose") return !state.guests[id].partyId;
+    if(invFilter==="in") return state.guests[id].partyId===cur;
+    return true;
+  };
+  return Object.keys(state.guests).filter(id=>ok(id)||invSticky.has(id))   // a row just ticked must not vanish under the finger
+    .sort((a,b)=>guestName(a).localeCompare(guestName(b),"el",{sensitivity:"base",numeric:true}));
+}
 function renderPool(){
   const pool=$("pool"); pool.innerHTML="";
+  renderInvBtn();
+  if(invMode==="index"){ renderInvPanel(); return; }   // INDEX replaces the list entirely
+  if(invMode==="fill"){ renderInvPanel(); renderTickList(pool); return; }
   const un=unseatedIds(), ids=visiblePoolIds(), hits=seatedHits();
   $("poolCount").textContent=tr("unseatedN",{n:un.length});
   $("mbCount").textContent=un.length;
@@ -2167,10 +2296,39 @@ function renderPool(){
     hits.slice(0,40).forEach(h=>pool.appendChild(makeSeatedHit(h)));
     if(hits.length>40){ const more=document.createElement("div"); more.className="empty-note"; more.textContent=tr("moreMatches",{n:hits.length-40}); pool.appendChild(more); } }
 }
+function renderTickList(pool){
+  const gids=Object.keys(state.guests), cur=invOpenId;
+  const nAll=gids.length, nLoose=gids.filter(id=>!state.guests[id].partyId).length, nIn=cur?partyMembers(cur).length:0;
+  const seg=document.createElement("div"); seg.className="seg"; seg.id="invSeg";
+  seg.innerHTML=[["all","invFilterAll",nAll],["loose","invFilterLoose",nLoose],["in","invFilterIn",nIn]]
+    .map(([k,t,n])=>`<button type="button" data-f="${k}"${invFilter===k?' class="on"':""}>${escapeHtml(tr(t))}<span class="n">${n}</span></button>`).join("");
+  seg.addEventListener("click",e=>{ const b=e.target.closest("[data-f]"); if(!b||b.dataset.f===invFilter) return;
+    invFilter=b.dataset.f; invSticky.clear(); invSel=null; renderPool(); });           // a filter change clears the sticky set and the highlight
+  pool.appendChild(seg);
+  // A name that already exists must never be offered as "create" — not even when the current filter hides it
+  // (that silently made a second «Μαρία Παπαδοπούλου»). Test every guest, and pull the one that exists back
+  // into view through invSticky so the typist sees it instead.
+  const q0=searchQ.trim(), nq=norm(q0);
+  const exact=q0?gids.find(id=>norm(guestName(id))===nq):null;
+  if(exact) invSticky.add(exact);
+  const ids=invTickIds(), seats=invSeats();
+  if(!ids.length && !searchQ.trim()){ const d=document.createElement("div"); d.className="empty-note";
+    d.innerHTML=nAll?escapeHtml(tr("noMatch")):tr("poolEmptyNew"); pool.appendChild(d); }
+  const frag=document.createDocumentFragment();
+  ids.forEach(id=>frag.appendChild(makeChip(id,{tick:true, seats})));
+  pool.appendChild(frag);
+  // the typed name is nobody on the list yet: create the guest AND file them, in one save and one undo step
+  if(q0 && !exact && !ACCESS.ro){
+    const b=document.createElement("button"); b.type="button"; b.className="invnew-guest"+(invSel==="__new"?" sel":"");
+    b.dataset.gid="__new"; b.innerHTML=`${ICON("plus")}<span>${escapeHtml(tr("invNewGuest",{n:q0}))}</span>`;
+    b.addEventListener("click",()=>invCreateGuest(q0));
+    pool.appendChild(b);
+  } else if(exact) invSel=exact;   // a duplicate is the worst failure mode: point at the row that exists, never offer a second one
+}
 function makeSeatedHit({id,t,i}){
-  const row=document.createElement("div"); row.className="gchip seated"; row.dataset.guestId=id; row.style.borderLeftColor=guestColor(id);
+  const row=document.createElement("div"); row.className="gchip seated"+(hasInv(id)?" hasinv":""); row.dataset.guestId=id; row.style.borderLeftColor=guestColor(id);
   row.innerHTML=`<span class="nm">${escapeHtml(guestName(id))}${statusTag(id)}</span><span class="to">→ ${escapeHtml(t.label)}</span>`;
-  row.title=tr("dragTo",{t:t.label,n:i+1});
+  row.title=tr("dragTo",{t:t.label,n:i+1})+invTitle(id);
   row.addEventListener("click",()=>goToSeat(t.id,i));
   return row;
 }
@@ -2188,20 +2346,35 @@ function goToSeat(tid, i){
 function partyHeader(p, members, total){
   const h=document.createElement("div"); h.className="pparty"; h.draggable=!ACCESS.ro; h.dataset.pid=p.id;
   const cnt=(total&&total!==members.length)?`${members.length} / ${total}`:String(members.length);   // a colour / search filter hides some: say so — the gesture seats all of them
-  h.innerHTML=`<span class="grip" title="${escapeHtml(tr("gripParty"))}">${ICON("grip")}</span><b>${escapeHtml(caseName(p.name))}</b><span class="n">${cnt}</span><button class="pedit" title="${escapeHtml(tr("invEditTip"))}">${ICON("edit")}</button>`;
+  h.innerHTML=`<span class="grip" title="${escapeHtml(tr("gripParty"))}">${ICON("grip")}</span><b>${escapeHtml(caseName(p.name))}</b><span class="n">${cnt}</span><button class="pedit" title="${escapeHtml(tr("invEditTip"))}">${ICON("plus")}</button>`;
   if(pick&&pick.type==="party"&&pick.partyId===p.id) h.classList.add("picked");
   h.addEventListener("dragstart",e=>{ dragData={type:"party",partyId:p.id}; e.dataTransfer.effectAllowed="move"; });
   h.querySelector(".grip").addEventListener("click",e=>{ e.stopPropagation(); openPlaceMenu(null, anchorOf(e.currentTarget), null, p.id); });
-  h.querySelector(".pedit").addEventListener("click",e=>{ e.stopPropagation(); openInv(p.id); });   // the invitations editor, on this one: who is in it, rename, delete, add…
+  h.querySelector(".pedit").addEventListener("click",e=>{ e.stopPropagation(); enterInv(p.id); });   // the invitations editor, on this one: who is in it, rename, delete, add…
   h.addEventListener("click",()=>{ const same=pick&&pick.type==="party"&&pick.partyId===p.id; setPick(same?null:{type:"party",partyId:p.id}); });
   return h;
 }
-function makeChip(id, inParty){
+// opts: {inParty} a .pparty member · {tick} a FILL tick row (no drag, no .acts, no grip — a tick can never delete a guest)
+function makeChip(id, opts){
+    const o=(opts&&typeof opts==="object")?opts:{inParty:!!opts};
     const col=guestColor(id);
     const chip=document.createElement("div");
-    chip.className="gchip"+(inParty?" inparty":""); chip.draggable=!ACCESS.ro; chip.dataset.guestId=id;
+    if(o.tick){
+      const on=!!invOpenId && state.guests[id].partyId===invOpenId;
+      const s=(o.seats||invSeats())[id], p=partyOf(id);
+      const ann=s?`→ ${escapeHtml(s.t.label)}`:(p&&!on?escapeHtml(tr("invInOther",{p:caseName(p.name)})):"");
+      chip.className="gchip tickable"+(on?" on":"")+(hasInv(id)?" hasinv":"")+(invSel===id?" sel":"");
+      chip.draggable=false; chip.dataset.guestId=id;
+      chip.style.borderLeftColor=col; chip.style.background=on?"":hexTint(col);
+      chip.title=(guestGroup(id)?guestGroup(id).name:"")+statusTitle(id)+invTitle(id);
+      chip.innerHTML=`<span class="gtick">${on?"✓":""}</span><span class="nm">${escapeHtml(guestName(id))}${statusTag(id)}</span>`
+        +(ann?`<span class="ann">${ann}</span>`:"");
+      chip.addEventListener("click",()=>invToggle(id));
+      return chip;
+    }
+    chip.className="gchip"+(o.inParty?" inparty":"")+(hasInv(id)?" hasinv":""); chip.draggable=!ACCESS.ro; chip.dataset.guestId=id;
     chip.style.borderLeftColor=col; chip.style.background=hexTint(col);
-    chip.title=(guestGroup(id)?guestGroup(id).name:"")+statusTitle(id);
+    chip.title=(guestGroup(id)?guestGroup(id).name:"")+statusTitle(id)+invTitle(id);
     chip.innerHTML=`<span class="grip" title="${escapeHtml(tr("gripTitle"))}">${ICON("grip")}</span><span class="nm">${escapeHtml(guestName(id))}${statusTag(id)}</span><span class="acts"><button class="edit" title="${escapeHtml(tr("chipEdit"))}">${ICON("edit")}</button><button class="x" title="${escapeHtml(tr("chipRemove"))}">✕</button></span>`;
     if(pick && pick.from==="pool" && pick.guestId===id) chip.classList.add("picked");
     chip.addEventListener("dragstart",e=>{ dragData={type:"guest",guestId:id,from:"pool"}; e.dataTransfer.effectAllowed="move"; });
@@ -2213,7 +2386,7 @@ function makeChip(id, inParty){
       setPick(same ? null : {type:"guest",guestId:id,from:"pool"});
     });
     chip.querySelector(".edit").addEventListener("click",e=>{ e.stopPropagation(); openGuestEditor(id,e); });
-    chip.querySelector(".x").addEventListener("click",e=>{ e.stopPropagation(); if(pick&&pick.guestId===id) setPick(null); delete state.guests[id]; pruneParties(); save(); renderPool(); renderGroups(); updateStats(); toast(tr("tGuestRemoved")); });
+    chip.querySelector(".x").addEventListener("click",e=>{ e.stopPropagation(); if(pick&&pick.guestId===id) setPick(null); delete state.guests[id]; pruneParties(invOpenId); save(); renderPool(); renderGroups(); updateStats(); toast(tr("tGuestRemoved")); });
     return chip;
 }
 function updateStats(){
@@ -2375,7 +2548,7 @@ function makePartyFromSelection(){
   if(!partySel) return; const ids=partySelIds();
   if(!ids.length){ toast(tr("tPartyNone")); return; }
   const nm=$("psName").value.trim()||suggestPartyName(ids)||tr("partyN",{n:(state.parties||[]).length+1});
-  const p=ensureParty(nm); ids.forEach(id=>{ state.guests[id].partyId=p.id; }); pruneParties();
+  const p=ensureParty(nm); ids.forEach(id=>{ state.guests[id].partyId=p.id; }); pruneParties(p.id);
   save(); renderPool(); endPartySelect(); toast(tr("tPartyMade",{n:caseName(p.name),k:ids.length}),3000);
 }
 $("psOk").addEventListener("click",makePartyFromSelection);
@@ -2452,13 +2625,14 @@ function openGuestEditor(guestId, evt){
   nameInp.addEventListener("blur",commitName);
   const partyInp=menu.querySelector("#geParty"); const p0=partyOf(guestId); partyInp.value=p0?p0.name:"";
   const commitParty=()=>{ if(cancelled) return; const v=partyInp.value.trim(); const cur=partyOf(guestId);
-    if(!v){ if(g.partyId){ g.partyId=null; pruneParties(); save(); renderPool(); } }
-    else if(!cur||norm(cur.name)!==norm(v)){ const p=ensureParty(v); g.partyId=p.id; pruneParties(); save(); renderPool(); } };
+    if(!v){ if(g.partyId){ g.partyId=null; pruneParties(invOpenId); save(); renderPool(); } }
+    else if(!cur||norm(cur.name)!==norm(v)){ const p=ensureParty(v); g.partyId=p.id; pruneParties(invOpenId); save(); renderPool(); } };
   partyInp.addEventListener("keydown",e=>{ e.stopPropagation(); if(e.key==="Enter"){ e.preventDefault(); commitParty(); closeGuestEditor(); } else if(e.key==="Escape"){ cancelled=true; closeGuestEditor(); } });
   partyInp.addEventListener("blur",commitParty);
   const invLink=menu.querySelector("#geInv"), invLabel=()=>{ const p=partyOf(guestId); invLink.querySelector("span").textContent=p?tr("geInvEdit",{n:caseName(p.name)}):tr("mInv"); };
   invLabel(); partyInp.addEventListener("blur",invLabel);
-  invLink.onclick=()=>{ commitParty(); const p=partyOf(guestId); closeGuestEditor(); openInv(p?p.id:null); };   // «Προσκλητήριο: X — επεξεργασία»
+  invLink.onclick=()=>{ commitParty(); const p=partyOf(guestId); const g=state.guests[guestId], sn=g?String(g.name||"").trim().split(/\s+/).slice(-1)[0]:"";
+    closeGuestEditor(); enterInv(p?p.id:null, (!p&&sn.length>2)?{q:sn}:null); };   // no invitation yet: the INDEX, pre-filtered by that surname («Σ.» is not one)   // «Προσκλητήριο: X — επεξεργασία»
   menu.querySelectorAll(".ge-type").forEach(it=>{ it.onclick=()=>{ commitName(); g.groupId=it.dataset.gid||null; save(); renderTables(); renderPool(); renderGroups();
       menu.querySelectorAll(".ge-type").forEach(x=>{ const on=((g.groupId||"")===x.dataset.gid); x.classList.toggle("sel",on); let chk=x.querySelector(".chk"); if(on&&!chk) x.insertAdjacentHTML("beforeend",'<span class="chk">✓</span>'); if(!on&&chk) chk.remove(); }); }; });
   showPopover(menu,evt);
@@ -2619,7 +2793,8 @@ function isNarrow(){ return window.innerWidth<=900; }
 function setNav(open){ document.body.classList.toggle("nav-open", !!open); if(open) hideTip(); else flushTip(); }
 $("navBtn").addEventListener("click",e=>{ e.stopPropagation(); setNav(!document.body.classList.contains("nav-open")); });
 $("navScrim").addEventListener("click",()=>setNav(false));
-$("mbGuests").addEventListener("click",()=>setNav(true));
+$("mbGuests").addEventListener("click",()=>{ setNav(true); let want=""; try{ want=localStorage.getItem(INV_MODE_KEY)||""; }catch(e){}
+  if(want==="index"&&!invMode) enterInv(null); });   // the drawer reopens in the state it was left in
 $("mbUndo").addEventListener("click",undo); $("mbRedo").addEventListener("click",redo);
 $("undoBtn").addEventListener("click",undo); $("redoBtn").addEventListener("click",redo);
 $("mbZoomOut").addEventListener("click",()=>{ if(isNarrow() && zoom/1.2<=Math.max(0.1,fitZoom())*1.01) overview(); else zoomBy(1/1.2); });   // zooming all the way out = back to the overview
@@ -2643,7 +2818,7 @@ function hintHold(){ if(!isTouch || seenHint(HINT_HOLD)) return; markHint(HINT_H
 // Tips: one card at a time, each shown once per device, only at the moment the action becomes useful (see checkTips).
 const TIP_KEY="weddingSeatingPlanner.tips"; let tipsSeen={}, tipTimer=null, tipPending=null;
 try{ tipsSeen=JSON.parse(localStorage.getItem(TIP_KEY)||"{}")||{}; }catch(e){ tipsSeen={}; }
-function tipText(k){ if(k.startsWith("date.")) return tr("dateNudge"); const t={ move:isTouch?tr("tipMoveTouch"):tr("tipMove"), pick:isTouch?tr("tipPickTouch"):tr("tipPick"), groups:tr("tipGroups"), full:can("seats")?tr("tipFull"):tr("tipFullLocked"), print:tr("tipPrint") }; return t[k]||""; }
+function tipText(k){ if(k.startsWith("date.")) return tr("dateNudge"); const t={ move:isTouch?tr("tipMoveTouch"):tr("tipMove"), pick:isTouch?tr("tipPickTouch"):tr("tipPick"), groups:tr("tipGroups"), full:can("seats")?tr("tipFull"):tr("tipFullLocked"), print:tr("tipPrint"), inv:tr("invTip"), invseat:tr("invSeatsUnchanged") }; return t[k]||""; }
 function showTip(key){
   if(tipsSeen[key]) return false;
   const el=$("tip"); if(!el || !el.hidden || tour || document.querySelector(".modal-back.open")) return false;   // not now — the trigger will come round again
@@ -2663,6 +2838,7 @@ function checkTips(why){
   if(why==="added" && showTip("pick")) return;
   if(why==="full" && showTip("full")) return;
   if(n>=6 && !guests.some(g=>g.groupId) && showTip("groups")) return;
+  if(n>=10 && !ACCESS.ro && !guests.some(g=>g.partyId) && showTip("inv")) return;   // ten names in and not one invitation: say what they are for
   if(n>=20 && seated>=0.8*n) showTip("print");
 }
 function renderSheetHint(){ const el=$("fHint"); if(!el) return; el.hidden=!(focusedTable() && !seenHint(HINT_ENTER) && !ACCESS.ro); if(!el.hidden) el.textContent=tr("hintEnter"); }
@@ -2876,7 +3052,7 @@ function renderPlaceTables(m){
   const who=m._party?tr("pbParty",{n:partyName(m._party), c:(m._all?mem:partyUnseated(m._party)).length}):guestName(guestId);
   m.innerHTML=`<div class="gm-cap">${escapeHtml(tr("pmFor",{n:who}))}</div>${m._all?"":`<div class="gm-item" data-act="floor">${ICON("fit")}${escapeHtml(tr("pmFloor"))}</div>`}<div class="gm-sep"></div><div class="pm-list">${rows}</div>`;
   const fl=m.querySelector('[data-act="floor"]'); if(fl) fl.onclick=()=>{ closePlaceMenu(); setPick(m._party?{type:"party",partyId:m._party}:dragFor(guestId, from)); };   // setPick closes the drawer on phones; overview() would cancel the pick
-  m.querySelectorAll('[data-tid]').forEach(el=>el.onclick=ev=>{ ev.stopPropagation(); if(m._party){ closePlaceMenu(); placePartyInTable(m._party, +el.dataset.tid, null, m._all); if(m._all&&invIsOpen()) renderInv(); return; } renderPlaceSeats(m, +el.dataset.tid); showPopover(m, placeAnchor(m)); });
+  m.querySelectorAll('[data-tid]').forEach(el=>el.onclick=ev=>{ ev.stopPropagation(); if(m._party){ closePlaceMenu(); placePartyInTable(m._party, +el.dataset.tid, null, m._all); if(m._all&&invMode) invRefresh(); return; } renderPlaceSeats(m, +el.dataset.tid); showPopover(m, placeAnchor(m)); });
 }
 function renderPlaceSeats(m, tid){
   const guestId=m._guest, from=m._from, t=state.tables.find(x=>x.id===tid); if(!t) return;
@@ -2894,7 +3070,9 @@ function partyMembers(pid){ return Object.keys(state.guests).filter(id=>state.gu
 function partyUnseated(pid){ const a=assignedGuestIds(); return partyMembers(pid).filter(id=>!a.has(id)); }   // what a party gesture acts on: members still in the list
 function ensureParty(name){ const nm=String(name||"").trim().slice(0,80); if(!nm) return null; state.parties=state.parties||[];
   let p=state.parties.find(x=>norm(x.name)===norm(nm)); if(!p){ p={id:"p"+nextId(), name:nm}; state.parties.push(p); } return p; }
-function pruneParties(){ state.parties=(state.parties||[]).filter(p=>Object.values(state.guests).some(g=>g.partyId===p.id)); }
+// keepId: the invitation being filled right now survives even when it is momentarily empty — the sheet must never
+// vanish under the finger (it is dropped on ‹ / [Τέλος] instead, with the invNotKept toast).
+function pruneParties(keepId){ state.parties=(state.parties||[]).filter(p=>p.id===keepId||Object.values(state.guests).some(g=>g.partyId===p.id)); }
 function placePartyInTable(pid, tableId, firstSeat, all){   // seats the members still in the list; whoever already sits somewhere stays put (one undo step, one save)
   const t=state.tables.find(x=>x.id===tableId); if(!t) return false;   // all (the invitations editor's «Τοποθέτηση όλων»): members at other tables move here too, after the unseated ones
   const members=partyUnseated(pid), movers=all?partyMembers(pid).filter(id=>!members.includes(id)&&!t.seats.includes(id)):[];
@@ -2915,120 +3093,273 @@ function placePartyInTable(pid, tableId, firstSeat, all){   // seats the members
 //  list section. A modal on PC, a bottom sheet on phones; view only when the plan is read only. Each change = one save =
 //  one undo step (↶ in its head: the app bar sits under the modal and Ctrl+Z pauses while a modal is open).
 // ============================================================
-let invOpenId=null, invQ="", invAdd=null, invDraft=null, invRen=null;   // open card · search · {pid|"draft", q} adding people · {name} a new one before its first person · {pid, v} renaming
-function invIsOpen(){ return $("invModal").classList.contains("open"); }
+let invOpenId=null;          // the invitation the sheet is filling
+let invDraft=null;           // {name} — a new one, not persisted until its first member
+let invMode=null;            // null | "index" (all invitations) | "fill" (one of them, with the tick list)
+let invFilter="all";         // band C's segmented filter: "all" | "loose" | "in"  (module state, never persisted)
+let invSticky=new Set();     // ids toggled since the last query/filter change — a ticked row must not vanish under the finger
+let invSel=null;             // the keyboard highlight, stored as a GUEST ID so a re-render never moves it
+let invLastName="";          // the open invitation's name, kept for the message when it disappears under us
+const INV_MODE_KEY="weddingSeatingPlanner.invmode";   // the phone drawer reopens where it was left
 function invOk(){ if(ACCESS.ro){ roToast(); return false; } return true; }
 function invFind(pid){ return (state.parties||[]).find(x=>x.id===pid)||null; }
 function invPeople(n){ return n===1?tr("invOne"):tr("invPeople",{n}); }
 function invSeats(){ const m={}; state.tables.forEach(t=>t.seats.forEach((id,i)=>{ if(id&&!m[id]) m[id]={t,i}; })); return m; }
 function invPickFix(){ if(pick&&pick.type==="party"&&!invFind(pick.partyId)) setPick(null); }   // a picked-up invitation that no longer exists
-function openInv(pid){
-  closeGuestEditor(); closePlaceMenu(); closeGroupMenu(); hideSug();
-  invAdd=null; invDraft=null; invRen=null; invOpenId=(!ACCESS.ro&&pid)||null;
-  if(pid) invQ=""; $("invSearch").value=invQ;
-  const m=$("invModal"); m._close=closeInv; m.classList.add("open"); document.body.classList.add("inv-open");
-  renderInv();
-  const body=$("invBody"), c=pid?[...body.querySelectorAll(".invc")].find(x=>x.dataset.pid===pid):null;
-  body.scrollTop=c?Math.max(0,c.offsetTop-8):0;
+// ---- the left-panel states. No modal, so Ctrl+Z, the app bar's ↶ and every other control keep working throughout. ----
+// pid: an invitation id → FILL · "draft" → FILL on a new, unsaved one · null → INDEX.
+// opts: {q} a starting query · {keep} the switcher — do not touch the query or band C's scroll.
+function enterInv(pid, opts){
+  opts=opts||{};
+  if(pid && pid!=="draft" && !invFind(pid)) pid=null;
+  if(pid==="draft" && ACCESS.ro) pid=null;
+  const keep=!!opts.keep;
+  const sc=keep?sideScroll().scrollTop:0;        // BEFORE setPick(null): it re-renders the pool and resets the scroller
+  invReleaseSheet(pid);                          // an emptied sheet is dropped on EVERY way out, not only via ‹ / [Τέλος]
+  closeGuestEditor(); closePlaceMenu(); closeGroupMenu(); closeInvSwitch(); hideSug(); setPick(null);
+  if(isNarrow()){ unfocusTable(); setNav(true); }
+  invMode=pid?"fill":"index";
+  invOpenId=(pid&&pid!=="draft")?pid:null;
+  invDraft=(pid==="draft")?{name:""}:null;
+  invRenaming=false; invSel=null; invSticky.clear();
+  if(!keep){ invFilter="all"; searchQ=opts.q||""; $("guestSearch").value=searchQ; }
+  document.body.classList.toggle("invlist", invMode==="index");
+  document.body.classList.toggle("invfill", invMode==="fill");
+  rememberInvMode(); renderPool(); renderInvHighlight();
+  if(keep) sideScroll().scrollTop=sc;
+  if(invMode==="fill") showTip("invseat");                                // said once: an invitation never moves a chair
+  if(pid==="draft"){ invStartRename(true); return; }                      // an empty, focused name field and the full list below
+  if(!isNarrow()||keep) try{ $("guestSearch").focus({preventScroll:true}); }catch(e){}
 }
-function closeInv(){ $("invModal").classList.remove("open"); document.body.classList.remove("inv-open"); closePlaceMenu(); invAdd=null; invDraft=null; invRen=null; }
-function renderInv(opts){
-  const body=$("invBody"); if(!body) return;
-  const ro=ACCESS.ro, seats=invSeats(), q=norm(invQ);
-  if(ro){ invAdd=null; invDraft=null; invRen=null; invOpenId=null; }
-  const all=(state.parties||[]).map(p=>({p, m:partyMembers(p.id)})).filter(x=>x.m.length).sort((a,b)=>caseName(a.p.name).localeCompare(caseName(b.p.name)));
-  if(invOpenId && !all.some(x=>x.p.id===invOpenId)) invOpenId=null;   // gone: undo, a merge, its last person left
-  if(invAdd && (invAdd.pid==="draft"?!invDraft:invAdd.pid!==invOpenId)) invAdd=null;
-  if(invRen && invRen.pid!==invOpenId) invRen=null;
-  { const n=invPeople(all.reduce((s,x)=>s+x.m.length,0)); $("invSum").textContent=!all.length?"":all.length===1?tr("invSum1",{n}):tr("invSum",{p:all.length, n}); }
-  $("invUndo").hidden=ro; $("invUndo").disabled=!undoStack.length; $("invNewBtn").hidden=ro;
-  const hit=id=>!!q&&norm(guestName(id)).includes(q);
-  const shown=q?all.filter(x=>norm(x.p.name).includes(q)||x.m.some(hit)):all;
-  const ae=document.activeElement, keep=(ae&&ae.dataset&&ae.dataset.k&&body.contains(ae))?{k:ae.dataset.k, s:ae.selectionStart, e:ae.selectionEnd}:null;
-  let h=ro?`<div class="mhint invro">${escapeHtml(tr("invRo"))}</div>`:"";
-  if(invDraft) h+=invDraftHtml();
-  if(!all.length){ if(!invDraft) h+=`<div class="empty-note">${escapeHtml(tr("invEmpty"))}</div>`; }
+function sideScroll(){ return document.querySelector("#sidebar .side-scroll"); }
+// An invitation left with nobody in it is dropped, whichever way you left the sheet (‹, Τέλος, ✕, Escape, the
+// switcher, #invBtn). pruneParties(keepId) keeps an empty one alive ONLY while the sheet is still open on it,
+// so without this it stayed in state.parties: invisible everywhere (invSorted drops memberless ones) and undeletable.
+function invReleaseSheet(nextPid){
+  if(invMode!=="fill") return;
+  const p=invOpenId?invFind(invOpenId):null;
+  const nm=p?caseName(p.name):((invDraft&&invDraft.name.trim())||"");
+  if(p && p.id!==nextPid && !partyMembers(p.id).length){
+    state.parties=(state.parties||[]).filter(x=>x.id!==p.id); invOpenId=null; save();
+    if(nm) toast(tr("invNotKept",{n:nm}),3500);
+  }else if(!p && invDraft && nm && nextPid!=="draft") toast(tr("invNotKept",{n:nm}),3500);
+}
+function exitInv(){
+  if(!invMode) return;
+  invReleaseSheet(null);
+  invMode=null; invOpenId=null; invDraft=null; invSel=null; invSticky.clear(); invFilter="all";
+  document.body.classList.remove("invlist","invfill");
+  stage.querySelectorAll(".seat.invhi").forEach(el=>el.classList.remove("invhi"));
+  searchQ=""; $("guestSearch").value=""; $("guestSearch").placeholder=tr("searchPh");
+  ["invHead","invIndex","invSheet","invFoot","invRail"].forEach(id=>{ $(id).hidden=true; $(id).innerHTML=""; });
+  document.body.classList.remove("invrail");
+  rememberInvMode(); renderPool(); if(focusedTable()) renderFocus();
+}
+function invEscape(){ if(invMode==="fill") enterInv(null); else exitInv(); }   // the ladder: FILL → INDEX → NORMAL
+function rememberInvMode(){ try{ localStorage.setItem(INV_MODE_KEY, invMode==="index"?"index":""); }catch(e){} }
+function renderInvPanel(){
+  if(!invMode) return;
+  const sw=$("searchWrap"); sw.hidden=false;                                   // in these states it is the main tool, never folded away
+  $("invHead").hidden=false; $("invFoot").hidden=false;
+  $("invIndex").hidden=invMode!=="index"; $("invSheet").hidden=invMode!=="fill";
+  $("guestSearch").placeholder=tr("invSearchPh");
+  // a cloud pull, an undo or a merge took the open invitation away: back to the INDEX with a word, never a blank panel
+  if(invMode==="fill" && !invDraft && !invRenaming && invOpenId && !invFind(invOpenId)){
+    const nm=invLastName||""; invOpenId=null; setTimeout(()=>{ enterInv(null); if(nm) toast(tr("invNotKept",{n:nm}),3500); },0);
+  }
+  if(invMode==="index") renderInvIndex(); else renderInvSheet();
+  if(invMode==="fill"&&invOpenId) invLastName=caseName((invFind(invOpenId)||{}).name||"");
+  // the head sticks directly under the search field, and the letter caps directly under the head — measured, never guessed
+  const side=$("sidebar");
+  side.style.setProperty("--invhead-top", (sw.offsetHeight||44)+"px");
+  side.style.setProperty("--invcap-top", ((sw.offsetHeight||44)+($("invHead").offsetHeight||44))+"px");
+  setTimeout(()=>{ invPaintSel(); renderInvRail(); },0);   // after the rows are in the DOM
+}
+// The A–Z rail — phone only (on PC the keyboard does this job). Tap jumps, drag scrubs.
+function renderInvRail(){
+  const rail=$("invRail"), off=()=>{ rail.hidden=true; rail.innerHTML=""; document.body.classList.remove("invrail"); };
+  if(!invMode||!isNarrow()){ off(); return; }
+  const rows=invMode==="index"
+    ? [...$("invIndex").querySelectorAll(".invrow:not(.loose) b")].map(b=>b.textContent)
+    : [...$("pool").querySelectorAll(".gchip.tickable .nm")].map(b=>b.textContent);
+  const letters=[]; rows.forEach(t=>{ const L=(upperGreek(t).trim()[0]||"#"); if(!letters.includes(L)) letters.push(L); });
+  if(letters.length<6){ off(); return; }                                 // a short list does not need a rail
+  rail.hidden=false; rail.innerHTML=letters.map(L=>`<b>${escapeHtml(L)}</b>`).join("");
+  document.body.classList.add("invrail");
+}
+function invRailJump(y){
+  const rail=$("invRail"), r=rail.getBoundingClientRect(), kids=[...rail.children];
+  if(!kids.length) return;
+  const i=Math.max(0,Math.min(kids.length-1,Math.floor((y-r.top)/(r.height/kids.length))));
+  const L=kids[i].textContent;
+  const sel=invMode==="index"?"#invIndex .invrow:not(.loose)":"#pool .gchip.tickable";
+  const target=[...document.querySelectorAll(sel)].find(el=>{ const t=(el.querySelector("b")||el.querySelector(".nm")); return t&&(upperGreek(t.textContent).trim()[0]||"#")===L; });
+  if(target) target.scrollIntoView({block:"start"});
+  kids.forEach((k,j)=>k.style.opacity=j===i?"1":"");
+}
+{ const rail=$("invRail"); let railing=false;
+  rail.addEventListener("pointerdown",e=>{ railing=true; rail.classList.add("on"); try{ rail.setPointerCapture(e.pointerId); }catch(x){} invRailJump(e.clientY); e.preventDefault(); });
+  rail.addEventListener("pointermove",e=>{ if(railing){ invRailJump(e.clientY); e.preventDefault(); } });
+  ["pointerup","pointercancel"].forEach(k=>rail.addEventListener(k,()=>{ railing=false; rail.classList.remove("on"); [...rail.children].forEach(c=>c.style.opacity=""); }));
+}
+function invSorted(){   // every invitation that still has people, alphabetical the Greek way
+  const by={}; for(const id in state.guests){ const pid=state.guests[id].partyId; if(pid)(by[pid]||(by[pid]=[])).push(id); }
+  return (state.parties||[]).filter(p=>by[p.id]).map(p=>({p, m:by[p.id]}))
+    .sort((a,b)=>caseName(a.p.name).localeCompare(caseName(b.p.name),"el",{sensitivity:"base",numeric:true}));
+}
+function invMatch(x, q){ return !q || norm(x.p.name).includes(q) || x.m.some(id=>norm(guestName(id)).includes(q)); }
+function looseIds(){ return Object.keys(state.guests).filter(id=>!state.guests[id].partyId); }
+function renderInvIndex(){
+  const ro=ACCESS.ro, q=norm(searchQ), all=invSorted(), seats=invSeats();
+  const people=all.reduce((s,x)=>s+x.m.length,0);
+  const sum=!all.length?"":all.length===1?tr("invSum1",{n:invPeople(people)}):tr("invSum",{p:all.length, n:invPeople(people)});
+  $("invHead").innerHTML=
+    `<div class="invtop"><span class="sec-title">${escapeHtml(tr("invTitle"))}</span>`
+    +`<span class="invsum">${escapeHtml(sum)}</span>`
+    +`<button class="ibtn invx" data-a="close" title="${escapeHtml(tr("close"))}">✕</button></div>`
+    +(ro?`<div class="mhint invro">${escapeHtml(tr("invRo"))}</div>`:"")
+    +`<button class="ibtn primary" id="invNewSide" data-a="new">${ICON("plus")}<span>${escapeHtml(tr("invNew"))}</span></button>`;
+  const loose=looseIds().length, shown=all.filter(x=>invMatch(x,q));
+  let h="";
+  if(loose && !q) h+=`<button class="invrow loose" data-a="loose"><b>${escapeHtml(loose===1?tr("invLooseN1"):tr("invLooseN",{n:loose}))}</b>${ICON("right")}</button>`;
+  if(!all.length) h+=`<div class="empty-note">${escapeHtml(tr("invEmpty"))}</div>`;
   else if(!shown.length) h+=`<div class="empty-note">${escapeHtml(tr("noMatch"))}</div>`;
-  h+=shown.map(x=>invCardHtml(x.p, x.m, seats, hit, ro, all)).join("");
-  body.innerHTML=h;
-  const want=(opts&&opts.focus)||(keep&&keep.k);   // a re-render (a cloud pull, undo) must not throw the typing out of its field
-  if(want){ const el=body.querySelector(`[data-k="${want}"]`); if(el){ try{ el.focus({preventScroll:true}); if(keep&&keep.k===want&&keep.s!=null) el.setSelectionRange(keep.s,keep.e); }catch(e){} if(opts&&opts.focus) invReveal(el); } }
-  if(invAdd) renderInvSug();
+  let cap=null;
+  shown.forEach(x=>{
+    if(shown.length>25){ const L=upperGreek(caseName(x.p.name)).trim()[0]||"#"; if(L!==cap){ cap=L; h+=`<div class="gm-cap">${escapeHtml(L)}</div>`; } }   // an 80-row folder, tabbed like a paper one
+    const st=x.m.filter(id=>seats[id]).length;
+    h+=`<button class="invrow" data-pid="${escapeHtml(x.p.id)}"><b>${escapeHtml(caseName(x.p.name))}</b>`
+      +`<span class="n">${x.m.length} · ${escapeHtml(tr("invSeatedN",{s:st}))}</span>${ICON("right")}</button>`;
+  });
+  $("invIndex").innerHTML=h;
+  $("invFoot").innerHTML=`<button class="ibtn" data-a="close">✕ <span>${escapeHtml(tr("close"))}</span></button>`
+    +(ro?"":`<button class="ibtn primary" data-a="new">${ICON("plus")}<span>${escapeHtml(tr("invNewShort"))}</span></button>`);
 }
-function invCardHtml(p, mem, seats, hit, ro, all){
-  const open=!ro&&invOpenId===p.id, ren=open&&invRen&&invRen.pid===p.id, seated=mem.filter(id=>seats[id]).length, mv=open?invMoveHtml(p.id, all):"";
-  let h=`<div class="invc${open?" open":""}" data-pid="${escapeHtml(p.id)}"><div class="invh"${ro||ren?"":` data-a="toggle"`}>`
-    +(ren?`<input data-k="ren" type="text" maxlength="60" autocomplete="off" value="${escapeHtml(invRen.v)}">`:`<b>${escapeHtml(caseName(p.name))}</b>`)
-    +`<span class="n">${escapeHtml(invPeople(mem.length))} · ${escapeHtml(tr("invSeatedN",{s:seated}))}</span>${ro?"":`<span class="chev">${ICON("down")}</span>`}</div>`;
-  h+=mem.map(id=>{ const s=seats[id];
-    return `<div class="invm${hit(id)?" hit":""}" data-gid="${escapeHtml(id)}"><span class="dot" style="background:${safeColor(guestColor(id))}"></span><span class="nm">${escapeHtml(guestName(id))}${statusTag(id)}</span>`
-      +(s?`<button class="invt" data-a="jump" title="${escapeHtml(tr("invJump"))}">→ ${escapeHtml(s.t.label)}</button>`:`<span class="invt none">${escapeHtml(tr("printNoSeat"))}</span>`)
-      +(open?mv+`<button class="invx" data-a="remove" title="${escapeHtml(tr("invRemove"))}">✕</button>`:"")+`</div>`; }).join("");
-  if(open) h+=(invAdd&&invAdd.pid===p.id)?invAddHtml():`<div class="invacts">`
-    +`<button class="ibtn w" data-a="add">${ICON("plus")}<span>${escapeHtml(tr("invAdd"))}</span></button>`
-    +`<button class="ibtn w" data-a="seat">${ICON("table")}<span>${escapeHtml(tr("invSeatAll"))}</span></button>`
-    +`<button class="ibtn" data-a="rename">${ICON("edit")}<span>${escapeHtml(tr("invRename"))}</span></button>`
-    +`<button class="ibtn danger" data-a="del">${ICON("trash")}<span>${escapeHtml(tr("invDelete"))}</span></button></div>`;
-  return h+`</div>`;
+// ---- FILL · band A (the head with the switcher) and band B (the members strip) ----
+function renderInvSheet(){
+  renderInvHead(); renderInvMembers();
+  $("invFoot").innerHTML=`<button class="ibtn" data-a="back">${ICON("left")}<span>${escapeHtml(tr("invBackAll"))}</span></button>`
+    +`<button class="ibtn primary" data-a="done">${escapeHtml(tr("invAddDone"))}</button>`;
 }
-function invMoveHtml(pid, all){   // a native picker behind a small ⇄: the phone's own list, a dropdown on PC
-  return `<span class="invmv" title="${escapeHtml(tr("invMoveTo"))}">⇄<select data-a="move" aria-label="${escapeHtml(tr("invMoveTo"))}"><option value="" selected disabled>${escapeHtml(tr("invMoveCap"))}</option>`
-    +all.filter(x=>x.p.id!==pid).map(x=>`<option value="${escapeHtml(x.p.id)}">${escapeHtml(caseName(x.p.name))}</option>`).join("")+`<option value="+">${escapeHtml(tr("invMoveNew"))}</option></select></span>`;
+function invCur(){ return invOpenId?invFind(invOpenId):null; }
+function renderInvHead(){
+  const ro=ACCESS.ro, p=invCur(), m=p?partyMembers(p.id):[], seats=invSeats(), st=m.filter(id=>seats[id]).length;
+  const nm=p?caseName(p.name):((invDraft&&invDraft.name)||"");
+  const ae=document.activeElement, keepSel=(invRenaming&&ae&&ae.classList&&ae.classList.contains("invname"))?{s:ae.selectionStart, e:ae.selectionEnd, v:ae.value}:null;
+  $("invHead").innerHTML=`<div class="invtop">`
+    +`<button class="ibtn invx" data-a="back" title="${escapeHtml(tr("invBackAll"))}">${ICON("left")}</button>`
+    +(invRenaming&&!ro
+      ? `<input class="invname" data-k="name" type="text" maxlength="80" autocomplete="off" spellcheck="false" enterkeyhint="done" placeholder="${escapeHtml(tr("invNewPh"))}" value="${escapeHtml(keepSel?keepSel.v:(p?p.name:(invDraft?invDraft.name:"")))}">`
+      : `<button class="invname" data-a="switch" title="${escapeHtml(tr("invSwitchCap"))}"><b>${escapeHtml(nm||tr("invNew"))}</b>${ICON("down")}</button>`)
+    +`<span class="invsum">${escapeHtml(invPeople(m.length))} · ${escapeHtml(tr("invSeatedN",{s:st}))}</span>`
+    +(ro?"":`<button class="ibtn invmore" data-a="more" title="${escapeHtml(tr("more"))}">⋯</button>`)
+    +`</div>`+(ro?`<div class="mhint invro">${escapeHtml(tr("invRo"))}</div>`:"");
+  if(invRenaming&&!ro){ const i=$("invHead").querySelector(".invname");
+    if(i){ try{ i.focus({preventScroll:true}); if(keepSel&&keepSel.s!=null) i.setSelectionRange(keepSel.s,keepSel.e); else i.select(); }catch(e){} } }
 }
-function invAddHtml(){
-  return `<div class="invadd"><div class="row"><input data-k="add" type="text" maxlength="80" autocomplete="off" spellcheck="false" enterkeyhint="done" placeholder="${escapeHtml(tr("invAddPh"))}" value="${escapeHtml(invAdd.q)}"><button class="ibtn" data-a="adddone">${escapeHtml(tr("invAddDone"))}</button></div><div class="invsug"></div></div>`;
+function renderInvMembers(){
+  const ro=ACCESS.ro, p=invCur(), seats=invSeats();
+  const m=p?partyMembers(p.id).sort((a,b)=>guestName(a).localeCompare(guestName(b),"el",{sensitivity:"base",numeric:true})):[];
+  $("invSheet").innerHTML=(m.length
+    ? `<div class="members">`+m.map(id=>{ const s=seats[id];
+        return `<span class="mchip" data-gid="${escapeHtml(id)}"><span class="nm">${escapeHtml(guestName(id))}</span>`
+          +(s?`<button class="invt" data-a="jump" title="${escapeHtml(tr("invJump"))}">→ ${escapeHtml(s.t.label)}</button>`:"")
+          +(ro?"":`<button class="invx" data-a="remove" title="${escapeHtml(tr("invRemove"))}">✕</button>`)+`</span>`; }).join("")+`</div>`
+    : `<div class="sheet-empty">${escapeHtml(tr(ro?"printNoSeat":"invSheetEmpty"))}</div>`)
+    +`<button class="kbline" data-a="expand">${escapeHtml(invPeople(m.length))} ${ICON("right")}</button>`;
 }
-function invDraftHtml(){   // a new invitation exists from its first person on (pruneParties drops empty ones)
-  return `<div class="invc open invdraft" data-pid="draft"><div class="invh"><input data-k="draft" type="text" maxlength="60" autocomplete="off" placeholder="${escapeHtml(tr("invNewPh"))}" value="${escapeHtml(invDraft.name)}"><button class="invx" data-a="draftx" title="${escapeHtml(tr("pbCancel"))}">✕</button></div><div class="hint">${escapeHtml(tr("invDraftHint"))}</div>${invAdd&&invAdd.pid==="draft"?invAddHtml():`<div class="invacts"><button class="ibtn w" data-a="add">${ICON("plus")}<span>${escapeHtml(tr("invAdd"))}</span></button></div>`}</div>`;
+// Persistent ring on the floor + tinted seat rows: "where do the Georgious already sit?", which a per-seat dot never could.
+function renderInvHighlight(){
+  stage.querySelectorAll(".seat.invhi").forEach(el=>el.classList.remove("invhi"));
+  fSeats.querySelectorAll(".frow.invhi").forEach(el=>el.classList.remove("invhi"));
+  if(invMode!=="fill"||!invOpenId) return;
+  const set=new Set(partyMembers(invOpenId));
+  stage.querySelectorAll(".seat[data-guest-id]").forEach(el=>{ if(set.has(el.dataset.guestId)) el.classList.add("invhi"); });
+  const t=focusedTable(); if(t) fSeats.querySelectorAll(".frow").forEach(r=>{ const gid=t.seats[+r.dataset.i]; if(gid&&set.has(gid)) r.classList.add("invhi"); });
 }
-function renderInvSug(){   // anyone not in this invitation — without a query the ones in no invitation, unseated first
-  const box=$("invBody").querySelector(".invsug"); if(!box||!invAdd) return;
-  const pid=invAdd.pid==="draft"?null:invAdd.pid, q=norm(invAdd.q), seats=invSeats(), MAX=40;
-  let ids=Object.keys(state.guests).filter(id=>!pid||state.guests[id].partyId!==pid);
-  ids=q?ids.filter(id=>norm(guestName(id)).includes(q)):ids.filter(id=>!state.guests[id].partyId);
-  const rank=id=>(state.guests[id].partyId?2:0)+(seats[id]?1:0);
-  ids.sort((a,b)=>rank(a)-rank(b)||guestName(a).localeCompare(guestName(b)));
-  box.innerHTML=(!q&&ids.length?`<div class="gm-cap">${escapeHtml(tr("invAddLoose"))}</div>`:"")
-    +ids.slice(0,MAX).map(id=>{ const p=partyOf(id), s=seats[id], note=[p?tr("invInOther",{p:caseName(p.name)}):"", s?"→ "+s.t.label:""].filter(Boolean).join(" · ");
-      return `<div class="gm-item" data-a="pick" data-gid="${escapeHtml(id)}"><span class="dot" style="background:${safeColor(guestColor(id))}"></span><span class="nm">${escapeHtml(guestName(id))}</span>${note?`<span class="n">${escapeHtml(note)}</span>`:""}</div>`; }).join("")
-    +(q&&!ids.length?`<div class="empty-note">${escapeHtml(tr("noMatch"))}</div>`:"")
-    +(ids.length>MAX?`<div class="empty-note">${escapeHtml(tr("moreMatches",{n:ids.length-MAX}))}</div>`:"");
+// ---- renaming is not a mode: the title turns into a field, Enter or blur commits through invRename() (merge included) ----
+let invRenaming=false;
+function invStartRename(fresh){ if(!invOk()) return; invRenaming=true; renderInvHead(); if(fresh){ const i=$("invHead").querySelector(".invname"); if(i) try{ i.focus({preventScroll:true}); }catch(e){} } }
+function invCommitName(v){
+  if(!invRenaming) return; invRenaming=false;
+  const p=invCur();
+  if(p) invRename(p.id, v);
+  else { if(invDraft) invDraft.name=String(v||"").trim().slice(0,80); renderInvSheet(); }   // a draft keeps its name until the first tick
 }
-function invReveal(el){   // the field (and a few suggestions under it) in view — on phones the keyboard takes half the sheet
-  const body=$("invBody"), y=el.offsetTop;
-  if(y<body.scrollTop || y+160>body.scrollTop+body.clientHeight) body.scrollTop=Math.max(0, y-Math.max(8, body.clientHeight*0.2));
+// ---- the switcher: every invitation, one tap away, without leaving the tick list ----
+function closeInvSwitch(){ const m=$("invswitch"); if(m) m.style.display="none"; }
+function openInvSwitch(anchor){
+  const menu=$("invswitch"), all=invSorted(), MAX=40;
+  const paint=q=>{
+    const nq=norm(q), shown=all.filter(x=>invMatch(x,nq));
+    menu.innerHTML=`<div class="gm-item gm-new"><input type="text" data-k="sw" autocomplete="off" spellcheck="false" placeholder="${escapeHtml(tr("invSearchPh"))}" value="${escapeHtml(q)}"></div>`
+      +shown.slice(0,MAX).map(x=>`<div class="gm-item${x.p.id===invOpenId?" on":""}" data-pid="${escapeHtml(x.p.id)}"><span class="tk">${x.p.id===invOpenId?"✓":""}</span><span class="nm">${escapeHtml(caseName(x.p.name))}</span><span class="n">${escapeHtml(invPeople(x.m.length))}</span></div>`).join("")
+      +(shown.length>MAX?`<div class="empty-note">${escapeHtml(tr("moreMatches",{n:shown.length-MAX}))}</div>`:"")
+      +(!shown.length?`<div class="empty-note">${escapeHtml(tr("noMatch"))}</div>`:"")
+      +(ACCESS.ro?"":`<div class="gm-sep"></div><div class="gm-item" data-a="newsw">${ICON("plus")}${escapeHtml(tr("invMoveNew"))}</div>`);
+    const i=menu.querySelector('[data-k="sw"]');
+    i.addEventListener("input",()=>{ const v=i.value, s=i.selectionStart; paint(v); const j=menu.querySelector('[data-k="sw"]'); try{ j.focus(); j.setSelectionRange(s,s); }catch(e){} });
+    i.addEventListener("keydown",e=>{ e.stopPropagation(); if(e.key==="Escape"){ e.preventDefault(); closeInvSwitch(); }
+      if(e.key==="Enter"){ e.preventDefault(); const f=menu.querySelector("[data-pid]"); if(f){ closeInvSwitch(); enterInv(f.dataset.pid,{keep:true}); } } });
+  };
+  paint("");
+  showPopover(menu, anchor);
+  if(!isNarrow()){ const i=menu.querySelector('[data-k="sw"]'); if(i) try{ i.focus(); }catch(e){} }
 }
-function invAddGuest(gid){
-  if(!invOk()||!invAdd) return; const g=state.guests[gid]; if(!g) return;
-  let p;
-  if(invAdd.pid==="draft"){ const nm=(invDraft&&invDraft.name.trim())||suggestPartyName([gid])||tr("partyN",{n:(state.parties||[]).length+1}); p=ensureParty(nm); invDraft=null; }   // same name as an existing one = that one
-  else p=invFind(invAdd.pid);
-  if(!p) return;
-  if(g.partyId===p.id){ invOpenId=p.id; invAdd={pid:p.id, q:""}; renderInv({focus:"add"}); return; }   // a new one named like theirs: that one opens
-  const was=partyOf(gid); g.partyId=p.id; pruneParties(); invPickFix(); save(); renderPool();
-  invOpenId=p.id; invAdd={pid:p.id, q:""};
-  toast(was?tr("tInvAddedMoved",{g:guestName(gid), p:caseName(p.name), a:caseName(was.name)}):tr("tInvAdded",{g:guestName(gid), p:caseName(p.name)}), was?4000:2000);
-  renderInv({focus:"add"});
+$("invswitch").addEventListener("click",e=>{
+  const row=e.target.closest("[data-pid],[data-a]"); if(!row) return;
+  if(row.dataset.pid){ closeInvSwitch(); enterInv(row.dataset.pid,{keep:true}); return; }
+  if(row.dataset.a==="newsw"){ closeInvSwitch(); enterInv("draft"); }
+});
+// ---- ⋯ : the two rare actions plus rename ----
+function openInvMore(anchor){
+  const p=invCur(), menu=$("groupmenu"); menu.dataset.fromSheet="";
+  menu.innerHTML=`<div class="gm-item" data-act="ren">${ICON("edit")}${escapeHtml(tr("invRename"))}</div>`
+    +(p?`<div class="gm-item" data-act="seat">${ICON("table")}${escapeHtml(tr("invSeatAll"))}</div>`:"")
+    +(p?`<div class="gm-sep"></div><div class="gm-item danger" data-act="del">${ICON("trash")}${escapeHtml(tr("invDelete"))}</div>`:"");
+  menu.querySelector('[data-act="ren"]').onclick=()=>{ closeGroupMenu(); invStartRename(true); };
+  const sa=menu.querySelector('[data-act="seat"]'); if(sa) sa.onclick=e=>{ e.stopPropagation(); closeGroupMenu(); if(isNarrow()) setNav(false); openPlaceMenu(null, anchorOf($("invHead").querySelector(".invmore")||$("invHead")), null, p.id, true); };
+  const dl=menu.querySelector('[data-act="del"]'); if(dl) dl.onclick=()=>{ closeGroupMenu(); invDelete(p.id); };
+  showPopover(menu, anchor);
 }
-function invRemove(gid){
-  if(!invOk()) return; const g=state.guests[gid], p=partyOf(gid); if(!g||!p) return;
-  g.partyId=null; pruneParties(); const gone=!invFind(p.id); invPickFix(); save(); renderPool(); renderInv();
-  toast(tr("tInvRemoved",{g:guestName(gid), p:caseName(p.name)})+(gone?tr("tInvGone",{p:caseName(p.name)}):""), 3500);
+// one delegated handler for the head, the index, the members strip and the footer — nothing to re-bind on every render
+["invHead","invIndex","invSheet","invFoot"].forEach(id=>$(id).addEventListener("click",e=>{
+  const b=e.target.closest("[data-a],[data-pid]"); if(!b) return;
+  const a=b.dataset.a, chip=b.closest("[data-gid]"), gid=chip?chip.dataset.gid:null;
+  if(b.dataset.pid){ enterInv(b.dataset.pid); return; }
+  if(a==="close"){ exitInv(); return; }
+  if(a==="back"){ invLeaveSheet(); return; }
+  if(a==="loose"){ exitInv(); invLooseFilter=true; renderPool(); return; }   // the sweep-up loop: work them off, watch it reach zero
+  if(a==="new"){ enterInv("draft"); return; }
+  if(a==="switch"){ e.stopPropagation(); openInvSwitch(anchorOf(b)); return; }
+  if(a==="more"){ e.stopPropagation(); openInvMore(anchorOf(b)); return; }
+  if(a==="done"){ invLeaveSheet("exit"); return; }
+  if(a==="expand"){ const f=document.activeElement; if(f&&f.blur) f.blur(); return; }   // the collapsed strip: tapping it puts the keyboard away
+  if(a==="jump"){ invJump(gid); return; }
+  if(a==="remove"){ invToggle(gid); return; }
+}));
+$("invHead").addEventListener("dblclick",e=>{ if(e.target.closest('[data-a="switch"]')) invStartRename(true); });
+{ let holdT=null;   // long-press the name = rename, on a phone
+  const h=$("invHead");
+  h.addEventListener("pointerdown",e=>{ if(!e.target.closest('[data-a="switch"]')) return; clearTimeout(holdT); holdT=setTimeout(()=>{ holdT=null; invStartRename(true); },550); });
+  ["pointerup","pointercancel","pointermove"].forEach(k=>h.addEventListener(k,()=>{ clearTimeout(holdT); }));
+  h.addEventListener("input",e=>{ if(e.target.dataset.k==="name"&&invDraft) invDraft.name=e.target.value; });
+  h.addEventListener("keydown",e=>{ if(e.target.dataset.k!=="name") return; e.stopPropagation();
+    if(e.key==="Enter"){ e.preventDefault(); invCommitName(e.target.value); try{ $("guestSearch").focus({preventScroll:true}); }catch(x){} }
+    else if(e.key==="Escape"){ e.preventDefault(); invRenaming=false; renderInvHead(); } });
+  h.addEventListener("focusout",e=>{ if(e.target.dataset.k!=="name"||!invRenaming) return; const v=e.target.value;
+    setTimeout(()=>{ if(invRenaming) invCommitName(v); },0); });   // a click elsewhere keeps the new name
 }
-function invMove(gid, to){   // to: an invitation id, or "+" = a new one (its name is asked)
-  if(!invOk()) return; const g=state.guests[gid]; if(!g) return;
-  let p=null; if(to==="+"){ const nm=prompt(tr("invNewPrompt"),""); if(nm&&nm.trim()) p=ensureParty(nm); } else p=invFind(to);
-  if(!p||p.id===g.partyId){ renderInv(); return; }
-  const was=partyOf(gid); g.partyId=p.id; pruneParties(); invPickFix(); save(); renderPool(); renderInv();
-  toast(tr("tInvMoved",{g:guestName(gid), a:was?caseName(was.name):"—", b:caseName(p.name)}), 3500);
-}
+// ‹ / [Τέλος] — the cleanup itself lives in invReleaseSheet(), which every exit route runs
+function invLeaveSheet(to){ if(to==="exit") exitInv(); else enterInv(null); }
+function invRefresh(){ renderPool(); renderInvHighlight(); }
 function invRename(pid, v){
-  if(!invOk()) return; const p=invFind(pid); invRen=null; v=String(v||"").trim().slice(0,80);
-  if(!p||!v||v===p.name){ renderInv(); return; }
+  if(!invOk()) return; const p=invFind(pid); v=String(v||"").trim().slice(0,80);
+  if(!p||!v||v===p.name){ invRefresh(); return; }
   const dup=(state.parties||[]).find(x=>x!==p&&norm(x.name)===norm(v));   // the same name as another invitation = merge into it (as the list's ✎ always did)
-  if(dup){ partyMembers(p.id).forEach(id=>state.guests[id].partyId=dup.id); if(pick&&pick.type==="party"&&pick.partyId===p.id) setPick({type:"party",partyId:dup.id}); pruneParties(); invOpenId=dup.id; }
+  if(dup){ partyMembers(p.id).forEach(id=>state.guests[id].partyId=dup.id); if(pick&&pick.type==="party"&&pick.partyId===p.id) setPick({type:"party",partyId:dup.id}); pruneParties(dup.id); invOpenId=dup.id; }
   else p.name=v;
-  save(); renderPool(); renderInv();
+  save(); invRefresh();
   if(dup) toast(tr("tInvMerged",{n:caseName(dup.name), k:partyMembers(dup.id).length}), 3500);
 }
 function invDelete(pid){
@@ -3036,48 +3367,61 @@ function invDelete(pid){
   confirmDelete(tr("invDelConfirm",{n:nm, k:partyMembers(pid).length}), ()=>{
     if(!invFind(pid)) return;   // gone meanwhile (undo, a pull)
     partyMembers(pid).forEach(id=>state.guests[id].partyId=null); pruneParties(); invPickFix(); if(invOpenId===pid) invOpenId=null;
-    save(); renderPool(); renderInv(); toast(tr("tInvDeleted",{n:nm}), 3500); });
+    save(); if(invMode==="fill"&&!invOpenId) enterInv(null); else invRefresh();
+    toast(tr("tInvDeleted",{n:nm}), 3500); });
 }
-function invJump(gid){ const s=invSeats()[gid]; if(!s) return; closeInv(); setNav(false); goToSeat(s.t.id, s.i); }
-$("invClose").addEventListener("click",closeInv);
-$("invModal").addEventListener("click",e=>{ if(e.target.id==="invModal") closeInv(); });
-$("invUndo").addEventListener("click",()=>{ invRen=null; undo(); renderInv(); });
-$("invNewBtn").addEventListener("click",()=>{ if(!invOk()) return; invDraft={name:""}; invAdd={pid:"draft", q:""}; invOpenId=null; invRen=null; renderInv({focus:"draft"}); $("invBody").scrollTop=0; });
-$("invSearch").addEventListener("input",e=>{ invQ=e.target.value; renderInv(); });
-$("invSearch").addEventListener("keydown",e=>{ if(e.key==="Escape"&&e.target.value){ e.stopPropagation(); e.target.value=""; invQ=""; renderInv(); } });   // Escape: first the query, then the sheet
-{ const ib=$("invBody");
-  ib.addEventListener("mousedown",e=>{ if(e.target.closest('[data-a="pick"]')) e.preventDefault(); });   // picking a name keeps the name field focused (and a phone's keyboard up)
-  ib.addEventListener("click",e=>{
-    const a=e.target.closest("[data-a]"); if(!a||!ib.contains(a)) return;
-    const act=a.dataset.a, card=a.closest(".invc"), pid=card?card.dataset.pid:null, row=a.closest(".invm"), gid=row?row.dataset.gid:(a.dataset.gid||null);
-    if(act==="jump"){ invJump(gid); return; }
-    if(act==="move") return;   // the <select>: its change event does the work
-    if(!invOk()) return;
-    if(act==="toggle"){ invOpenId=invOpenId===pid?null:pid; invAdd=null; invRen=null; renderInv(); }
-    else if(act==="remove") invRemove(gid);
-    else if(act==="add"){ invAdd={pid, q:""}; renderInv({focus:"add"}); }
-    else if(act==="adddone"){ if(invAdd&&invAdd.pid==="draft") invDraft=null; invAdd=null; renderInv(); }
-    else if(act==="draftx"){ invDraft=null; if(invAdd&&invAdd.pid==="draft") invAdd=null; renderInv(); }
-    else if(act==="pick") invAddGuest(gid);
-    else if(act==="rename"){ const p=invFind(pid); if(p){ invRen={pid, v:p.name}; renderInv({focus:"ren"}); const i=ib.querySelector('[data-k="ren"]'); if(i) i.select(); } }
-    else if(act==="del") invDelete(pid);
-    else if(act==="seat"){ e.stopPropagation(); openPlaceMenu(null, anchorOf(a), null, pid, true); }   // the document's click-outside closer would shut it at once
-  });
-  ib.addEventListener("change",e=>{ const s=e.target.closest('select[data-a="move"]'); if(!s) return; const row=s.closest(".invm"), v=s.value; s.value=""; if(row&&v) invMove(row.dataset.gid, v); });
-  ib.addEventListener("input",e=>{ const k=e.target.dataset&&e.target.dataset.k;
-    if(k==="add"&&invAdd){ invAdd.q=e.target.value; renderInvSug(); } else if(k==="draft"&&invDraft) invDraft.name=e.target.value; else if(k==="ren"&&invRen) invRen.v=e.target.value; });
-  ib.addEventListener("keydown",e=>{ const k=e.target.dataset&&e.target.dataset.k; if(!k) return;
-    if(e.key==="Enter"){ e.preventDefault();
-      if(k==="add"){ const first=ib.querySelector('.invsug [data-a="pick"]'); if(first&&invAdd&&invAdd.q.trim()) invAddGuest(first.dataset.gid); }
-      else if(k==="draft"){ const i=ib.querySelector('.invdraft [data-k="add"]'); if(i) i.focus(); else { invAdd={pid:"draft", q:""}; renderInv({focus:"add"}); } }   // its own box — never another card's
-      else if(k==="ren"&&invRen) invRename(invRen.pid, e.target.value); }
-    else if(e.key==="Escape"){ e.preventDefault(); e.stopPropagation();   // one step back, not the whole sheet
-      if(k==="ren") invRen=null; else { if(invAdd&&invAdd.pid==="draft"||k==="draft"){ invDraft=null; } invAdd=null; }
-      renderInv(); } });
-  ib.addEventListener("focusout",e=>{ if(!(e.target.dataset&&e.target.dataset.k==="ren"&&invRen)) return; const pid=invRen.pid, v=e.target.value;   // a click elsewhere keeps the new name
-    setTimeout(()=>{ if(invRen&&invRen.pid===pid) invRename(pid, v); },0); });
-  if(window.visualViewport) window.visualViewport.addEventListener("resize",()=>{ if(!invIsOpen()) return; const el=document.activeElement; if(el&&el.dataset&&el.dataset.k&&ib.contains(el)) setTimeout(()=>invReveal(el),60); });   // the keyboard came up: keep the field above it
+// ---- one tap = in or out. One save() = one undo step. Only the toggled row + bands A and B re-render. ----
+function invToggle(gid){
+  if(!invOk()) return;
+  const g=state.guests[gid]; if(!g) return;
+  invSticky.add(gid); invSel=gid;
+  const cur=invCur();
+  if(cur && g.partyId===cur.id){                                   // untick — the seat is never touched
+    const wasSeated=!!invSeats()[gid];
+    g.partyId=null; pruneParties(invOpenId); invPickFix(); save();
+    toast(tr("tInvRemoved",{g:guestName(gid), p:caseName(cur.name)})+(wasSeated?tr("invKeptSeat"):""), 3500);
+  }else{
+    let p=cur;
+    if(!p){                                                        // a draft becomes real on its first tick
+      const nm=(invDraft&&invDraft.name.trim())||suggestPartyName([gid])||tr("partyN",{n:(state.parties||[]).length+1});
+      p=ensureParty(nm); invDraft=null; invOpenId=p.id;
+    }
+    const was=partyOf(gid);
+    if(was&&was.id===p.id){ patchTickRow(gid); return; }
+    g.partyId=p.id; pruneParties(p.id); invPickFix(); save();
+    const gone=was&&!invFind(was.id);                              // the source invitation lost its last person
+    toast(was?tr("tInvAddedMoved",{g:guestName(gid), p:caseName(p.name), a:caseName(was.name)})+(gone?tr("tInvGone",{p:caseName(was.name)}):"")
+             :tr("tInvAdded",{g:guestName(gid), p:caseName(p.name)}), was?4000:2000);
+  }
+  patchTickRow(gid); renderInvHead(); renderInvMembers(); renderInvBtn(); renderInvSegCounts(); renderInvHighlight();
 }
+function patchTickRow(gid){   // 300 guests: rebuild ONE node per tap, never the whole list
+  const pool=$("pool"), old=[...pool.querySelectorAll(".gchip.tickable")].find(c=>c.dataset.guestId===gid);
+  if(old){ old.replaceWith(makeChip(gid,{tick:true})); return; }
+  if(!state.guests[gid]) return;
+  const tail=pool.querySelector(".invnew-guest"), row=makeChip(gid,{tick:true});
+  if(tail) tail.before(row); else pool.appendChild(row);
+}
+function renderInvSegCounts(){
+  const seg=$("invSeg"); if(!seg) return;
+  const gids=Object.keys(state.guests);
+  const n={all:gids.length, loose:gids.filter(id=>!state.guests[id].partyId).length, in:invOpenId?partyMembers(invOpenId).length:0};
+  seg.querySelectorAll("[data-f]").forEach(b=>{ const s=b.querySelector(".n"); if(s) s.textContent=n[b.dataset.f]; });
+}
+function invCreateGuest(name){   // "＋ Προσθήκη «X» στη λίστα και σε αυτό το προσκλητήριο": create + file, one save, one undo step
+  if(!invOk()) return;
+  const nm=String(name||"").trim().slice(0,80); if(!nm) return;
+  let p=invCur();
+  if(!p){ p=ensureParty((invDraft&&invDraft.name.trim())||nm); invDraft=null; invOpenId=p.id; }
+  const id="g"+nextId();
+  state.guests[id]={name:nm, groupId:state.activeGroupId||null, partyId:p.id};
+  invSticky.add(id); invSel=id; pruneParties(p.id); save();
+  toast(tr("tGuestCreatedInv",{g:caseName(nm), p:caseName(p.name)}), 3500);
+  searchQ=""; $("guestSearch").value="";
+  renderPool(); renderInvHighlight(); renderGroups(); updateStats();
+  try{ $("guestSearch").focus({preventScroll:true}); }catch(e){}
+}
+function invJump(gid){ const s=invSeats()[gid]; if(!s) return; if(isNarrow()) setNav(false); goToSeat(s.t.id, s.i); }
 function seatNeighbours(t,i){   // who physically sits next to seat i (head table: a row 0..top-1 with the two ends at its corners)
   const cnt=t.capacity;
   if(t.shape==="rect"){ const per=Math.ceil(cnt/2), b=i>=per, k=b?i-per:i, len=b?cnt-per:per, base=b?per:0, r=[];   // same side left/right, then across
@@ -3378,6 +3722,7 @@ document.addEventListener("click",e=>{
   const fm=$("fillmenu"); if(fm.style.display==="block" && !fm.contains(e.target) && !e.target.closest("#fFill,#menuFill")) fm.style.display="none";
   const vm=$("viewmenu"); if(vm.style.display==="block" && !vm.contains(e.target) && !e.target.closest("#viewBtn,#mbView")) vm.style.display="none";
   const pl=$("palette"); if(pl.style.display==="block" && !pl.contains(e.target)) pl.style.display="none";
+  const iw=$("invswitch"); if(iw.style.display==="block" && !iw.contains(e.target) && !e.target.closest('[data-a="switch"]')) closeInvSwitch();
 });
 
 // ============================================================
@@ -3392,7 +3737,7 @@ function focusedTable(){ return state.tables.find(t=>t.id===focusId)||null; }
 // it (--kb / body.kb) and scroll the active row into the visible part — never the document (Safari pans it itself). ----
 const vv=window.visualViewport; let kbRaf=0;
 function kbZoomed(){ return !!vv && Math.abs(vv.scale-1)>0.02; }   // pinch-zoomed page: vv.height shrinks without a keyboard
-function kbField(){ const ae=document.activeElement; return (ae&&(ae.tagName==="INPUT"||ae.tagName==="TEXTAREA")&&ae.closest("#focus, #sidebar, #invModal"))?ae:null; }   // #invModal: the invitations sheet rides above the keyboard too
+function kbField(){ const ae=document.activeElement; return (ae&&(ae.tagName==="INPUT"||ae.tagName==="TEXTAREA")&&ae.closest("#focus, #sidebar"))?ae:null; }
 let kbPrev=0;
 function syncKeyboard(){
   kbRaf=0;
@@ -3501,7 +3846,7 @@ function renderFocus(){
     const row=document.createElement("div"); row.className="frow"+(gid?" occ":""); row.dataset.i=i;
     const dotColor=gid?guestColor(gid):(ag?ag.color:"#cfc8bd");
     if(partySel&&gid&&partySel.ids.has(gid)) row.classList.add("sel");
-    row.innerHTML=`${(partySel&&gid)?`<button class="fchk" tabindex="-1"></button>`:""}<span class="fn">${i+1}</span><button class="fdot${gid?"":" empty"}" tabindex="-1" title="${escapeHtml(gid?tr("rowGroup"):tr("rowNewGroup"))}" style="background-color:${safeColor(dotColor)}"></button><input type="text" maxlength="40" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="words" enterkeyhint="${i+1<t.capacity?"next":"done"}" placeholder="${escapeHtml(tr("seatPh"))}" value="${gid?escapeHtml(guestName(gid)):""}"${ACCESS.ro?" readonly":""}><button class="grip" title="${escapeHtml(tr("gripTitle"))}" tabindex="-1">${ICON("grip")}</button><button class="fx" title="${escapeHtml(tr("unseat"))}" tabindex="-1">✕</button>`;
+    row.innerHTML=`${(partySel&&gid)?`<button class="fchk" tabindex="-1"></button>`:""}<span class="fn">${i+1}</span><button class="fdot${gid?"":" empty"}${hasInv(gid)?" hasinv":""}" tabindex="-1" title="${escapeHtml((gid?tr("rowGroup"):tr("rowNewGroup"))+invTitle(gid))}" style="background-color:${safeColor(dotColor)}"></button><input type="text" maxlength="40" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="words" enterkeyhint="${i+1<t.capacity?"next":"done"}" placeholder="${escapeHtml(tr("seatPh"))}" value="${gid?escapeHtml(guestName(gid)):""}"${ACCESS.ro?" readonly":""}><button class="grip" title="${escapeHtml(tr("gripTitle"))}" tabindex="-1">${ICON("grip")}</button><button class="fx" title="${escapeHtml(tr("unseat"))}" tabindex="-1">✕</button>`;
     if(partySel){ row.addEventListener("pointerdown",e=>{ if(partySel&&t.seats[i]&&!e.target.closest(".grip,.fx,.fdot")) e.preventDefault(); });   // a tick must not take the focus from the name field
       row.addEventListener("click",e=>{ if(!partySel||!t.seats[i]||e.target.closest(".grip,.fx,.fdot")) return; e.preventDefault(); togglePartySel(t.seats[i]); }); }
     const grip=row.querySelector(".grip");
@@ -3530,6 +3875,7 @@ function renderFocus(){
   fSeats.scrollTop=st;
   if(keep){ const inp=rowInput(keep.i); if(inp){ inp.value=keep.v; inp.focus({preventScroll:true}); try{ inp.setSelectionRange(keep.s,keep.e); }catch(e){} } }
   if(partySel){ const ids=partySelIds(); $("psCount").textContent=tr("psCount",{n:ids.length}); }   // × / undo / a move may have dropped a ticked name
+  if(invMode==="fill") renderInvHighlight();   // rebuilt rows lost the tint: put it back
 }
 function rowInput(i){ return fSeats.querySelector(`.frow[data-i="${i}"] input`); }
 function focusRow(i){ const inp=rowInput(i); if(!inp) return; inp.focus({preventScroll:true}); inp.select(); revealField(inp); }
@@ -3595,7 +3941,7 @@ function paintSug(){
   if(!sug) return;
   const row=fSeats.querySelector(`.frow[data-i="${sug.i}"]`); if(!row) return;
   const box=document.createElement("div"); box.className="fsug";
-  box.innerHTML=sug.items.map((it,k)=>`<div class="${it.id==="__new"?"new":""}${k===sug.sel?" sel":""}" data-k="${k}">${it.color?`<span class="dot" style="background:${it.color}"></span>`:""}${escapeHtml(it.name)}</div>`).join("")
+  box.innerHTML=sug.items.map((it,k)=>`<div class="${it.id==="__new"?"new":""}${k===sug.sel?" sel":""}${hasInv(it.id)?" hasinv":""}" data-k="${k}"${hasInv(it.id)?` title="${escapeHtml(invTitle(it.id).replace(/^ · /,""))}"`:""}>${it.color?`<span class="dot" style="background:${it.color}"></span>`:""}${escapeHtml(it.name)}</div>`).join("")
     +(sug.more?`<div class="more">${escapeHtml(tr("moreMatches",{n:sug.more}))}</div>`:"");
   box.querySelectorAll("[data-k]").forEach(el=>{
     el.addEventListener("pointerdown",e=>e.preventDefault());     // keep the input focused (no blur commit)
@@ -3679,7 +4025,8 @@ document.addEventListener("keydown",e=>{
   if(e.key!=="Escape") return;
   if(tour){ endTour(); return; }
   if(modalOpen){ document.querySelectorAll(".modal-back.open").forEach(m=>{ if(m._close) m._close(); else m.classList.remove("open"); }); return; }
-  for(const [id,fn] of [["placemenu",closePlaceMenu],["groupmenu",closeGroupMenu],["featuremenu",closeFeatureMenu]]){ const el=$(id); if(el.style.display==="block"){ fn(); return; } }   // innermost thing first
+  for(const [id,fn] of [["placemenu",closePlaceMenu],["groupmenu",closeGroupMenu],["featuremenu",closeFeatureMenu],["invswitch",closeInvSwitch]]){ const el=$(id); if(el.style.display==="block"){ fn(); return; } }   // innermost thing first
+  if(invMode){ invEscape(); return; }   // FILL → INDEX → NORMAL (nothing here is a modal)
   if(partySel){ endPartySelect(); return; }
   if(pick){ setPick(null); return; }
   if(document.body.classList.contains("nav-open")){ setNav(false); return; }
@@ -3774,12 +4121,52 @@ $("helpBtn").addEventListener("click",startTour);
 //  GUEST SEARCH (sidebar) — filters the unseated list and lists seated matches (→ table); Enter takes the first match
 // ============================================================
 const searchInp=$("guestSearch");
-searchInp.addEventListener("input",()=>{ searchQ=searchInp.value; renderPool(); });
+searchInp.addEventListener("input",()=>{ searchQ=searchInp.value; searchRender(); });
+function searchRender(){ if(invMode){ invSticky.clear(); invSel=null; } renderPool(); }   // a new query starts a fresh "keep what I just ticked" set, and drops a highlight that is about to scroll away
 searchInp.addEventListener("keydown",e=>{ e.stopPropagation();
-  if(e.key==="Escape"){ searchInp.value=""; searchQ=""; renderPool(); searchInp.blur(); }
+  if(e.key==="Escape"){   // the ladder: clear the query first, then one panel state at a time
+    if(searchInp.value){ searchInp.value=""; searchQ=""; searchRender(); }
+    else if(invMode) invEscape(); else searchInp.blur();
+    return; }
+  if(invMode){ invSearchKey(e); return; }   // the invitation states own Enter / ↑ ↓ / Space
   if(e.key==="Enter"){ const ids=visiblePoolIds(); if(ids.length){ setPick({type:"guest",guestId:ids[0],from:"pool"}); searchInp.blur(); }
     else { const h=seatedHits()[0]; if(h){ searchInp.blur(); goToSeat(h.t.id,h.i); } } } });
-$("searchClear").addEventListener("click",()=>{ searchInp.value=""; searchQ=""; renderPool(); if(!$("searchWrap").hidden) searchInp.focus(); });
+// What makes 80 invitations bearable on a PC: type, ↓ ↑ to a name, Enter to tick it and clear the query for the next surname.
+// The highlight is a GUEST ID, never an index, so a re-render never moves it.
+function invSelRows(){ return [...$("pool").querySelectorAll(".gchip.tickable, .invnew-guest")]; }
+function invPaintSel(){
+  $("pool").querySelectorAll(".sel").forEach(el=>el.classList.remove("sel"));
+  if(invSel==null) return;
+  const el=invSelRows().find(r=>(r.dataset.guestId||r.dataset.gid)===invSel);
+  if(el){ el.classList.add("sel"); el.scrollIntoView({block:"nearest"}); }
+}
+function invMoveSel(d){
+  const rows=invSelRows(); if(!rows.length) return;
+  const key=r=>r.dataset.guestId||r.dataset.gid;
+  let i=rows.findIndex(r=>key(r)===invSel);
+  i=(i<0)?(d>0?0:rows.length-1):Math.max(0,Math.min(rows.length-1,i+d));
+  invSel=key(rows[i]); invPaintSel();
+}
+function invActivateSel(clear){
+  if(invMode==="index"){ const r=$("invIndex").querySelector(".invrow[data-pid]"); if(r) enterInv(r.dataset.pid); return; }
+  // Resolve ONLY among the rows actually on screen: a highlight left over from an earlier query must never toggle
+  // a guest the typist can no longer see (that silently un-ticked someone and looked like it had worked).
+  const rows=invSelRows(); if(!rows.length) return;
+  const key=r=>r.dataset.guestId||r.dataset.gid;
+  let row=rows.find(r=>key(r)===invSel);
+  if(!row){ if(!searchQ.trim()) return; row=rows[0]; }                                    // nothing typed and nothing chosen: Enter means nothing
+  const gid=key(row);
+  if(gid==="__new"){ invCreateGuest(searchQ.trim()); return; }
+  invToggle(gid);
+  if(clear&&searchQ){ searchQ=""; $("guestSearch").value=""; invSel=null; renderPool(); }  // the next surname can be typed at once
+}
+function invSearchKey(e){
+  if(e.key==="ArrowDown"||e.key==="ArrowUp"){ e.preventDefault(); if(invMode==="fill") invMoveSel(e.key==="ArrowDown"?1:-1); return; }
+  if(e.key==="Enter"){ e.preventDefault(); invActivateSel(true); return; }
+  if(e.key===" "&&invMode==="fill"&&!$("guestSearch").value){ e.preventDefault(); invActivateSel(false); }   // Space toggles without clearing (only when nothing is typed)
+}
+$("searchClear").addEventListener("click",()=>{ searchInp.value=""; searchQ=""; searchRender(); if(!$("searchWrap").hidden) searchInp.focus(); });
+$("invBtn").addEventListener("click",()=>enterInv(null));
 
 // ============================================================
 //  TOOLBAR · MORE MENU
@@ -3834,7 +4221,7 @@ $("addGuestBtn").addEventListener("click",()=>{
   const lines=ta.value.split("\n").map(s=>s.trim()); let party=null, added=0;
   lines.forEach(nm=>{ if(!nm){ party=null; return; } if(/[:：]$/.test(nm)){ party=ensureParty(nm.slice(0,-1)); return; }
     const id="g"+nextId(); state.guests[id]={name:nm, groupId:state.activeGroupId||null, partyId:party?party.id:null}; added++; });
-  pruneParties(); if(!added) return;
+  pruneParties(invOpenId); if(!added) return;
   ta.value=""; save(); renderPool(); renderGroups(); updateStats(); toast(tr("tGuestsAdded",{n:added}));
   checkTips("added");
 });
@@ -4138,7 +4525,7 @@ $("moreBtn").addEventListener("click",e=>{
     if(a==="share") openCloud(); else if(a==="csvout") exportGuestsCsv(); else if(a==="csvin") openCsvImport(); else if(a==="head") $("addHeadBtn").click(); else if(a==="decor") openDecor();
     else if(a==="newplan") newProfile(); else if(a==="planmore") openProfileMenu(anchorOf($("moreBtn")));
     else if(a==="access") openAccess(); else if(a==="help") openHelp(); else if(a==="keepsake") downloadPdf("keepsake", null);
-    else if(a==="round") addRoundTable(); else if(a==="rect") addRectTable(); else if(a==="history") openHistory(); else if(a==="groups") openGroupsModal(); else if(a==="inv") openInv(); else if(a==="tour") startTour();
+    else if(a==="round") addRoundTable(); else if(a==="rect") addRectTable(); else if(a==="history") openHistory(); else if(a==="groups") openGroupsModal(); else if(a==="inv") enterInv(null); else if(a==="tour") startTour();
     else if(a==="auto") autoSeat(); else if(a==="export"){ if((currentProfile()||{}).support){ toast(tr("tNoCopySupport"),4000); return; } openExport(); } else if(a==="import") openImport(); else if(a==="print") openPrint(); else if(a==="reset") resetPlan();
     else if(a==="askdel"){ try{ localStorage.removeItem(DEL_SKIP_KEY); localStorage.removeItem(MERGE_SKIP_KEY); }catch(e){} toast(tr("tAskDel"),2500); }
     else if(a.startsWith("lang-")){ const l=a.slice(5); location.href=({el:"seating-planner-el.html",en:"seating-planner.html",de:"seating-planner-de.html"})[l]; } });
@@ -4885,16 +5272,16 @@ $("cloudModal").addEventListener("click",e=>{ if(e.target.id==="cloudModal") e.c
 $("printBtn").addEventListener("click",openPrint);
 let pdfChoice="";   // the PDF option stays chosen for this visit (printMode only remembers the name lists)
 function openPrint(){
-  const m=$("printModal"), keep=!!ACCESS.locked, mode=(pdfChoice==="keepsake"&&!keep)?"pdf":pdfChoice||(state.printMode==="parties"?"parties":"names");
+  const m=$("printModal"), keep=!!ACCESS.locked, mode=(pdfChoice==="keepsake"&&!keep)?"pdf":pdfChoice||(["alpha","names","parties"].includes(state.printMode)?state.printMode:"alpha");
   $("pmKeepRow").hidden=!keep;   // the keepsake belongs to a wedding that is over
   m.querySelectorAll('input[name="pmode"]').forEach(r=>{ r.checked=r.value===mode; }); printGoLabel(); m.classList.add("open");
 }
-function printPick(){ const r=$("printModal").querySelector('input[name="pmode"]:checked'); return r?r.value:"names"; }
+function printPick(){ const r=$("printModal").querySelector('input[name="pmode"]:checked'); return r?r.value:"alpha"; }
 function printGoLabel(){ const v=printPick(); $("printGo").textContent=(v==="pdf"||v==="keepsake")?tr("pdfGo"):tr("mPrint"); }
 $("printModal").addEventListener("change",printGoLabel);
 $("printGo").addEventListener("click",()=>{ const v=printPick();
   if(v==="pdf"||v==="keepsake"){ pdfChoice=v; downloadPdf(v==="keepsake"?"keepsake":"floor", $("printGo")); return; }   // the dialog stays open (spinner) until the file is ready
-  pdfChoice=""; const mode=v==="parties"?"parties":"names"; const m=$("printModal");
+  pdfChoice=""; const mode=["alpha","names","parties"].includes(v)?v:"alpha"; const m=$("printModal");
   if(state.printMode!==mode){ state.printMode=mode; save({noHistory:true}); } m.classList.remove("open"); buildAndPrint(mode); });
 // PDF: the server renders the plan this device shows (local plans, the lab and unsynced edits included) — POST /pdf, stateless.
 let pdfBusy=false;
@@ -4918,6 +5305,47 @@ $("printClose").addEventListener("click",()=>$("printModal").classList.remove("o
 function buildAndPrint(mode){
   const area=$("printarea"); const byParties=mode==="parties";
   const legend=state.groups.map(g=>`<span><span class="dot" style="background:${g.color}"></span>${escapeHtml(g.name)}</span>`).join("");
+  const tableOf={}; state.tables.forEach(t=>t.seats.forEach(gid=>{ if(gid) tableOf[gid]=t.label; }));
+  const seated=assignedGuestIds().size, totalSeats=state.tables.reduce((s,t)=>s+t.capacity,0);
+  const cur=currentProfile()||{}, wd=cur.life&&cur.life.weddingDate;
+  const meta=[tr("printTitle"), wd?tr("printWed",{d:fmtDate(wd)}):"", tr("printAt",{t:new Date().toLocaleString(LANG,{dateStyle:"short",timeStyle:"short"})})].filter(Boolean).join(" · ");
+  const head=`<h2>${escapeHtml(cur.name||tr("printTitle"))}</h2><div class="pmeta">${escapeHtml(meta)}</div>
+    <div class="psub">${escapeHtml(tr("printSub",{t:state.tables.length, s:seated, c:totalSeats}))}</div>
+    ${legend?`<div class="plegend">${legend}</div>`:""}`;
+  // One line per ENTRY, alphabetical: an invitation (with its members underneath) or a guest who has none.
+  if(mode==="alpha"){
+    const coll=(a,b)=>String(a).localeCompare(String(b),"el",{sensitivity:"base",numeric:true});
+    const st=id=>{ const s=STATUS_TXT(gStatus(id)); return s?` <span class="ast">(${escapeHtml(s)})</span>`:""; };
+    const gdot=ids=>{ const c=guestColor(ids[0]); return ids.every(i=>guestColor(i)===c)?`<span class="gdot" style="background:${c}"></span>`:`<span class="gdot none"></span>`; };
+    const inInv=new Set(), entries=[];
+    (state.parties||[]).forEach(p=>{
+      const m=partyMembers(p.id); if(!m.length) return;
+      m.forEach(id=>inInv.add(id));
+      const tabs=[]; m.forEach(id=>{ const t=tableOf[id]; if(t&&!tabs.includes(t)) tabs.push(t); }); tabs.sort(coll);
+      const main=tabs.length===1?tabs[0]:null;          // one table for everyone who sits → the members stay bare
+      const mem=m.slice().sort((a,b)=>coll(guestName(a),guestName(b))).map(id=>{
+        const t=tableOf[id];
+        const tag=t?(t===main?"":` <span class="mt">${escapeHtml(t)}</span>`):` <span class="mt none">${escapeHtml(tr("printNoSeat"))}</span>`;
+        return `${escapeHtml(guestName(id))}${st(id)}${tag}`;
+      }).join(" · ");
+      entries.push({k:caseName(p.name), html:`<li>`
+        +`<div class="pal">${gdot(m)}<span class="an"><b>${escapeHtml(caseName(p.name))}</b></span>`
+        +`<span class="at${tabs.length?"":" none"}">${escapeHtml(tabs.length?tabs.join(", "):tr("printNoSeat"))}</span>`
+        +`<span class="ac">${escapeHtml(m.length===1?tr("invOne"):tr("invPeople",{n:m.length}))}</span></div>`
+        +`<div class="pam">${mem}</div></li>`});
+    });
+    Object.keys(state.guests).forEach(id=>{ if(inInv.has(id)) return;
+      entries.push({k:guestName(id), html:`<li><div class="pal">${gdot([id])}`
+        +`<span class="an">${escapeHtml(guestName(id))}${st(id)}</span>`
+        +`<span class="at${tableOf[id]?"":" none"}">${escapeHtml(tableOf[id]||tr("printNoSeat"))}</span></div></li>`});
+    });
+    entries.sort((a,b)=>coll(a.k,b.k));
+    const gn=Object.keys(state.guests).length;
+    area.innerHTML=head
+      +`<h3 class="pinvh">${escapeHtml(tr("printAllH"))} <span class="psn">${escapeHtml(tr("printAllSub",{g:gn, s:seated, u:gn-seated}))}</span></h3>`
+      +`<ul class="palpha">${entries.map(e=>e.html).join("")||`<li class="empty">—</li>`}</ul>`;
+    window.print(); return;
+  }
   const cards=state.tables.map(t=>{
     if(byParties){   // one line per invitation at this table (how many of its people sit here), singles by name
       const byP=new Map(), singles=[];
@@ -4933,16 +5361,9 @@ function buildAndPrint(mode){
   }).join("");
   const un=unseatedIds();
   const unHtml=un.length?`<div class="punassigned"><strong>${escapeHtml(tr("printUnassigned",{n:un.length}))}</strong> ${un.map(id=>escapeHtml(guestName(id))).join(", ")}</div>`:"";
-  const tableOf={}; state.tables.forEach(t=>t.seats.forEach(gid=>{ if(gid) tableOf[gid]=t.label; }));
   const parties=(state.parties||[]).map(p=>({p, m:partyMembers(p.id)})).filter(x=>x.m.length).sort((a,b)=>a.p.name.localeCompare(b.p.name));
   const invHtml=(parties.length&&!byParties)?`<h3 class="pinvh">${escapeHtml(tr("printInvites"))}</h3><div class="pinvs">${parties.map(({p,m})=>`<div class="pinv"><b>${escapeHtml(caseName(p.name))}</b> <span class="n">(${m.length})</span><ul>${m.map(id=>`<li>${escapeHtml(guestName(id))}${tableOf[id]?` <span class="ptag">— ${escapeHtml(tableOf[id])}</span>`:` <span class="ptag">— ${escapeHtml(tr("printNoSeat"))}</span>`}</li>`).join("")}</ul></div>`).join("")}</div>`:"";
-  const seated=assignedGuestIds().size, totalSeats=state.tables.reduce((s,t)=>s+t.capacity,0);
-  const cur=currentProfile()||{}, wd=cur.life&&cur.life.weddingDate;
-  const meta=[tr("printTitle"), wd?tr("printWed",{d:fmtDate(wd)}):"", tr("printAt",{t:new Date().toLocaleString(LANG,{dateStyle:"short",timeStyle:"short"})})].filter(Boolean).join(" · ");
-  area.innerHTML=`<h2>${escapeHtml(cur.name||tr("printTitle"))}</h2><div class="pmeta">${escapeHtml(meta)}</div>
-    <div class="psub">${escapeHtml(tr("printSub",{t:state.tables.length, s:seated, c:totalSeats}))}</div>
-    ${legend?`<div class="plegend">${legend}</div>`:""}
-    <div class="ptables">${cards}</div>${unHtml}${invHtml}`;
+  area.innerHTML=head+`<div class="ptables">${cards}</div>${unHtml}${invHtml}`;
   window.print();
 }
 
@@ -4994,7 +5415,7 @@ $("zoomFit").addEventListener("click",()=>{ zoom=clamp(fitZoom(),0.2,2.5); apply
 // ============================================================
 //  INIT
 // ============================================================
-function renderAll(){ renderFeatures(); renderTables(); renderGroups(); renderPool(); updateStats(); if(invIsOpen()) renderInv(); }
+function renderAll(){ renderFeatures(); renderTables(); renderGroups(); renderPool(); updateStats(); if(invMode) renderInvPanel(); }
 if(!state.stage) state.stage={w:2100,h:1400};
 if(!state.stageMaterial) state.stageMaterial="grass";
 applyStage();

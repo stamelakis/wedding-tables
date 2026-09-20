@@ -148,6 +148,24 @@ not serve other couples' weddings. Owner decisions (Andreas):
 - **Invitations editor** in the planner (list, members, rename, delete, add/remove/move people, seat all).
 - Hermes «νέος γάμος …» must include the date («… στις 12 Σεπτεμβρίου»); it asks for it otherwise.
 
+## 1f. Invitations panel and the A–Z print (2026-09-21)
+
+Working on paper is the model: you should always see what is already in an invitation and what is not.
+- **`#invBtn` in the left panel** ("Προσκλητήρια · N · k χωρίς") opens the index; the invitations are no longer buried in
+  the ⋯ menu. Two states on `body`: `invlist` (index of all invitations + a "X people with no invitation" row) and
+  `invfill` (one invitation open: its members with ✕, a name field, the filters Όλοι / Χωρίς / Σε αυτό, and a switcher
+  back to the index). While filling, the **left panel is replaced** by that panel — the paper-list feeling Andreas asked for.
+- **Ticks while choosing** (`.gchip.tickable` + `.gtick`) and a permanent **membership pip** (`.gchip.hasinv::before`, a
+  small circle at the top-right of the name box) so a name in some invitation is visible everywhere, not only while filling.
+- **Rename = merge**: renaming an invitation onto an existing name merges them (confirm + toast + undo). Four entry
+  points: the ⋯ menu, double-click, blur, long-press (550 ms).
+- **Print, first and default: «Όλα αλφαβητικά»** (`printMode: "alpha"`) — one alphabetical list of *entries*: each
+  invitation as one line (name · table(s) · how many people) with its people named underneath, and everyone without an
+  invitation as their own line. Sorted as written, first name first. The other modes (names per table, invitations per
+  table, floor-plan PDF, keepsake) are unchanged, below it.
+- A mobile layout of the same panel exists (the rail reserves its width via `body.invrail`); it has been tested only at
+  375×812 emulation, never on a real handset.
+
 ## 2. Architecture
 
 ```
@@ -203,6 +221,13 @@ Browser ──HTTPS──> Caddy (edu-admin-caddy-1, owns :80/:443 on the shared
 > language files, their `.artifact.html` twins and `lab.html` in one go. Commit the source **and** the outputs
 > (the Docker image copies the outputs). UI strings live in the `T_ALL` dictionary near the top of the script
 > (keys must exist in all three languages; missing keys fall back to Greek).
+>
+> The build refuses to run on two classes of mistake: **i18n** (a key missing from a language, a different set of
+> `{placeholders}`, a duplicate key, a `tr()` key that does not exist) and **undeclared identifiers** — `name = …` where
+> `name` is never declared anywhere in the file. The planner runs in strict mode, so that throws a ReferenceError the
+> moment the path is taken; it shipped once (`invRename` kept assigning a deleted `invRen`, which killed every rename
+> and merge) and `node --check` cannot see it. If the second guard ever fires on something legitimate, the fix is a real
+> declaration — do not delete the guard.
 
 ## 4. How to access everything
 
@@ -219,7 +244,19 @@ Andreas's password manager. Summary of *what exists*:
 - **Andreas's private quick-access page** (phone-friendly, tap-to-open editor + venue key):
   a private Claude artifact — URL is in `ACCESS.local.md`.
 - **Domain/DNS**: takeaseat.gr at **Papaki** (apex + www A-records → the server IP).
-- **Email**: `info@takeaseat.gr` is a Papaki **alias → andrewstamelakis@gmail.com** (free, no mailbox).
+- **Email**: `info@takeaseat.gr` is a real **Papaki mailbox** (SecureMail, included with the domain plan). The app sends
+  through it: `SMTP_HOST=smtp.securemail.pro`, `SMTP_PORT=587` (STARTTLS — 465 and `mail-gr.securemail.pro` are blocked
+  from the box), `SMTP_USER=info@takeaseat.gr`, `SMTP_PASS` in `server.env` (Andreas types it in; I never handle it).
+  SPF already covers it; **DKIM is not published yet** and DMARC is `p=none` (§8).
+- **Admin key recovery**: if the `OWNER_KEY` is lost, `admin.html` → "Forgot the admin key?" mails a one-hour, one-use
+  link to the recovery address on `meta:owner`. The link mints **one** new key, shown once; the server keeps **only its
+  SHA-256**, so a copy of the database never opens the console. Claiming it also retires every other link still in
+  flight, so the key he has just filed away is the only one. The `OWNER_KEY` in `server.env` always keeps working.
+  The address itself is set in the console's **Admin access** card and **only counts once it is confirmed from that
+  address** (`verify-owner` token → `/admin.html#verify=…` → `POST /verify`), exactly like couples and venues: a typo
+  must never become the only way in, and a stranger who reaches the console once must not be able to keep it. That also
+  means **the address cannot be set while the mail sender is off**. Revoking a recovered key needs the `server.env`
+  key itself (`would_lock_out` otherwise) — being signed in with the recovered key is not enough.
 - **Backblaze B2** (off-site backups), **Cloudflare** (legacy, being retired), **Hetzner** — all Andreas's accounts.
 
 ### Recover a lost key from the database
@@ -327,10 +364,15 @@ cascade-purges its plans; venues can rotate their own key; backups encrypted at 
 3. **Deferred hardening** (skipped as too risky to do unattended on the live shared box): run the
    container as a **non-root** user and move it off the shared `edu-admin_internal` network onto its own.
 4. **First real customers**: only Andreas's own wedding (Andreas & Lina, venue Jockey) + test plans exist so far.
-5. **Mail sender** (§1c): pick a transactional provider (e.g. Brevo / Postmark, EU) or a Google Workspace mailbox on
-   takeaseat.gr, add its SPF + DKIM records at Papaki, put `SMTP_*` + `MAIL_FROM` in `server.env`, and list the
-   provider as a sub-processor in `privacy.html` / `dpa.html` (the DPA promises venues notice before a new one).
-   Andreas: "we'll buy an email soon".
+5. **Mail sender** (§1c): the mailbox exists (Papaki/SecureMail `info@takeaseat.gr`, listed as a sub-processor in
+   `privacy.html` / `dpa.html` since 2026-09-21). What is left: **Andreas puts `SMTP_PASS` into `server.env`** and
+   restarts — the log must say `mail: SMTP login ok` — then one real end-to-end test (a claim mail) before the
+   mail-dependent features (recovery, keepsake, renewal reminders, admin key recovery) count as live. Still to ask
+   Papaki: **DKIM** for the domain (SPF is fine, DMARC is `p=none`), whether the 500-mails limit is per day, and which
+   country the mailbox is hosted in (the privacy page says ΕΕ). Andreas should also forward the mailbox to Gmail.
+5b. **Set the admin recovery address** to `andrewstamelakis@gmail.com` in `admin.html` → Admin access. It can only be
+   done **after** item 5 (the address is confirmed by a mailed link, so the sender must work), and the confirmation mail
+   has to be opened from that address. Until then the `OWNER_KEY` in `server.env` is the only way into the console.
 6. **Couples and the 14-day withdrawal right (decision + lawyer)**: the online planner is a *digital service*, so couples
    keep 14 days to withdraw (pro rata → nearly the full 19€ back). The terms now carry a compliant interim clause.
    Options researched 2026-09-19 (scratch notes, summarised): **A** free planner, 19€ buys the downloadable "export pack"
@@ -371,6 +413,9 @@ cascade-purges its plans; venues can rotate their own key; backups encrypted at 
 - **Deploy with `server/deploy.sh`**, not by hand. It refuses Fri–Sun in the season (use `--force` only when no
   wedding can be affected) and rolls back an unhealthy build.
 - **Public repo → no secrets in git.** `server.env`, `rclone.conf`, the age private key, edit keys — all stay out.
+- **Locally, run `node tools/dev.mjs`, not `node server/server.mjs`.** The server imports `server/worker.mjs`, which is an
+  untracked *copy* of `wedding-sync-worker.js`; `dev.mjs` refreshes it first (the Docker build copies it the same way).
+  Starting the server directly silently serves whatever the old copy contained — it cost an agent a wrong test result.
 - **Shared box runs the live educationproject.gr business.** Caddy owns 80/443. Back up the Caddyfile and
   `caddy validate` before any reload; confirm edu still serves 200 afterward.
 - **`worker.mjs` is generated** from `wedding-sync-worker.js` at build — edit the source, not the copy.

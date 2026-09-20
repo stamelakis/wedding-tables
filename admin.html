@@ -289,11 +289,185 @@ function renderLogin(err){
     <input id="ok" type="password" placeholder="Owner key" autocomplete="off">
     ${err?`<div class="muted" style="color:var(--danger);margin-top:8px">${esc(err)}</div>`:""}
     <div style="margin-top:12px"><button class="btn primary" id="go" style="width:100%">Sign in</button></div>
-    <div class="muted" style="margin-top:12px">The owner key is the <span class="mono">OWNER_KEY</span> secret set on the server.</div>
+    <div class="muted" style="margin-top:12px">The owner key is the <span class="mono">OWNER_KEY</span> secret set on the server — or the key you were given through a recovery link.</div>
+    <button class="btn ghost" id="forgot" style="margin-top:6px;font-size:13px">Forgot the admin key?</button>
   </div>`;
   const go=()=>{ const k=document.getElementById("ok").value.trim(); if(!k) return; setKey(k); load(); };
   document.getElementById("go").onclick=go;
   document.getElementById("ok").addEventListener("keydown",e=>{ if(e.key==="Enter") go(); });
+  document.getElementById("forgot").onclick=()=>renderForgot({});
+}
+
+// ---------------------------------------------------------------- forgot the admin key (signed out)
+// admin.html#recover=<token> is the one-hour link e-mailed to the recovery address; it makes a NEW admin key, shown once.
+// admin.html#verify=<token> is the one-day link that confirms a new recovery address (PUT /admin/owner only asks).
+// The token leaves the address at once and is only spent on an explicit press — mail scanners follow links.
+const EMAIL_OK=e=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e) && e.length<=200;
+const RATE_MSG="Too many requests — try again in a little while.";
+const MAIL_OFF_MSG=`Email is off on the server — you'll need the key from <span class="mono">server.env</span>.`;
+const SENT_MSG="If that address is the confirmed recovery address, a link is on its way. It is valid for one hour.";
+let screenSeq=0;
+// Every signed-out screen lives in the same sign-in card; rendering one also drops an answer still in flight.
+function loginCard(html){ screenSeq++; closeDialog(); app.innerHTML=`<div class="card login">${html}</div>`; return screenSeq; }
+const busy=()=>app.querySelectorAll("button").forEach(b=>b.disabled=true);
+function backHtml(){ return `<button class="btn ghost" id="back" style="margin-top:12px;font-size:13px">${getKey()?"← Back to the console":"← Sign in with the key"}</button>`; }
+function bindBack(){ const b=document.getElementById("back"); if(b) b.onclick=()=>{ if(getKey()) load(); else renderLogin(); }; }
+// A public POST — no owner key, and a 403 here must never bounce the page to the sign-in screen.
+async function pub(path, body){
+  let r; try{ r=await fetch(SYNC_URL+path,{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body) }); }
+  catch(e){ return { ok:false, status:0, d:{} }; }
+  let d=null; try{ d=await r.json(); }catch(e){}
+  return { ok:r.ok, status:r.status, d:d||{} };
+}
+// One nonce per link and tab: a retry after a lost answer is recognised as the same device.
+function tokenNonce(kind, token){
+  const nk="weddingOwner"+kind+"Nonce."+String(token).slice(0,10);
+  const fresh=()=>{ const a=new Uint8Array(16); crypto.getRandomValues(a); return [...a].map(x=>x.toString(16).padStart(2,"0")).join(""); };
+  let n=""; try{ n=sessionStorage.getItem(nk)||""; if(!n){ n=fresh(); sessionStorage.setItem(nk,n); } }catch(e){ n=n||fresh(); }
+  return n;
+}
+// #recover=<token>, #verify=<token> (or a bare #recover) → the signed-out link screens. The fragment is dropped first,
+// so the token is out of the address bar (and out of anything that reads it) before a single request is made.
+function linkFromHash(){
+  const h=location.hash||"", get=k=>{ const m=h.match(new RegExp("(?:^#|&)"+k+"=([^&]+)")); if(!m) return ""; try{ return decodeURIComponent(m[1]); }catch(e){ return m[1]; } };
+  const rtok=get("recover"), vtok=get("verify"), ask=/(?:^#|&)recover(?:&|$)/.test(h);
+  if(!rtok && !vtok && !ask) return false;
+  try{ history.replaceState(null,"",location.pathname+location.search); }catch(e){}
+  if(rtok) renderRecoverClaim({ token:rtok, nonce:tokenNonce("Rec",rtok) });
+  else if(vtok) renderVerifyOwner({ token:vtok, nonce:tokenNonce("Ver",vtok) });
+  else renderForgot({});
+  return true;
+}
+// A message about a link, with «Try again» (same nonce, so the server knows this device) or a way back to the form.
+function linkMsg(title, html, o){
+  o=o||{};
+  loginCard(`<h1>${esc(title)}</h1><p class="lead" style="margin:8px 0 0">${html}</p>
+    ${o.retry?`<div style="margin-top:14px"><button class="btn primary" id="lRetry" style="width:100%">Try again</button></div>`:""}
+    ${o.again?`<div style="margin-top:14px"><button class="btn primary" id="lAgain" style="width:100%">Send me a new link</button></div>`:""}
+    ${backHtml()}`);
+  bindBack();
+  if(o.retry) document.getElementById("lRetry").onclick=o.retry;
+  if(o.again) document.getElementById("lAgain").onclick=()=>renderForgot({});
+}
+// What went wrong with the link → the message; null = no answer or server trouble. `kind` is "verify" or "recover":
+// a 410 never says only "already used" — the same answer comes when the address changed or a newer link superseded it.
+function linkErr(r, kind){
+  const v=kind==="verify", at=r.d.at?` (${esc(fmtDateTime(r.d.at))})`:"";
+  if(r.d.error==="token_used") return v
+    ? `That confirmation link can no longer be used${at} — it was already opened, a newer confirmation link replaced it, or the recovery address was changed or removed since.`
+    : `That link can no longer be used${at} — it makes a key only once, and it also stops working when the recovery address changed since, or when a newer recovery link (or a claimed one) superseded it.`;
+  if(r.d.error==="token_expired") return v
+    ? "That confirmation link has expired — a confirmation link is valid for one day."
+    : "That link has expired — a recovery link is valid for one hour.";
+  if(r.d.error==="token_invalid" || r.status===404) return "That link is not valid — it may have been copied only half, or the recovery address has changed since.";
+  return null;
+}
+function renderForgot(st){
+  st=st||{};
+  if(st.step==="sent"){
+    loginCard(`<h1>Check your email</h1>
+      <p class="lead" style="margin:8px 0 0">${SENT_MSG}</p>
+      <div class="muted" style="margin-top:10px">Look in the spam folder too. The link opens once and makes a new admin key. An address that was never confirmed from the mailbox itself gets nothing.</div>
+      ${backHtml()}`);
+    bindBack(); return;
+  }
+  if(st.step==="off"){   // 503 mail_off — this server cannot send anything
+    loginCard(`<h1>Forgot the admin key?</h1>
+      <p class="lead" style="margin:8px 0 0">${MAIL_OFF_MSG}</p>
+      <div class="muted" style="margin-top:10px">Recovery by email needs <span class="mono">SMTP_*</span> set in <span class="mono">server.env</span>; until then <span class="mono">OWNER_KEY</span> there is the only way in.</div>
+      ${backHtml()}`);
+    bindBack(); return;
+  }
+  loginCard(`<h1>Forgot the admin key?</h1>
+    <p class="lead" style="margin:6px 0 14px">Enter the recovery address — the one confirmed from its own mailbox. A link that makes a new admin key goes to it.</p>
+    <input id="remail" type="email" autocomplete="email" inputmode="email" maxlength="200" placeholder="Recovery email" value="${esc(st.email||"")}">
+    ${st.err?`<div class="muted" style="color:var(--danger);margin-top:8px">${esc(st.err)}</div>`:""}
+    <div style="margin-top:12px"><button class="btn primary" id="rSend" style="width:100%">Send me a link</button></div>
+    ${backHtml()}`);
+  bindBack();
+  const inp=document.getElementById("remail"), btn=document.getElementById("rSend");
+  inp.focus();
+  const go=async()=>{
+    if(btn.disabled) return;
+    const email=inp.value.trim();
+    if(!EMAIL_OK(email)){ renderForgot({ email, err:BAD_EMAIL }); return; }
+    busy(); const my=screenSeq;
+    const r=await pub("/admin/recover",{ email });
+    if(my!==screenSeq) return;
+    if(r.ok) renderForgot({ step:"sent" });
+    else if(r.status===503) renderForgot({ step:"off", email });
+    else renderForgot({ email, err:r.status===429?RATE_MSG:r.status===400?BAD_EMAIL:r.status?"Something went wrong — try again.":"Connection error — try again." });
+  };
+  btn.onclick=go;
+  inp.addEventListener("keydown",e=>{ if(e.key==="Enter") go(); });
+}
+// #recover=<token>: nothing happens until the button is pressed, and it may only ever be pressed once — the server
+// mints one key per link and refuses a second attempt (a second key would silently kill the one already saved).
+function renderRecoverClaim(st){
+  loginCard(`<h1>New admin key</h1>
+    <p class="lead" style="margin:8px 0 0">This creates a <strong>new</strong> admin key and stops the previous recovered key. The <span class="mono">OWNER_KEY</span> set in <span class="mono">server.env</span> keeps working.</p>
+    <div class="muted" style="margin-top:10px">You see the new key once, here, and are signed in with it. The link works a single time — every other recovery link still in a mailbox stops working.</div>
+    <div style="margin-top:14px"><button class="btn primary" id="rGo" style="width:100%">Create a new admin key</button></div>
+    ${backHtml()}`);
+  bindBack();
+  document.getElementById("rGo").onclick=()=>doRecoverClaim(st);
+}
+async function doRecoverClaim(st){
+  busy(); const my=screenSeq;
+  const r=await pub("/admin/recover/claim",{ token:st.token, nonce:st.nonce });
+  const key=r.ok && typeof r.d.key==="string" ? r.d.key : "";
+  if(key){ setKey(key); showNewOwnerKey(key); return; }   // always shown, even if the page moved on: the old key is already gone
+  if(my!==screenSeq) return;
+  const err=linkErr(r,"recover");
+  if(err){ linkMsg("New admin key", err+" Ask for a fresh one with your recovery address.", { again:true }); return; }
+  // No answer, or the server stumbled. There is no «Try again» here on purpose: this link is spent on the first press,
+  // a second press is refused, and the key — if one was made — was only ever shown in the answer we did not get.
+  linkMsg("New admin key", (r.status===429?RATE_MSG+" ":"")
+    +"We did not get an answer, so we cannot tell whether a key was made. This link may already have been used — it works only once, and pressing it again is refused. Check your email for the «New admin key» notice, and otherwise ask for a fresh link with your recovery address.", { again:true });
+}
+// #verify=<token>: confirms a new recovery address. Nothing is spent on load, and a repeat from this tab replays the
+// same answer for 15 minutes — so here «Try again» is safe.
+function renderVerifyOwner(st){
+  loginCard(`<h1>Confirm the recovery address</h1>
+    <p class="lead" style="margin:8px 0 0">Confirm that this address becomes the recovery address of the admin console — the only address a new admin key is ever e-mailed to.</p>
+    <div class="muted" style="margin-top:10px">Until you confirm it, it counts for nothing and the previous recovery address (if there was one) stays in place.</div>
+    <div style="margin-top:14px"><button class="btn primary" id="vGo" style="width:100%">Confirm this address</button></div>
+    ${backHtml()}`);
+  bindBack();
+  document.getElementById("vGo").onclick=()=>doVerifyOwner(st);
+}
+async function doVerifyOwner(st){
+  busy(); const my=screenSeq;
+  const r=await pub("/verify",{ token:st.token, nonce:st.nonce });
+  if(my!==screenSeq) return;
+  if(r.ok && r.d.ok){
+    const signed=!!getKey();
+    loginCard(`<h1>Recovery address confirmed</h1>
+      <div class="keybox" style="text-align:left">
+        <div style="font-weight:700">✅ This address is now the recovery address.</div>
+        ${r.d.email?`<div class="k" style="margin-top:6px;font-weight:600">${esc(r.d.email)}</div>`:""}
+      </div>
+      <div class="muted" style="margin-top:10px;text-align:left">If you ever lose the admin key, ask for a link on the sign-in screen — it goes here and nowhere else.</div>
+      <div style="margin-top:14px"><button class="btn primary" id="vNext" style="width:100%">${signed?"Continue to the console":"Sign in"}</button></div>`);
+    document.getElementById("vNext").onclick=()=>{ if(getKey()) load(); else renderLogin(); };
+    return;
+  }
+  const err=linkErr(r,"verify");
+  if(err) linkMsg("Confirm the recovery address", err+" Set the address again in the console under «Admin access» to get a new confirmation link.", {});
+  else linkMsg("Confirm the recovery address", (r.status===429?RATE_MSG:"Could not reach the server — nothing was confirmed."), { retry:()=>doVerifyOwner(st) });
+}
+// The only time the key is ever visible. It is stored as a hash on the server, so this screen cannot come back.
+function showNewOwnerKey(key){
+  loginCard(`<h1>Your new admin key</h1>
+    <div class="keybox" style="text-align:left">
+      <div style="font-weight:700;margin-bottom:8px">✅ Signed in. This is the new admin key:</div>
+      <div class="k" style="font-size:15px;line-height:1.45;user-select:all;-webkit-user-select:all">${esc(key)}</div>
+      <div class="row fw" style="margin-top:10px"><button class="btn sm" id="copyNew">📋 Copy</button></div>
+    </div>
+    <div class="muted" style="margin-top:10px;text-align:left">⚠ It is not shown again — the server keeps only a hash of it. Put it in your password manager now. If you lose it, ask for a new link with your recovery address.</div>
+    <div style="margin-top:14px"><button class="btn primary" id="toDash" style="width:100%">Continue to the dashboard</button></div>`);
+  document.getElementById("copyNew").onclick=()=>copy(key);
+  document.getElementById("toDash").onclick=()=>load();
 }
 
 // Licence fields (create form and «Edit…»). Only seasonal licences are sold now: the type picker appears only for a venue that
@@ -446,6 +620,11 @@ function renderDashboard(venues){
           <div class="row fw" style="margin-top:14px"><button class="btn primary" id="xadd">Add exception</button></div>
         </div>
       </div>
+    </div>
+
+    <div class="section" id="accessSection">
+      <h2>Admin access</h2>
+      <div class="card" id="obox"><div class="empty">Loading…</div></div>
     </div>`;
   document.getElementById("logout").onclick=()=>{ setKey(""); renderLogin(); };
   wireLicenseToggle("n", document.getElementById("licwrap"));
@@ -460,7 +639,7 @@ function renderDashboard(venues){
   document.getElementById("ctable").addEventListener("click", onCoupleAction);
   wireExceptionForm();
   document.getElementById("xlist").addEventListener("click", onExceptionAction);
-  refreshSupport(); refreshCouples(); refreshSettings();
+  refreshSupport(); refreshCouples(); refreshSettings(); refreshOwner();
 }
 
 // ---------------------------------------------------------------- support requests
@@ -1159,6 +1338,117 @@ async function onExceptionAction(e){
   }
 }
 
+// ---------------------------------------------------------------- admin access: the recovery address and the mailed key
+// GET /admin/owner → {email, emailVerified, pending, lang, hasRecoveryKey, keyAt, mail}. `email` is the live recovery
+// address (confirmed from that mailbox); `pending` is an address that was asked for and is still waiting for its link
+// to be opened — it counts for nothing until then.
+let ownerCache=null;
+async function refreshOwner(){
+  if(!document.getElementById("obox")) return;
+  const res=await req("/admin/owner");
+  const box=document.getElementById("obox"); if(!box) return;
+  if(!res.ok || !res.d){ if(res.status!==403) box.innerHTML=`<div class="empty">Could not load the recovery settings — reload the page.</div>`; return; }
+  ownerCache=res.d; renderOwner();
+}
+function renderOwner(note){
+  const o=ownerCache||{}, box=document.getElementById("obox"); if(!box) return;
+  const live=o.email||"", pend=o.pending||"", mailOff=o.mail===false;
+  // Three honest states: nothing set · an address confirmed from its own mailbox · a confirmation still waiting.
+  const liveHtml = live
+    ? `<span class="mono">${esc(live)}</span>${o.emailVerified
+        ? ` <span class="vok" title="Confirmed — the link sent to it was opened">✓</span>`
+        : ` <span class="badge warn">not confirmed</span>`}`
+    : `<span class="muted">none set</span>`;
+  box.innerHTML=`
+    <p class="lead" style="margin:0 0 14px">If you ever lose the admin key, a one-hour link to a new one is e-mailed to the recovery address — nowhere else, and only once that address has been confirmed from its own mailbox.</p>
+    <div class="row between fw" style="gap:10px;align-items:flex-end">
+      <div style="min-width:0"><label>Recovery address</label>
+        <div style="overflow-wrap:anywhere">${liveHtml}</div></div>
+      <button class="btn sm" id="oedit"${mailOff&&!live?" title=\"Email is off — an address that cannot be confirmed is refused\"":""}>${live?"Change…":"Set an address…"}</button>
+    </div>
+    ${pend?`<div class="keybox note" style="margin-top:12px">
+        <div style="font-weight:700">Waiting for confirmation at <span class="mono" style="overflow-wrap:anywhere">${esc(pend)}</span></div>
+        <div class="muted" style="margin-top:4px">It counts for nothing until the link in that email is opened: the current recovery address is still ${live?`<span class="mono">${esc(live)}</span>`:"none"} — ${live?"a new admin key would go there, not to the address above":"until this one is confirmed, a lost admin key cannot be recovered by email at all"}. The confirmation link is valid for one day.</div>
+        <div class="row fw" style="margin-top:8px"><button class="btn sm" id="oresend">Send the confirmation again</button>
+          <span class="muted">Removing the recovery address drops the pending one too.</span></div>
+      </div>`:""}
+    ${mailOff?`<div class="mailbar" style="margin-top:12px">Email is off — no confirmation and no recovery link can be sent, so no recovery address can be set. Set <span class="mono">SMTP_*</span> in <span class="mono">server.env</span>. Until then the <span class="mono">OWNER_KEY</span> there is the only way in. (Removing an address still works.)</div>`:""}
+    <div class="subh">Recovered key</div>
+    ${o.hasRecoveryKey
+      ? `<div class="row between fw" style="gap:10px;align-items:flex-start">
+           <div style="min-width:0"><span class="badge warn">Active since ${esc(fmtDateTime(o.keyAt))}</span>
+             <div class="muted" style="margin-top:4px">A key issued through a recovery link is in use. Revoking it leaves only the <span class="mono">OWNER_KEY</span> from <span class="mono">server.env</span> — so you have to be signed in with that <span class="mono">OWNER_KEY</span> to revoke it, not with the recovered key itself.</div></div>
+           <button class="btn sm danger" id="orevoke">Revoke recovered key</button></div>`
+      : `<div class="muted">No recovered key — only the <span class="mono">OWNER_KEY</span> in <span class="mono">server.env</span> opens this console.</div>`}
+    <div id="onote">${note||""}</div>`;
+  const e=document.getElementById("oedit"); if(e) e.onclick=editOwnerEmail;
+  const s=document.getElementById("oresend"); if(s) s.onclick=()=>putOwnerEmail(pend, "oresend", true);
+  const r=document.getElementById("orevoke"); if(r) r.onclick=revokeOwnerKey;
+}
+function ownerNote(html){ const n=document.getElementById("onote"); if(n) n.innerHTML=`<div class="keybox note" style="margin-top:12px">${html}</div>`; }
+async function editOwnerEmail(){
+  const o=ownerCache||{};
+  const next=prompt("Recovery address for the admin key — the only address a recovery link ever goes to. A confirmation link is sent to it; it counts only once that link is opened. (Leave empty to remove.)", o.email||"");
+  if(next==null) return;
+  const email=next.trim();
+  if(email && email.toLowerCase()===(o.email||"").toLowerCase()){ toast("That is already the recovery address"); return; }
+  if(!email && !(o.email||o.pending)){ toast("There is no recovery address to remove"); return; }
+  if(email && !EMAIL_OK(email)){ toast(BAD_EMAIL); return; }
+  const lines=[email?(o.email?"Ask to change the recovery address?":"Ask to set the recovery address?"):"Remove the recovery address?", "",
+    `Now: ${o.email||"(none)"}`, `${email?"Asking for":"To"}: ${email||"(none)"}`, ""];
+  if(email){
+    lines.push("A confirmation link goes to the new address. Nothing changes until that link is opened — until then the recovery address stays "+(o.email||"(none)")+".");
+    if(o.pending && o.pending!==email) lines.push("", "The confirmation waiting at "+o.pending+" is replaced.");
+  }else{
+    lines.push("It is removed at once — no confirmation needed.");
+    if(o.pending) lines.push("A confirmation waiting at "+o.pending+" is dropped too.");
+    lines.push("Any recovery link already sent stops working.", "", "Without an address the only way in is the OWNER_KEY in server.env.");
+  }
+  if(!confirm(lines.join("\n"))) return;
+  putOwnerEmail(email, "oedit", false);
+}
+// PUT /admin/owner {email}: asks for a confirmation (or removes the address when empty). It never makes an address live.
+async function putOwnerEmail(email, btnId, resend){
+  const btn=document.getElementById(btnId); if(btn){ if(btn.disabled) return; btn.disabled=true; }
+  const res=await req("/admin/owner",{ method:"PUT", body:JSON.stringify({ email }) });
+  const b2=document.getElementById(btnId); if(b2) b2.disabled=false;
+  if(!res.ok || !res.d){
+    const err=(res.d&&res.d.error)||"";
+    if(res.status===403) return;   // already back at the sign-in screen
+    if(err==="mail_off"){ ownerNote(`Email is off on the server, so no confirmation link can be sent — and an address nobody can confirm is refused outright. Set <span class="mono">SMTP_*</span> in <span class="mono">server.env</span>, then try again. Nothing changed.`); toast("Email is off — nothing changed"); return; }
+    if(err==="mail_failed"){ ownerNote(`The confirmation could not be sent — the mail server refused it. Check the <span class="mono">SMTP_*</span> settings in <span class="mono">server.env</span>, then try again. Nothing changed.`); toast("The confirmation could not be sent"); return; }
+    if(res.status===429){ ownerNote(`Too many confirmation emails to that address — try again in a little while. Nothing changed.`); toast(RATE_MSG); return; }
+    if(badEmail(res)){ toast(BAD_EMAIL); return; }
+    failToast(res, "Could not save the recovery address"); return;
+  }
+  ownerCache={ ...(ownerCache||{}), email:res.d.email||"", emailVerified:!!res.d.emailVerified, pending:res.d.pending||"",
+    lang:res.d.lang||(ownerCache&&ownerCache.lang)||"", hasRecoveryKey:!!res.d.hasRecoveryKey, keyAt:res.d.keyAt||null, mail:res.d.mail };
+  if(email){
+    renderOwner();
+    ownerNote(`A confirmation link was sent to <span class="mono" style="overflow-wrap:anywhere">${esc(res.d.pending||email)}</span>. Open it from that mailbox — the address becomes the recovery address only then, and the link is valid for one day.`);
+    toast(resend?"Confirmation sent again":"Confirmation link sent");
+  }else{
+    renderOwner(); toast("Recovery address removed");
+  }
+}
+async function revokeOwnerKey(){
+  const o=ownerCache||{};
+  if(!confirm(`Revoke the recovered admin key?\n\nThe key issued on ${fmtDateTime(o.keyAt)} stops working at once — if you signed in with it, this browser is signed out too.\n\nOnly the OWNER_KEY in server.env will open this console. Revoking works only while you are signed in with that OWNER_KEY. This cannot be undone.`)) return;
+  const btn=document.getElementById("orevoke"); if(btn) btn.disabled=true;
+  const res=await req("/admin/owner/key",{ method:"DELETE" });
+  const b2=document.getElementById("orevoke"); if(b2) b2.disabled=false;
+  if(res.status===409 && res.d && res.d.error==="would_lock_out"){
+    // The server only accepts this from the env key itself, so that revoking can never leave nobody with a way in.
+    ownerNote(`Nothing was revoked: this request did not come from the <span class="mono">OWNER_KEY</span> in <span class="mono">server.env</span>.
+      Most likely you are signed in with the recovered key — sign out and sign in with the <span class="mono">OWNER_KEY</span> from <span class="mono">server.env</span>, then revoke.
+      If there is no <span class="mono">OWNER_KEY</span> set there at all (or it no longer matches the file), this recovered key is the only way in and cannot be revoked until one is set.`);
+    toast("Sign in with the OWNER_KEY to revoke it"); return;
+  }
+  if(!res.ok || !res.d){ failToast(res, "Could not revoke the key"); return; }
+  ownerCache={ ...(ownerCache||{}), hasRecoveryKey:false, keyAt:null };
+  renderOwner(); toast("Recovered key revoked");
+}
+
 async function load(silent){
   if(!getKey()){ renderLogin(); return; }
   if(!silent) app.innerHTML=`<div class="muted" style="text-align:center;padding:40px">Loading…</div>`;
@@ -1172,7 +1462,10 @@ async function load(silent){
 }
 // New invitations may arrive while the tab is in the background.
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && getKey() && document.getElementById("supList")) refreshSupport(); });
-load();
+// A mailed link (#recover=… / #verify=…) takes over before anything is loaded with the key this browser may still
+// have — also when the link is opened in a tab that already has this page (only the fragment changes, nothing reloads).
+window.addEventListener("hashchange",()=>{ linkFromHash(); });
+if(!linkFromHash()) load();
 </script>
 </body>
 </html>
