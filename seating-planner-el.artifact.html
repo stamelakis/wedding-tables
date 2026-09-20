@@ -762,21 +762,20 @@
   /* ---------- Print ---------- */
   #printarea{ display:none; }
   @media print{
-    html, body{ height:auto !important; overflow:visible !important; display:block !important; }
+    html, body{ height:auto !important; overflow:visible !important; display:block !important;
+      background:#fff !important; }   /* the app's beige paper must not flood every printed sheet ("Background graphics" on) */
     #appbar, #main, #mobilebar, #pickbar, .toast, .popover, .modal-back, #navScrim{ display:none !important; }
     #printarea{ display:block; position:static; width:100%; padding:0 10px; }
   }
   #printarea h2{ font-size:22px; margin:0 0 2px; font-family:var(--serif); }
   #printarea .pmeta{ color:#555; font-size:12.5px; margin:0 0 4px; }
   #printarea .psub{ color:#666; margin-bottom:14px; font-size:13px; }
-  #printarea .plegend{ display:flex; flex-wrap:wrap; gap:12px; margin-bottom:16px; font-size:12px; }
-  #printarea .plegend span{ display:flex; align-items:center; gap:5px; }
-  #printarea .plegend .dot{ width:12px; height:12px; border-radius:50%; display:inline-block; }
   #printarea .ptables{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
   #printarea .pcard{ border:1px solid #ccc; border-radius:8px; padding:10px 12px; break-inside:avoid; }
   #printarea .pcard h3{ font-size:15px; margin-bottom:6px; border-bottom:1px solid #eee; padding-bottom:4px; font-family:var(--serif); }
   #printarea .pcard ol{ margin-left:18px; font-size:12.5px; line-height:1.55; }
-  #printarea .pcard li .gdot{ display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; }
+  #printarea .pcard li .gdot{ display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact; }   /* same dot survives "Background graphics: off" as in the A–Z table */
   #printarea .pcard .empty{ color:#bbb; }
   #printarea .punassigned{ margin-top:18px; font-size:12.5px; }
   #printarea .ptag{ color:#888; font-size:11px; }
@@ -789,22 +788,33 @@
   #printarea .pinvl{ list-style:none; margin:0; padding:0; font-size:12.5px; line-height:1.6; }
   #printarea .pinvl .pn{ color:#888; font-size:11px; margin-left:4px; }
   #printarea .pinvh .psn{ font-family:var(--sans); font-size:11.5px; font-weight:400; color:#777; margin-left:8px; }
-  /* «Όλα τα ονόματα» — one entry per invitation (members underneath) or per guest without one */
-  #printarea .palpha{ list-style:none; margin:0; padding:0; font-size:12.5px; line-height:1.5;
-    column-width:58mm; column-count:3; column-gap:8mm; }
-  #printarea .palpha li{ break-inside:avoid; padding:2px 0; border-bottom:1px dotted #e4e4e4; }
-  #printarea .palpha .pal{ display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 5px; }
-  #printarea .palpha .gdot{ display:inline-block; width:9px; height:9px; border-radius:50%; flex:none; }
-  #printarea .palpha .gdot.none{ background:transparent; border:1px solid #ccc; }
-  #printarea .palpha .an{ flex:1 1 55%; min-width:0; overflow-wrap:anywhere; }
-  #printarea .palpha .ast{ color:#a00; font-size:11px; }
-  #printarea .palpha .at{ flex:0 1 auto; min-width:0; color:#666; font-size:11px; overflow-wrap:anywhere; }
-  #printarea .palpha .at.none{ color:#bbb; font-style:italic; }
-  #printarea .palpha .ac{ flex:0 1 auto; min-width:0; color:#888; font-size:11px; overflow-wrap:anywhere; }
-  #printarea .palpha .pam{ margin:1px 0 0 14px; color:#555; font-size:11px; line-height:1.45; overflow-wrap:anywhere; }
-  #printarea .palpha .pam .mt{ color:#888; }
-  #printarea .palpha .pam .mt.none{ color:#bbb; font-style:italic; }
-  #printarea .palpha .empty{ color:#bbb; }
+  /* A–Z — a real ruled table, one row per SEATED person, header repeated on every printed page */
+  #printarea .palpha{ width:100%; table-layout:fixed; border-collapse:collapse; font-size:11px; line-height:1.28; }
+  #printarea .palpha thead{ display:table-header-group; }          /* the column titles come back on page 2, 3, 4… */
+  #printarea .palpha tr{ break-inside:avoid; page-break-inside:avoid; }
+  #printarea .palpha th{ text-align:left; font-size:9.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
+    color:#333; background:#eee; border-bottom:1.4px solid #888; padding:3px 6px; overflow-wrap:anywhere; }
+  #printarea .palpha td{ padding:1.8px 6px; border-bottom:1px solid #e6e6e6; vertical-align:top; overflow-wrap:anywhere; }
+  #printarea .palpha th + th, #printarea .palpha td + td{ border-left:1px solid #e0e0e0; }   /* the columns read as columns */
+  #printarea .palpha tbody tr:nth-child(even) td{ background:#f6f6f6; }
+  #printarea .palpha th, #printarea .palpha tbody tr:nth-child(even) td{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  #printarea .palpha .cn{ width:33%; }
+  #printarea .palpha .ci{ width:29%; }
+  /* 11 %, and only the NUMBERS refuse to wrap: the German title "PERSONEN" ran into the next column at 9 % + nowrap */
+  #printarea .palpha .cp{ width:11%; text-align:right; font-variant-numeric:tabular-nums; }
+  #printarea .palpha td.cp{ white-space:nowrap; }
+  #printarea .palpha .ct{ width:27%; }
+  #printarea .palpha td.cn{ font-weight:600; }
+  #printarea .palpha td.ci, #printarea .palpha td.ct{ color:#444; }
+  #printarea .palpha .gdot{ display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:4px;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  #printarea .palpha .ast{ color:#a00; font-weight:400; font-size:10px; }
+  #printarea .palpha .none{ color:#bbb; }
+  #printarea .palpha .empty{ color:#bbb; text-align:center; font-weight:400; }
+  /* The footnote is the last ROW of the same table, so break-inside:avoid keeps it with the list
+     instead of letting it land alone on an eighth sheet with no header and no names. */
+  #printarea .palpha td.pfoot{ font-size:10.5px; color:#777; font-style:italic; padding-top:6px;
+    border-left:0 !important; border-bottom:0; background:transparent !important; }
 </style>
 <svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
@@ -1217,7 +1227,7 @@ el:{
   poolEmpty:"Όλοι οι καλεσμένοι έχουν θέση 🎉", poolEmptyNew:"Δεν υπάρχουν καλεσμένοι ακόμη.<br>Προσθέστε ονόματα παρακάτω ↓", poolEmptyGroup:"Κανείς χωρίς θέση σε αυτή την ομάδα — δείτε «Όλοι»", noMatch:"Κανένα όνομα δεν ταιριάζει",
   chipEdit:"Επεξεργασία ονόματος & ομάδας", chipRemove:"Αφαίρεση καλεσμένου", groupTip:"Κλικ: επιλογή · Διπλό κλικ: μετονομασία · Δεξί κλικ: χρώμα / διαγραφή", groupMore:"Μετονομασία / χρώμα / διαγραφή",
   prevTable:"Προηγούμενο τραπέζι", nextTable:"Επόμενο τραπέζι", tableSettings:"Ρυθμίσεις τραπεζιού", close:"Κλείσιμο",
-  seatPh:"κενή θέση", unseat:"Αφαίρεση από τη θέση", fill:"Γέμισμα", clearTable:"Άδειασμα", tableGroup:"Ομάδα τραπεζιού…", partyNew:"Προσκλητήριο…", partySelHint:"Πατήστε τα ονόματα που ανήκουν στο ίδιο προσκλητήριο", psCount:"{n} επιλεγμένα", psNamePh:"Όνομα προσκλητηρίου (π.χ. ΚΟΤΣΩΝΑΣ)", psOk:"Δημιουργία", partyN:"Προσκλητήριο {n}", tPartyMade:"Προσκλητήριο «{n}»: {k} ονόματα", tPartyNone:"Πατήστε πρώτα τα ονόματα που θέλετε", printTitleM:"Εκτύπωση & PDF", pmPdf:"Κάτοψη (PDF) — ο χώρος με τα τραπέζια και τα ονόματα, σε μία σελίδα", pmKeep:"Αναμνηστικό PDF — εξώφυλλο, κάτοψη και ποιος κάθισε πού", pdfGo:"Λήψη PDF", pdfMaking:"Δημιουργία PDF…", pdfBig:"Το σχέδιο είναι πολύ μεγάλο για PDF.", pdfOff:"Το PDF δεν είναι διαθέσιμο αυτή τη στιγμή — δοκιμάστε αργότερα ή χρησιμοποιήστε την εκτύπωση.", pdfFail:"Δεν δημιουργήθηκε το PDF — δοκιμάστε ξανά.", printWed:"Γάμος: {d}", printAt:"Εκτύπωση: {t}", pmAll:"Όλα αλφαβητικά — κάθε προσκλητήριο με τα άτομά του, και χωριστά όσοι δεν έχουν", printAllH:"Αλφαβητικά — προσκλητήρια και καλεσμένοι", printAllSub:"{g} καλεσμένοι · {s} με θέση · {u} χωρίς θέση", pmNames:"Ονόματα ανά τραπέζι", pmParties:"Προσκλητήρια ανά τραπέζι (πόσα άτομα από κάθε προσκλητήριο)", nameCase:"Γραφή", nc_asis:"Όπως γράφτηκαν", nc_upper:"ΚΕΦΑΛΑΙΑ", nc_lower:"Πεζά", tLowerHint:"Πεζά με αρχικό κεφαλαίο — οι τόνοι επιστρέφουν μόνο σε γνωστά μικρά ονόματα· τα υπόλοιπα διορθώστε τα με το χέρι.", confirmMerge:"Συγχώνευση «{a}» στο «{b}»; Τα {n} άτομα μετακινούνται και το «{b}» θα έχει {c} θέσεις.", mergeTitle:"Συγχώνευση τραπεζιών", mergeOk:"Συγχώνευση", dragMerge:"Συγχώνευση με «{b}»", tTablesMerged:"«{a}» → «{b}»: {n} άτομα, {c} θέσεις — ↶ για αναίρεση", tMergeTooBig:"Δεν γίνεται: το «{b}» θα χρειαζόταν {c} θέσεις (μέγιστο 30).", tgCap:"Όλοι στο «{n}» → ομάδα", tgEmpty:"Κανείς δεν κάθεται ακόμη στο «{n}».", tGrouped:"«{g}»: όλοι στο «{n}» ({k})", tUngrouped:"Χωρίς ομάδα: όλοι στο «{n}» ({k})", clearConfirm:"Να επιστρέψουν όλοι οι καλεσμένοι του «{n}» στους χωρίς θέση;",
+  seatPh:"κενή θέση", unseat:"Αφαίρεση από τη θέση", fill:"Γέμισμα", clearTable:"Άδειασμα", tableGroup:"Ομάδα τραπεζιού…", partyNew:"Προσκλητήριο…", partySelHint:"Πατήστε τα ονόματα που ανήκουν στο ίδιο προσκλητήριο", psCount:"{n} επιλεγμένα", psNamePh:"Όνομα προσκλητηρίου (π.χ. ΚΟΤΣΩΝΑΣ)", psOk:"Δημιουργία", partyN:"Προσκλητήριο {n}", tPartyMade:"Προσκλητήριο «{n}»: {k} ονόματα", tPartyNone:"Πατήστε πρώτα τα ονόματα που θέλετε", printTitleM:"Εκτύπωση & PDF", pmPdf:"Κάτοψη (PDF) — ο χώρος με τα τραπέζια και τα ονόματα, σε μία σελίδα", pmKeep:"Αναμνηστικό PDF — εξώφυλλο, κάτοψη και ποιος κάθισε πού", pdfGo:"Λήψη PDF", pdfMaking:"Δημιουργία PDF…", pdfBig:"Το σχέδιο είναι πολύ μεγάλο για PDF.", pdfOff:"Το PDF δεν είναι διαθέσιμο αυτή τη στιγμή — δοκιμάστε αργότερα ή χρησιμοποιήστε την εκτύπωση.", pdfFail:"Δεν δημιουργήθηκε το PDF — δοκιμάστε ξανά.", printWed:"Γάμος: {d}", printAt:"Εκτύπωση: {t}", pmAll:"Αλφαβητικός πίνακας — κάθε καλεσμένος με θέση, με το προσκλητήριο και το τραπέζι του", printAllH:"Αλφαβητικά — καλεσμένοι με θέση", printAllSub:"{s} ονόματα · {t} τραπέζια", printColName:"ΟΝΟΜΑ", printColInv:"ΠΡΟΣΚΛΗΤΗΡΙΟ", printColPeople:"ΑΤΟΜΑ", printColTable:"ΤΡΑΠΕΖΙ", printHidden:"{n} καλεσμένοι χωρίς θέση δεν εμφανίζονται σε αυτή τη λίστα", printHidden1:"1 καλεσμένος χωρίς θέση δεν εμφανίζεται σε αυτή τη λίστα", pmNames:"Ονόματα ανά τραπέζι", pmParties:"Προσκλητήρια ανά τραπέζι (πόσα άτομα από κάθε προσκλητήριο)", nameCase:"Γραφή", nc_asis:"Όπως γράφτηκαν", nc_upper:"ΚΕΦΑΛΑΙΑ", nc_lower:"Πεζά", tLowerHint:"Πεζά με αρχικό κεφαλαίο — οι τόνοι επιστρέφουν μόνο σε γνωστά μικρά ονόματα· τα υπόλοιπα διορθώστε τα με το χέρι.", confirmMerge:"Συγχώνευση «{a}» στο «{b}»; Τα {n} άτομα μετακινούνται και το «{b}» θα έχει {c} θέσεις.", mergeTitle:"Συγχώνευση τραπεζιών", mergeOk:"Συγχώνευση", dragMerge:"Συγχώνευση με «{b}»", tTablesMerged:"«{a}» → «{b}»: {n} άτομα, {c} θέσεις — ↶ για αναίρεση", tMergeTooBig:"Δεν γίνεται: το «{b}» θα χρειαζόταν {c} θέσεις (μέγιστο 30).", tgCap:"Όλοι στο «{n}» → ομάδα", tgEmpty:"Κανείς δεν κάθεται ακόμη στο «{n}».", tGrouped:"«{g}»: όλοι στο «{n}» ({k})", tUngrouped:"Χωρίς ομάδα: όλοι στο «{n}» ({k})", clearConfirm:"Να επιστρέψουν όλοι οι καλεσμένοι του «{n}» στους χωρίς θέση;",
   fillNone:"Δεν υπάρχουν καλεσμένοι χωρίς θέση εκεί", filled:"Τοποθετήθηκαν {n}", createNew:"＋ Νέος καλεσμένος «{n}»", renameTo:"Μετονομασία σε «{n}»", moreMatches:"…και άλλοι {n} — συνεχίστε να γράφετε",
   pbHint:"→ πατήστε μια θέση", pbUnseat:"↩ Χωρίς θέση", pbEdit:"Επεξεργασία", pbCancel:"Άκυρο",
   menuTitle:"Ρυθμίσεις τραπεζιού", menuTitleHead:"Ρυθμίσεις νυφικού τραπεζιού", menuTitleRect:"Ρυθμίσεις μακριού τραπεζιού", capLabelRect:"Θέσεις (και στις δύο μακριές πλευρές)", capLabel:"Θέσεις", capLabelHead:"Συνολικές θέσεις (οι 2 είναι οι ακριανές)", labelPh:"Όνομα / αριθμός τραπεζιού", deleteTable:"Διαγραφή", focusSeats:"Ονόματα",
@@ -1361,7 +1371,7 @@ en:{
   poolEmpty:"Everyone has a seat 🎉", poolEmptyNew:"No guests yet.<br>Add names below ↓", poolEmptyGroup:"No unseated guests in this group — see “All”", noMatch:"No name matches",
   chipEdit:"Edit name & group", chipRemove:"Remove guest", groupTip:"Click: select · Double-click: rename · Right-click: colour / delete", groupMore:"Rename / colour / delete",
   prevTable:"Previous table", nextTable:"Next table", tableSettings:"Table settings", close:"Close",
-  seatPh:"empty seat", unseat:"Remove from seat", fill:"Fill", clearTable:"Clear", tableGroup:"Table group…", partyNew:"Invitation…", partySelHint:"Tap the names that share one invitation", psCount:"{n} selected", psNamePh:"Invitation name (e.g. the Smiths)", psOk:"Create", partyN:"Invitation {n}", tPartyMade:"Invitation “{n}”: {k} names", tPartyNone:"Tap the names you want first", printTitleM:"Print & PDF", pmPdf:"Floor plan (PDF) — the space with its tables and names, on one page", pmKeep:"Keepsake PDF — cover, floor plan and who sat where", pdfGo:"Download PDF", pdfMaking:"Making the PDF…", pdfBig:"This plan is too large for a PDF.", pdfOff:"The PDF is not available right now — try again later or use printing.", pdfFail:"The PDF could not be made — please try again.", printWed:"Wedding: {d}", printAt:"Printed: {t}", pmAll:"All, A–Z — each invitation with its people, and separately everyone who has none", printAllH:"A–Z — invitations and guests", printAllSub:"{g} guests · {s} seated · {u} without a seat", pmNames:"Names per table", pmParties:"Invitations per table (how many people of each)", nameCase:"Letter case", nc_asis:"As typed", nc_upper:"UPPERCASE", nc_lower:"Lowercase", tLowerHint:"Capitalised words — Greek accents come back only for known first names; fix the rest by hand.", confirmMerge:"Merge “{a}” into “{b}”? Its {n} people move over and “{b}” will have {c} seats.", mergeTitle:"Merge tables", mergeOk:"Merge", dragMerge:"Merge into “{b}”", tTablesMerged:"“{a}” → “{b}”: {n} people, {c} seats — ↶ to undo", tMergeTooBig:"Not possible: “{b}” would need {c} seats (30 at most).", tgCap:"Everyone at “{n}” → group", tgEmpty:"Nobody is seated at “{n}” yet.", tGrouped:"“{g}”: everyone at “{n}” ({k})", tUngrouped:"No group: everyone at “{n}” ({k})", clearConfirm:"Send everyone at “{n}” back to the unseated list?",
+  seatPh:"empty seat", unseat:"Remove from seat", fill:"Fill", clearTable:"Clear", tableGroup:"Table group…", partyNew:"Invitation…", partySelHint:"Tap the names that share one invitation", psCount:"{n} selected", psNamePh:"Invitation name (e.g. the Smiths)", psOk:"Create", partyN:"Invitation {n}", tPartyMade:"Invitation “{n}”: {k} names", tPartyNone:"Tap the names you want first", printTitleM:"Print & PDF", pmPdf:"Floor plan (PDF) — the space with its tables and names, on one page", pmKeep:"Keepsake PDF — cover, floor plan and who sat where", pdfGo:"Download PDF", pdfMaking:"Making the PDF…", pdfBig:"This plan is too large for a PDF.", pdfOff:"The PDF is not available right now — try again later or use printing.", pdfFail:"The PDF could not be made — please try again.", printWed:"Wedding: {d}", printAt:"Printed: {t}", pmAll:"A–Z table — every seated guest, with their invitation and table", printAllH:"A–Z — seated guests", printAllSub:"{s} names · {t} tables", printColName:"Name", printColInv:"Invitation", printColPeople:"People", printColTable:"Table", printHidden:"{n} guests without a seat are not shown in this list", printHidden1:"1 guest without a seat is not shown in this list", pmNames:"Names per table", pmParties:"Invitations per table (how many people of each)", nameCase:"Letter case", nc_asis:"As typed", nc_upper:"UPPERCASE", nc_lower:"Lowercase", tLowerHint:"Capitalised words — Greek accents come back only for known first names; fix the rest by hand.", confirmMerge:"Merge “{a}” into “{b}”? Its {n} people move over and “{b}” will have {c} seats.", mergeTitle:"Merge tables", mergeOk:"Merge", dragMerge:"Merge into “{b}”", tTablesMerged:"“{a}” → “{b}”: {n} people, {c} seats — ↶ to undo", tMergeTooBig:"Not possible: “{b}” would need {c} seats (30 at most).", tgCap:"Everyone at “{n}” → group", tgEmpty:"Nobody is seated at “{n}” yet.", tGrouped:"“{g}”: everyone at “{n}” ({k})", tUngrouped:"No group: everyone at “{n}” ({k})", clearConfirm:"Send everyone at “{n}” back to the unseated list?",
   fillNone:"No unseated guests there", filled:"Seated {n}", createNew:"＋ New guest “{n}”", renameTo:"Rename to “{n}”", moreMatches:"…and {n} more — keep typing",
   pbHint:"→ tap a seat", pbUnseat:"↩ Unseat", pbEdit:"Edit", pbCancel:"Cancel",
   menuTitle:"Table settings", menuTitleHead:"Head table settings", menuTitleRect:"Long table settings", capLabelRect:"Seats (on both long sides)", capLabel:"Seats", capLabelHead:"Total seats (2 are the ends)", labelPh:"Table name / number", deleteTable:"Delete", focusSeats:"Names",
@@ -1505,7 +1515,7 @@ de:{
   poolEmpty:"Alle Gäste haben einen Platz 🎉", poolEmptyNew:"Noch keine Gäste.<br>Namen unten hinzufügen ↓", poolEmptyGroup:"Niemand ohne Platz in dieser Gruppe — siehe „Alle“", noMatch:"Kein Name passt",
   chipEdit:"Name & Gruppe bearbeiten", chipRemove:"Gast entfernen", groupTip:"Klick: auswählen · Doppelklick: umbenennen · Rechtsklick: Farbe / löschen", groupMore:"Umbenennen / Farbe / löschen",
   prevTable:"Vorheriger Tisch", nextTable:"Nächster Tisch", tableSettings:"Tisch-Einstellungen", close:"Schließen",
-  seatPh:"freier Platz", unseat:"Vom Platz entfernen", fill:"Füllen", clearTable:"Leeren", tableGroup:"Tischgruppe…", partyNew:"Einladung…", partySelHint:"Tippen Sie die Namen an, die zu einer Einladung gehören", psCount:"{n} ausgewählt", psNamePh:"Name der Einladung (z. B. Familie Müller)", psOk:"Anlegen", partyN:"Einladung {n}", tPartyMade:"Einladung „{n}“: {k} Namen", tPartyNone:"Zuerst die Namen antippen", printTitleM:"Drucken & PDF", pmPdf:"Grundriss (PDF) — der Raum mit Tischen und Namen, auf einer Seite", pmKeep:"Erinnerungs-PDF — Titelblatt, Grundriss und wer wo saß", pdfGo:"PDF herunterladen", pdfMaking:"PDF wird erstellt…", pdfBig:"Dieser Plan ist zu groß für ein PDF.", pdfOff:"Das PDF ist gerade nicht verfügbar — bitte später erneut versuchen oder drucken.", pdfFail:"Das PDF konnte nicht erstellt werden — bitte erneut versuchen.", printWed:"Hochzeit: {d}", printAt:"Gedruckt: {t}", pmAll:"Alles A–Z — jede Einladung mit ihren Personen, und getrennt alle ohne", printAllH:"A–Z — Einladungen und Gäste", printAllSub:"{g} Gäste · {s} mit Platz · {u} ohne Platz", pmNames:"Namen pro Tisch", pmParties:"Einladungen pro Tisch (wie viele Personen je Einladung)", nameCase:"Schreibweise", nc_asis:"Wie eingegeben", nc_upper:"GROSSBUCHSTABEN", nc_lower:"Kleinbuchstaben", tLowerHint:"Groß-/Kleinschreibung — griechische Akzente kommen nur bei bekannten Vornamen zurück; den Rest bitte von Hand.", confirmMerge:"„{a}“ in „{b}“ zusammenführen? Die {n} Personen ziehen um und „{b}“ bekommt {c} Plätze.", mergeTitle:"Tische zusammenführen", mergeOk:"Zusammenführen", dragMerge:"Zusammenführen mit „{b}“", tTablesMerged:"„{a}“ → „{b}“: {n} Personen, {c} Plätze — ↶ macht es rückgängig", tMergeTooBig:"Geht nicht: „{b}“ bräuchte {c} Plätze (höchstens 30).", tgCap:"Alle an „{n}“ → Gruppe", tgEmpty:"An „{n}“ sitzt noch niemand.", tGrouped:"„{g}“: alle an „{n}“ ({k})", tUngrouped:"Keine Gruppe: alle an „{n}“ ({k})", clearConfirm:"Alle Gäste von „{n}“ zurück in die Liste ohne Platz?",
+  seatPh:"freier Platz", unseat:"Vom Platz entfernen", fill:"Füllen", clearTable:"Leeren", tableGroup:"Tischgruppe…", partyNew:"Einladung…", partySelHint:"Tippen Sie die Namen an, die zu einer Einladung gehören", psCount:"{n} ausgewählt", psNamePh:"Name der Einladung (z. B. Familie Müller)", psOk:"Anlegen", partyN:"Einladung {n}", tPartyMade:"Einladung „{n}“: {k} Namen", tPartyNone:"Zuerst die Namen antippen", printTitleM:"Drucken & PDF", pmPdf:"Grundriss (PDF) — der Raum mit Tischen und Namen, auf einer Seite", pmKeep:"Erinnerungs-PDF — Titelblatt, Grundriss und wer wo saß", pdfGo:"PDF herunterladen", pdfMaking:"PDF wird erstellt…", pdfBig:"Dieser Plan ist zu groß für ein PDF.", pdfOff:"Das PDF ist gerade nicht verfügbar — bitte später erneut versuchen oder drucken.", pdfFail:"Das PDF konnte nicht erstellt werden — bitte erneut versuchen.", printWed:"Hochzeit: {d}", printAt:"Gedruckt: {t}", pmAll:"A–Z-Tabelle — jeder Gast mit Platz, mit seiner Einladung und seinem Tisch", printAllH:"A–Z — Gäste mit Platz", printAllSub:"{s} Namen · {t} Tische", printColName:"Name", printColInv:"Einladung", printColPeople:"Personen", printColTable:"Tisch", printHidden:"{n} Gäste ohne Platz erscheinen nicht in dieser Liste", printHidden1:"1 Gast ohne Platz erscheint nicht in dieser Liste", pmNames:"Namen pro Tisch", pmParties:"Einladungen pro Tisch (wie viele Personen je Einladung)", nameCase:"Schreibweise", nc_asis:"Wie eingegeben", nc_upper:"GROSSBUCHSTABEN", nc_lower:"Kleinbuchstaben", tLowerHint:"Groß-/Kleinschreibung — griechische Akzente kommen nur bei bekannten Vornamen zurück; den Rest bitte von Hand.", confirmMerge:"„{a}“ in „{b}“ zusammenführen? Die {n} Personen ziehen um und „{b}“ bekommt {c} Plätze.", mergeTitle:"Tische zusammenführen", mergeOk:"Zusammenführen", dragMerge:"Zusammenführen mit „{b}“", tTablesMerged:"„{a}“ → „{b}“: {n} Personen, {c} Plätze — ↶ macht es rückgängig", tMergeTooBig:"Geht nicht: „{b}“ bräuchte {c} Plätze (höchstens 30).", tgCap:"Alle an „{n}“ → Gruppe", tgEmpty:"An „{n}“ sitzt noch niemand.", tGrouped:"„{g}“: alle an „{n}“ ({k})", tUngrouped:"Keine Gruppe: alle an „{n}“ ({k})", clearConfirm:"Alle Gäste von „{n}“ zurück in die Liste ohne Platz?",
   fillNone:"Dort gibt es keine Gäste ohne Platz", filled:"{n} platziert", createNew:"＋ Neuer Gast „{n}“", renameTo:"Umbenennen in „{n}“", moreMatches:"…und {n} weitere — weiter tippen",
   pbHint:"→ Platz antippen", pbUnseat:"↩ Platz freigeben", pbEdit:"Bearbeiten", pbCancel:"Abbrechen",
   menuTitle:"Tisch-Einstellungen", menuTitleHead:"Brauttisch-Einstellungen", menuTitleRect:"Einstellungen der langen Tafel", capLabelRect:"Plätze (an beiden Längsseiten)", capLabel:"Plätze", capLabelHead:"Plätze gesamt (2 davon an den Enden)", labelPh:"Tischname / -nummer", deleteTable:"Löschen", focusSeats:"Namen",
@@ -5276,46 +5286,41 @@ async function downloadPdf(mode, btn){
 $("printClose").addEventListener("click",()=>$("printModal").classList.remove("open"));
 function buildAndPrint(mode){
   const area=$("printarea"); const byParties=mode==="parties";
-  const legend=state.groups.map(g=>`<span><span class="dot" style="background:${g.color}"></span>${escapeHtml(g.name)}</span>`).join("");
+  // No group legend on any printed page: the owner reads these at the door, and the coloured strip only got in the way.
   const tableOf={}; state.tables.forEach(t=>t.seats.forEach(gid=>{ if(gid) tableOf[gid]=t.label; }));
-  const seated=assignedGuestIds().size, totalSeats=state.tables.reduce((s,t)=>s+t.capacity,0);
+  const seatedSet=assignedGuestIds();   // who has a CHAIR — never "whose table has a name"; a table may be left unnamed
+  const seated=seatedSet.size, totalSeats=state.tables.reduce((s,t)=>s+t.capacity,0);
   const cur=currentProfile()||{}, wd=cur.life&&cur.life.weddingDate;
   const meta=[tr("printTitle"), wd?tr("printWed",{d:fmtDate(wd)}):"", tr("printAt",{t:new Date().toLocaleString(LANG,{dateStyle:"short",timeStyle:"short"})})].filter(Boolean).join(" · ");
-  const head=`<h2>${escapeHtml(cur.name||tr("printTitle"))}</h2><div class="pmeta">${escapeHtml(meta)}</div>
-    <div class="psub">${escapeHtml(tr("printSub",{t:state.tables.length, s:seated, c:totalSeats}))}</div>
-    ${legend?`<div class="plegend">${legend}</div>`:""}`;
-  // One line per ENTRY, alphabetical: an invitation (with its members underneath) or a guest who has none.
+  const head=`<h2>${escapeHtml(cur.name||tr("printTitle"))}</h2><div class="pmeta">${escapeHtml(meta)}</div>`;
+  // The plan-wide counts line: the A–Z list has its own counts under its own heading and must not print them twice.
+  const subLine=`<div class="psub">${escapeHtml(tr("printSub",{t:state.tables.length, s:seated, c:totalSeats}))}</div>`;
+  // A–Z: a real table, ONE ROW PER SEATED PERSON — name · their invitation · how many of it are on this page · table.
+  // Nobody without a seat is printed (a door list is for people who have one); a single footnote counts those left out.
   if(mode==="alpha"){
     const coll=(a,b)=>String(a).localeCompare(String(b),"el",{sensitivity:"base",numeric:true});
     const st=id=>{ const s=STATUS_TXT(gStatus(id)); return s?` <span class="ast">(${escapeHtml(s)})</span>`:""; };
-    const gdot=ids=>{ const c=guestColor(ids[0]); return ids.every(i=>guestColor(i)===c)?`<span class="gdot" style="background:${c}"></span>`:`<span class="gdot none"></span>`; };
-    const inInv=new Set(), entries=[];
-    (state.parties||[]).forEach(p=>{
-      const m=partyMembers(p.id); if(!m.length) return;
-      m.forEach(id=>inInv.add(id));
-      const tabs=[]; m.forEach(id=>{ const t=tableOf[id]; if(t&&!tabs.includes(t)) tabs.push(t); }); tabs.sort(coll);
-      const main=tabs.length===1?tabs[0]:null;          // one table for everyone who sits → the members stay bare
-      const mem=m.slice().sort((a,b)=>coll(guestName(a),guestName(b))).map(id=>{
-        const t=tableOf[id];
-        const tag=t?(t===main?"":` <span class="mt">${escapeHtml(t)}</span>`):` <span class="mt none">${escapeHtml(tr("printNoSeat"))}</span>`;
-        return `${escapeHtml(guestName(id))}${st(id)}${tag}`;
-      }).join(" · ");
-      entries.push({k:caseName(p.name), html:`<li>`
-        +`<div class="pal">${gdot(m)}<span class="an"><b>${escapeHtml(caseName(p.name))}</b></span>`
-        +`<span class="at${tabs.length?"":" none"}">${escapeHtml(tabs.length?tabs.join(", "):tr("printNoSeat"))}</span>`
-        +`<span class="ac">${escapeHtml(m.length===1?tr("invOne"):tr("invPeople",{n:m.length}))}</span></div>`
-        +`<div class="pam">${mem}</div></li>`});
-    });
-    Object.keys(state.guests).forEach(id=>{ if(inInv.has(id)) return;
-      entries.push({k:guestName(id), html:`<li><div class="pal">${gdot([id])}`
-        +`<span class="an">${escapeHtml(guestName(id))}${st(id)}</span>`
-        +`<span class="at${tableOf[id]?"":" none"}">${escapeHtml(tableOf[id]||tr("printNoSeat"))}</span></div></li>`});
-    });
-    entries.sort((a,b)=>coll(a.k,b.k));
-    const gn=Object.keys(state.guests).length;
+    const seatedIds=Object.keys(state.guests).filter(id=>seatedSet.has(id));
+    const pSeated=new Map();   // invitation → how many of its people appear IN THIS LIST, so the ΑΤΟΜΑ column matches the rows
+    seatedIds.forEach(id=>{ const p=partyOf(id); if(p) pSeated.set(p.id,(pSeated.get(p.id)||0)+1); });
+    const rows=seatedIds.map(id=>({id, p:partyOf(id), k:guestName(id)}))
+      .sort((a,b)=>coll(a.k,b.k)||coll(a.p?caseName(a.p.name):"", b.p?caseName(b.p.name):""))
+      .map(({id,p})=>`<tr><td class="cn"><span class="gdot" style="background:${guestColor(id)}"></span>${escapeHtml(guestName(id))}${st(id)}</td>`
+        +`<td class="ci">${p?escapeHtml(caseName(p.name)):`<span class="none">—</span>`}</td>`
+        +`<td class="cp">${p?pSeated.get(p.id):""}</td>`
+        +`<td class="ct">${escapeHtml(String(tableOf[id]||"").trim())||`<span class="none">—</span>`}</td></tr>`).join("");   // an unnamed table prints "—", it never drops its people
+    const hidden=Object.keys(state.guests).length-seatedIds.length;
+    // How many tables this list actually covers — counted per table (by position, since a plan can carry two tables with
+    // the same id or the same name), so spare empty tables are not counted and twins are not merged into one.
+    const tableAt={}; state.tables.forEach((t,ix)=>t.seats.forEach(gid=>{ if(gid) tableAt[gid]=ix; }));
+    const usedTables=new Set(seatedIds.map(id=>tableAt[id])).size;
     area.innerHTML=head
-      +`<h3 class="pinvh">${escapeHtml(tr("printAllH"))} <span class="psn">${escapeHtml(tr("printAllSub",{g:gn, s:seated, u:gn-seated}))}</span></h3>`
-      +`<ul class="palpha">${entries.map(e=>e.html).join("")||`<li class="empty">—</li>`}</ul>`;
+      +`<h3 class="pinvh">${escapeHtml(tr("printAllH"))} <span class="psn">${escapeHtml(tr("printAllSub",{s:seatedIds.length, t:usedTables}))}</span></h3>`
+      +`<table class="palpha"><thead><tr><th class="cn">${escapeHtml(tr("printColName"))}</th><th class="ci">${escapeHtml(tr("printColInv"))}</th>`
+      +`<th class="cp">${escapeHtml(tr("printColPeople"))}</th><th class="ct">${escapeHtml(tr("printColTable"))}</th></tr></thead>`
+      +`<tbody>${rows||`<tr><td class="empty" colspan="4">—</td></tr>`}`
+      +(hidden?`<tr class="pfootr"><td class="pfoot" colspan="4">${escapeHtml(hidden===1?tr("printHidden1"):tr("printHidden",{n:hidden}))}</td></tr>`:"")
+      +`</tbody></table>`;
     window.print(); return;
   }
   const cards=state.tables.map(t=>{
@@ -5335,7 +5340,7 @@ function buildAndPrint(mode){
   const unHtml=un.length?`<div class="punassigned"><strong>${escapeHtml(tr("printUnassigned",{n:un.length}))}</strong> ${un.map(id=>escapeHtml(guestName(id))).join(", ")}</div>`:"";
   const parties=(state.parties||[]).map(p=>({p, m:partyMembers(p.id)})).filter(x=>x.m.length).sort((a,b)=>a.p.name.localeCompare(b.p.name));
   const invHtml=(parties.length&&!byParties)?`<h3 class="pinvh">${escapeHtml(tr("printInvites"))}</h3><div class="pinvs">${parties.map(({p,m})=>`<div class="pinv"><b>${escapeHtml(caseName(p.name))}</b> <span class="n">(${m.length})</span><ul>${m.map(id=>`<li>${escapeHtml(guestName(id))}${tableOf[id]?` <span class="ptag">— ${escapeHtml(tableOf[id])}</span>`:` <span class="ptag">— ${escapeHtml(tr("printNoSeat"))}</span>`}</li>`).join("")}</ul></div>`).join("")}</div>`:"";
-  area.innerHTML=head+`<div class="ptables">${cards}</div>${unHtml}${invHtml}`;
+  area.innerHTML=head+subLine+`<div class="ptables">${cards}</div>${unHtml}${invHtml}`;
   window.print();
 }
 

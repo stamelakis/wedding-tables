@@ -159,10 +159,18 @@ Working on paper is the model: you should always see what is already in an invit
   small circle at the top-right of the name box) so a name in some invitation is visible everywhere, not only while filling.
 - **Rename = merge**: renaming an invitation onto an existing name merges them (confirm + toast + undo). Four entry
   points: the ⋯ menu, double-click, blur, long-press (550 ms).
-- **Print, first and default: «Όλα αλφαβητικά»** (`printMode: "alpha"`) — one alphabetical list of *entries*: each
-  invitation as one line (name · table(s) · how many people) with its people named underneath, and everyone without an
-  invitation as their own line. Sorted as written, first name first. The other modes (names per table, invitations per
-  table, floor-plan PDF, keepsake) are unchanged, below it.
+- **Print, first and default: the A–Z table** (`printMode: "alpha"`) — a real ruled table, **one row per SEATED person**,
+  columns ΟΝΟΜΑ · ΠΡΟΣΚΛΗΤΗΡΙΟ · ΑΤΟΜΑ · ΤΡΑΠΕΖΙ (`printColName/Inv/People/Table`), sorted A–Z by the person's own
+  displayed name (`coll` + `guestName`/`caseName`, so the letter-case mode still applies). The `<thead>` repeats on every
+  printed page (`display:table-header-group`) and no row splits across a break. ΑΤΟΜΑ = how many people **of that
+  invitation appear in this list** (its seated members), empty for someone in no invitation. Membership is decided by the
+  SEAT (`assignedGuestIds()`), never by the truthiness of the table label — an unnamed table prints an em dash in ΤΡΑΠΕΖΙ
+  and keeps its people. Guests without a seat are not printed; a single quiet footnote row at the end counts them
+  (`printHidden` / `printHidden1`), and there is no line at all when the count is zero. The plan-wide counts line
+  (`printSub`) is omitted here — the list carries its own «{s} ονόματα · {t} τραπέζια» (`printAllSub`, {t} = the tables
+  the rows actually name). **No group legend on any print mode** — the coloured strip is gone everywhere; the small
+  colour dot next to a name stays. The other modes (names per table, invitations per table, floor-plan PDF, keepsake)
+  are unchanged, below it.
 - A mobile layout of the same panel exists (the rail reserves its width via `body.invrail`); it has been tested only at
   375×812 emulation, never on a real handset.
 
