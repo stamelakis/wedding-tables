@@ -10,6 +10,7 @@
     --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
     --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     --appbar-h:52px; --sidebar-w:316px; --focus-w:330px; --sheet-h:46vh;
+    --pipw:18px;   /* the invitation mark's gutter inside a name pill — PIP_W in the script must match */
   }
   html,body{ height:100%; }
   body{ font-family:var(--sans); color:var(--ink); background:var(--paper-2); height:100vh; overflow:hidden; display:flex; flex-direction:column; -webkit-font-smoothing:antialiased; }
@@ -113,6 +114,11 @@
   /* ---------- Main layout ---------- */
   #main{ flex:1; display:flex; min-height:0; position:relative; }
   #sidebar{ position:relative; width:var(--sidebar-w); flex:none; background:var(--card); border-right:1px solid var(--line); display:flex; flex-direction:column; min-height:0; }
+  /* The invitations panel is a working surface, not a sidebar note: while it is open the panel takes the width it
+     needs («Νέο προσκλητήριο», «0 άτομα · 0 με θέση» and «Χωρίς προσκλητήριο» must never truncate) and gives it
+     back on the way out. invFitFloor() re-fits the floor around it. Phones ignore this — there the panel is the
+     full-width drawer already (88vw). */
+  body.invlist, body.invfill{ --sidebar-w:392px; }
   .side-scroll{ flex:1; overflow-y:auto; min-height:0; overscroll-behavior:contain; }
   .sec{ padding:12px 14px 12px; border-bottom:1px solid var(--line); }
   .sec:last-child{ border-bottom:none; }
@@ -147,15 +153,60 @@
   #pool{ display:flex; flex-direction:column; gap:5px; min-height:44px; }
   #pool.dragover{ outline:2px dashed var(--accent); outline-offset:-4px; border-radius:10px; background:var(--accent-soft); }
   .gchip{ position:relative; display:flex; align-items:center; gap:6px; padding:7px 6px 7px 4px; border-radius:10px; background:var(--paper); border:1px solid var(--line); border-left:5px solid #ccc; cursor:grab; user-select:none; font-size:13px; transition:box-shadow .12s,background .12s; }
-  /* "this person belongs to an invitation" — one binary, decorative pip. Its 3 px outward bleed lives inside the
-     Guests section's 14 px gutter (the .search sticky rule paints it); shrink that padding and the pip clips. */
-  .gchip.hasinv::after{ content:""; position:absolute; top:-3px; right:-3px; width:8px; height:8px; border-radius:50%;
+  /* "this person belongs to an invitation" — one binary pip. Its 3 px outward bleed lives inside the
+     Guests section's 14 px gutter (the .search sticky rule paints it); shrink that padding and the pip clips.
+     .hasinv paints it where nothing can be clicked (a tick row, a suggestion); everywhere he WORKS — the name
+     pills on the floor, the seat rows, the guest list — the very same dot is a real button, .ipip, in the same
+     corner and the same size, so one mark means one thing whether you read it or press it. */
+  .gchip.hasinv:not(.pipbtn)::after{ content:""; position:absolute; top:-3px; right:-3px; width:8px; height:8px; border-radius:50%;
     background:var(--accent); box-shadow:0 0 0 2px var(--card); pointer-events:none; }
-  body.touch .gchip.hasinv::after{ width:9px; height:9px; }
+  body.touch .gchip.hasinv:not(.pipbtn)::after{ width:9px; height:9px; }
   /* ::before, never ::after — .frow .fdot::after is the dot's own inner ring and must survive */
-  .frow .fdot.hasinv::before{ content:""; position:absolute; top:-2px; right:-2px; left:auto; bottom:auto;
+  .frow .fdotw:not(.pipbtn) .fdot.hasinv::before{ content:""; position:absolute; top:-2px; right:-2px; left:auto; bottom:auto;
     width:8px; height:8px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 2px #fff;
     pointer-events:none; z-index:1; }
+  /* ---------- .ipip — the SAME pip, pressable (.pipbtn on the host turns the decorative one off) ----------
+     The dot is 8/9 px at the host's top-right corner, exactly where the decorative one sits; the button around it is
+     transparent and thumb-sized (26 px on touch, 20 px with a mouse). On a LIST host (a guest chip, a seat row) it
+     leans outward into that row's own gutter, so it shadows nothing useful. On a name pill on the FLOOR it goes the
+     other way — inside the pill, see the block below. Either way it is a CHILD of its host, so a name pushed out to
+     the outer ring by a collision carries its mark along the leader line. */
+  .ipip{ position:absolute; top:-13px; right:-13px; width:20px; height:20px; padding:0; border:none; background:none;
+    cursor:pointer; z-index:2; -webkit-appearance:none; appearance:none; line-height:0; font-size:0; }
+  .ipip::after{ content:""; position:absolute; right:10px; top:10px; width:8px; height:8px; border-radius:50%;
+    background:var(--accent); box-shadow:0 0 0 2px var(--card); transition:transform .1s; }
+  .ipip:hover::after{ transform:scale(1.4); box-shadow:0 0 0 2px var(--card),0 1px 5px rgba(40,30,20,.5); }
+  .ipip:focus-visible{ outline:2px solid var(--accent); outline-offset:-1px; border-radius:50%; }
+  body.touch .ipip{ top:-16px; right:-16px; width:26px; height:26px; }
+  body.touch .ipip::after{ right:13px; top:13px; width:9px; height:9px; }
+  .seat .ipip::after, .fdotw .ipip::after{ box-shadow:0 0 0 2px #fff; }
+  /* ---- on the floor the mark lives INSIDE the pill ----
+     Hung 3 px outside the pill's top-right corner it sat exactly where the next name lands: measured on the
+     335-guest lab floor, 156 of 286 marks had their dot centre resolve to ANOTHER pill — the mark invisible and the
+     tap arming a move of the wrong person. Inside, the pill's own silhouette IS the hit box (the seat keeps
+     overflow:hidden, which clips paint and hit-testing alike), so nothing can ever cover it and a near-miss costs at
+     worst a tap on its own name. The pill is built --pipw wider (seatWidthFor + PIP_W) and gives that width straight
+     back as padding, so the name keeps exactly the room it had and no letter is lost to the mark. */
+  .seat.occupied.hasinv{ padding-right:var(--pipw); }
+  .seat .ipip{ top:0; right:0; bottom:0; height:auto; width:18px; max-width:45%; z-index:35; }
+  .seat .ipip::after{ right:4px; top:4px; }
+  .seat .ipip:focus-visible{ border-radius:8px; }
+  body.touch .seat .ipip{ top:0; right:0; bottom:0; height:auto; width:24px; max-width:45%; }
+  body.touch .seat .ipip::after{ right:4px; top:4px; }
+  body.far .seat .ipip{ display:none; }         /* phone overview: the pills are 6 px tall, nothing there is aimable */
+  /* Per host, the box leans into whatever is dead space next to it, so nothing useful is shadowed:
+     a pill has 10 px of text gutter, a chip has the section gutter, a seat row has the gap above it. */
+  .gchip>.ipip{ top:-10px; right:-10px; width:22px; height:22px; }
+  .gchip>.ipip::after{ right:7px; top:7px; }
+  body.touch .gchip>.ipip{ top:-11px; right:-11px; width:24px; height:24px; }
+  body.touch .gchip>.ipip::after{ right:8px; top:8px; }
+  .fdotw{ position:relative; flex:none; display:flex; }          /* the seat row's dot + its mark, one box */
+  .fdotw .ipip{ top:-12px; right:-8px; width:24px; height:24px; }
+  /* its own touch box, or `body.touch .ipip` (0,2,1) wins over `.fdotw .ipip` (0,2,0): the 26 px box then sat at
+     -16/-16, detaching the dot from its colour dot and reaching 10x16 px into the row's name field, so tapping
+     before the first letter opened an invitation instead of putting the caret in. 24 px still meets the touch size. */
+  body.touch .fdotw .ipip{ top:-12px; right:-8px; width:24px; height:24px; }
+  .fdotw .ipip::after, body.touch .fdotw .ipip::after{ right:6px; top:10px; }   /* → top:-2 right:-2 on the dot: where it has always been */
   .fsug div.hasinv{ position:relative; padding-right:22px; }
   .fsug div.hasinv::after{ content:""; position:absolute; right:9px; top:50%; margin-top:-4px; width:8px; height:8px;
     border-radius:50%; background:var(--accent); pointer-events:none; }
@@ -185,6 +236,23 @@
   .invtop .invsum{ margin-left:auto; font-size:11px; color:var(--faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .invtop .invx{ flex:none; width:30px; height:30px; padding:0; }
   #invNewSide{ width:100%; height:36px; margin-top:8px; }
+  /* ---------- the two paper blocks ----------
+     «0 άτομα» sitting above 300 names read as the list's own count. So the panel now says, in words, which block is
+     which: a headed band for THE INVITATION (its people, or "nobody yet") and a separately headed band for THE LIST
+     YOU TICK FROM. The counter lives in its band's heading, on its own line, where nothing competes for width. */
+  .invband{ display:flex; align-items:baseline; gap:8px; padding:9px 0 5px; }
+  .invband .bt{ font-size:11px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--accent-ink); }
+  .invband .bn{ margin-left:auto; font-size:11.5px; color:var(--soft); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  #invSheet .invband{ padding-top:4px; border-top:1px solid var(--line); }
+  #pool>.invband{ padding-top:2px; }
+  /* Band C's heading and its tabs are pinned, the way the index already pins its letter caps. The pick list is
+     16 000 px tall with 335 names, so he is scrolling within seconds — and the moment «ΔΙΑΛΕΞΤΕ ΑΠΟ ΤΗ ΛΙΣΤΑ»
+     scrolled off, the panel was back to a count pinned over an unheaded column of names, which is exactly the
+     picture behind «το 0 τι είναι που έχει και ονόματα?», with the three tabs gone with it. --invpick-top is
+     measured (search + head + sheet) in invStickTops(), never guessed. */
+  .invpickhead{ position:sticky; top:var(--invpick-top,150px); z-index:2; background:var(--card); padding-bottom:3px;
+    box-shadow:-14px 0 0 var(--card), 14px 0 0 var(--card); border-top:1px solid var(--line); margin-top:2px; }
+  .invpickhead .invband.pick{ border-top:none; margin-top:0; }
   #invIndex{ display:flex; flex-direction:column; gap:3px; }
   .invrow{ display:flex; align-items:center; gap:8px; width:100%; min-height:34px; padding:5px 6px 5px 9px; text-align:left;
     border:1px solid var(--line); border-radius:9px; background:var(--paper); cursor:pointer; font-size:13px; color:inherit;
@@ -228,10 +296,16 @@
   body.kb.invfill #invSheet .kbline{ display:flex; align-items:center; gap:6px; width:100%; min-height:34px;
     border:1px dashed var(--line); border-radius:9px; padding:0 10px; background:var(--paper); font-size:12.5px;
     color:var(--soft); cursor:pointer; }
-  #invSeg{ display:flex; margin:0 0 8px; }
-  #invSeg.seg button{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  #invSeg.seg button .n{ color:var(--faint); font-size:11px; margin-left:4px; font-variant-numeric:tabular-nums; }
-  #invSeg.seg button.on .n{ color:#fff; opacity:.8; }
+  /* Three tabs, each saying in full words WHAT it filters, with its number under the words — a paper folder's tabs.
+     «Όλοι 335» read like a stat next to the top bar's 295; a labelled column of names over a count cannot. */
+  #invSeg{ display:flex; margin:0 0 4px; }
+  #invSeg.seg button{ flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:1px; height:auto; min-height:46px; padding:5px 5px; font-size:11px; line-height:1.15; white-space:normal;
+    text-align:center; hyphens:auto; }
+  #invSeg.seg button .n{ color:var(--accent-ink); font-size:15px; font-weight:700; font-variant-numeric:tabular-nums; }
+  #invSeg.seg button.on .n{ color:#fff; opacity:1; }
+  body.touch #invSeg.seg button{ min-height:52px; }
+  .invsegnote{ font-size:11px; color:var(--faint); line-height:1.4; padding:0 2px 8px; }
   .gchip.tickable{ cursor:pointer; }
   .gchip.tickable .acts, .gchip.tickable .grip{ display:none; }
   .gtick{ flex:none; width:22px; height:22px; border:1.5px solid var(--soft); border-radius:6px; background:#fff;
@@ -240,8 +314,14 @@
   .gchip.tickable.on{ background:var(--accent-soft); outline:1.5px solid var(--accent); outline-offset:-1px; }
   .gchip.tickable.on .gtick{ background:var(--accent); border-color:var(--accent); }
   .gchip.tickable.sel{ box-shadow:0 0 0 3px var(--accent-soft); }
-  .gchip.tickable .ann{ flex:none; max-width:40%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  /* «is this person already spoken for, and by whom?» is the one fact he reads here, and at 40 % it was cut off
+     mid-name. The row may now wrap: a long name keeps line 1 and pushes the annotation to a line of its own rather
+     than squeezing it — which is also what the 375 px drawer needs. */
+  .gchip.tickable{ flex-wrap:wrap; }
+  .gchip.tickable .nm{ flex:1 1 auto; }
+  .gchip.tickable .ann{ flex:0 0 auto; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
     color:var(--faint); font-size:11.5px; }
+  .gchip.tickable .ann .a2{ color:var(--accent-ink); }
   body.touch.invfill .gchip.tickable{ min-height:44px; }
   .invnew-guest{ display:flex; align-items:center; gap:7px; width:100%; min-height:40px; margin-top:4px; padding:7px 9px;
     border:1px dashed var(--accent); border-radius:10px; background:var(--accent-soft); color:var(--accent-ink);
@@ -323,10 +403,15 @@
   /* ---------- Stage ---------- */
   #stagewrap{ flex:1; position:relative; overflow:auto; background:var(--paper-2); background-image:radial-gradient(rgba(60,40,20,.09) 1px,transparent 1.2px); background-size:22px 22px; touch-action:pan-x pan-y; }
   #stage{ position:relative; width:1700px; height:1360px; margin:24px; border-radius:14px; transform-origin:top left; box-shadow:0 2px 4px rgba(0,0,0,.12),0 24px 60px rgba(40,30,20,.22),inset 0 0 0 1px rgba(0,0,0,.14); }
-  #stage::after{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; z-index:2; background:radial-gradient(ellipse at 50% 45%,transparent 58%,rgba(20,20,10,.16) 100%); }
-  .feature.k-prop, .feature.k-marker, .feature.k-label{ z-index:3; }   /* cards float above the vignette; floor zones sit under it like the ground */
+  /* The floor's layers, in order, all BELOW a table: zone (-3) · vignette (-2) · card (-1) · table (auto).
+     They are negative so that `.table` needs no z-index of its own — a z-index there makes every table a stacking
+     context, and a stacking context is a lid: an invitation mark inside table A could never paint above a name of
+     table B, and on this packed floor a neighbouring table's name covered 38 of 156 marks. Tables are contiguous
+     blocks of the DOM, so tree order between them is exactly the order z-index:5 gave them: nothing else moves. */
+  #stage::after{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; z-index:-2; background:radial-gradient(ellipse at 50% 45%,transparent 58%,rgba(20,20,10,.16) 100%); }
+  .feature.k-prop, .feature.k-marker, .feature.k-label{ z-index:-1; }   /* cards float above the vignette; floor zones sit under it like the ground */
 
-  .feature{ position:absolute; font-size:12px; color:#fff; font-weight:600; display:flex; align-items:center; justify-content:center; text-align:center; transform:translate(-50%,-50%); border-radius:8px; padding:2px 4px; line-height:1.15; cursor:grab; user-select:none; z-index:1; }
+  .feature{ position:absolute; font-size:12px; color:#fff; font-weight:600; display:flex; align-items:center; justify-content:center; text-align:center; transform:translate(-50%,-50%); border-radius:8px; padding:2px 4px; line-height:1.15; cursor:grab; user-select:none; z-index:-3; }
   .feature:active{ cursor:grabbing; }
   .feature .rz{ position:absolute; right:-6px; bottom:-6px; width:16px; height:16px; background:#fff; border:1px solid #8a7f72; border-radius:4px; cursor:nwse-resize; opacity:0; visibility:hidden; transition:opacity .15s, visibility 0s .6s; z-index:3; box-shadow:0 1px 3px rgba(0,0,0,.3); }
   .feature:hover .rz, .feature.hsel .rz{ opacity:1; visibility:visible; transition-delay:0s; }
@@ -344,7 +429,7 @@
   .feat-gear{ position:absolute; left:-9px; top:-9px; width:22px; height:22px; border-radius:50%; background:#fff; border:1px solid var(--line-2); box-shadow:0 1px 4px rgba(0,0,0,.2); display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer; z-index:3; touch-action:manipulation; }
 
   /* ---------- Tables & seats ---------- */
-  .table{ position:absolute; z-index:5; }
+  .table{ position:absolute; }   /* NO z-index — see the floor layers above: it would trap every mark inside its table */
   .table-disc{ position:absolute; left:0; top:0; border-radius:50%; background:radial-gradient(circle at 38% 32%,#fffefc 0%,#f6f1e9 55%,#e8e0d3 100%); border:1px solid rgba(110,85,60,.3); box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 8px 18px rgba(70,40,15,.2),0 2px 4px rgba(70,40,15,.12); display:flex; align-items:center; justify-content:center; flex-direction:column; transform:translate(-50%,-50%); cursor:grab; transition:box-shadow .15s; }
   .table-disc::before{ content:""; position:absolute; inset:-5px; border-radius:inherit; border:1px solid rgba(255,255,255,.6); box-shadow:0 0 0 4px rgba(255,255,255,.2); pointer-events:none; }
   .table-disc.head{ border-radius:14px; background:linear-gradient(180deg,#fffaf1 0%,#f6ecd9 100%); border:1.5px solid #cdb07a; }
@@ -365,7 +450,10 @@
   .table-disc .tgear{ position:absolute; top:2px; right:6px; font-size:12px; color:var(--faint); cursor:pointer; display:none; padding:2px; }
   .table:hover .tgear, .table.focused .tgear{ display:block; }
   /* empty seat = a small linen chair (solid, with a chair back); occupied = the guest's pill in the group colour */
-  .seat{ position:absolute; transform:translate(-50%,-50%); border:1px solid rgba(90,70,50,.32); background:linear-gradient(180deg,#fffdf9 0%,#efe8dd 100%); display:flex; align-items:center; justify-content:center; color:rgba(90,70,50,.75); text-align:center; overflow:hidden; cursor:pointer; user-select:none; transition:background .1s,border-color .1s; box-shadow:0 1px 1px rgba(0,0,0,.12); }
+  /* NO transform on a pill, deliberately — buildSeat() sets its top-left corner instead. Any transform makes the
+     pill a stacking context, and that lid is what kept its invitation mark from ever painting above a neighbouring
+     name; a rotated table is the one exception (applyTableRot), where the counter-rotation is worth the lid. */
+  .seat{ position:absolute; border:1px solid rgba(90,70,50,.32); background:linear-gradient(180deg,#fffdf9 0%,#efe8dd 100%); display:flex; align-items:center; justify-content:center; color:rgba(90,70,50,.75); text-align:center; overflow:hidden; cursor:pointer; user-select:none; transition:background .1s,border-color .1s; box-shadow:0 1px 1px rgba(0,0,0,.12); }
   .seat:not(.occupied):hover{ background:rgba(255,255,255,.95); border-color:var(--accent); }
   .seat:not(.occupied)::after{ content:""; position:absolute; left:22%; right:22%; top:3px; height:2px; border-radius:2px; background:rgba(90,70,50,.22); }
   .seat:not(.occupied) .nm{ display:none; }
@@ -374,11 +462,16 @@
   .seat.occupied:active{ cursor:grabbing; }
   .stem{ position:absolute; width:8px; height:8px; border-radius:50%; transform:translate(-50%,-50%); border:1.5px solid #fff; box-shadow:0 1px 2px rgba(0,0,0,.25); pointer-events:none; z-index:0; }
   .leader{ position:absolute; height:1.5px; transform-origin:0 50%; opacity:.6; pointer-events:none; z-index:0; }
-  .seat.occupied{ z-index:1; }
+  /* No z-index on an occupied pill, deliberately: a z-index here makes the pill a stacking context and TRAPS its
+     invitation mark inside it, so a pill drawn later painted over — and swallowed the tap of — its neighbour's mark
+     (169 of 286 marks on the lab floor). With the pill at auto the mark is free to sit at z-index 35, above every
+     pill of its table, while overflow:hidden still clips it to the pill's own silhouette. The leaders are appended
+     before the pills for the same reason: they are z-index:0, so only tree order now keeps them underneath.
+     `.table` carries no z-index either, so a mark clears the names of the NEIGHBOURING tables too. */
   .table:hover{ z-index:50; }
   .seat.occupied:hover{ z-index:30; box-shadow:0 0 0 2px #fff,0 4px 14px rgba(30,20,10,.35) !important; }   /* a hovered name comes to the front while the mouse is on it */
   .seat:not(.occupied){ z-index:2; }   /* an empty chair must stay visible next to long names */
-  .seat.lifted, body.touch .seat.lifted{ box-shadow:0 0 0 3px var(--accent-soft),0 0 0 5px var(--accent),0 12px 28px rgba(30,20,10,.4); transition:none; }
+  .seat.lifted, body.touch .seat.lifted{ z-index:80; box-shadow:0 0 0 3px var(--accent-soft),0 0 0 5px var(--accent),0 12px 28px rgba(30,20,10,.4); transition:none; }
   body.touch .seat{ -webkit-touch-callout:none; }
   /* the chair a lifted pill will land on: bigger, ringed — the finger no longer has to be exactly on it */
   .seat.snap{ z-index:55; transition:none; }
@@ -446,6 +539,15 @@
   .fchk{ width:22px; height:22px; border:2px solid var(--line); border-radius:6px; background:#fff; flex:none; cursor:pointer; padding:0; display:flex; align-items:center; justify-content:center; font-size:14px; color:#fff; }
   .frow.sel .fchk{ background:var(--accent); border-color:var(--accent); }
   .frow.sel .fchk::after{ content:"✓"; }
+  /* Typing the name of an invitation that already exists: the people of it who sit at THIS table show as already in
+     — an outlined tick, not the solid one of the names being ticked right now. Two states, never confusable. */
+  .frow.inparty:not(.sel) .fchk{ border-color:var(--accent); background:#fff; color:var(--accent); }
+  .frow.inparty:not(.sel) .fchk::after{ content:"✓"; font-size:13px; font-weight:700; }
+  body.partysel .frow.inparty:not(.sel) input{ background:var(--accent-soft); opacity:.75; }
+  #partysel .pbfound{ display:flex; align-items:baseline; gap:6px; font-size:12.5px; color:var(--accent-ink); }
+  #partysel .pbfound b{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #partysel .pbfound .ps{ display:none; }   /* the selection count — folded in here only where the room is short */
+  #partysel .pbfound .n{ margin-left:auto; color:var(--soft); font-size:11.5px; white-space:nowrap; font-variant-numeric:tabular-nums; }
   body.partysel .frow:not(.occ){ opacity:.4; }
   body.partysel .frow.occ{ cursor:pointer; }
   body.partysel .frow input{ pointer-events:none; }
@@ -518,6 +620,7 @@
   body.zooming #stage{ will-change:transform; }
   .gm-item .n{ margin-left:auto; color:var(--faint); font-size:11.5px; padding-left:10px; }
   .gm-sep{ height:1px; background:var(--line); margin:4px 2px; }
+  .gm-item .gmx{ width:16px; flex:none; text-align:center; font-size:14px; color:var(--faint); }
   .gm-cap{ font-size:11px; color:var(--faint); padding:4px 9px 6px; letter-spacing:.04em; text-transform:uppercase; font-weight:700; }
   #tablemenu{ width:236px; padding:12px; }
   #tablemenu h3{ font-size:13.5px; margin-bottom:8px; font-family:var(--serif); }
@@ -667,8 +770,14 @@
     .side-scroll{ padding-bottom:env(safe-area-inset-bottom); display:flex; flex-direction:column; }
     .side-scroll>.sec{ flex:none; }
     /* the sidebar IS the drawer, so the invitations arrive here unchanged — only reach, keyboard and touch size differ */
-    #invFoot{ order:3; padding-bottom:calc(8px + env(safe-area-inset-bottom)); bottom:var(--kb); }
-    #invFoot .ibtn{ flex:1; height:44px; justify-content:center; }
+    /* NO bottom:var(--kb) here. `body.kb .side-scroll` already pads the scroller by the keyboard's height, and a
+       second inset subtracted it twice: with a 336 px keyboard the bar landed at y 79–140, over the invitation
+       header and the first rows, instead of 415–476 just above the keyboard. Measured, both values. */
+    #invFoot{ order:3; padding-bottom:calc(8px + env(safe-area-inset-bottom)); }
+    /* min-width:0 or a flex item never shrinks below its text: «Όλα τα προσκλητήρια» pushed [Τέλος] off the panel */
+    #invFoot .ibtn{ flex:1; min-width:0; height:44px; justify-content:center; }
+    #invFoot .ibtn>span{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    #invFoot .ibtn.primary{ flex:none; padding:0 20px; }
     body.invlist .side-scroll>.sec, body.invfill .side-scroll>.sec{ flex:1; }   /* the Guests section owns the drawer */
     /* the A–Z rail: one thumb, 80 invitations or 300 names */
     #invRail{ position:absolute; right:1px; top:var(--invcap-top,108px); bottom:64px; width:18px; z-index:7;
@@ -677,7 +786,18 @@
     #invRail[hidden]{ display:none !important; }   /* an author display: wins over the attribute — say it explicitly */
     /* while the rail is up it owns the right edge: give the section its width back so no row ends under it */
     body.invrail .side-scroll>.sec{ padding-right:32px; }
-    body.invrail #invHead, body.invrail #invSheet, body.invrail .search{ box-shadow:-14px 0 0 var(--card), 32px 0 0 var(--card); }
+    body.invrail #invHead, body.invrail #invSheet, body.invrail .search, body.invrail .invpickhead{ box-shadow:-14px 0 0 var(--card), 32px 0 0 var(--card); }
+    /* the keyboard is up: band C's heading folds away (the search field above it already says what the list is)
+       so the three tabs and four 44 px rows stay on screen */
+    body.kb.invfill .invpickhead .invband{ display:none; }
+    /* and the tabs fold to one line each, so the filter stays reachable without eating the rows he is ticking */
+    body.kb.invfill #invSeg.seg button{ flex-direction:row; gap:5px; min-height:34px; }
+    body.kb.invfill #invSeg.seg button .n{ font-size:12px; }
+    /* 375 px: the row says the one thing this panel is about — whose invitation he is already in. The seat is in
+       the row's title and in band B's «N με θέση»; keeping both here made every second row two lines tall. */
+    .gchip.tickable .ann.both .a1, .gchip.tickable .ann.both .sep{ display:none; }
+    .gchip.tickable{ row-gap:0; }                                   /* a wrapped annotation costs a line, not a line + a gap */
+    .gchip.tickable .ann{ font-size:11px; line-height:1.3; }
     #invRail b{ display:block; line-height:1.05; padding:0 2px; font-weight:700; }
     #invRail.on{ color:var(--accent-ink); }
     body.kb #invRail{ display:none; }
@@ -693,6 +813,10 @@
     .fhandle{ display:block; }
     .ffoot{ display:none; }   /* phone: fill/clear live under ⚙ — the rows get the space */
     .fhint{ padding:6px 14px 2px; font-size:13px; color:var(--soft); }
+    /* a third line in the party bar cost a row of the very list he is ticking (3 of 12 seats left on screen):
+       when an existing invitation is named, its line takes the selection count over and the hint line stands down */
+    #partysel.found .pb1{ display:none; }
+    #partysel.found .pbfound .ps{ display:inline; }
     .modal{ width:96vw; max-height:88vh; }
     #importText, #csvText{ height:80px !important; }
     .decor-grid{ grid-template-columns:repeat(auto-fill,minmax(92px,1fr)); gap:8px; padding:12px; }
@@ -936,7 +1060,7 @@
       <button class="ibtn" id="fSettings" data-t-title="tableSettings"><svg class="ic" aria-hidden="true"><use href="#i-gear"/></svg></button>
     </div>
     <div class="fhint" id="fHint" hidden></div>
-    <div id="partysel" hidden><div class="pb1"><b id="psCount"></b> · <span data-t="partySelHint"></span></div><div class="pb2"><input id="psName" list="psList" maxlength="60" autocomplete="off" data-t-ph="psNamePh"><datalist id="psList"></datalist><button class="ibtn primary" id="psOk" data-t="psOk"></button><button class="ibtn sq" id="psCancel" data-t-title="pbCancel">✕</button></div></div>
+    <div id="partysel" hidden><div class="pb1"><b id="psCount"></b> · <span data-t="partySelHint"></span></div><div class="pbfound" id="psFound" hidden></div><div class="pb2"><input id="psName" list="psList" maxlength="60" autocomplete="off" data-t-ph="psNamePh"><datalist id="psList"></datalist><button class="ibtn primary" id="psOk" data-t="psOk"></button><button class="ibtn sq" id="psCancel" data-t-title="pbCancel">✕</button></div></div>
     <div id="fSeats"></div>
     <div class="ffoot"><button class="ibtn" id="fFill"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg><span data-t="fill"></span></button><button class="ibtn" id="fClear"><svg class="ic" aria-hidden="true"><use href="#i-broom"/></svg><span data-t="clearTable"></span></button><button class="ibtn" id="fGroup"><svg class="ic" aria-hidden="true"><use href="#i-people"/></svg><span data-t="tableGroup"></span></button><button class="ibtn" id="fParty"><svg class="ic" aria-hidden="true"><use href="#i-edit"/></svg><span data-t="partyNew"></span></button></div>
   </aside>
@@ -1199,7 +1323,10 @@ el:{
   geParty:"Προσκλητήριο", gePartyPh:"π.χ. Οικ. Παπαδόπουλου", gripParty:"Τοποθέτηση όλου του προσκλητηρίου…", partyRename:"Μετονομασία / διάλυση προσκλητηρίου", partyRenamePrompt:"Όνομα προσκλητηρίου (κενό = διάλυση):",
   pbParty:"{n} · {c} άτομα", tPartyPartial:"{n}/{m} του προσκλητηρίου στο «{t}» — δεν χωρούν όλοι", printInvites:"Προσκλητήρια", printNoSeat:"χωρίς θέση",
   mInv:"Προσκλητήρια…", invTitle:"Προσκλητήρια", invSum:"{p} προσκλητήρια · {n}", invSum1:"1 προσκλητήριο · {n}", invSearchPh:"Αναζήτηση προσκλητηρίου ή ονόματος…", invNew:"Νέο προσκλητήριο", invNewShort:"Νέο", invNewPh:"Όνομα προσκλητηρίου (π.χ. Οικ. Παπαδόπουλου)", invDraftHint:"Προσθέστε άτομα — ένα προσκλητήριο χωρίς άτομα δεν κρατιέται.", invOne:"1 άτομο", invPeople:"{n} άτομα", invSeatedN:"{s} με θέση", invEmpty:"Δεν υπάρχουν ακόμη προσκλητήρια. Πατήστε «Νέο προσκλητήριο» — ή γράψτε «Οικ. Παπαδόπουλου:» πάνω από τα ονόματα όταν τα προσθέτετε στη λίστα.", invRo:"Μόνο προβολή — εδώ δεν γίνονται αλλαγές.",
-  invAdd:"Προσθήκη ατόμων", invAddPh:"Γράψτε ένα όνομα…", invAddLoose:"Χωρίς προσκλητήριο", invLooseShort:"{n} χωρίς", invLooseChip:"χωρίς προσκλητήριο", invLooseN:"{n} άτομα χωρίς προσκλητήριο", invLooseN1:"1 άτομο χωρίς προσκλητήριο", invBackAll:"Όλα τα προσκλητήρια", invSwitchCap:"Αλλαγή προσκλητηρίου", invSheetEmpty:"Κανένα άτομο ακόμη — τσεκάρετε ονόματα παρακάτω.", invFilterAll:"Όλοι", invFilterLoose:"Χωρίς", invFilterIn:"Σε αυτό", invNewGuest:"＋ Προσθήκη «{n}» στη λίστα και σε αυτό το προσκλητήριο", tGuestCreatedInv:"Ο/Η {g} μπήκε στη λίστα και στο «{p}»", invNotKept:"Το «{n}» δεν κρατήθηκε — δεν είχε ονόματα.", invSeatsUnchanged:"Η προσθήκη σε προσκλητήριο δεν αλλάζει θέσεις.", invKeptSeat:" — η θέση δεν άλλαξε", invTip:"Προσκλητήρια: ομαδοποιήστε τα ονόματα ανά οικογένεια — μετρώνται και κάθονται μαζί.", invAddDone:"Τέλος", invInOther:"στο «{p}»", invSeatAll:"Τοποθέτηση όλων σε τραπέζι…", invAllThere:"Όλοι κάθονται ήδη στο «{t}»", invRename:"Μετονομασία", invDelete:"Διαγραφή", invDelConfirm:"Διαγραφή του προσκλητηρίου «{n}»; Τα {k} άτομα μένουν στη λίστα ως μεμονωμένοι καλεσμένοι, στις θέσεις τους.", invRemove:"Αφαίρεση από το προσκλητήριο", invMoveTo:"Μετακίνηση σε άλλο προσκλητήριο", invMoveCap:"Μετακίνηση σε:", invMoveNew:"＋ Νέο προσκλητήριο…", invNewPrompt:"Όνομα του νέου προσκλητηρίου:", invJump:"Δείτε τη θέση στην κάτοψη", invEditTip:"Επεξεργασία / προσθήκη ατόμων", geInvEdit:"Προσκλητήριο: {n} — επεξεργασία",
+  invAdd:"Προσθήκη ατόμων", invAddPh:"Γράψτε ένα όνομα…", invAddLoose:"Χωρίς προσκλητήριο", invLooseShort:"{n} χωρίς", invLooseChip:"χωρίς προσκλητήριο", invLooseN:"{n} άτομα χωρίς προσκλητήριο", invLooseN1:"1 άτομο χωρίς προσκλητήριο", invBackAll:"Όλα τα προσκλητήρια", invSwitchCap:"Αλλαγή προσκλητηρίου", invSheetEmpty:"Κανένα άτομο ακόμη — τσεκάρετε ονόματα από τη λίστα παρακάτω.", invFilterAll:"Όλα τα ονόματα", invFilterLoose:"Χωρίς προσκλητήριο", invFilterIn:"Σε αυτό",
+  invBandIn:"Το προσκλητήριο", invBandPick:"Διαλέξτε από τη λίστα", invBandPickN:"{n} καλεσμένοι", invSegNote:"Οι τρεις αριθμοί μετρούν ονόματα της λίστας, όχι θέσεις: {s} από τα {n} ονόματα έχουν θέση στην κάτοψη.", invIndexNote:"Κάθε προσκλητήριο δείχνει πόσα άτομα έχει και πόσα από αυτά κάθονται κάπου.",
+  invPipTip:"✉ {n} — άνοιγμα του προσκλητηρίου", invPipOpened:"Ο/Η {g} είναι στο «{n}» — τα υπόλοιπα άτομά του είναι σημειωμένα στην κάτοψη", invPipOpenedPhone:"Ο/Η {g}: «{n}» — τα άτομά του σημειωμένα στην κάτοψη · ≡ για τη λίστα", invOpenOne:"Προσκλητήριο «{n}» — άνοιγμα",
+  psExists:"Υπάρχει ήδη: «{n}»", psAlready:" · {k} ήδη μέσα", psAdd:"Προσθήκη", tPartyAdded:"«{n}»: +{k} — τώρα {c} άτομα", tPartyAllIn:"Όλοι είναι ήδη στο «{n}»", invNewGuest:"＋ Προσθήκη «{n}» στη λίστα και σε αυτό το προσκλητήριο", tGuestCreatedInv:"Ο/Η {g} μπήκε στη λίστα και στο «{p}»", invNotKept:"Το «{n}» δεν κρατήθηκε — δεν είχε ονόματα.", invSeatsUnchanged:"Η προσθήκη σε προσκλητήριο δεν αλλάζει θέσεις.", invKeptSeat:" — η θέση δεν άλλαξε", invTip:"Προσκλητήρια: ομαδοποιήστε τα ονόματα ανά οικογένεια — μετρώνται και κάθονται μαζί.", invAddDone:"Τέλος", invInOther:"στο «{p}»", invSeatAll:"Τοποθέτηση όλων σε τραπέζι…", invAllThere:"Όλοι κάθονται ήδη στο «{t}»", invRename:"Μετονομασία", invDelete:"Διαγραφή", invDelConfirm:"Διαγραφή του προσκλητηρίου «{n}»; Τα {k} άτομα μένουν στη λίστα ως μεμονωμένοι καλεσμένοι, στις θέσεις τους.", invRemove:"Αφαίρεση από το προσκλητήριο", invMoveTo:"Μετακίνηση σε άλλο προσκλητήριο", invMoveCap:"Μετακίνηση σε:", invMoveNew:"＋ Νέο προσκλητήριο…", invNewPrompt:"Όνομα του νέου προσκλητηρίου:", invJump:"Δείτε τη θέση στην κάτοψη", invEditTip:"Επεξεργασία / προσθήκη ατόμων", geInvEdit:"Προσκλητήριο: {n} — επεξεργασία",
   tInvAdded:"«{g}» → «{p}»", tInvAddedMoved:"«{g}» → «{p}» (ήταν στο «{a}»)", tInvRemoved:"«{g}» βγήκε από το «{p}»", tInvGone:" — το «{p}» έμεινε χωρίς άτομα και αφαιρέθηκε", tInvMoved:"«{g}» μετακινήθηκε στο «{b}» (από το «{a}»)", tInvMerged:"Συγχωνεύτηκε με το «{n}» ({k} άτομα)", tInvDeleted:"Διαγράφηκε το προσκλητήριο «{n}» — οι καλεσμένοι έμειναν · ↶ για αναίρεση",
   labCap:"Η δωρεάν δοκιμή έχει έως {n} τραπέζια. Για ολόκληρο τον γάμο σας:", labCapCut:"Κρατήθηκαν τα πρώτα {n} τραπέζια — {k} ακόμη δεν μπήκαν (οι καλεσμένοι τους είναι στη λίστα).", labCapSkip:"{k} τραπέζια του αρχείου δεν χωρούν (οι καλεσμένοι τους είναι στη λίστα).",
   gripTitle:"Τοποθέτηση σε τραπέζι…", pmFor:"Θέση για: {n}", pmFloor:"Διαλέξτε καρέκλα στην κάτοψη", tPlaced:"{n} → {t}",
@@ -1269,7 +1396,8 @@ el:{
   cNewer:"Φορτώθηκε νεότερη έκδοση από άλλη συσκευή", cUpdated:"Ενημερώθηκε από το cloud", cOpenedSync:"Άνοιξε κοινόχρηστο σχέδιο (συγχρονισμένο)", cOpenedView:"Άνοιξε κοινόχρηστο σχέδιο (μόνο προβολή)", cOpenedNamed:"Άνοιξε: «{n}»", cOpenedNamedView:"Άνοιξε (μόνο προβολή): «{n}»", cOpenFail:"Δεν ήταν δυνατό το άνοιγμα του συνδέσμου",
   printTitle:"Σχέδιο Τραπεζιών Γάμου", printSub:"{t} τραπέζια · {s} καλεσμένοι με θέση · {c} θέσεις", printEmpty:"— κενή —", printUnassigned:"Χωρίς θέση ({n}):",
   stProbable:"πιθανή", stCut:"ακυρώθηκε", stConfirmed:"επιβεβαιωμένη",
-  mCsvOut:"Λίστα καλεσμένων (Excel)", mCsvIn:"Εισαγωγή ονομάτων από Excel…", csvFile:"καλεσμένοι", csvName:"Όνομα", csvTable:"Τραπέζι", csvGroup:"Ομάδα", csvParty:"Προσκλητήριο", csvStatus:"Κατάσταση", csvNote:"Σημείωση",
+  mXlsxSeated:"Excel: όσοι έχουν θέση", mXlsxAll:"Excel: όλοι οι καλεσμένοι", xlsxSeatedLbl:"με θέση", xlsxAllLbl:"όλοι", xlsxColGroup:"ΟΜΑΔΑ", xlsxNoSeat:"Χωρίς θέση",
+  mCsvOut:"Λίστα καλεσμένων (CSV)", mCsvIn:"Εισαγωγή ονομάτων από Excel…", csvFile:"καλεσμένοι", csvName:"Όνομα", csvTable:"Τραπέζι", csvGroup:"Ομάδα", csvParty:"Προσκλητήριο", csvStatus:"Κατάσταση", csvNote:"Σημείωση",
   csvInTitle:"Εισαγωγή ονομάτων (Excel / CSV)", csvInHint:"Επικολλήστε κελιά από το Excel ή διαλέξτε αρχείο .csv. Αναγνωρίζονται οι στήλες Όνομα (ή Όνομα + Επώνυμο), Τραπέζι, Ομάδα, Προσκλητήριο, Κατάσταση, Σημείωση — όλες εκτός από το όνομα είναι προαιρετικές.", csvPh:"Επικολλήστε εδώ — μία γραμμή ανά καλεσμένο",
   csvSum:"Ονόματα: {n} · νέα: {k}", csvSumDup:" · ήδη στη λίστα (παραλείπονται): {d}", csvCols:"Στήλες: {c}", csvNoHead:"Χωρίς επικεφαλίδες: η πρώτη στήλη γίνεται όνομα.", csvAdd:"Προσθήκη στη λίστα ({n})",
   csvEnc:"Το αρχείο δεν ήταν σε UTF-8 και διαβάστηκε ως {e}. Αν τα ονόματα φαίνονται λάθος, αποθηκεύστε το στο Excel ως «CSV UTF-8» και δοκιμάστε ξανά.", csvBad:"Κάποιοι χαρακτήρες δεν διαβάστηκαν (�). Αποθηκεύστε το αρχείο στο Excel ως «CSV UTF-8» και δοκιμάστε ξανά.", csvXlsx:"Αυτό είναι αρχείο Excel (.xlsx). Στο Excel: Αποθήκευση ως → «CSV UTF-8», και διαλέξτε αυτό το αρχείο.",
@@ -1343,7 +1471,10 @@ en:{
   geParty:"Invitation", gePartyPh:"e.g. The Smiths", gripParty:"Seat the whole invitation…", partyRename:"Rename / dissolve invitation", partyRenamePrompt:"Invitation name (empty = dissolve):",
   pbParty:"{n} · {c} people", tPartyPartial:"{n}/{m} of the invitation at “{t}” — not everyone fits", printInvites:"Invitations", printNoSeat:"no seat",
   mInv:"Invitations…", invTitle:"Invitations", invSum:"{p} invitations · {n}", invSum1:"1 invitation · {n}", invSearchPh:"Search invitations or names…", invNew:"New invitation", invNewShort:"New", invNewPh:"Invitation name (e.g. The Smiths)", invDraftHint:"Add people — an invitation without people is not kept.", invOne:"1 person", invPeople:"{n} people", invSeatedN:"{s} seated", invEmpty:"No invitations yet. Press “New invitation” — or type “The Smiths:” above the names when you add them to the list.", invRo:"View only — nothing can be changed here.",
-  invAdd:"Add people", invAddPh:"Type a name…", invAddLoose:"Not in an invitation", invLooseShort:"{n} without", invLooseChip:"not in an invitation", invLooseN:"{n} people not in an invitation", invLooseN1:"1 person not in an invitation", invBackAll:"All invitations", invSwitchCap:"Switch invitation", invSheetEmpty:"Nobody yet — tick names from the list below.", invFilterAll:"Everyone", invFilterLoose:"Not yet", invFilterIn:"In this one", invNewGuest:"+ Add “{n}” to the list and to this invitation", tGuestCreatedInv:"{g} was added to the list and to “{p}”", invNotKept:"“{n}” was not kept — it had no names.", invSeatsUnchanged:"Adding someone to an invitation does not change seats.", invKeptSeat:" — the seat did not change", invTip:"Invitations: group names by household — they are counted and seated together.", invAddDone:"Done", invInOther:"in “{p}”", invSeatAll:"Seat everyone at a table…", invAllThere:"Everyone already sits at “{t}”", invRename:"Rename", invDelete:"Delete", invDelConfirm:"Delete the invitation “{n}”? Its {k} people stay on the list as individual guests, in their seats.", invRemove:"Remove from the invitation", invMoveTo:"Move to another invitation", invMoveCap:"Move to:", invMoveNew:"+ New invitation…", invNewPrompt:"Name of the new invitation:", invJump:"Show the seat on the floor plan", invEditTip:"Edit / add people", geInvEdit:"Invitation: {n} — edit",
+  invAdd:"Add people", invAddPh:"Type a name…", invAddLoose:"Not in an invitation", invLooseShort:"{n} without", invLooseChip:"not in an invitation", invLooseN:"{n} people not in an invitation", invLooseN1:"1 person not in an invitation", invBackAll:"All invitations", invSwitchCap:"Switch invitation", invSheetEmpty:"Nobody yet — tick names from the list below.", invFilterAll:"Every name", invFilterLoose:"No invitation yet", invFilterIn:"In this one",
+  invBandIn:"This invitation", invBandPick:"Pick from the list", invBandPickN:"{n} guests", invSegNote:"The three numbers count names on the list, not seats: {s} of the {n} names have a seat on the floor plan.", invIndexNote:"Each invitation shows how many people it has and how many of them are seated.",
+  invPipTip:"✉ {n} — open the invitation", invPipOpened:"{g} is in “{n}” — its other people are marked on the floor plan", invPipOpenedPhone:"{g}: “{n}” — its people are marked on the floor plan · ≡ for the list", invOpenOne:"Invitation “{n}” — open",
+  psExists:"Already exists: “{n}”", psAlready:" · {k} already in", psAdd:"Add", tPartyAdded:"“{n}”: +{k} — now {c} people", tPartyAllIn:"Everyone is already in “{n}”", invNewGuest:"+ Add “{n}” to the list and to this invitation", tGuestCreatedInv:"{g} was added to the list and to “{p}”", invNotKept:"“{n}” was not kept — it had no names.", invSeatsUnchanged:"Adding someone to an invitation does not change seats.", invKeptSeat:" — the seat did not change", invTip:"Invitations: group names by household — they are counted and seated together.", invAddDone:"Done", invInOther:"in “{p}”", invSeatAll:"Seat everyone at a table…", invAllThere:"Everyone already sits at “{t}”", invRename:"Rename", invDelete:"Delete", invDelConfirm:"Delete the invitation “{n}”? Its {k} people stay on the list as individual guests, in their seats.", invRemove:"Remove from the invitation", invMoveTo:"Move to another invitation", invMoveCap:"Move to:", invMoveNew:"+ New invitation…", invNewPrompt:"Name of the new invitation:", invJump:"Show the seat on the floor plan", invEditTip:"Edit / add people", geInvEdit:"Invitation: {n} — edit",
   tInvAdded:"“{g}” → “{p}”", tInvAddedMoved:"“{g}” → “{p}” (was in “{a}”)", tInvRemoved:"“{g}” left “{p}”", tInvGone:" — “{p}” has no one left and was removed", tInvMoved:"“{g}” moved to “{b}” (from “{a}”)", tInvMerged:"Merged with “{n}” ({k} people)", tInvDeleted:"Invitation “{n}” deleted — the guests stay · ↶ to undo",
   labCap:"The free trial has up to {n} tables. For your whole wedding:", labCapCut:"Kept the first {n} tables — {k} more were left out (their guests are on the list).", labCapSkip:"{k} tables from the file do not fit (their guests are on the list).",
   gripTitle:"Place at a table…", pmFor:"Seat for: {n}", pmFloor:"Pick a chair on the floor", tPlaced:"{n} → {t}",
@@ -1413,7 +1544,8 @@ en:{
   cNewer:"Loaded a newer version from another device", cUpdated:"Updated from cloud", cOpenedSync:"Opened shared plan (synced)", cOpenedView:"Opened shared plan (view-only)", cOpenedNamed:"Opened: “{n}”", cOpenedNamedView:"Opened (view-only): “{n}”", cOpenFail:"Couldn't open that link",
   printTitle:"Wedding Seating Plan", printSub:"{t} tables · {s} guests seated · {c} seats", printEmpty:"— empty —", printUnassigned:"Unseated ({n}):",
   stProbable:"probable", stCut:"cancelled", stConfirmed:"confirmed",
-  mCsvOut:"Guest list (Excel)", mCsvIn:"Import names from Excel…", csvFile:"guests", csvName:"Name", csvTable:"Table", csvGroup:"Group", csvParty:"Invitation", csvStatus:"Status", csvNote:"Note",
+  mXlsxSeated:"Excel: guests with a seat", mXlsxAll:"Excel: every guest", xlsxSeatedLbl:"seated", xlsxAllLbl:"everyone", xlsxColGroup:"Group", xlsxNoSeat:"No seat",
+  mCsvOut:"Guest list (CSV)", mCsvIn:"Import names from Excel…", csvFile:"guests", csvName:"Name", csvTable:"Table", csvGroup:"Group", csvParty:"Invitation", csvStatus:"Status", csvNote:"Note",
   csvInTitle:"Import names (Excel / CSV)", csvInHint:"Paste cells from Excel or choose a .csv file. Recognised columns: Name (or First name + Last name), Table, Group, Invitation, Status, Note — all but the name are optional.", csvPh:"Paste here — one line per guest",
   csvSum:"Names: {n} · new: {k}", csvSumDup:" · already on the list (skipped): {d}", csvCols:"Columns: {c}", csvNoHead:"No headings: the first column becomes the name.", csvAdd:"Add to list ({n})",
   csvEnc:"The file was not UTF-8 and was read as {e}. If the names look wrong, save it in Excel as “CSV UTF-8” and try again.", csvBad:"Some characters could not be read (�). Save the file in Excel as “CSV UTF-8” and try again.", csvXlsx:"This is an Excel file (.xlsx). In Excel: Save as → “CSV UTF-8”, then choose that file.",
@@ -1487,7 +1619,10 @@ de:{
   geParty:"Einladung", gePartyPh:"z. B. Familie Müller", gripParty:"Ganze Einladung platzieren…", partyRename:"Einladung umbenennen / auflösen", partyRenamePrompt:"Name der Einladung (leer = auflösen):",
   pbParty:"{n} · {c} Personen", tPartyPartial:"{n}/{m} der Einladung an „{t}“ — nicht alle passen", printInvites:"Einladungen", printNoSeat:"ohne Platz",
   mInv:"Einladungen…", invTitle:"Einladungen", invSum:"{p} Einladungen · {n}", invSum1:"1 Einladung · {n}", invSearchPh:"Einladung oder Namen suchen…", invNew:"Neue Einladung", invNewShort:"Neu", invNewPh:"Name der Einladung (z. B. Familie Müller)", invDraftHint:"Fügen Sie Personen hinzu — eine Einladung ohne Personen wird nicht gespeichert.", invOne:"1 Person", invPeople:"{n} Personen", invSeatedN:"{s} mit Platz", invEmpty:"Noch keine Einladungen. Tippen Sie auf „Neue Einladung“ — oder schreiben Sie „Familie Müller:“ über die Namen, wenn Sie sie zur Liste hinzufügen.", invRo:"Nur Ansicht — hier kann nichts geändert werden.",
-  invAdd:"Personen hinzufügen", invAddPh:"Namen eingeben…", invAddLoose:"Ohne Einladung", invLooseShort:"{n} ohne", invLooseChip:"ohne Einladung", invLooseN:"{n} Personen ohne Einladung", invLooseN1:"1 Person ohne Einladung", invBackAll:"Alle Einladungen", invSwitchCap:"Einladung wechseln", invSheetEmpty:"Noch niemand — Namen aus der Liste unten antippen.", invFilterAll:"Alle", invFilterLoose:"Ohne", invFilterIn:"In dieser", invNewGuest:"+ „{n}“ zur Liste und zu dieser Einladung hinzufügen", tGuestCreatedInv:"{g} wurde zur Liste und zu „{p}“ hinzugefügt", invNotKept:"„{n}“ wurde nicht gespeichert — ohne Namen.", invSeatsUnchanged:"Eine Einladung ändert keine Sitzplätze.", invKeptSeat:" — der Platz bleibt", invTip:"Einladungen: Namen nach Haushalt gruppieren — sie werden gezählt und zusammen gesetzt.", invAddDone:"Fertig", invInOther:"in „{p}“", invSeatAll:"Alle an einen Tisch setzen…", invAllThere:"Alle sitzen schon an „{t}“", invRename:"Umbenennen", invDelete:"Löschen", invDelConfirm:"Einladung „{n}“ löschen? Die {k} Personen bleiben als einzelne Gäste auf der Liste, auf ihren Plätzen.", invRemove:"Aus der Einladung entfernen", invMoveTo:"In eine andere Einladung verschieben", invMoveCap:"Verschieben nach:", invMoveNew:"+ Neue Einladung…", invNewPrompt:"Name der neuen Einladung:", invJump:"Platz im Plan zeigen", invEditTip:"Bearbeiten / Personen hinzufügen", geInvEdit:"Einladung: {n} — bearbeiten",
+  invAdd:"Personen hinzufügen", invAddPh:"Namen eingeben…", invAddLoose:"Ohne Einladung", invLooseShort:"{n} ohne", invLooseChip:"ohne Einladung", invLooseN:"{n} Personen ohne Einladung", invLooseN1:"1 Person ohne Einladung", invBackAll:"Alle Einladungen", invSwitchCap:"Einladung wechseln", invSheetEmpty:"Noch niemand — Namen aus der Liste unten antippen.", invFilterAll:"Alle Namen", invFilterLoose:"Ohne Einladung", invFilterIn:"In dieser",
+  invBandIn:"Diese Einladung", invBandPick:"Aus der Liste wählen", invBandPickN:"{n} Gäste", invSegNote:"Die drei Zahlen zählen Namen der Liste, keine Plätze: {s} der {n} Namen haben einen Platz im Plan.", invIndexNote:"Jede Einladung zeigt, wie viele Personen sie hat und wie viele davon einen Platz haben.",
+  invPipTip:"✉ {n} — Einladung öffnen", invPipOpened:"{g} gehört zu „{n}“ — die übrigen Personen sind im Plan markiert", invPipOpenedPhone:"{g}: „{n}“ — die Personen sind im Plan markiert · ≡ für die Liste", invOpenOne:"Einladung „{n}“ — öffnen",
+  psExists:"Gibt es schon: „{n}“", psAlready:" · {k} schon drin", psAdd:"Hinzufügen", tPartyAdded:"„{n}“: +{k} — jetzt {c} Personen", tPartyAllIn:"Alle sind schon in „{n}“", invNewGuest:"+ „{n}“ zur Liste und zu dieser Einladung hinzufügen", tGuestCreatedInv:"{g} wurde zur Liste und zu „{p}“ hinzugefügt", invNotKept:"„{n}“ wurde nicht gespeichert — ohne Namen.", invSeatsUnchanged:"Eine Einladung ändert keine Sitzplätze.", invKeptSeat:" — der Platz bleibt", invTip:"Einladungen: Namen nach Haushalt gruppieren — sie werden gezählt und zusammen gesetzt.", invAddDone:"Fertig", invInOther:"in „{p}“", invSeatAll:"Alle an einen Tisch setzen…", invAllThere:"Alle sitzen schon an „{t}“", invRename:"Umbenennen", invDelete:"Löschen", invDelConfirm:"Einladung „{n}“ löschen? Die {k} Personen bleiben als einzelne Gäste auf der Liste, auf ihren Plätzen.", invRemove:"Aus der Einladung entfernen", invMoveTo:"In eine andere Einladung verschieben", invMoveCap:"Verschieben nach:", invMoveNew:"+ Neue Einladung…", invNewPrompt:"Name der neuen Einladung:", invJump:"Platz im Plan zeigen", invEditTip:"Bearbeiten / Personen hinzufügen", geInvEdit:"Einladung: {n} — bearbeiten",
   tInvAdded:"„{g}“ → „{p}“", tInvAddedMoved:"„{g}“ → „{p}“ (war in „{a}“)", tInvRemoved:"„{g}“ aus „{p}“ entfernt", tInvGone:" — „{p}“ ist leer und wurde entfernt", tInvMoved:"„{g}“ nach „{b}“ verschoben (aus „{a}“)", tInvMerged:"Mit „{n}“ zusammengeführt ({k} Personen)", tInvDeleted:"Einladung „{n}“ gelöscht — die Gäste bleiben · ↶ zum Rückgängigmachen",
   labCap:"Die kostenlose Testversion hat bis zu {n} Tische. Für Ihre ganze Hochzeit:", labCapCut:"Die ersten {n} Tische wurden übernommen — {k} weitere nicht (ihre Gäste stehen auf der Liste).", labCapSkip:"{k} Tische aus der Datei passen nicht mehr (ihre Gäste stehen auf der Liste).",
   gripTitle:"An einen Tisch setzen…", pmFor:"Platz für: {n}", pmFloor:"Stuhl auf der Fläche wählen", tPlaced:"{n} → {t}",
@@ -1557,7 +1692,8 @@ de:{
   cNewer:"Neuere Version von einem anderen Gerät geladen", cUpdated:"Aus der Cloud aktualisiert", cOpenedSync:"Geteilten Plan geöffnet (synchron)", cOpenedView:"Geteilten Plan geöffnet (nur lesen)", cOpenedNamed:"Geöffnet: „{n}“", cOpenedNamedView:"Geöffnet (nur lesen): „{n}“", cOpenFail:"Link konnte nicht geöffnet werden",
   printTitle:"Hochzeits-Sitzplan", printSub:"{t} Tische · {s} Gäste platziert · {c} Plätze", printEmpty:"— frei —", printUnassigned:"Ohne Platz ({n}):",
   stProbable:"wahrscheinlich", stCut:"abgesagt", stConfirmed:"bestätigt",
-  mCsvOut:"Gästeliste (Excel)", mCsvIn:"Namen aus Excel importieren…", csvFile:"Gäste", csvName:"Name", csvTable:"Tisch", csvGroup:"Gruppe", csvParty:"Einladung", csvStatus:"Status", csvNote:"Notiz",
+  mXlsxSeated:"Excel: Gäste mit Platz", mXlsxAll:"Excel: alle Gäste", xlsxSeatedLbl:"mit Platz", xlsxAllLbl:"alle", xlsxColGroup:"Gruppe", xlsxNoSeat:"Ohne Platz",
+  mCsvOut:"Gästeliste (CSV)", mCsvIn:"Namen aus Excel importieren…", csvFile:"Gäste", csvName:"Name", csvTable:"Tisch", csvGroup:"Gruppe", csvParty:"Einladung", csvStatus:"Status", csvNote:"Notiz",
   csvInTitle:"Namen importieren (Excel / CSV)", csvInHint:"Zellen aus Excel einfügen oder eine .csv-Datei wählen. Erkannte Spalten: Name (oder Vorname + Nachname), Tisch, Gruppe, Einladung, Status, Notiz — alle außer dem Namen sind freiwillig.", csvPh:"Hier einfügen — eine Zeile pro Gast",
   csvSum:"Namen: {n} · neu: {k}", csvSumDup:" · schon auf der Liste (übersprungen): {d}", csvCols:"Spalten: {c}", csvNoHead:"Keine Überschriften: die erste Spalte wird der Name.", csvAdd:"Zur Liste hinzufügen ({n})",
   csvEnc:"Die Datei war nicht UTF-8 und wurde als {e} gelesen. Wenn die Namen falsch aussehen, speichern Sie sie in Excel als „CSV UTF-8“ und versuchen Sie es erneut.", csvBad:"Einige Zeichen konnten nicht gelesen werden (�). Speichern Sie die Datei in Excel als „CSV UTF-8“ und versuchen Sie es erneut.", csvXlsx:"Das ist eine Excel-Datei (.xlsx). In Excel: Speichern unter → „CSV UTF-8“, dann diese Datei wählen.",
@@ -1907,11 +2043,52 @@ function statusTitle(id){ const s=gStatus(id); const n=gNote(id); return (STATUS
 function hasInv(id){ const g=state.guests[id]; return !!(g && g.partyId); }   // the pip: belongs to an invitation, nothing more
 function invTitle(id){ const p=partyOf(id); return p?` · ✉ ${caseName(p.name)}`:""; }   // hovering any name anywhere says WHICH invitation
 function statusTag(id){ const s=gStatus(id); return STATUS_TXT(s)?`<span class="stag${s==="cut"?" cut":""}">${STATUS_TXT(s)}</span>`:""; }
+// ---------- the pip, as a button ----------
+// One mark, one meaning, everywhere he works: press it and the invitation opens in the left panel with the rest of
+// its people ringed on the floor. Read only may press it too — opening and highlighting change nothing.
+// `host` must already be a positioned box; the caller adds class "pipbtn" so the decorative ::after stands down.
+function makeInvPip(gid, host){
+  const p=partyOf(gid); if(!p) return null;
+  const b=document.createElement("button");
+  b.type="button"; b.className="ipip"; b.dataset.pip=gid;
+  b.title=tr("invPipTip",{n:caseName(p.name)}); b.setAttribute("aria-label", b.title);
+  // A pill is draggable (mouse) and long-pressable (touch). Neither may start from the mark: swallow the gesture
+  // at pointerdown and put draggable back on the very next pointerup, wherever it lands.
+  b.addEventListener("pointerdown",e=>{
+    e.stopPropagation();
+    if(!host.draggable) return;
+    host.draggable=false;
+    const back=()=>{ host.draggable=true; document.removeEventListener("pointerup",back,true); document.removeEventListener("pointercancel",back,true); };
+    document.addEventListener("pointerup",back,true); document.addEventListener("pointercancel",back,true);
+  });
+  b.addEventListener("contextmenu",e=>{ e.preventDefault(); e.stopPropagation(); });   // never the guest editor / Android's long-press menu
+  b.addEventListener("dblclick",e=>e.stopPropagation());
+  b.addEventListener("click",e=>{ e.preventDefault(); e.stopPropagation(); invOpenFor(gid, host.classList.contains("seat")); });
+  return b;
+}
+// Hang the mark on a host that has one — returns the host, so callers can chain.
+function addInvPip(host, gid){
+  const b=makeInvPip(gid, host); if(b){ host.classList.add("pipbtn"); host.appendChild(b); }
+  return host;
+}
+// The mark's one action: open that invitation, ring its people on the floor.
+// Pressed ON THE FLOOR on a phone, the ring IS the answer he asked for — so the 330 px drawer does not slide over
+// it and the table sheet he was working in stays open; the panel is one tap on ≡ away, and the toast says so.
+function invOpenFor(gid, fromFloor){
+  const p=partyOf(gid); if(!p) return;
+  const quiet=isNarrow() && !!fromFloor;
+  enterInv(p.id, quiet?{stay:true}:undefined);      // enterInv() ends with renderInvHighlight()
+  toast(tr(quiet?"invPipOpenedPhone":"invPipOpened",{g:guestName(gid), n:caseName(p.name)}), quiet?4200:2600);
+}
 
 // ---------- text measuring (so seats grow to fit the name) ----------
 const _measureCtx = document.createElement("canvas").getContext("2d");
 function textWidth(txt, fs){ _measureCtx.font = `700 ${fs}px ${FONT_FAMILY}`; return _measureCtx.measureText(txt).width; }
-function seatWidthFor(name, fs){ return Math.round(clamp(textWidth(name,fs)+20, 46, 190)); }
+const PIP_W=18;   // the invitation mark's gutter inside a pill — must equal --pipw in the stylesheet
+// A marked pill is built PIP_W wider and hands that width straight back as padding-right, so the text box is
+// byte-for-byte the one it had before the mark existed: the mark costs nobody a letter. gid is optional — a caller
+// that has no guest (an empty chair) passes nothing and gets the plain width.
+function seatWidthFor(name, fs, gid){ return Math.round(clamp(textWidth(name,fs)+20, 46, 190)) + (gid&&hasInv(gid)?PIP_W:0); }
 
 // ============================================================
 //  RENDER
@@ -1972,21 +2149,26 @@ function buildSeat(t,i,relx,rely,fs,seatH){
   const gid=t.seats[i];
   const picked=pick && pick.from==="seat" && pick.tableId===t.id && pick.seatIndex===i && pick.guestId===gid;
   seat.className="seat"+(gid?" occupied":"")+(picked?" picked":"");
-  seat.style.left=relx+"px"; seat.style.top=rely+"px";
   seat.style.height=seatH+"px"; seat.style.borderRadius=(seatH/2)+"px"; seat.style.fontSize=fs+"px";
   seat.dataset.tableId=t.id; seat.dataset.seatIndex=i;
+  let sw=34;                                   // the pill's width — it also decides where its left edge goes
   if(gid){
     const col=guestColor(gid);
     const shown=displayName(gid);
-    seat.style.backgroundColor=col; seat.style.width=seatWidthFor(shown,fs)+"px";   // colour only: the CSS gradient keeps the pill's sheen
+    sw=seatWidthFor(shown,fs,gid); seat.style.backgroundColor=col; seat.style.width=sw+"px";   // colour only: the CSS gradient keeps the pill's sheen
     if(gStatus(gid)!=="confirmed"){ seat.style.borderStyle="dashed"; seat.style.borderColor="rgba(255,255,255,.9)"; seat.style.backgroundClip="padding-box"; }   // not-yet-confirmed: white dashes inside the pill, visible on any floor
     seat.innerHTML=`<span class="nm">${escapeHtml(shown)}</span>`;
     seat.title=guestName(gid)+(guestGroup(gid)?` · ${guestGroup(gid).name}`:"")+statusTitle(gid)+invTitle(gid);
     seat.draggable=!isTouch&&!ACCESS.ro; seat.dataset.guestId=gid;   // touch moves with seatHold — no native (iOS) drag session competing
+    // THE mark, on the floor where he actually works. Built here, in the one place a pill is ever made, so every
+    // renderTables / renderFocus / renderAll puts it straight back — and a collided name carries it to the outer ring.
+    if(hasInv(gid)){ seat.classList.add("hasinv"); addInvPip(seat, gid); }
   }else{
     seat.style.width="34px";
     seat.innerHTML=`<span class="nm" style="opacity:.6">+</span>`;
   }
+  // relx/rely are the pill's CENTRE; with no centring transform we place its top-left ourselves (same pixels)
+  seat.style.left=(relx-sw/2)+"px"; seat.style.top=(rely-seatH/2)+"px";
   wireSeat(seat);
   return seat;
 }
@@ -2027,11 +2209,14 @@ function renderRoundTable(t, wrap){
   // chair by a thin leader; a table where nothing collides looks exactly as it always did.
   const {W, seats}=roundLayout(t);
   let hTop=g.ringR+g.seatH/2;   // the rotate handle sits above whatever pill crosses its column
+  // leaders first, pills after: with no z-index on a pill (see .seat.occupied) only tree order keeps the hairlines under the names
+  const lead=document.createDocumentFragment(), pills=document.createDocumentFragment();
   seats.forEach((p,i)=>{
     if(Math.abs(p.x)<W[i]/2+9 && -p.y+g.seatH/2>hTop) hTop=-p.y+g.seatH/2;
-    if(p.moved) wrap.appendChild(seatLeader(p.cx, p.cy, p.x, p.y, t.seats[i]));
-    wrap.appendChild(buildSeat(t,i, p.x, p.y, g.fs, g.seatH));
+    if(p.moved) lead.appendChild(seatLeader(p.cx, p.cy, p.x, p.y, t.seats[i]));
+    pills.appendChild(buildSeat(t,i, p.x, p.y, g.fs, g.seatH));
   });
+  wrap.appendChild(lead); wrap.appendChild(pills);
   addTableRotateHandle(wrap, t, hTop+19);   // = ringR+30 when nothing moved
 }
 // Boxes placed as close to home as possible without collisions (stage frame). items: {hx,hy,w,h,ox,oy} — home, size and the
@@ -2066,7 +2251,7 @@ function hitRot(x,y,aw,ah,B){
 function roundLayout(t){
   const g=roundGeom(t), cnt=t.capacity, rot=(t.rot||0)*Math.PI/180, c=Math.cos(rot), s=Math.sin(rot), R=g.ringR, h=g.seatH;
   const ang=i=>(i/cnt)*2*Math.PI-Math.PI/2+rot;
-  const W=[]; for(let i=0;i<cnt;i++){ const gid=t.seats[i]; W.push(gid?seatWidthFor(displayName(gid),g.fs):34); }
+  const W=[]; for(let i=0;i<cnt;i++){ const gid=t.seats[i]; W.push(gid?seatWidthFor(displayName(gid),g.fs,gid):34); }
   const chairs=[], items=[];
   for(let i=0;i<cnt;i++){ const a=ang(i), hx=Math.cos(a)*R, hy=Math.sin(a)*R;
     if(t.seats[i]) items.push({i,hx,hy,w:W[i],h,ox:Math.cos(a),oy:Math.sin(a), slide:d=>({x:Math.cos(a+d/R)*R, y:Math.sin(a+d/R)*R}), maxSlide:W[i]}); else chairs.push({x:hx,y:hy,w:34,h}); }
@@ -2080,7 +2265,7 @@ function roundLayout(t){
 function headLayout(t){
   const g=headGeom(t), rot=(t.rot||0)*Math.PI/180, c=Math.cos(rot), s=Math.sin(rot), h=g.seatH;
   const toS=(x,y)=>({x:x*c-y*s, y:x*s+y*c}), toW=(X,Y)=>({x:X*c+Y*s, y:-X*s+Y*c});
-  const W=[]; for(let i=0;i<g.top;i++){ const gid=t.seats[i]; W.push(gid?seatWidthFor(displayName(gid),g.fs):34); }
+  const W=[]; for(let i=0;i<g.top;i++){ const gid=t.seats[i]; W.push(gid?seatWidthFor(displayName(gid),g.fs,gid):34); }
   const rely=g.tableH/2+h/2+6;
   const corners=[[-g.tableW/2,-g.tableH/2],[g.tableW/2,-g.tableH/2],[g.tableW/2,g.tableH/2],[-g.tableW/2,g.tableH/2]].map(([x,y])=>toS(x,y));
   const bx=Math.min(...corners.map(p=>p.x)), bX=Math.max(...corners.map(p=>p.x)), by=Math.min(...corners.map(p=>p.y)), bY=Math.max(...corners.map(p=>p.y));
@@ -2088,7 +2273,7 @@ function headLayout(t){
   for(let i=0;i<g.top;i++){ const hw=-g.innerW/2+g.slot/2+i*g.slot, p=toS(hw,rely); homes.push({x:hw,y:rely});
     if(t.seats[i]) items.push({i,hx:p.x,hy:p.y,w:W[i],h,ox:-s,oy:c, slide:d=>({x:p.x+d*c, y:p.y+d*s}), maxSlide:W[i]}); else obstacles.push({x:p.x,y:p.y,w:34,h}); }
   const li=g.top, ri=g.top+1, endGap=30;
-  [[li,-(g.tableW/2)-endGap],[ri,(g.tableW/2)+endGap]].forEach(([idx,x])=>{ if(idx<t.capacity){ const p=toS(x,0); obstacles.push({x:p.x,y:p.y,w:t.seats[idx]?seatWidthFor(displayName(t.seats[idx]),g.fs):34,h}); } });
+  [[li,-(g.tableW/2)-endGap],[ri,(g.tableW/2)+endGap]].forEach(([idx,x])=>{ if(idx<t.capacity){ const p=toS(x,0); obstacles.push({x:p.x,y:p.y,w:t.seats[idx]?seatWidthFor(displayName(t.seats[idx]),g.fs,t.seats[idx]):34,h}); } });
   const placed=placeNear(items, obstacles, null);
   const pos=homes.map(hm=>({x:hm.x,y:hm.y,sx:0,sy:0,moved:false}));
   items.forEach((it,k)=>{ const p=placed[k], w=toW(p.x,p.y); pos[it.i]={x:w.x,y:w.y,sx:p.x,sy:p.y,moved:Math.abs(p.x-it.hx)>3||Math.abs(p.y-it.hy)>3}; });
@@ -2116,13 +2301,15 @@ function renderHeadTable(t, wrap){
   // main row on the FAR side of the table, so the couple sits behind the table facing the dance floor
   // the row of names under the table: colliding names slide sideways (past the table ends if needed), tied to their chair
   const {homes, pos}=headLayout(t);
+  const lead=document.createDocumentFragment(), pills=document.createDocumentFragment();   // leaders under the pills by tree order
   for(let i=0;i<g.top;i++){ const p=pos[i];
-    if(t.seats[i] && p.moved) wrap.appendChild(seatLeader(homes[i].x, g.tableH/2, p.x, p.y, t.seats[i]));
-    wrap.appendChild(buildSeat(t,i, p.x, p.y, g.fs, g.seatH));
+    if(t.seats[i] && p.moved) lead.appendChild(seatLeader(homes[i].x, g.tableH/2, p.x, p.y, t.seats[i]));
+    pills.appendChild(buildSeat(t,i, p.x, p.y, g.fs, g.seatH));
   }
   const li=g.top, ri=g.top+1, endGap=30;
-  if(li<t.capacity) wrap.appendChild(buildSeat(t,li, -(g.tableW/2)-endGap, 0, g.fs, g.seatH));
-  if(ri<t.capacity) wrap.appendChild(buildSeat(t,ri,  (g.tableW/2)+endGap, 0, g.fs, g.seatH));
+  if(li<t.capacity) pills.appendChild(buildSeat(t,li, -(g.tableW/2)-endGap, 0, g.fs, g.seatH));
+  if(ri<t.capacity) pills.appendChild(buildSeat(t,ri,  (g.tableW/2)+endGap, 0, g.fs, g.seatH));
+  wrap.appendChild(lead); wrap.appendChild(pills);
   addTableRotateHandle(wrap, t, g.tableH/2 + g.seatH + 30);
 }
 // A long table (shape "rect"): chairs on both long sides, none at the ends. Seat order: side A (top, left→right) 0..per-1,
@@ -2138,7 +2325,7 @@ function rectLayout(t){
   const toS=(x,y)=>({x:x*c-y*s, y:x*s+y*c}), toW=(X,Y)=>({x:X*c+Y*s, y:-X*s+Y*c});
   const W=[], homes=[], items=[], obstacles=[{x:0,y:0,w:g.tableW,h:g.tableH,c,s}];   // the table top as the rotated box it is
   for(let i=0;i<g.n;i++){ const gid=t.seats[i], hm=rectHome(g,i), o=hm.b?{x:-s,y:c}:{x:s,y:-c};
-    W.push(gid?seatWidthFor(displayName(gid),g.fs):34);
+    W.push(gid?seatWidthFor(displayName(gid),g.fs,gid):34);
     const sh=Math.max(0, W[i]/2*Math.abs(s)+h/2*Math.abs(c)-h/2); hm.y+=hm.b?sh:-sh;   // turned table: an upright pill steps out until it clears the table top (0 at 0°, half its width at 90°)
     const p=toS(hm.x,hm.y); homes.push(hm);
     if(gid) items.push({i,hx:p.x,hy:p.y,w:W[i],h,ox:o.x,oy:o.y, slide:d=>({x:p.x+d*c, y:p.y+d*s}), maxSlide:W[i]}); else obstacles.push({x:p.x,y:p.y,w:34,h}); }
@@ -2155,10 +2342,12 @@ function renderRectTable(t, wrap){
   wireTableDisc(disc, t, wrap);
   const {W, homes, pos}=rectLayout(t);
   let hTop=g.tableH/2+6+g.seatH;   // the rotate handle sits above whatever pill crosses its column
+  const lead=document.createDocumentFragment(), pills=document.createDocumentFragment();   // leaders under the pills by tree order
   for(let i=0;i<g.n;i++){ const p=pos[i];
     if(t.seats[i] && Math.abs(p.x)<W[i]/2+9 && -p.y+g.seatH/2>hTop) hTop=-p.y+g.seatH/2;
-    if(t.seats[i] && p.moved) wrap.appendChild(seatLeader(homes[i].x, (homes[i].b?1:-1)*g.tableH/2, p.x, p.y, t.seats[i]));
-    wrap.appendChild(buildSeat(t,i, p.x, p.y, g.fs, g.seatH)); }
+    if(t.seats[i] && p.moved) lead.appendChild(seatLeader(homes[i].x, (homes[i].b?1:-1)*g.tableH/2, p.x, p.y, t.seats[i]));
+    pills.appendChild(buildSeat(t,i, p.x, p.y, g.fs, g.seatH)); }
+  wrap.appendChild(lead); wrap.appendChild(pills);
   addTableRotateHandle(wrap, t, hTop+19);
 }
 function buildTableWrap(t){
@@ -2278,15 +2467,25 @@ function renderPool(){
     hits.slice(0,40).forEach(h=>pool.appendChild(makeSeatedHit(h)));
     if(hits.length>40){ const more=document.createElement("div"); more.className="empty-note"; more.textContent=tr("moreMatches",{n:hits.length-40}); pool.appendChild(more); } }
 }
+// Band C — THE LIST YOU TICK FROM, under its own heading, with three tabs that say in full words what each one
+// filters and one quiet line that answers «το νούμερο 295 δε το βλέπω σε καμία από τις 3»: these count NAMES.
 function renderTickList(pool){
   const gids=Object.keys(state.guests), cur=invOpenId;
   const nAll=gids.length, nLoose=gids.filter(id=>!state.guests[id].partyId).length, nIn=cur?partyMembers(cur).length:0;
+  // heading + tabs are ONE sticky block: whatever he scrolls to, the list he is picking from carries its own label
+  // and its own filter. Only the quiet explanatory line below scrolls away, once read.
+  const head=document.createElement("div"); head.className="invpickhead";
+  const band=document.createElement("div"); band.className="invband pick";
+  band.innerHTML=`<span class="bt">${escapeHtml(tr("invBandPick"))}</span><span class="bn">${escapeHtml(tr("invBandPickN",{n:nAll}))}</span>`;
+  head.appendChild(band);
   const seg=document.createElement("div"); seg.className="seg"; seg.id="invSeg";
   seg.innerHTML=[["all","invFilterAll",nAll],["loose","invFilterLoose",nLoose],["in","invFilterIn",nIn]]
-    .map(([k,t,n])=>`<button type="button" data-f="${k}"${invFilter===k?' class="on"':""}>${escapeHtml(tr(t))}<span class="n">${n}</span></button>`).join("");
+    .map(([k,t,n])=>`<button type="button" data-f="${k}"${invFilter===k?' class="on"':""}><span class="lb">${escapeHtml(tr(t))}</span><span class="n">${n}</span></button>`).join("");
   seg.addEventListener("click",e=>{ const b=e.target.closest("[data-f]"); if(!b||b.dataset.f===invFilter) return;
     invFilter=b.dataset.f; invSticky.clear(); invSel=null; renderPool(); });           // a filter change clears the sticky set and the highlight
-  pool.appendChild(seg);
+  head.appendChild(seg); pool.appendChild(head);
+  const note=document.createElement("div"); note.className="invsegnote"; note.id="invSegNote";
+  note.textContent=invSegNoteText(); pool.appendChild(note);
   // A name that already exists must never be offered as "create" — not even when the current filter hides it
   // (that silently made a second «Μαρία Παπαδοπούλου»). Test every guest, and pull the one that exists back
   // into view through invSticky so the typist sees it instead.
@@ -2312,6 +2511,7 @@ function makeSeatedHit({id,t,i}){
   row.innerHTML=`<span class="nm">${escapeHtml(guestName(id))}${statusTag(id)}</span><span class="to">→ ${escapeHtml(t.label)}</span>`;
   row.title=tr("dragTo",{t:t.label,n:i+1})+invTitle(id);
   row.addEventListener("click",()=>goToSeat(t.id,i));
+  if(hasInv(id)) addInvPip(row, id);
   return row;
 }
 // A search hit: open that table (the usual glide + seat sheet) and show where the guest sits — the chair pulses, the row lights up.
@@ -2344,13 +2544,19 @@ function makeChip(id, opts){
     if(o.tick){
       const on=!!invOpenId && state.guests[id].partyId===invOpenId;
       const s=(o.seats||invSeats())[id], p=partyOf(id);
-      const ann=s?`→ ${escapeHtml(s.t.label)}`:(p&&!on?escapeHtml(tr("invInOther",{p:caseName(p.name)})):"");
-      chip.className="gchip tickable"+(on?" on":"")+(hasInv(id)?" hasinv":"")+(invSel===id?" sel":"");
+      // The accent dot is a BUTTON everywhere else (it opens the invitation); on a tick row the whole row is
+      // invToggle(), so the same dot in the same corner would have added or removed the person instead — two
+      // meanings for one mark, with no hover on touch to tell them apart. The dot goes; the annotation says it in
+      // words instead, and now says BOTH facts, the seat and the invitation, never one hiding the other.
+      const aSeat=s?`→ ${escapeHtml(s.t.label)}`:"", aInv=(p&&!on)?escapeHtml(tr("invInOther",{p:caseName(p.name)})):"";
+      const ann=(aSeat||aInv)?`<span class="a1">${aSeat}</span>${aSeat&&aInv?'<span class="sep"> · </span>':""}<span class="a2">${aInv}</span>`:"";
+      const annT=[s?tr("dragTo",{t:s.t.label,n:s.i+1}):"", (p&&!on)?tr("invInOther",{p:caseName(p.name)}):""].filter(Boolean).join(" · ");
+      chip.className="gchip tickable"+(on?" on":"")+(invSel===id?" sel":"");
       chip.draggable=false; chip.dataset.guestId=id;
       chip.style.borderLeftColor=col; chip.style.background=on?"":hexTint(col);
       chip.title=(guestGroup(id)?guestGroup(id).name:"")+statusTitle(id)+invTitle(id);
       chip.innerHTML=`<span class="gtick">${on?"✓":""}</span><span class="nm">${escapeHtml(guestName(id))}${statusTag(id)}</span>`
-        +(ann?`<span class="ann">${ann}</span>`:"");
+        +(ann?`<span class="ann${aSeat&&aInv?" both":""}" title="${escapeHtml(annT)}">${ann}</span>`:"");
       chip.addEventListener("click",()=>invToggle(id));
       return chip;
     }
@@ -2369,6 +2575,7 @@ function makeChip(id, opts){
     });
     chip.querySelector(".edit").addEventListener("click",e=>{ e.stopPropagation(); openGuestEditor(id,e); });
     chip.querySelector(".x").addEventListener("click",e=>{ e.stopPropagation(); if(pick&&pick.guestId===id) setPick(null); delete state.guests[id]; pruneParties(invOpenId); save(); renderPool(); renderGroups(); updateStats(); toast(tr("tGuestRemoved")); });
+    if(hasInv(id)) addInvPip(chip, id);   // the list's mark opens its invitation too
     return chip;
 }
 function updateStats(){
@@ -2504,7 +2711,7 @@ function startPartySelect(t){
   if(!tableSeated(t).length){ toast(tr("tgEmpty",{n:t.label}),2500); return; }
   closeMenu(); closeGroupMenu(); closePlaceMenu(); hideSug();
   partySel={tableId:t.id, ids:new Set()}; document.body.classList.add("partysel");
-  $("psList").innerHTML=(state.parties||[]).map(p=>`<option value="${escapeHtml(p.name)}">`).join("");
+  $("psList").innerHTML=invSorted().map(x=>`<option value="${escapeHtml(x.p.name)}" label="${escapeHtml(invPeople(x.m.length))}">`).join("");   // the sizes, while he types
   const inp=$("psName"); inp.value=""; inp.dataset.auto="1"; $("partysel").hidden=false; updatePartyBar(); renderFocus();
 }
 function endPartySelect(){ if(!partySel) return; partySel=null; document.body.classList.remove("partysel"); $("partysel").hidden=true; if(focusId!=null) renderFocus(); }
@@ -2525,17 +2732,53 @@ function partySelIds(){   // only names still seated at the picked table — ×,
   partySel.ids.forEach(id=>{ if(!t||!state.guests[id]||!t.seats.includes(id)) partySel.ids.delete(id); });
   return [...partySel.ids];
 }
-function updatePartyBar(){ if(!partySel) return; const ids=partySelIds(); $("psCount").textContent=tr("psCount",{n:ids.length}); const inp=$("psName"); if(inp.dataset.auto==="1") inp.value=suggestPartyName(ids); }
+// ---- «το προσκλητήριο ΜΠΑΤΖΗ θα έπρεπε να δείχνει τικαρισμένους τους ΑΛΕΞΑΝΤΕΡ και ΜΑΡΙΝΑ ΜΠΑΝΤΖΗ» ----
+// ensureParty() has always REUSED an invitation whose normalised name matches; he simply could not see it. Now the
+// bar reads the field with the very same normalisation and says so out loud, the people of it who already sit at
+// this table show as already in (outlined tick, not the solid one), and [Δημιουργία] becomes [Προσθήκη].
+function invByName(v){ const nm=String(v||"").trim(); if(!nm) return null; return (state.parties||[]).find(x=>norm(x.name)===norm(nm))||null; }
+function psExisting(){ return partySel?invByName($("psName").value):null; }
+function psAlreadyIn(){   // members of that invitation seated at THIS table and not among the ones he is ticking now
+  const out=new Set(); if(!partySel) return out;
+  const p=psExisting(); if(!p) return out;
+  const t=state.tables.find(x=>x.id===partySel.tableId); if(!t) return out;
+  t.seats.forEach(id=>{ if(id && state.guests[id] && state.guests[id].partyId===p.id && !partySel.ids.has(id)) out.add(id); });
+  return out;
+}
+function updatePartyBar(){
+  if(!partySel) return;
+  const ids=partySelIds(), inp=$("psName");
+  if(inp.dataset.auto==="1") inp.value=suggestPartyName(ids);              // before reading it: the suggestion may BE an existing one
+  const p=psExisting(), already=psAlreadyIn(), all=p?partyMembers(p.id).length:0;
+  $("psCount").textContent=tr("psCount",{n:ids.length})+(already.size?tr("psAlready",{k:already.size}):"");
+  const found=$("psFound");
+  found.hidden=!p;
+  $("partysel").classList.toggle("found", !!p);   // narrow: this line takes the count over, the hint line stands down
+  if(p) found.innerHTML=`<b>${escapeHtml(tr("psExists",{n:caseName(p.name)}))}</b>`
+    +`<span class="ps">· ${escapeHtml($("psCount").textContent)}</span><span class="n">${escapeHtml(invPeople(all))}</span>`;
+  $("psOk").textContent=tr(p?"psAdd":"psOk");
+}
+function paintPartyRows(){   // only the ticks and tints move while he types — the rows themselves stay put
+  if(!partySel) return;
+  const already=psAlreadyIn(), t=state.tables.find(x=>x.id===partySel.tableId); if(!t) return;
+  fSeats.querySelectorAll(".frow").forEach(r=>{ const gid=t.seats[+r.dataset.i]; r.classList.toggle("inparty", !!(gid&&already.has(gid))); });
+}
 function makePartyFromSelection(){
   if(!partySel) return; const ids=partySelIds();
-  if(!ids.length){ toast(tr("tPartyNone")); return; }
-  const nm=$("psName").value.trim()||suggestPartyName(ids)||tr("partyN",{n:(state.parties||[]).length+1});
-  const p=ensureParty(nm); ids.forEach(id=>{ state.guests[id].partyId=p.id; }); pruneParties(p.id);
-  save(); renderPool(); endPartySelect(); toast(tr("tPartyMade",{n:caseName(p.name),k:ids.length}),3000);
+  const typed=$("psName").value.trim(), ex=invByName(typed);
+  if(!ids.length && !ex){ toast(tr("tPartyNone")); return; }
+  const nm=typed||suggestPartyName(ids)||tr("partyN",{n:(state.parties||[]).length+1});
+  const p=ensureParty(nm);
+  const added=ids.filter(id=>state.guests[id].partyId!==p.id);              // nobody is added twice
+  if(ex && !added.length){ toast(tr("tPartyAllIn",{n:caseName(p.name)}),3000); endPartySelect(); return; }
+  added.forEach(id=>{ state.guests[id].partyId=p.id; }); pruneParties(p.id);
+  save(); renderTables([partySel.tableId]); renderPool(); endPartySelect(); // one save() = one undo step, existing or new
+  toast(ex?tr("tPartyAdded",{n:caseName(p.name), k:added.length, c:partyMembers(p.id).length})
+          :tr("tPartyMade",{n:caseName(p.name), k:added.length}), 3000);
 }
 $("psOk").addEventListener("click",makePartyFromSelection);
 $("psCancel").addEventListener("click",endPartySelect);
-$("psName").addEventListener("input",()=>{ $("psName").dataset.auto=""; });
+$("psName").addEventListener("input",()=>{ $("psName").dataset.auto=""; updatePartyBar(); paintPartyRows(); });
 $("psName").addEventListener("keydown",e=>{ e.stopPropagation(); if(e.key==="Enter"){ e.preventDefault(); makePartyFromSelection(); } else if(e.key==="Escape"){ e.preventDefault(); endPartySelect(); } });
 $("fParty").addEventListener("click",()=>startPartySelect(focusedTable()));
 $("menuParty").addEventListener("click",()=>{ const t=state.tables.find(x=>x.id===activeMenuTableId); closeMenu(); if(t) startPartySelect(t); });
@@ -2607,8 +2850,8 @@ function openGuestEditor(guestId, evt){
   nameInp.addEventListener("blur",commitName);
   const partyInp=menu.querySelector("#geParty"); const p0=partyOf(guestId); partyInp.value=p0?p0.name:"";
   const commitParty=()=>{ if(cancelled) return; const v=partyInp.value.trim(); const cur=partyOf(guestId);
-    if(!v){ if(g.partyId){ g.partyId=null; pruneParties(invOpenId); save(); renderPool(); } }
-    else if(!cur||norm(cur.name)!==norm(v)){ const p=ensureParty(v); g.partyId=p.id; pruneParties(invOpenId); save(); renderPool(); } };
+    if(!v){ if(g.partyId){ g.partyId=null; pruneParties(invOpenId); save(); renderTables(); renderPool(); } }
+    else if(!cur||norm(cur.name)!==norm(v)){ const p=ensureParty(v); g.partyId=p.id; pruneParties(invOpenId); save(); renderTables(); renderPool(); } };   // renderTables: the mark on the floor follows
   partyInp.addEventListener("keydown",e=>{ e.stopPropagation(); if(e.key==="Enter"){ e.preventDefault(); commitParty(); closeGuestEditor(); } else if(e.key==="Escape"){ cancelled=true; closeGuestEditor(); } });
   partyInp.addEventListener("blur",commitParty);
   const invLink=menu.querySelector("#geInv"), invLabel=()=>{ const p=partyOf(guestId); invLink.querySelector("span").textContent=p?tr("geInvEdit",{n:caseName(p.name)}):tr("mInv"); };
@@ -2931,10 +3174,10 @@ function seatHold(e, seat, tableId, idx){
   // The finger hides what is under it: once lifted the pill floats LIFT px above the finger, the drop target is the chair
   // nearest to the pill (within REACH), it is enlarged + ringed, and a label at the top says where the name will land.
   const LIFT=48, REACH=46; let chairs=null, lastX=sx, lastY=sy, panRaf=0, sl0=0, st0=0, occl=[];
-  // The seat's own inline transform is translate(-50%,-50%) rotate(-tableRot): appending the finger delta AFTER it keeps the
+  // The seat's own inline transform is empty, or rotate(-tableRot) on a turned table: appending the finger delta AFTER it keeps the
   // delta in stage axes on rotated tables (the wrap's rotation and the seat's counter-rotation cancel) — and restoring it on
   // finish keeps the name upright when nothing is re-rendered.
-  const baseT=seat.style.transform||"translate(-50%,-50%)", wrapEl=seat.closest(".table");
+  const baseT=seat.style.transform||"", wrapEl=seat.closest(".table");
   function measureChairs(){ chairs=[...stage.querySelectorAll(".seat")].filter(x=>x!==seat).map(x=>{ const r=x.getBoundingClientRect(); return {el:x, x:r.left+r.width/2, y:r.top+r.height/2}; }); }
   function setTarget(tgt){
     if(tgt===over) return;
@@ -3032,7 +3275,15 @@ function renderPlaceTables(m){
   const mem=m._all?partyMembers(m._party):[];   // the whole invitation: "← 2" marks where some of them already sit
   const rows=state.tables.map(t=>{ const free=t.seats.filter(x=>!x).length, here=mem.filter(id=>t.seats.includes(id)).length; return `<div class="gm-item${free?"":" dim"}" data-tid="${t.id}">${t.shape==="head"?ICON("heart"):t.shape==="rect"?ICON("longtable"):ICON("table")}<span class="pm-name">${escapeHtml(t.label)}${here?` ← ${here}`:""}</span><span class="n">${free}/${t.capacity}</span></div>`; }).join("");
   const who=m._party?tr("pbParty",{n:partyName(m._party), c:(m._all?mem:partyUnseated(m._party)).length}):guestName(guestId);
-  m.innerHTML=`<div class="gm-cap">${escapeHtml(tr("pmFor",{n:who}))}</div>${m._all?"":`<div class="gm-item" data-act="floor">${ICON("fit")}${escapeHtml(tr("pmFloor"))}</div>`}<div class="gm-sep"></div><div class="pm-list">${rows}</div>`;
+  // «εκεί στα δεξιά δε μου δίνει άλλες επιλογές, είμαι περιορισμένος» — from a seat row he could only create a new
+  // invitation. The row's own menu now also opens the one this person is in, and takes them out of it.
+  const inv=m._party?null:partyOf(guestId);
+  const invRows=inv?`<div class="gm-item" data-act="invopen">${ICON("mail")}<span class="pm-name">${escapeHtml(tr("invOpenOne",{n:caseName(inv.name)}))}</span></div>`
+      +(ACCESS.ro?"":`<div class="gm-item" data-act="invout"><span class="gmx">✕</span><span class="pm-name">${escapeHtml(tr("invRemove"))}</span></div>`)
+      +`<div class="gm-sep"></div>`:"";
+  m.innerHTML=`<div class="gm-cap">${escapeHtml(tr("pmFor",{n:who}))}</div>${m._all?"":`<div class="gm-item" data-act="floor">${ICON("fit")}${escapeHtml(tr("pmFloor"))}</div>`}<div class="gm-sep"></div>${invRows}<div class="pm-list">${rows}</div>`;
+  const io=m.querySelector('[data-act="invopen"]'); if(io) io.onclick=ev=>{ ev.stopPropagation(); closePlaceMenu(); invOpenFor(guestId); };
+  const ix=m.querySelector('[data-act="invout"]'); if(ix) ix.onclick=ev=>{ ev.stopPropagation(); closePlaceMenu(); invRemoveFrom(guestId); };
   const fl=m.querySelector('[data-act="floor"]'); if(fl) fl.onclick=()=>{ closePlaceMenu(); setPick(m._party?{type:"party",partyId:m._party}:dragFor(guestId, from)); };   // setPick closes the drawer on phones; overview() would cancel the pick
   m.querySelectorAll('[data-tid]').forEach(el=>el.onclick=ev=>{ ev.stopPropagation(); if(m._party){ closePlaceMenu(); placePartyInTable(m._party, +el.dataset.tid, null, m._all); if(m._all&&invMode) invRefresh(); return; } renderPlaceSeats(m, +el.dataset.tid); showPopover(m, placeAnchor(m)); });
 }
@@ -3090,7 +3341,8 @@ function invSeats(){ const m={}; state.tables.forEach(t=>t.seats.forEach((id,i)=
 function invPickFix(){ if(pick&&pick.type==="party"&&!invFind(pick.partyId)) setPick(null); }   // a picked-up invitation that no longer exists
 // ---- the left-panel states. No modal, so Ctrl+Z, the app bar's ↶ and every other control keep working throughout. ----
 // pid: an invitation id → FILL · "draft" → FILL on a new, unsaved one · null → INDEX.
-// opts: {q} a starting query · {keep} the switcher — do not touch the query or band C's scroll.
+// opts: {q} a starting query · {keep} the switcher — do not touch the query or band C's scroll ·
+//       {stay} a phone, opened from a mark on the floor — leave the floor and the seat sheet exactly as they are.
 function enterInv(pid, opts){
   opts=opts||{};
   if(pid && pid!=="draft" && !invFind(pid)) pid=null;
@@ -3099,14 +3351,16 @@ function enterInv(pid, opts){
   const sc=keep?sideScroll().scrollTop:0;        // BEFORE setPick(null): it re-renders the pool and resets the scroller
   invReleaseSheet(pid);                          // an emptied sheet is dropped on EVERY way out, not only via ‹ / [Τέλος]
   closeGuestEditor(); closePlaceMenu(); closeGroupMenu(); closeInvSwitch(); hideSug(); setPick(null);
-  if(isNarrow()){ unfocusTable(); setNav(true); }
+  if(isNarrow() && !opts.stay){ unfocusTable(); setNav(true); }
   invMode=pid?"fill":"index";
   invOpenId=(pid&&pid!=="draft")?pid:null;
   invDraft=(pid==="draft")?{name:""}:null;
   invRenaming=false; invSel=null; invSticky.clear();
   if(!keep){ invFilter="all"; searchQ=opts.q||""; $("guestSearch").value=searchQ; }
-  document.body.classList.toggle("invlist", invMode==="index");
-  document.body.classList.toggle("invfill", invMode==="fill");
+  invPanelWidth(()=>{                           // the panel takes its extra 76 px; the floor keeps its fit
+    document.body.classList.toggle("invlist", invMode==="index");
+    document.body.classList.toggle("invfill", invMode==="fill");
+  });
   rememberInvMode(); renderPool(); renderInvHighlight();
   if(keep) sideScroll().scrollTop=sc;
   if(invMode==="fill") showTip("invseat");                                // said once: an invitation never moves a chair
@@ -3114,6 +3368,17 @@ function enterInv(pid, opts){
   if(!isNarrow()||keep) try{ $("guestSearch").focus({preventScroll:true}); }catch(e){}
 }
 function sideScroll(){ return document.querySelector("#sidebar .side-scroll"); }
+// The panel is about to take (or give back) its extra width, and the floor lives next to it. `fitted` MUST be read
+// before the change — afterwards fitZoom() already speaks of the new width. A floor that was fitted stays fitted; a
+// floor he deliberately zoomed into keeps his zoom and only re-lays out. Phones never reach this: there the panel
+// is a drawer over the floor and the floor does not move at all.
+function invPanelWidth(change){
+  if(isNarrow()){ change(); return; }
+  const fitted = zoom <= fitZoom()+0.005;   // fitZoom() reads stagewrap.clientWidth — a forced layout, and the point
+  change();
+  if(fitted) zoom=clamp(fitZoom(),0.1,2.5); // the second read already speaks of the new width: no frame to wait for
+  applyZoom();
+}
 // An invitation left with nobody in it is dropped, whichever way you left the sheet (‹, Τέλος, ✕, Escape, the
 // switcher, #invBtn). pruneParties(keepId) keeps an empty one alive ONLY while the sheet is still open on it,
 // so without this it stayed in state.parties: invisible everywhere (invSorted drops memberless ones) and undeletable.
@@ -3130,7 +3395,8 @@ function exitInv(){
   if(!invMode) return;
   invReleaseSheet(null);
   invMode=null; invOpenId=null; invDraft=null; invSel=null; invSticky.clear(); invFilter="all";
-  document.body.classList.remove("invlist","invfill");
+  invPanelWidth(()=>document.body.classList.remove("invlist","invfill"));   // the panel gives its 76 px back
+
   stage.querySelectorAll(".seat.invhi").forEach(el=>el.classList.remove("invhi"));
   searchQ=""; $("guestSearch").value=""; $("guestSearch").placeholder=tr("searchPh");
   ["invHead","invIndex","invSheet","invFoot","invRail"].forEach(id=>{ $(id).hidden=true; $(id).innerHTML=""; });
@@ -3151,11 +3417,19 @@ function renderInvPanel(){
   }
   if(invMode==="index") renderInvIndex(); else renderInvSheet();
   if(invMode==="fill"&&invOpenId) invLastName=caseName((invFind(invOpenId)||{}).name||"");
-  // the head sticks directly under the search field, and the letter caps directly under the head — measured, never guessed
-  const side=$("sidebar");
-  side.style.setProperty("--invhead-top", (sw.offsetHeight||44)+"px");
-  side.style.setProperty("--invcap-top", ((sw.offsetHeight||44)+($("invHead").offsetHeight||44))+"px");
+  invStickTops();
   setTimeout(()=>{ invPaintSel(); renderInvRail(); },0);   // after the rows are in the DOM
+}
+// The head sticks directly under the search field, the letter caps / the members sheet directly under the head, and
+// band C's heading directly under the sheet — measured, never guessed, and re-measured whenever the sheet grows
+// (one more member chip is one more row of it).
+function invStickTops(){
+  const side=$("sidebar"), sw=$("searchWrap");
+  const h1=sw.offsetHeight||44, h2=$("invHead").offsetHeight||44;
+  const h3=(invMode==="fill" && !$("invSheet").hidden) ? ($("invSheet").offsetHeight||0) : 0;
+  side.style.setProperty("--invhead-top", h1+"px");
+  side.style.setProperty("--invcap-top", (h1+h2)+"px");
+  side.style.setProperty("--invpick-top", (h1+h2+h3)+"px");
 }
 // The A–Z rail — phone only (on PC the keyboard does this job). Tap jumps, drag scrubs.
 function renderInvRail(){
@@ -3200,6 +3474,7 @@ function renderInvIndex(){
     +`<span class="invsum">${escapeHtml(sum)}</span>`
     +`<button class="ibtn invx" data-a="close" title="${escapeHtml(tr("close"))}">✕</button></div>`
     +(ro?`<div class="mhint invro">${escapeHtml(tr("invRo"))}</div>`:"")
+    +`<div class="invsegnote">${escapeHtml(tr("invIndexNote"))}</div>`
     +`<button class="ibtn primary" id="invNewSide" data-a="new">${ICON("plus")}<span>${escapeHtml(tr("invNew"))}</span></button>`;
   const loose=looseIds().length, shown=all.filter(x=>invMatch(x,q));
   let h="";
@@ -3225,24 +3500,30 @@ function renderInvSheet(){
 }
 function invCur(){ return invOpenId?invFind(invOpenId):null; }
 function renderInvHead(){
-  const ro=ACCESS.ro, p=invCur(), m=p?partyMembers(p.id):[], seats=invSeats(), st=m.filter(id=>seats[id]).length;
+  const ro=ACCESS.ro, p=invCur();
   const nm=p?caseName(p.name):((invDraft&&invDraft.name)||"");
   const ae=document.activeElement, keepSel=(invRenaming&&ae&&ae.classList&&ae.classList.contains("invname"))?{s:ae.selectionStart, e:ae.selectionEnd, v:ae.value}:null;
+  // The name owns its row — nothing shares the width with it, so «Νέο προσκλητήριο» can never truncate again.
+  // The counter moved down into the band heading of the block it actually counts (renderInvMembers).
   $("invHead").innerHTML=`<div class="invtop">`
     +`<button class="ibtn invx" data-a="back" title="${escapeHtml(tr("invBackAll"))}">${ICON("left")}</button>`
     +(invRenaming&&!ro
       ? `<input class="invname" data-k="name" type="text" maxlength="80" autocomplete="off" spellcheck="false" enterkeyhint="done" placeholder="${escapeHtml(tr("invNewPh"))}" value="${escapeHtml(keepSel?keepSel.v:(p?p.name:(invDraft?invDraft.name:"")))}">`
       : `<button class="invname" data-a="switch" title="${escapeHtml(tr("invSwitchCap"))}"><b>${escapeHtml(nm||tr("invNew"))}</b>${ICON("down")}</button>`)
-    +`<span class="invsum">${escapeHtml(invPeople(m.length))} · ${escapeHtml(tr("invSeatedN",{s:st}))}</span>`
     +(ro?"":`<button class="ibtn invmore" data-a="more" title="${escapeHtml(tr("more"))}">⋯</button>`)
     +`</div>`+(ro?`<div class="mhint invro">${escapeHtml(tr("invRo"))}</div>`:"");
   if(invRenaming&&!ro){ const i=$("invHead").querySelector(".invname");
     if(i){ try{ i.focus({preventScroll:true}); if(keepSel&&keepSel.s!=null) i.setSelectionRange(keepSel.s,keepSel.e); else i.select(); }catch(e){} } }
 }
+// Band B — THE INVITATION ITSELF, under its own heading with its own count. A named block above a named block is
+// the whole answer to «το 0 τι είναι που έχει και ονόματα?»: the 0 belongs to this block, the names to the next one.
 function renderInvMembers(){
   const ro=ACCESS.ro, p=invCur(), seats=invSeats();
   const m=p?partyMembers(p.id).sort((a,b)=>guestName(a).localeCompare(guestName(b),"el",{sensitivity:"base",numeric:true})):[];
-  $("invSheet").innerHTML=(m.length
+  const st=m.filter(id=>seats[id]).length;
+  $("invSheet").innerHTML=`<div class="invband"><span class="bt">${escapeHtml(tr("invBandIn"))}</span>`
+    +`<span class="bn">${escapeHtml(invPeople(m.length))} · ${escapeHtml(tr("invSeatedN",{s:st}))}</span></div>`
+    +(m.length
     ? `<div class="members">`+m.map(id=>{ const s=seats[id];
         return `<span class="mchip" data-gid="${escapeHtml(id)}"><span class="nm">${escapeHtml(guestName(id))}</span>`
           +(s?`<button class="invt" data-a="jump" title="${escapeHtml(tr("invJump"))}">→ ${escapeHtml(s.t.label)}</button>`:"")
@@ -3349,7 +3630,8 @@ function invDelete(pid){
   confirmDelete(tr("invDelConfirm",{n:nm, k:partyMembers(pid).length}), ()=>{
     if(!invFind(pid)) return;   // gone meanwhile (undo, a pull)
     partyMembers(pid).forEach(id=>state.guests[id].partyId=null); pruneParties(); invPickFix(); if(invOpenId===pid) invOpenId=null;
-    save(); if(invMode==="fill"&&!invOpenId) enterInv(null); else invRefresh();
+    save(); renderTables();                       // its people lose their mark on the floor too
+    if(invMode==="fill"&&!invOpenId) enterInv(null); else invRefresh();
     toast(tr("tInvDeleted",{n:nm}), 3500); });
 }
 // ---- one tap = in or out. One save() = one undo step. Only the toggled row + bands A and B re-render. ----
@@ -3375,7 +3657,19 @@ function invToggle(gid){
     toast(was?tr("tInvAddedMoved",{g:guestName(gid), p:caseName(p.name), a:caseName(was.name)})+(gone?tr("tInvGone",{p:caseName(was.name)}):"")
              :tr("tInvAdded",{g:guestName(gid), p:caseName(p.name)}), was?4000:2000);
   }
-  patchTickRow(gid); renderInvHead(); renderInvMembers(); renderInvBtn(); renderInvSegCounts(); renderInvHighlight();
+  patchTickRow(gid); renderInvHead(); renderInvMembers(); renderInvBtn(); renderInvSegCounts(); invStickTops();   // band B just changed height: band C's pin follows it
+  const s=invSeats()[gid]; if(s) renderTables([s.t.id]);   // the mark on the floor follows the tick — one table, not 300 pills
+  renderInvHighlight();
+}
+// Take one person out of their invitation from ANYWHERE (the seat row's menu): the seat is never touched, and the
+// pills have to be rebuilt so the mark on the floor goes with them. One save() = one undo step.
+function invRemoveFrom(gid){
+  if(!invOk()) return;
+  const g=state.guests[gid]; if(!g||!g.partyId) return;
+  const p=partyOf(gid), nm=p?caseName(p.name):"", wasSeated=!!invSeats()[gid];
+  g.partyId=null; pruneParties(invOpenId); invPickFix(); save();
+  renderTables(); renderPool(); renderGroups();     // renderTables() re-runs renderFocus + renderInvHighlight itself
+  toast(tr("tInvRemoved",{g:guestName(gid), p:nm})+(wasSeated?tr("invKeptSeat"):""), 3500);
 }
 function patchTickRow(gid){   // 300 guests: rebuild ONE node per tap, never the whole list
   const pool=$("pool"), old=[...pool.querySelectorAll(".gchip.tickable")].find(c=>c.dataset.guestId===gid);
@@ -3384,7 +3678,16 @@ function patchTickRow(gid){   // 300 guests: rebuild ONE node per tap, never the
   const tail=pool.querySelector(".invnew-guest"), row=makeChip(gid,{tick:true});
   if(tail) tail.before(row); else pool.appendChild(row);
 }
+// «το νούμερο 295 δε το βλέπω σε καμία από τις 3» — because the tabs count names and 295 counts chairs. Say it,
+// with both numbers in the sentence, so the question cannot come back.
+function invSegNoteText(){
+  const total=Object.keys(state.guests).length, seated=assignedGuestIds().size;
+  return tr("invSegNote",{s:seated, n:total});
+}
 function renderInvSegCounts(){
+  const note=$("invSegNote"); if(note) note.textContent=invSegNoteText();
+  const band=$("pool").querySelector(".invband.pick .bn");
+  if(band) band.textContent=tr("invBandPickN",{n:Object.keys(state.guests).length});
   const seg=$("invSeg"); if(!seg) return;
   const gids=Object.keys(state.guests);
   const n={all:gids.length, loose:gids.filter(id=>!state.guests[id].partyId).length, in:invOpenId?partyMembers(invOpenId).length:0};
@@ -3542,11 +3845,16 @@ function addTableRotateHandle(wrap, t, offset){
   const h=document.createElement("div"); h.className="rot-h";
   h.style.left="0"; h.style.top=(-offset)+"px"; h.style.transform="translate(-50%,-50%)";
   wrap.appendChild(h);
+  // An UNROTATED table gets no transform at all, not `rotate(0deg)`: any transform makes the wrap a stacking
+  // context, and that lid is what kept a name's invitation mark from ever painting above the neighbouring table's
+  // names (38 of 156 marks on the lab floor, every one of them under a table further right). Rotated tables keep
+  // their lid — a turned table's names are its own business anyway.
   const apply=()=>{
-    wrap.style.transform=`rotate(${t.rot||0}deg)`;
+    const rot=t.rot||0;
+    wrap.style.transform = rot ? `rotate(${rot}deg)` : "";
     // counter-rotate the whole seat pill (not just its text) so names stay upright AND unclipped
-    wrap.querySelectorAll(".seat").forEach(s=>{ s.style.transform=`translate(-50%,-50%) rotate(${-(t.rot||0)}deg)`; });
-    wrap.querySelectorAll(".tnum,.tcount").forEach(x=>{ x.style.display="inline-block"; x.style.transform=`rotate(${-(t.rot||0)}deg)`; });
+    wrap.querySelectorAll(".seat").forEach(s=>{ s.style.transform = rot ? `rotate(${-rot}deg)` : ""; });   // origin = the pill's own centre
+    wrap.querySelectorAll(".tnum,.tcount").forEach(x=>{ x.style.display = rot?"inline-block":""; x.style.transform = rot?`rotate(${-rot}deg)`:""; });
   };
   apply();
   if(!can("layout")){ h.remove(); return; }   // the rotation is shown, but only the venue changes it
@@ -3730,7 +4038,7 @@ function syncKeyboard(){
   document.body.classList.toggle("kb",kb>0);                   // follows the MEASUREMENT: Android's Back closes the keyboard without a blur
   if(ae&&kb&&!zoomed&&(window.scrollY||vv.offsetTop)) window.scrollTo(0,0);   // undo Safari's own "reveal the field" pan
   if(ae) revealField(ae);
-  if((kb>0)!==(kbPrev>0)){ reanchorSheetMenus(); if(!kb) flushTip(); } kbPrev=kb;
+  if((kb>0)!==(kbPrev>0)){ reanchorSheetMenus(); if(!kb) flushTip(); if(invMode) invStickTops(); } kbPrev=kb;   // band B folds with the keyboard: band C's pin follows
 }
 // A popover opened from the sheet's ⚙ while the keyboard was up must follow the sheet when it drops back (and after its .2s slide).
 function reanchorSheetMenus(){
@@ -3823,14 +4131,17 @@ function renderFocus(){
   fSeats.dataset.tid=t.id;
   fSeats.innerHTML="";
   const ag=state.groups.find(g=>g.id===state.activeGroupId);   // the group new names will join (empty rows show it faintly)
+  const psAlready=psAlreadyIn();                               // members of the typed-in invitation who already sit here
   for(let i=0;i<t.capacity;i++){
     const gid=t.seats[i];
     const row=document.createElement("div"); row.className="frow"+(gid?" occ":""); row.dataset.i=i;
     const dotColor=gid?guestColor(gid):(ag?ag.color:"#cfc8bd");
     if(partySel&&gid&&partySel.ids.has(gid)) row.classList.add("sel");
-    row.innerHTML=`${(partySel&&gid)?`<button class="fchk" tabindex="-1"></button>`:""}<span class="fn">${i+1}</span><button class="fdot${gid?"":" empty"}${hasInv(gid)?" hasinv":""}" tabindex="-1" title="${escapeHtml((gid?tr("rowGroup"):tr("rowNewGroup"))+invTitle(gid))}" style="background-color:${safeColor(dotColor)}"></button><input type="text" maxlength="40" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="words" enterkeyhint="${i+1<t.capacity?"next":"done"}" placeholder="${escapeHtml(tr("seatPh"))}" value="${gid?escapeHtml(guestName(gid)):""}"${ACCESS.ro?" readonly":""}><button class="grip" title="${escapeHtml(tr("gripTitle"))}" tabindex="-1">${ICON("grip")}</button><button class="fx" title="${escapeHtml(tr("unseat"))}" tabindex="-1">✕</button>`;
-    if(partySel){ row.addEventListener("pointerdown",e=>{ if(partySel&&t.seats[i]&&!e.target.closest(".grip,.fx,.fdot")) e.preventDefault(); });   // a tick must not take the focus from the name field
-      row.addEventListener("click",e=>{ if(!partySel||!t.seats[i]||e.target.closest(".grip,.fx,.fdot")) return; e.preventDefault(); togglePartySel(t.seats[i]); }); }
+    if(partySel&&gid&&psAlready.has(gid)) row.classList.add("inparty");   // already in the invitation whose name is typed
+    row.innerHTML=`${(partySel&&gid)?`<button class="fchk" tabindex="-1"></button>`:""}<span class="fn">${i+1}</span><span class="fdotw"><button class="fdot${gid?"":" empty"}${hasInv(gid)?" hasinv":""}" tabindex="-1" title="${escapeHtml((gid?tr("rowGroup"):tr("rowNewGroup"))+invTitle(gid))}" style="background-color:${safeColor(dotColor)}"></button></span><input type="text" maxlength="40" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="words" enterkeyhint="${i+1<t.capacity?"next":"done"}" placeholder="${escapeHtml(tr("seatPh"))}" value="${gid?escapeHtml(guestName(gid)):""}"${ACCESS.ro?" readonly":""}><button class="grip" title="${escapeHtml(tr("gripTitle"))}" tabindex="-1">${ICON("grip")}</button><button class="fx" title="${escapeHtml(tr("unseat"))}" tabindex="-1">✕</button>`;
+    if(gid && hasInv(gid)) addInvPip(row.querySelector(".fdotw"), gid);   // «δεν είναι και διαδραστικό»: the row's mark opens its invitation too
+    if(partySel){ row.addEventListener("pointerdown",e=>{ if(partySel&&t.seats[i]&&!e.target.closest(".grip,.fx,.fdot,.ipip")) e.preventDefault(); });   // a tick must not take the focus from the name field
+      row.addEventListener("click",e=>{ if(!partySel||!t.seats[i]||e.target.closest(".grip,.fx,.fdot,.ipip")) return; e.preventDefault(); togglePartySel(t.seats[i]); }); }
     const grip=row.querySelector(".grip");
     grip.addEventListener("click",e=>{ e.stopPropagation(); const g2=t.seats[i]; if(!g2) return; const ae=document.activeElement; if(ae&&ae.closest("#fSeats")) ae.blur(); openPlaceMenu(g2, anchorOf(grip), {tableId:t.id, seatIndex:i}); });
     const dot=row.querySelector(".fdot");
@@ -3856,7 +4167,7 @@ function renderFocus(){
   }
   fSeats.scrollTop=st;
   if(keep){ const inp=rowInput(keep.i); if(inp){ inp.value=keep.v; inp.focus({preventScroll:true}); try{ inp.setSelectionRange(keep.s,keep.e); }catch(e){} } }
-  if(partySel){ const ids=partySelIds(); $("psCount").textContent=tr("psCount",{n:ids.length}); }   // × / undo / a move may have dropped a ticked name
+  if(partySel) updatePartyBar();   // × / undo / a move may have dropped a ticked name (and the bar re-reads the field)
   if(invMode==="fill") renderInvHighlight();   // rebuilt rows lost the tint: put it back
 }
 function rowInput(i){ return fSeats.querySelector(`.frow[data-i="${i}"] input`); }
@@ -4390,6 +4701,92 @@ function exportGuestsCsv(){
   const name=fileBase()+"-"+tr("csvFile")+".csv";
   downloadBlob(new Blob(["\uFEFF"+rows.join("\r\n")+"\r\n"],{type:"text/csv;charset=utf-8"}), name); toast(tr("tDownloaded",{n:name}));
 }
+// ---- A REAL .xlsx, written here in the page ----
+// The planner is one self-contained file behind a CSP that blocks external scripts, and a view-only guest may be
+// offline, so there is no library and no server call. A .xlsx is just a ZIP of XML parts, and stored (uncompressed)
+// entries are perfectly valid ZIP — which leaves a CRC-32 table and some XML. Strings go inline (no shared-string
+// table): a wedding list is small and inline strings are one part fewer to keep consistent.
+const XCRC=(()=>{ const t=new Uint32Array(256);
+  for(let i=0;i<256;i++){ let c=i; for(let k=0;k<8;k++) c=c&1?0xEDB88320^(c>>>1):c>>>1; t[i]=c>>>0; }
+  return t; })();
+function xlsxCrc32(b){ let c=0xFFFFFFFF; for(let i=0;i<b.length;i++) c=XCRC[(c^b[i])&0xFF]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
+function xlsxZip(files){   // [{name, data:Uint8Array}] → one stored ZIP; flag 0x800 marks the names as UTF-8
+  const te=new TextEncoder(), chunks=[], dir=[]; let off=0;
+  const u16=n=>[n&255,(n>>8)&255], u32=n=>[n&255,(n>>8)&255,(n>>16)&255,(n>>>24)&255];
+  for(const f of files){
+    const nm=te.encode(f.name), crc=xlsxCrc32(f.data), n=f.data.length;
+    const head=Uint8Array.from([...u32(0x04034b50),...u16(20),...u16(0x800),...u16(0),...u16(0),...u16(0x21),...u32(crc),...u32(n),...u32(n),...u16(nm.length),...u16(0)]);
+    chunks.push(head,nm,f.data); dir.push({nm,crc,n,off}); off+=head.length+nm.length+n;
+  }
+  const cd=[];
+  for(const e of dir) cd.push(Uint8Array.from([...u32(0x02014b50),...u16(20),...u16(20),...u16(0x800),...u16(0),...u16(0),...u16(0x21),...u32(e.crc),...u32(e.n),...u32(e.n),
+    ...u16(e.nm.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(e.off)]), e.nm);
+  const cdSize=cd.reduce((s,c)=>s+c.length,0);
+  const end=Uint8Array.from([...u32(0x06054b50),...u16(0),...u16(0),...u16(dir.length),...u16(dir.length),...u32(cdSize),...u32(off),...u16(0)]);
+  const all=[...chunks,...cd,end], out=new Uint8Array(all.reduce((s,c)=>s+c.length,0));
+  let p=0; for(const c of all){ out.set(c,p); p+=c.length; }
+  return out;
+}
+const xlsxEsc=s=>String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g,"");
+const xlsxCol=i=>{ let s="", k=i+1; while(k>0){ const r=(k-1)%26; s=String.fromCharCode(65+r)+s; k=(k-r-1)/26; } return s; };   // 0 → A, 26 → AA
+// rows[0] is the header (bold, frozen, filtered). A cell is a string, or {n:…} for a real number.
+function buildXlsx(rows, sheetName, widths){
+  const te=new TextEncoder();
+  const cells=rows.map((row,r)=>`<row r="${r+1}">`+row.map((v,c)=>{
+    const ref=xlsxCol(c)+(r+1), st=r===0?' s="1"':"";
+    if(v&&typeof v==="object"&&"n" in v) return `<c r="${ref}"${st}><v>${Number(v.n)}</v></c>`;
+    const t=xlsxEsc(v);
+    return t===""?`<c r="${ref}"${st}/>`:`<c r="${ref}" t="inlineStr"${st}><is><t xml:space="preserve">${t}</t></is></c>`;
+  }).join("")+"</row>").join("");
+  const last=xlsxCol(Math.max(1,rows[0]?rows[0].length:1)-1)+Math.max(1,rows.length);
+  const cols=(widths&&widths.length)?`<cols>${widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join("")}</cols>`:"";
+  const sheet=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:${last}"/>`
+    +`<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>`
+    +`<sheetFormatPr defaultRowHeight="15"/>${cols}<sheetData>${cells}</sheetData><autoFilter ref="A1:${last}"/></worksheet>`;
+  const parts=[
+    ["[Content_Types].xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`],
+    ["_rels/.rels",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+    ["xl/workbook.xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${xlsxEsc(sheetName).slice(0,31)}" sheetId="1" r:id="rId1"/></sheets></workbook>`],
+    ["xl/_rels/workbook.xml.rels",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
+    ["xl/styles.xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`],
+    ["xl/worksheets/sheet1.xml",sheet],
+  ];
+  return xlsxZip(parts.map(pt=>({name:pt[0], data:te.encode(pt[1])})));
+}
+// The plan name as a filename Windows accepts: only the nine forbidden characters and the control ones go — the
+// spaces, the «&» and the Greek stay, so each file reads like its plan and the two never overwrite each other.
+function xlsxFileTitle(){ const cur=currentProfile()||{};
+  return String(cur.name||"").replace(/[\\/:*?\x22<>|\x00-\x1F]/g," ").replace(/\s+/g," ").trim().replace(/[. ]+$/,"").slice(0,80).trim()||"wedding"; }
+// ΟΝΟΜΑ · ΠΡΟΣΚΛΗΤΗΡΙΟ · ΑΤΟΜΑ · ΟΜΑΔΑ · ΤΡΑΠΕΖΙ, A–Z by the name as shown (same collator and letter-case as the print).
+// all=false → only the people who have a chair; all=true → everyone, the rest marked «Χωρίς θέση».
+function exportGuestsXlsx(all){
+  if((currentProfile()||{}).support){ toast(tr("tNoCopySupport"),4000); return; }
+  const seatedSet=assignedGuestIds();
+  const tableOf={}; state.tables.forEach(t=>t.seats.forEach(gid=>{ if(gid) tableOf[gid]=t.label; }));
+  const ids=Object.keys(state.guests).filter(id=>all||seatedSet.has(id));
+  const inFile=new Map();   // ΑΤΟΜΑ counts an invitation's people IN THIS FILE, so the number always matches the rows
+  ids.forEach(id=>{ const p=partyOf(id); if(p) inFile.set(p.id,(inFile.get(p.id)||0)+1); });
+  const coll=(a,b)=>String(a).localeCompare(String(b),"el",{sensitivity:"base",numeric:true});
+  const rows=[[tr("printColName"),tr("printColInv"),tr("printColPeople"),tr("xlsxColGroup"),tr("printColTable")]];
+  ids.map(id=>({id, p:partyOf(id), k:guestName(id)}))
+    .sort((a,b)=>coll(a.k,b.k)||coll(a.p?caseName(a.p.name):"", b.p?caseName(b.p.name):""))
+    .forEach(row=>{ const g=guestGroup(row.id), lbl=String(tableOf[row.id]==null?"":tableOf[row.id]).trim();
+      // «ακυρώθηκε» / «πιθανή» ride on the name, exactly as the A–Z print writes them, and exactly after the A–Z key
+      // was taken so the order is untouched. Without it the seated file reads like a door list of 295 confirmed
+      // people when some of them are cancelled. ΑΤΟΜΑ counts the rows of this file, so it counts them too.
+      const stx=STATUS_TXT(gStatus(row.id));
+      rows.push([row.k+(stx?` (${stx})`:""), row.p?caseName(row.p.name):"", row.p?{n:inFile.get(row.p.id)}:"", g?g.name:"",
+        seatedSet.has(row.id)?(lbl||"—"):tr("xlsxNoSeat")]); });   // a seated person at an unnamed table gets "—", as in the print
+  const label=tr(all?"xlsxAllLbl":"xlsxSeatedLbl"), name=xlsxFileTitle()+" — "+label+".xlsx";
+  downloadBlob(new Blob([buildXlsx(rows,label,[30,28,8,18,14])],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}), name);
+  toast(tr("tDownloaded",{n:name}));
+}
 // ---- Names from Excel: paste cells or choose a .csv/.tsv/.txt → preview → add (group / invitation / table columns are optional) ----
 const CSV_COLS={ name:["όνομα","ονοματεπώνυμο","καλεσμένος","καλεσμένοι","name","full name","guest","guests","namen","gast","gäste"],
   first:["μικρό όνομα","first name","firstname","given name","vorname"], last:["επώνυμο","surname","last name","lastname","family name","nachname","familienname"],
@@ -4493,18 +4890,18 @@ $("moreBtn").addEventListener("click",e=>{
   { const cp=currentProfile(); if(!IS_LAB && cp && cp.cloudId) primary.push(["access",tr("mAccess")]); }
   const more=[];
   if(isNarrow()) more.push(["cap",tr("capPlan")],["newplan",tr("newPlan")],["planmore",tr("planMore")],...(ro?[]:[["cap",tr("tools")],...(can("tables")?[["round",tr("mRound")],["rect",tr("mRect")],["head",tr("mHead")]]:[]),["decor",tr("mDecor")],["auto",tr("mAuto")]]));
-  more.push(["cap",tr("capFiles")],["csvout",tr("mCsvOut")],...(ro?[]:[["csvin",tr("mCsvIn")]]),["export",tr("mExport")],...(ro?[]:[["import",tr("mImport")]]));
+  more.push(["cap",tr("capFiles")],["xlsxseat",tr("mXlsxSeated")],["xlsxall",tr("mXlsxAll")],["csvout",tr("mCsvOut")],...(ro?[]:[["csvin",tr("mCsvIn")]]),["export",tr("mExport")],...(ro?[]:[["import",tr("mImport")]]));
   if(!IS_LAB && !ro) more.push(["history",tr("mHistory")]);
   if(skipDeleteConfirm() && !ro) more.push(["askdel",tr("mAskDel")]);
   if(!ro) more.push(["reset",tr("mReset")]);
   if(!IS_LAB) more.push(["cap",tr("mLang")],["lang-el","ΕΛ · Ελληνικά"],["lang-en","EN · English"],["lang-de","DE · Deutsch"]);
-  const MI={keepsake:"heart",share:"cloud",groups:"people",inv:"mail",print:"print",tour:"help",help:"chat",askdel:"help",access:"people",newplan:"plus",planmore:"edit",round:"table",rect:"longtable",head:"heart",decor:"decor",auto:"spark",csvout:"up",csvin:"dl",export:"up",import:"dl",history:"clock"};
+  const MI={keepsake:"heart",share:"cloud",groups:"people",inv:"mail",print:"print",tour:"help",help:"chat",askdel:"help",access:"people",newplan:"plus",planmore:"edit",round:"table",rect:"longtable",head:"heart",decor:"decor",auto:"spark",xlsxseat:"up",xlsxall:"up",csvout:"up",csvin:"dl",export:"up",import:"dl",history:"clock"};
   const row=([a,l])=>a==="cap"?`<div class="gm-cap">${escapeHtml(l)}</div>`:`<div class="gm-item${a==="reset"?" danger":""}${a==="lang-"+LANG?" on":""}" data-act="${a}">${MI[a]?ICON(MI[a]):'<span class="ic"></span>'}${escapeHtml(l)}</div>`;
   m.innerHTML=primary.map(row).join("")+`<div class="gm-sep"></div><div class="gm-item more" data-act="more"><span class="ic"></span>${escapeHtml(tr("mMore"))} ›</div><div class="gm-more">${more.map(row).join("")}</div>`;
   m.querySelectorAll(".gm-item").forEach(it=>it.onclick=ev=>{ ev.stopPropagation(); const a=it.dataset.act;
     if(a==="more"){ m.classList.add("expanded"); showPopover(m, anchorOf($("moreBtn"))); return; }   // re-place: the menu just grew
     m.style.display="none";
-    if(a==="share") openCloud(); else if(a==="csvout") exportGuestsCsv(); else if(a==="csvin") openCsvImport(); else if(a==="head") $("addHeadBtn").click(); else if(a==="decor") openDecor();
+    if(a==="share") openCloud(); else if(a==="xlsxseat") exportGuestsXlsx(false); else if(a==="xlsxall") exportGuestsXlsx(true); else if(a==="csvout") exportGuestsCsv(); else if(a==="csvin") openCsvImport(); else if(a==="head") $("addHeadBtn").click(); else if(a==="decor") openDecor();
     else if(a==="newplan") newProfile(); else if(a==="planmore") openProfileMenu(anchorOf($("moreBtn")));
     else if(a==="access") openAccess(); else if(a==="help") openHelp(); else if(a==="keepsake") downloadPdf("keepsake", null);
     else if(a==="round") addRoundTable(); else if(a==="rect") addRectTable(); else if(a==="history") openHistory(); else if(a==="groups") openGroupsModal(); else if(a==="inv") enterInv(null); else if(a==="tour") startTour();
