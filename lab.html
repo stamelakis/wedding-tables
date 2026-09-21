@@ -938,33 +938,46 @@
   #printarea .pinvl{ list-style:none; margin:0; padding:0; font-size:12.5px; line-height:1.6; }
   #printarea .pinvl .pn{ color:#888; font-size:11px; margin-left:4px; }
   #printarea .pinvh .psn{ font-family:var(--sans); font-size:11.5px; font-weight:400; color:#777; margin-left:8px; }
-  /* A–Z — a real ruled table, one row per SEATED person, header repeated on every printed page */
+  /* A–Z — a real ruled table, one block per invitation, header repeated on every printed page */
   #printarea .palpha{ width:100%; table-layout:fixed; border-collapse:collapse; font-size:11px; line-height:1.28; }
   #printarea .palpha thead{ display:table-header-group; }          /* the column titles come back on page 2, 3, 4… */
   #printarea .palpha tr{ break-inside:avoid; page-break-inside:avoid; }
+  /* A cell that spans rows across a page break is clipped or repeated by every browser, so a whole invitation stays
+     on one sheet. `avoid` and not `avoid-page`: an invitation taller than A4 must still be allowed to break rather
+     than vanish, which is what the stronger value costs. */
+  #printarea .palpha tbody.pg{ break-inside:avoid; page-break-inside:avoid; }
   #printarea .palpha th{ text-align:left; font-size:9.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
     color:#333; background:#eee; border-bottom:1.4px solid #888; padding:3px 6px; overflow-wrap:anywhere; }
   #printarea .palpha td{ padding:1.8px 6px; border-bottom:1px solid #e6e6e6; vertical-align:top; overflow-wrap:anywhere; }
   #printarea .palpha th + th, #printarea .palpha td + td{ border-left:1px solid #e0e0e0; }   /* the columns read as columns */
-  #printarea .palpha tbody tr:nth-child(even) td{ background:#f6f6f6; }
-  #printarea .palpha th, #printarea .palpha tbody tr:nth-child(even) td{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  /* the left rule of the ΟΝΟΜΑ column, for the rows whose neighbour on the left is a cell spanned from above */
+  #printarea .palpha td.cn{ border-left:1px solid #e0e0e0; }
+  /* The stripe is per INVITATION, not per row: a cell spanning three rows can only carry one background, so
+     striping the rows would cut a zebra line straight through the middle of it. Every other block is tinted. */
+  #printarea .palpha tbody.alt td{ background:#f6f6f6; }
+  #printarea .palpha tbody.pg + tbody.pg td{ border-top:1px solid #d9d9d9; }   /* where one invitation ends and the next begins */
+  #printarea .palpha th, #printarea .palpha tbody.alt td{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  #printarea .palpha .ci{ width:30%; }
   #printarea .palpha .cn{ width:33%; }
-  #printarea .palpha .ci{ width:29%; }
   /* 11 %, and only the NUMBERS refuse to wrap: the German title "PERSONEN" ran into the next column at 9 % + nowrap */
   #printarea .palpha .cp{ width:11%; text-align:right; font-variant-numeric:tabular-nums; }
   #printarea .palpha td.cp{ white-space:nowrap; }
-  #printarea .palpha .ct{ width:27%; }
-  #printarea .palpha td.cn{ font-weight:600; }
-  #printarea .palpha td.ci, #printarea .palpha td.ct{ color:#444; }
+  #printarea .palpha .ct{ width:26%; }
+  #printarea .palpha td.ci{ font-weight:700; }                    /* the invitation is the heading of its block */
+  #printarea .palpha td.cn, #printarea .palpha td.cs{ font-weight:600; }
+  #printarea .palpha td.ct{ color:#444; }
   #printarea .palpha .gdot{ display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:4px;
     -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   #printarea .palpha .ast{ color:#a00; font-weight:400; font-size:10px; }
   #printarea .palpha .none{ color:#bbb; }
   #printarea .palpha .empty{ color:#bbb; text-align:center; font-weight:400; }
-  /* The footnote is the last ROW of the same table, so break-inside:avoid keeps it with the list
-     instead of letting it land alone on an eighth sheet with no header and no names. */
+  /* The footnote is the last ROW of the LAST BLOCK (not a tbody of its own): that block's break-inside:avoid carries
+     the last invitation over with it, so it can never land alone on an extra sheet with only the header row. */
   #printarea .palpha td.pfoot{ font-size:10.5px; color:#777; font-style:italic; padding-top:6px;
-    border-left:0 !important; border-bottom:0; background:transparent !important; }
+    border-left:0 !important; border-top:0 !important; border-bottom:0; background:transparent !important; }
+  /* buildAndPrint("alpha") lays the page out here, off screen at print width, to measure each block before printing */
+  #printarea.pmeasure{ display:block; position:absolute; left:-10000px; top:0; width:170mm; padding:0 10px;
+    visibility:hidden; pointer-events:none; }
 </style>
 </head>
 <body>
@@ -1985,7 +1998,10 @@ function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<"
 function norm(s){ return String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim(); }
 // ---- Greek-aware letter case. A display mode (Aa menu): the stored spelling never changes, so ΚΕΦΑΛΑΙΑ ↔ Πεζά is lossless
 // for anything typed with accents; names that arrived in capitals get their accent back only when the first name is known.
-const GREEK_FIRST="Γιώργος Γεώργιος Γιάννης Ιωάννης Κώστας Κωνσταντίνος Δημήτρης Δημήτριος Νίκος Νικόλαος Μιχάλης Μιχαήλ Βασίλης Βασίλειος Αντώνης Αντώνιος Χρήστος Παναγιώτης Πάνος Θανάσης Αθανάσιος Αλέξανδρος Αλέξης Ανδρέας Μανώλης Εμμανουήλ Σταύρος Σπύρος Σπυρίδων Θοδωρής Θεόδωρος Στέλιος Στυλιανός Λευτέρης Ελευθέριος Πέτρος Παύλος Στέφανος Φώτης Φώτιος Τάσος Αναστάσιος Άγγελος Ευάγγελος Βαγγέλης Ηλίας Σωτήρης Σωτήριος Γρηγόρης Γρηγόριος Λάμπρος Μάριος Μάρκος Χάρης Χαράλαμπος Μπάμπης Άρης Αριστείδης Διονύσης Διονύσιος Νότης Λουκάς Ορέστης Περικλής Σάκης Τάκης Μάκης Άκης Ζαχαρίας Ιάσονας Οδυσσέας Φίλιππος Απόστολος Τόλης Αργύρης Αργύριος Θωμάς Ιορδάνης Κυριάκος Λεωνίδας Μιλτιάδης Μενέλαος Νεκτάριος Πρόδρομος Σεραφείμ Σωκράτης Τηλέμαχος Τριαντάφυλλος Χρυσόστομος Χρύσανθος Γεράσιμος Μάνος Νάσος Ντίνος Ρένος Στράτος Ευστράτιος Ευθύμης Ευθύμιος Θέμης Θεμιστοκλής Λάζαρος Πασχάλης Παρασκευάς Ραφαήλ Ρήγας Σίμος Τζώρτζης Χρόνης Άρτεμης Αχιλλέας Βύρωνας Δαμιανός Ερμής Ευριπίδης Ζήσης Θεοφάνης Ιάκωβος Κλεάνθης Κοσμάς Λούης Μελέτης Νεόφυτος Ξενοφών Ορφέας Πλάτωνας Ρωμανός Σέργιος Τέλης Τρύφωνας Φάνης Φοίβος Χρυσοβαλάντης Μαρία Ελένη Κατερίνα Αικατερίνη Γεωργία Σοφία Άννα Δήμητρα Βασιλική Βίκυ Ειρήνη Ευαγγελία Εύη Χριστίνα Αθηνά Αναστασία Νατάσα Ιωάννα Παρασκευή Βούλα Αγγελική Ευφροσύνη Φρόσω Φωτεινή Δέσποινα Κωνσταντίνα Ντίνα Ελευθερία Ζωή Νίκη Ελπίδα Ιουλία Μαργαρίτα Ραφαέλα Στέλλα Στυλιανή Χρυσούλα Χρύσα Παναγιώτα Γιώτα Θεοδώρα Δώρα Αλεξάνδρα Αντωνία Ανδριάνα Αργυρώ Αρετή Ασπασία Αφροδίτη Βαρβάρα Βερονίκη Γλυκερία Ευτυχία Ζαφειρία Θάλεια Ισμήνη Καλλιόπη Κλεοπάτρα Λυδία Μαριάννα Μαρίνα Μελίνα Μυρτώ Νεφέλη Ολυμπία Ουρανία Πηνελόπη Ρένα Σμαράγδα Τζένη Φανή Φαίδρα Χαρά Χαρίκλεια Χάιδω Ελισάβετ Λίνα Ανθή Αριάδνη Βιργινία Δανάη Ελένα Ερμιόνη Ευδοκία Ευγενία Ζηνοβία Ηρώ Θεανώ Ιφιγένεια Κική Κλαίρη Κορίνα Λαμπρινή Μάγδα Μαγδαληνή Μαρίκα Μάρθα Μαριλένα Ματίνα Μίνα Μυρσίνη Νάντια Νικολέτα Ξένια Πέγκυ Πόπη Ρεβέκκα Ρούλα Σεβαστή Σούλα Τασούλα Τατιάνα Τζίνα Τούλα Φιλιώ Φλώρα Φωφώ Χρυσάνθη Αλίκη Άλκηστη Άρτεμις Βάσω Βενετία Γαλάτεια Ελεάννα Ελίνα Ερατώ Ζέτα Ηλέκτρα Ιόλη Καίτη Κάτια Λένα Λητώ Μαίρη Μελίτα Νανά Νάσια Νόρα Ρίτα Σάσα Τζούλια Τίνα Φένια Φαίη Αγάπη Αγνή Αιμιλία Αντιγόνη Αρσινόη Βικτωρία Γεσθημανή Δάφνη Διαμάντω Ελευθερία Ευανθία Ζαχαρούλα Θεοδοσία Καλομοίρα Κρυσταλλία Κυριακή Λεμονιά Μαριάνθη Μελπομένη Νικολίνα Πολυξένη Σταματία Σταυρούλα Χρυσαυγή";
+const GREEK_FIRST="Γιώργος Γεώργιος Γιάννης Ιωάννης Κώστας Κωνσταντίνος Δημήτρης Δημήτριος Νίκος Νικόλαος Μιχάλης Μιχαήλ Βασίλης Βασίλειος Αντώνης Αντώνιος Χρήστος Παναγιώτης Πάνος Θανάσης Αθανάσιος Αλέξανδρος Αλέξης Ανδρέας Μανώλης Εμμανουήλ Σταύρος Σπύρος Σπυρίδων Θοδωρής Θεόδωρος Στέλιος Στυλιανός Λευτέρης Ελευθέριος Πέτρος Παύλος Στέφανος Φώτης Φώτιος Τάσος Αναστάσιος Άγγελος Ευάγγελος Βαγγέλης Ηλίας Σωτήρης Σωτήριος Γρηγόρης Γρηγόριος Λάμπρος Μάριος Μάρκος Χάρης Χαράλαμπος Μπάμπης Άρης Αριστείδης Διονύσης Διονύσιος Νότης Λουκάς Ορέστης Περικλής Σάκης Τάκης Μάκης Άκης Ζαχαρίας Ιάσονας Οδυσσέας Φίλιππος Απόστολος Τόλης Αργύρης Αργύριος Θωμάς Ιορδάνης Κυριάκος Λεωνίδας Μιλτιάδης Μενέλαος Νεκτάριος Πρόδρομος Σεραφείμ Σωκράτης Τηλέμαχος Τριαντάφυλλος Χρυσόστομος Χρύσανθος Γεράσιμος Μάνος Νάσος Ντίνος Ρένος Στράτος Ευστράτιος Ευθύμης Ευθύμιος Θέμης Θεμιστοκλής Λάζαρος Πασχάλης Παρασκευάς Ραφαήλ Ρήγας Σίμος Τζώρτζης Χρόνης Άρτεμης Αχιλλέας Βύρωνας Δαμιανός Ερμής Ευριπίδης Ζήσης Θεοφάνης Ιάκωβος Κλεάνθης Κοσμάς Λούης Μελέτης Νεόφυτος Ξενοφών Ορφέας Πλάτωνας Ρωμανός Σέργιος Τέλης Τρύφωνας Φάνης Φοίβος Χρυσοβαλάντης Μαρία Ελένη Κατερίνα Αικατερίνη Γεωργία Σοφία Άννα Δήμητρα Βασιλική Βίκυ Ειρήνη Ευαγγελία Εύη Χριστίνα Αθηνά Αναστασία Νατάσα Ιωάννα Παρασκευή Βούλα Αγγελική Ευφροσύνη Φρόσω Φωτεινή Δέσποινα Κωνσταντίνα Ντίνα Ελευθερία Ζωή Νίκη Ελπίδα Ιουλία Μαργαρίτα Ραφαέλα Στέλλα Στυλιανή Χρυσούλα Χρύσα Παναγιώτα Γιώτα Θεοδώρα Δώρα Αλεξάνδρα Αντωνία Ανδριάνα Αργυρώ Αρετή Ασπασία Αφροδίτη Βαρβάρα Βερονίκη Γλυκερία Ευτυχία Ζαφειρία Θάλεια Ισμήνη Καλλιόπη Κλεοπάτρα Λυδία Μαριάννα Μαρίνα Μελίνα Μυρτώ Νεφέλη Ολυμπία Ουρανία Πηνελόπη Ρένα Σμαράγδα Τζένη Φανή Φαίδρα Χαρά Χαρίκλεια Χάιδω Ελισάβετ Λίνα Ανθή Αριάδνη Βιργινία Δανάη Ελένα Ερμιόνη Ευδοκία Ευγενία Ζηνοβία Ηρώ Θεανώ Ιφιγένεια Κική Κλαίρη Κορίνα Λαμπρινή Μάγδα Μαγδαληνή Μαρίκα Μάρθα Μαριλένα Ματίνα Μίνα Μυρσίνη Νάντια Νικολέτα Ξένια Πέγκυ Πόπη Ρεβέκκα Ρούλα Σεβαστή Σούλα Τασούλα Τατιάνα Τζίνα Τούλα Φιλιώ Φλώρα Φωφώ Χρυσάνθη Αλίκη Άλκηστη Άρτεμις Βάσω Βενετία Γαλάτεια Ελεάννα Ελίνα Ερατώ Ζέτα Ηλέκτρα Ιόλη Καίτη Κάτια Λένα Λητώ Μαίρη Μελίτα Νανά Νάσια Νόρα Ρίτα Σάσα Τζούλια Τίνα Φένια Φαίη Αγάπη Αγνή Αιμιλία Αντιγόνη Αρσινόη Βικτωρία Γεσθημανή Δάφνη Διαμάντω Ελευθερία Ευανθία Ζαχαρούλα Θεοδοσία Καλομοίρα Κρυσταλλία Κυριακή Λεμονιά Μαριάνθη Μελπομένη Νικολίνα Πολυξένη Σταματία Σταυρούλα Χρυσαυγή"
+  // common names the A–Z door list met missing (Σταμάτης, Αθανασία…): without them a name typed «ΚΑΛΑΜΙΩΤΗΣ ΣΤΑΜΑΤΗΣ»
+  // has no known first name and its surname cannot be told apart
+  +" Αθανασία Σταμάτης Σταμάτιος Σταματίνα Παντελής Παντελεήμων Σάββας Αντρέας Ηρακλής Ευθυμία Όλγα Γεωργιάννα Γιάννα Γιαννούλα Μηνάς Στάθης Ευστάθιος Ευσταθία Κωστής Στρατής Αναστάσης Έφη Κούλα Λίτσα Προκόπης Προκόπιος Θεοχάρης Χαρίλαος Αριστοτέλης Λάκης Αλέκος Αλέκα Στέργιος Στεργιανή Νικήτας Ματθαίος Τιμόθεος Φραγκίσκος Μαρίνος Ευτύχης Θύμιος Έλλη Εύα Κλειώ Κατίνα Νίτσα Ρίτσα Μάρω Ευδοξία Νεκταρία Ευφημία Αγλαΐα Ροδάνθη Ευθαλία Σπυριδούλα Κωνσταντία Αλκιβιάδης Αγαμέμνων Γιαννάκης Ανέστης Βαγγελιώ Βάγια Κανέλλα Ευμορφία Ανδρονίκη Κλεονίκη Αγαθή Μαρκέλλα Θεόκλητος Χριστόφορος Γιωργία Νίκανδρος Ευρυδίκη Πολυχρόνης";
 function upperGreek(s){   // ΚΕΦΑΛΑΙΑ the Greek way: the accent goes, the dialytika stay (Διονύσης → ΔΙΟΝΥΣΗΣ, Ναΐμ → ΝΑΪΜ); other scripts keep their marks
   return String(s||"").normalize("NFD").replace(/([\u0370-\u03ff])([\u0300-\u036f]+)/g,(m,b,marks)=>b+marks.replace(/[\u0300\u0301\u0342\u0345]/g,"")).normalize("NFC").toUpperCase();
 }
@@ -2007,6 +2023,53 @@ function surnameToken(name){   // the surname as written: the last token that is
   const toks=String(name||"").split(/\s*[+&]\s*/)[0].split(/[^\p{L}\p{M}]+/u).filter(w=>w.length>=3);
   const sur=toks.filter(w=>!GREEK_FIRST_MAP[upperGreek(w)]);
   return sur.length?sur[sur.length-1]:(toks.length>1?toks[toks.length-1]:"");
+}
+// ΕΠΩΝΥΜΟ ΟΝΟΜΑ for the A–Z print ONLY (display, never storage): «ΑΝΔΡΕΑΣ ΧΡΥΣΑΤΖΑΣ» must file under Χ.
+// A word moves to the front only when it is POSITIVELY the surname; anything short of that prints exactly as he typed
+// it — a door list must never invent a name, and a wrong guess flips a name he stored correctly. Two kinds of evidence:
+//   1. the invitation (two-word names only): the SECOND word is the family the invitation is named after AND at least
+//      one other member of it carries the same family (compared by stem, so ΚΑΛΑΜΙΩΤΗ matches ΚΑΛΑΜΙΩΤΗΣ). Never for an
+//      invitation named after people («ΣΤΑΜΑΤΗΣ & ΜΥΡΤΩ», «ΓΙΩΡΓΟΣ ΚΑΙ ΜΑΡΙΑ»), never when that word is a known first
+//      name («ΠΑΠΑΔΑΚΗ ΜΑΡΙΑ» in «ΘΕΙΑ ΜΑΡΙΑ»), never when the first word matches the invitation too.
+//   2. the dictionary: every word but one is a known first name, and that one is a real word of 3+ letters.
+// Always as typed: a "+1 / + συνοδός / &" tail, a single word, any bracket, quote, dot, comma or digit (a note or a
+// nickname is not a surname: «ΜΑΡΙΑ (ΝΟΝΑ)», «ΓΙΩΡΓΟΣ "ΤΖΟΝΙ"»), a relation word («ΑΝΤΡΑΣ ΤΗΣ», «ΑΓΟΡΙ ΑΘΑΝΑΣΙΑΣ ΖΟΥΝΗ»,
+// «ΜΑΡΙΑ ΚΟΥΜΠΑΡΑ»), two or more words the dictionary does not know («STAPHAN BOGNER», «ΚΑΛΑΜΙΩΤΗΣ ΘΕΟΦΙΛΟΣ»), and
+// every word known («ΖΗΣΗΣ ΑΓΓΕΛΙΚΗ»: Ζήσης is a surname too). A hyphen belongs to the word (ΚΟΤΣΩΝΑ-ΚΑΖΗ moves whole).
+// Known limit: a surname that is also a first name (Θωμάς, Λάζαρος…) stored FIRST next to a first name the dictionary
+// lacks still flips; the list was widened for that («ΘΩΜΑΣ ΑΝΤΡΕΑΣ» now stays), but refusing every such pair would stop
+// «ΘΩΜΑΣ ΧΡΥΣΑΤΖΑΣ», «ΗΛΙΑΣ ΠΑΠΑΣ» and the like from filing under their surname — the far commoner case.
+const NAME_WORD=/^[\p{L}\p{M}]+(?:[-‐‑][\p{L}\p{M}]+)*$/u;
+const NAME_ROLE=new Set(("ΤΟΥ ΤΗΣ ΤΩΝ ΚΑΙ ΜΕ ΣΥΝ ΑΠΟ ΓΙΑ ΑΝΤΡΑΣ ΣΥΖΥΓΟΣ ΓΥΝΑΙΚΑ ΦΙΛΟΣ ΦΙΛΗ ΑΓΟΡΙ ΚΟΡΙΤΣΙ ΠΑΙΔΙ ΜΩΡΟ ΚΟΡΗ ΓΙΟΣ "
+  +"ΘΕΙΑ ΘΕΙΟΣ ΝΟΝΑ ΝΟΝΟΣ ΚΟΥΜΠΑΡΑ ΚΟΥΜΠΑΡΟΣ ΣΥΝΟΔΟΣ ΓΙΑΓΙΑ ΠΑΠΠΟΥΣ ΜΑΜΑ ΜΠΑΜΠΑΣ ΑΔΕΡΦΟΣ ΑΔΕΡΦΗ ΑΔΕΛΦΟΣ ΑΔΕΛΦΗ ΑΝΙΨΙΟΣ "
+  +"ΑΝΙΨΙΑ ΞΑΔΕΡΦΟΣ ΞΑΔΕΡΦΗ ΚΟΛΛΗΤΟΣ ΚΟΛΛΗΤΗ ΣΥΝΤΡΟΦΟΣ ΚΟΠΕΛΑ ΚΑΛΕΣΜΕΝΟΣ ΚΑΛΕΣΜΕΝΗ ΟΙΚΟΓΕΝΕΙΑ").split(" "));
+function nameParts(w){ return upperGreek(w).split(/[-‐‑]/).filter(Boolean); }
+function isFirstNameWord(w){ const p=nameParts(w); return p.length>0 && p.every(x=>GREEK_FIRST_MAP[x]); }
+function nameStem(w){ const st=w.replace(/(ΟΥΣ|ΟΥ|ΟΣ|ΗΣ|ΑΣ|ΕΣ|ΟΙ|ΩΝ|Η|Α|Ο|Ε|Σ)$/,""); return st.length>=3?st:w; }   // w is upperGreek'd (ΠΑΠΑΣ / ΠΑΠΑ → ΠΑΠ)
+function familyStems(text){   // stems of every word that is neither a known first name nor a relation word
+  const out=new Set(); String(text||"").split(/[^\p{L}\p{M}\-‐‑]+/u).forEach(w=>nameParts(w).forEach(p=>{
+    if(p.length>=3 && !GREEK_FIRST_MAP[p] && !NAME_ROLE.has(p)) out.add(nameStem(p)); })); return out;
+}
+function surnameFirstName(nm, inv, others){
+  const s=String(nm||"");
+  if(/[+&]/.test(s)) return s;                                   // «+1 ΓΕΩΡΓΙΑΝΝΑ», «ΜΑΡΙΑ + συνοδός» — never touched
+  const toks=s.trim().split(/\s+/).filter(Boolean);
+  if(toks.length<2) return s;                                    // a single word is already whatever it is
+  if(!toks.every(t=>NAME_WORD.test(t))) return s;                // «ΜΑΡΙΑ (ΝΟΝΑ)», «ΓΙΩΡΓΟΣ "ΤΖΟΝΙ"», «ΠΑΠΑΣ Γ.», «ΠΑΠΑΣ 2»
+  if(toks.some(t=>nameParts(t).some(p=>NAME_ROLE.has(p)))) return s;   // «ΑΝΤΡΑΣ ΤΗΣ», «ΑΓΟΡΙ ΑΘΑΝΑΣΙΑΣ ΖΟΥΝΗ»
+  // 1. the invitation, for a first name the dictionary does not know: «ΦΙΛΑΡΕΤΗ ΚΑΛΑΜΙΩΤΗ» in «ΚΑΛΑΜΙΩΤΗΣ»
+  if(toks.length===2 && inv && !isFirstNameWord(toks[1])
+     && !/[&+,/]/.test(inv) && !/(^|[^\p{L}])(ΚΑΙ|KAI|AND|UND|ET)([^\p{L}]|$)/u.test(upperGreek(inv))){
+    const fam=familyStems(inv), b=[...familyStems(toks[1])], a=[...familyStems(toks[0])];
+    const shared=b.some(x=>fam.has(x)) && (others||[]).some(o=>{ const f=familyStems(o); return b.some(x=>f.has(x)); });
+    if(shared && !a.some(x=>fam.has(x))) return toks[1]+" "+toks[0];
+  }
+  // 2. the dictionary: exactly one word it does not know, and that word is not already first
+  const unknown=toks.map((t,i)=>isFirstNameWord(t)?-1:i).filter(i=>i>=0);
+  if(unknown.length!==1) return s;
+  const ix=unknown[0];
+  if(ix===0 || nameParts(toks[ix]).join("").length<3) return s;   // already first, or an initial («ΓΙΩΡΓΟΣ Π»)
+  return [toks[ix]].concat(toks.filter((_,i)=>i!==ix)).join(" ");
 }
 // Colours and icons from cloud/imported plans are interpolated into HTML, so clamp them to safe shapes
 // on ingest (a shared plan is attacker-controlled): colours to a hex literal, icons to a short markup-free string.
@@ -5720,32 +5783,91 @@ function buildAndPrint(mode){
   const head=`<h2>${escapeHtml(cur.name||tr("printTitle"))}</h2><div class="pmeta">${escapeHtml(meta)}</div>`;
   // The plan-wide counts line: the A–Z list has its own counts under its own heading and must not print them twice.
   const subLine=`<div class="psub">${escapeHtml(tr("printSub",{t:state.tables.length, s:seated, c:totalSeats}))}</div>`;
-  // A–Z: a real table, ONE ROW PER SEATED PERSON — name · their invitation · how many of it are on this page · table.
+  // A–Z: a real table read at the door, grouped the way the invitations were sent —
+  //   ΠΡΟΣΚΛΗΤΗΡΙΟ · ΟΝΟΜΑ · ΑΤΟΜΑ · ΤΡΑΠΕΖΙ.
+  // One block per invitation (its name written once, spanning its people's rows), one row per seated person inside it;
+  // a guest who belongs to no invitation is his own block and his two first cells are merged into one, surname first.
   // Nobody without a seat is printed (a door list is for people who have one); a single footnote counts those left out.
   if(mode==="alpha"){
     const coll=(a,b)=>String(a).localeCompare(String(b),"el",{sensitivity:"base",numeric:true});
     const st=id=>{ const s=STATUS_TXT(gStatus(id)); return s?` <span class="ast">(${escapeHtml(s)})</span>`:""; };
+    const disp={};   // id → ΕΠΩΝΥΜΟ ΟΝΟΜΑ as this page prints it (display only, computed once)
+    const nameOf=id=>disp[id]||"";
+    const cell=id=>`<span class="gdot" style="background:${guestColor(id)}"></span>${escapeHtml(nameOf(id))}${st(id)}`;
     const seatedIds=Object.keys(state.guests).filter(id=>seatedSet.has(id));
-    const pSeated=new Map();   // invitation → how many of its people appear IN THIS LIST, so the ΑΤΟΜΑ column matches the rows
-    seatedIds.forEach(id=>{ const p=partyOf(id); if(p) pSeated.set(p.id,(pSeated.get(p.id)||0)+1); });
-    const rows=seatedIds.map(id=>({id, p:partyOf(id), k:guestName(id)}))
-      .sort((a,b)=>coll(a.k,b.k)||coll(a.p?caseName(a.p.name):"", b.p?caseName(b.p.name):""))
-      .map(({id,p})=>`<tr><td class="cn"><span class="gdot" style="background:${guestColor(id)}"></span>${escapeHtml(guestName(id))}${st(id)}</td>`
-        +`<td class="ci">${p?escapeHtml(caseName(p.name)):`<span class="none">—</span>`}</td>`
-        +`<td class="cp">${p?pSeated.get(p.id):""}</td>`
-        +`<td class="ct">${escapeHtml(String(tableOf[id]||"").trim())||`<span class="none">—</span>`}</td></tr>`).join("");   // an unnamed table prints "—", it never drops its people
-    const hidden=Object.keys(state.guests).length-seatedIds.length;
-    // How many tables this list actually covers — counted per table (by position, since a plan can carry two tables with
-    // the same id or the same name), so spare empty tables are not counted and twins are not merged into one.
+    // Which table each seated guest sits at, BY POSITION — a plan can carry two tables with the same id or the same
+    // label, and those must never be merged into one cell (nor counted as one table).
     const tableAt={}; state.tables.forEach((t,ix)=>t.seats.forEach(gid=>{ if(gid) tableAt[gid]=ix; }));
+    // Groups: an invitation with at least one seated member, or a lone seated guest who is in none.
+    const byP=new Map(), groups=[];
+    seatedIds.forEach(id=>{ const p=partyOf(id);
+      if(!p){ groups.push({p:null, ids:[id]}); return; }
+      let g=byP.get(p.id); if(!g){ g={p, ids:[]}; byP.set(p.id,g); groups.push(g); } g.ids.push(id); });
+    groups.forEach(g=>{
+      // the other members of the invitation (seated or not) are the evidence that a word is the family's name
+      const mem=g.p?partyMembers(g.p.id):[];
+      g.ids.forEach(id=>{ disp[id]=caseName(surnameFirstName((state.guests[id]||{}).name||"", g.p?g.p.name:"",
+        mem.filter(x=>x!==id).map(x=>(state.guests[x]||{}).name||""))); });
+    });
+    groups.forEach(g=>{ g.ids.sort((a,b)=>coll(nameOf(a),nameOf(b))||coll(a,b));
+      g.key=g.p?caseName(g.p.name):nameOf(g.ids[0]); });   // an invitation files under its own name, a lone guest under his surname
+    groups.sort((a,b)=>coll(a.key,b.key)||coll(nameOf(a.ids[0]),nameOf(b.ids[0]))||coll(a.ids[0],b.ids[0]));
+    const hidden=Object.keys(state.guests).length-seatedIds.length;
     const usedTables=new Set(seatedIds.map(id=>tableAt[id])).size;
-    area.innerHTML=head
+    // The footnote is the last ROW of the last block, never a block of its own: a block is kept whole, so when the
+    // last page is full the last invitation moves over WITH it — a sheet holding only the header and this line cannot happen.
+    const footRow=hidden?`<tr class="pfootr"><td class="pfoot" colspan="4">${escapeHtml(hidden===1?tr("printHidden1"):tr("printHidden",{n:hidden}))}</td></tr>`:"";
+    const blockHtml=(b,last)=>{
+      const g=b.g, ids=b.ids, n=ids.length;
+      // ΤΡΑΠΕΖΙ: merge each RUN OF CONSECUTIVE rows sitting at the same table — compared by table POSITION, so two
+      // tables that happen to share a label are never welded together. Same-table rows that are not next to each
+      // other stay apart: same · other · same gives three separate cells, exactly as he asked.
+      const span=new Array(n).fill(0);
+      for(let i=0;i<n;i++){ if(span[i]===-1) continue; let k=i+1;
+        while(k<n && tableAt[ids[k]]===tableAt[ids[i]]){ span[k]=-1; k++; }
+        span[i]=k-i; }
+      const rows=ids.map((id,i)=>`<tr>`
+        +(i===0&&g.p?`<td class="ci" rowspan="${n}">${escapeHtml(caseName(g.p.name))}</td>`:"")
+        +(g.p?`<td class="cn">${cell(id)}</td>`:`<td class="cs" colspan="2">${cell(id)}</td>`)
+        +(i===0?`<td class="cp" rowspan="${n}">${g.p?g.ids.length:""}</td>`:"")   // blank for a lone guest: the merged cell already says "one person"
+        +(span[i]>0?`<td class="ct" rowspan="${span[i]}">${escapeHtml(String(tableOf[id]||"").trim())||`<span class="none">—</span>`}</td>`:"")
+        +`</tr>`).join("");
+      return `<tbody class="pg${b.gi%2?" alt":""}">${rows}${last?footRow:""}</tbody>`;   // one <tbody> per block: it is what keeps a merged cell off a page break
+    };
+    // One block per invitation. A merged cell that crosses a page break prints its text on the first sheet only — the
+    // rows on the next sheet would stand there with no invitation and NO TABLE — so every block must fit on one sheet.
+    // How tall a block prints depends on how many lines its names and table labels wrap to, which a row count cannot
+    // know (36 three-line names are taller than A4). So the page is laid out once, off screen, at the narrowest usual
+    // print width (A4 with 20 mm margins), every block is MEASURED, and a block taller than 225 mm (A4 or Letter with
+    // up to 20 mm margins, less the repeated header, with room to spare) is cut between rows into blocks that each fit;
+    // every piece repeats the invitation name and ΑΤΟΜΑ and merges only its own table runs. Measured again after the
+    // cut, a few rounds at most. An invitation that big never happens at a wedding; the owner's are six people at most.
+    let blocks=groups.map((g,gi)=>({g, gi, ids:g.ids}));
+    const render=()=>{ area.innerHTML=head
       +`<h3 class="pinvh">${escapeHtml(tr("printAllH"))} <span class="psn">${escapeHtml(tr("printAllSub",{s:seatedIds.length, t:usedTables}))}</span></h3>`
-      +`<table class="palpha"><thead><tr><th class="cn">${escapeHtml(tr("printColName"))}</th><th class="ci">${escapeHtml(tr("printColInv"))}</th>`
+      +`<table class="palpha"><thead><tr><th class="ci">${escapeHtml(tr("printColInv"))}</th><th class="cn">${escapeHtml(tr("printColName"))}</th>`
       +`<th class="cp">${escapeHtml(tr("printColPeople"))}</th><th class="ct">${escapeHtml(tr("printColTable"))}</th></tr></thead>`
-      +`<tbody>${rows||`<tr><td class="empty" colspan="4">—</td></tr>`}`
-      +(hidden?`<tr class="pfootr"><td class="pfoot" colspan="4">${escapeHtml(hidden===1?tr("printHidden1"):tr("printHidden",{n:hidden}))}</td></tr>`:"")
-      +`</tbody></table>`;
+      +(blocks.length?blocks.map((b,i)=>blockHtml(b,i===blocks.length-1)).join(""):`<tbody class="pg"><tr><td class="empty" colspan="4">—</td></tr>${footRow}</tbody>`)
+      +`</table>`; };
+    render();
+    const PAGE_PX=225*96/25.4;
+    area.classList.add("pmeasure");
+    try{
+      for(let round=0; round<4; round++){
+        const tbs=area.querySelectorAll("table.palpha > tbody.pg"); let cut=false; const next=[];
+        blocks.forEach((b,i)=>{ const tb=tbs[i];
+          if(!tb || b.ids.length<2 || tb.getBoundingClientRect().height<=PAGE_PX){ next.push(b); return; }
+          const hs=[...tb.rows].slice(0,b.ids.length).map(r=>r.getBoundingClientRect().height);
+          const parts=[]; let part=[], sum=0;
+          b.ids.forEach((id,k)=>{ if(part.length && sum+hs[k]>PAGE_PX){ parts.push(part); part=[]; sum=0; }
+            part.push(id); sum+=hs[k]; });
+          if(part.length) parts.push(part);
+          parts.forEach(ids=>next.push({g:b.g, gi:b.gi, ids}));
+          if(parts.length>1) cut=true; });
+        if(!cut) break;
+        blocks=next; render();
+      }
+    } finally { area.classList.remove("pmeasure"); }
     window.print(); return;
   }
   const cards=state.tables.map(t=>{
