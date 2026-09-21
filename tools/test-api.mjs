@@ -884,4 +884,391 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
   ok((await call('PUT', '/admin/owner', { email: '' }, OWN)).d.email === '', 'the address can be removed without a confirmation');
   ok((await call('PUT', '/admin/owner', { email: 'x@y.gr' }, OWN)).status === 503, 'and a new one cannot be set while the sender is off — it could not be confirmed');
 }
+// ---------- 11. Amelie: the couple's RSVP link — connect, pull (the server only fetches), disconnect ----------
+// A fake Amelie is injected (env.AMELIE_FETCH); the real network is switched off for the whole section.
+{
+  const realFetch = globalThis.fetch; let netCalls = 0;
+  globalThis.fetch = async () => { netCalls++; throw new Error('no real network in tests'); };
+  const logs = [], orig = { log: console.log, error: console.error, warn: console.warn, info: console.info };
+  for (const k of Object.keys(orig)) console[k] = (...a) => { logs.push(a.map(x => (x && x.stack) || String(x)).join(' ')); orig[k](...a); };
+  const bodies = [];   // every response body of this section, as sent
+  async function acall(method, url, body, headers = {}) {
+    const r = await worker.fetch(new Request('http://t' + url, { method, headers: { 'Content-Type': 'application/json', ...NEW, ...headers }, body: body === undefined ? undefined : JSON.stringify(body) }), env);
+    const text = await r.text(); bodies.push(text);
+    let d = null; try { d = JSON.parse(text); } catch (e) {}
+    return { status: r.status, d, h: r.headers };
+  }
+  const KEYS = [], newKey = () => { const k = 'k_' + crypto.randomUUID().replace(/-/g, '') + '-Z'; KEYS.push(k); return k; };
+  const guestsOf = (n, pad = '') => Array.from({ length: n }, (_, i) => ({ name: (i ? 'Γιώργος Π. (συνοδός ' + i + ')' : 'Γιώργος Π.') + pad, party: 'Γιώργος Π.', status: 'confirmed', note: 'Amelie: Θα είμαι εκεί', srcId: 'amelie:am_0123456789abcdef:' + (i + 1) }));
+  const mkDoc = (version, n, pad) => ({ ok: true, format: 'amelie-guests/1', version, generated_at: '2026-09-22T10:00:00Z',
+    invitation: { names: { a: 'Μαρία', b: 'Νίκος' }, date: '2027-06-12', status: 'live', rsvp_open: true },
+    options: [{ key: 'all', label: 'Θα είμαι εκεί', attending: 'yes' }],
+    totals: { parties: 1, answers: 1, people_yes: n, people_ceremony: 0, people_unknown: 0, parties_no: 0 },
+    parties: [{ id: 'am_0123456789abcdef', name: 'Γιώργος Π.', named: true, count: n, choice: 'all', label: 'Θα είμαι εκεί', attending: 'yes', people: n, answers: 1, first_at: '2026-09-20T10:00:00Z', updated_at: '2026-09-21T10:00:00Z' }],
+    importGuests: guestsOf(n, pad) });
+  const jres = (obj, status = 200, headers = {}) => new Response(typeof obj === 'string' ? obj : JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json', ...headers } });
+  const amelie = new Map();   // the fake Amelie's links: key → document
+  const liveAmelie = (url, init) => { const b = JSON.parse(init.body), d = amelie.get(b.token);
+    if (!d) return jres({ ok: false, error: 'not_found' }, 404);
+    return (b.since && b.since === d.version) ? jres({ ok: true, unchanged: true, version: d.version }) : jres(d); };
+  const up = { calls: [], handler: null };
+  env.AMELIE_FETCH = async (url, init) => { up.calls.push({ url, init, body: JSON.parse(init.body) }); return (up.handler || liveAmelie)(url, init); };
+  const upN = () => up.calls.length;
+  const pastWindow = id => patchRaw('plan:' + id, o => { if (o.amelie && o.amelie.callAt) o.amelie.callAt -= 61000; });   // the minute since the last call has passed
+  const pull = (id, h, since) => acall('POST', '/plans/' + id + '/amelie/pull', since === undefined ? {} : { since }, h);
+  const connect = (id, h, link) => acall('PUT', '/plans/' + id + '/amelie', { link }, h);
+  m.delete('meta:amelie-new');
+
+  const P = (await acall('POST', '/plans', { name: 'Amelie', plan: layout({ guests: { g1: { name: 'Χάρτινο' } } }) }, OWN)).d;
+  const HP = { 'X-Edit-Key': P.editKey }, HV = { 'X-View-Key': P.readKey };
+  let r = await acall('GET', '/plans/' + P.id, undefined, HP);
+  ok(r.d.amelie && r.d.amelie.connected === false && r.d.amelie.dead === false && r.d.amelie.lastPullAt === null, 'amelie: a writer sees «not connected»', r.d.amelie);
+  ok(!('amelie' in (await acall('GET', '/plans/' + P.id, undefined, HV)).d), 'amelie: a viewer is not even told whether a link exists');
+  r = await pull(P.id, HP);
+  ok(r.status === 412 && r.d.error === 'not_connected' && upN() === 0, 'amelie: a pull without a link → 412, nobody called');
+
+  // ---- the link: only amelie.gr/g/#<key> or the bare key; junk is refused before anything happens ----
+  const K1 = newKey(), good = 'https://amelie.gr/g/#' + K1;
+  const junk = ['', '   ', 'hello', K1.slice(0, 21), K1 + 'x'.repeat(40), 'http://amelie.gr/g/#' + K1, 'https://amelie.gr/g/' + K1, 'https://amelie.gr/g/#' + K1 + '?x=1',
+    'https://amelie.gr/g/#' + K1 + '/', 'https://amelie.gr.evil.example/g/#' + K1, 'https://evil.example/g/#' + K1, 'https://evil.example/?u=https://amelie.gr/g/#' + K1,
+    'HTTPS://AMELIE.GR/g/#' + K1, 'https://amelie.gr/g/#' + K1.replace('_', ' '), 'https://amelie.gr/api/guests', 'javascript:alert(1)', 'https://user@amelie.gr/g/#' + K1,
+    'https://amelie.gr:444/g/#' + K1, 'https://amelie.gr/g/#' + K1 + '#more', K1 + '\n' + K1, 'https://amelie.gr/g/#' + K1.slice(0, 20) + '%41%41', '<' + K1 + '>', 'k'.repeat(250), 12345, null, true, { link: good }, [good]];
+  let bad = 0;
+  for (const link of junk) { r = await connect(P.id, HP, link); if (r.status === 400 && r.d.error === 'bad_link') bad++; else ok(false, 'amelie: junk refused — ' + JSON.stringify(link), r); }
+  ok(bad === junk.length && (await acall('PUT', '/plans/' + P.id + '/amelie', {}, HP)).status === 400, 'amelie: every junk link (' + junk.length + ' kinds, and none at all) → 400 bad_link');
+  ok(upN() === 0 && !raw('plan:' + P.id).amelie, 'amelie: … with no call to Amelie and nothing stored');
+  // who may connect: whoever writes guest names — never a view link, a missing or wrong key, a retired device link
+  ok((await connect(P.id, HV, good)).status === 403, 'amelie: a view link cannot connect (403)');
+  ok((await connect(P.id, {}, good)).status === 401 && (await connect(P.id, { 'X-Edit-Key': 'wrong' }, good)).status === 403, 'amelie: no key → 401, a wrong key → 403');
+  await acall('POST', '/codes/ameliedevicecode1', { id: P.id }, HP);
+  const HS = { 'X-Sync-Code': 'ameliedevicecode1' };
+  m.set('code:amelieretiredcode', JSON.stringify({ plans: [{ id: P.id, role: 'couple', gen: 1, name: 'x', updated: 1 }] }));   // linked before a key reset
+  const HSold = { 'X-Sync-Code': 'amelieretiredcode' };
+  ok((await connect(P.id, HSold, good)).status === 403 && (await pull(P.id, HSold)).status === 403 && (await acall('DELETE', '/plans/' + P.id + '/amelie', undefined, HSold)).status === 403, 'amelie: a device link from before a key reset → 403 everywhere');
+  ok(!raw('plan:' + P.id).amelie && upN() === 0, 'amelie: still nothing stored, nobody called');
+
+  // ---- connect ----
+  const upd0 = raw('plan:' + P.id).updated, plan0 = JSON.stringify(raw('plan:' + P.id).plan);
+  r = await connect(P.id, HP, '  ' + good + '\n');
+  ok(r.status === 200 && r.d.amelie.connected === true && r.d.amelie.dead === false && r.d.amelie.lastPullAt === null && r.d.amelie.at > 0 && Object.keys(r.d.amelie).sort().join() === 'at,connected,dead,lastPullAt', 'amelie: the couple connects (a pasted link with spaces around it)', r.d);
+  ok(raw('plan:' + P.id).amelie.key === K1 && raw('plan:' + P.id).amelie.by === 'couple' && upN() === 0, 'amelie: the key is kept on the plan record — connecting calls nobody');
+  ok(raw('plan:' + P.id).updated === upd0 && JSON.stringify(raw('plan:' + P.id).plan) === plan0, 'amelie: connecting is not a change to the plan (updated and plan JSON untouched)');
+  r = await acall('GET', '/plans/' + P.id, undefined, HP);
+  ok(r.d.amelie.connected === true && r.d.audit.some(e => e.what === 'amelie' && e.who === 'couple'), 'amelie: GET says connected, and the access log shows who connected it');
+  ok(!('amelie' in (await acall('GET', '/plans/' + P.id, undefined, HV)).d), 'amelie: still nothing for the viewer');
+  ok((await connect(P.id, HP, K1)).status === 200 && raw('plan:' + P.id).amelie.key === K1, 'amelie: the bare key is accepted too');
+
+  // ---- pull: the document, from the one constant address ----
+  amelie.set(K1, mkDoc('aaaaaaaaaaa1', 3));
+  r = await pull(P.id, HP);
+  const c0 = up.calls[0];
+  ok(r.status === 200 && r.d.doc && r.d.doc.format === 'amelie-guests/1' && r.d.doc.version === 'aaaaaaaaaaa1' && r.d.doc.importGuests.length === 3 && r.d.doc.importGuests[2].srcId === 'amelie:am_0123456789abcdef:3', 'amelie: pull → {doc} for the planner to merge', r.d);
+  ok(upN() === 1 && c0.url === 'https://amelie.gr/api/guests' && c0.init.method === 'POST' && c0.init.redirect === 'manual' && c0.init.signal && c0.init.headers['Content-Type'] === 'application/json'
+    && c0.body.token === K1 && c0.body.format === 'json' && !('since' in c0.body) && Object.keys(c0.body).length === 2, 'amelie: one call to the constant address — POST JSON {token, format}, redirects off, a deadline', { url: c0.url, body: Object.keys(c0.body) });
+  ok(raw('plan:' + P.id).updated === upd0 && JSON.stringify(raw('plan:' + P.id).plan) === plan0, 'amelie: the server never merges — updated and the plan JSON stay as they were');
+  const am1 = raw('plan:' + P.id).amelie;
+  ok(am1.lastVersion === 'aaaaaaaaaaa1' && am1.lastPullAt > 0 && am1.ok === true && !am1.dead, 'amelie: the server remembers the version Amelie confirmed');
+  ok((await acall('GET', '/plans/' + P.id, undefined, HP)).d.amelie.lastPullAt === am1.lastPullAt, 'amelie: GET shows when it was last pulled');
+  // the planner's own save right after a pull is not a conflict
+  r = await acall('PUT', '/plans/' + P.id, { plan: layout({ guests: { g1: { name: 'Χάρτινο' }, g2: { name: 'Γιώργος Π.', srcId: 'amelie:am_0123456789abcdef:1' } } }), baseUpdated: upd0 }, HP);
+  ok(r.status === 200, 'amelie: the planner saves its merge with baseUpdated — no 409 caused by the pull', r.d);
+  const upd1 = r.d.updated;
+
+  // ---- one upstream call per plan per minute, however many devices ask ----
+  r = await pull(P.id, HS, 'aaaaaaaaaaa1');
+  ok(r.status === 200 && r.d.unchanged === true && r.d.version === 'aaaaaaaaaaa1' && upN() === 1, 'amelie: a second device inside the minute, up to date → «unchanged» from the server, Amelie not asked');
+  r = await pull(P.id, HS, 'older0000000');
+  ok(r.status === 200 && r.d.doc && r.d.doc.version === 'aaaaaaaaaaa1' && upN() === 1, 'amelie: a device with an older version gets the list the server just fetched — still one call');
+  pastWindow(P.id);
+  amelie.set(K1, mkDoc('bbbbbbbbbbb2', 4));
+  let release = null; up.handler = (url, init) => new Promise(res => { release = () => res(liveAmelie(url, init)); });
+  let n0 = upN();
+  const many = [pull(P.id, HP, 'aaaaaaaaaaa1'), pull(P.id, HS, 'aaaaaaaaaaa1'), pull(P.id, HP), pull(P.id, HS, 'aaaaaaaaaaa1'), pull(P.id, HP, 'aaaaaaaaaaa1')];
+  await new Promise(res => setTimeout(res, 30));
+  ok(upN() === n0 + 1 && typeof release === 'function', 'amelie: five devices at once, Amelie slow → asked exactly once', upN() - n0);
+  release(); up.handler = null;
+  const got = await Promise.all(many);
+  ok(got.every(x => x.status === 200 && x.d.doc && x.d.doc.version === 'bbbbbbbbbbb2' && x.d.doc.importGuests.length === 4) && upN() === n0 + 1, 'amelie: … and all five get the new list from that one call', got.map(x => x.status));
+  pastWindow(P.id);
+  r = await pull(P.id, HP, 'bbbbbbbbbbb2');
+  ok(r.status === 200 && r.d.unchanged === true && upN() === n0 + 2 && up.calls.at(-1).body.since === 'bbbbbbbbbbb2', 'amelie: a minute later Amelie is asked again, with since — and says «unchanged»');
+  // inside the minute with nothing in this process's memory (another process, a restart): only what the record knows
+  patchRaw('plan:' + P.id, o => { o.amelie.callAt = Date.now() - 1000; });
+  n0 = upN();
+  r = await pull(P.id, HP, 'bbbbbbbbbbb2');
+  ok(r.status === 200 && r.d.unchanged === true && upN() === n0, 'amelie: inside the minute, no memory → «unchanged» for an up-to-date device');
+  r = await pull(P.id, HP, 'zzzzzzzzzzzz');
+  ok(r.status === 429 && r.d.error === 'amelie_busy' && r.d.retryAfter >= 55 && r.d.retryAfter <= 60 && r.h.get('Retry-After') === String(r.d.retryAfter) && upN() === n0, 'amelie: … otherwise «wait N s» (body + Retry-After) — never a second call inside the minute', r.d);
+  pastWindow(P.id);
+  for (const since of ['../../etc', 'a b', 'x'.repeat(65), 42, { $gt: '' }]) { await pull(P.id, HP, since); pastWindow(P.id); }
+  ok(upN() === n0 + 5 && up.calls.slice(-5).every(c => !('since' in c.body)), 'amelie: a malformed since is never forwarded');
+
+  // ---- only the fields of amelie-guests/1 reach the browser ----
+  const extra = mkDoc('ccccccccccc3', 2);
+  Object.assign(extra, { diet: 'vegan', wishes: 'Να ζήσετε!' }); Object.assign(extra.importGuests[0], { allergy: 'nuts', email: 'guest@example.com', status: 'confirmed', note: 'Amelie: Θα είμαι εκεί' });
+  extra.parties[0].phone = '6977000000'; extra.invitation.secret = 'hidden'; extra.importGuests.push('junk', null, [1], { name: 5, srcId: 'amelie:am_x:9' });
+  amelie.set(K1, extra);
+  r = await pull(P.id, HP, 'bbbbbbbbbbb2');
+  const ds = JSON.stringify(r.d && r.d.doc);
+  ok(r.status === 200 && r.d.doc.version === 'ccccccccccc3' && !/vegan|Να ζήσετε|nuts|guest@example|6977000000|hidden/.test(ds) && r.d.doc.importGuests.length === 3
+    && Object.keys(r.d.doc.importGuests[0]).sort().join() === 'name,note,party,srcId,status' && !('name' in r.d.doc.importGuests[2]) && r.d.doc.invitation.names.a === 'Μαρία', 'amelie: unknown fields (diet, wishes, e-mail, phone) and non-objects are dropped — only amelie-guests/1 fields pass', r.d && r.d.doc);
+  // a list just under 1 MB passes; one just over does not
+  pastWindow(P.id);
+  const nearly = mkDoc('ddddddddddd4', 3000, ' '.repeat(150)), nearlyBytes = Buffer.byteLength(JSON.stringify(nearly));
+  ok(nearlyBytes > 1000000 && nearlyBytes < 1048576, 'amelie: (test data: a document of ' + nearlyBytes + ' bytes, just under 1 MiB)');
+  amelie.set(K1, nearly);
+  r = await pull(P.id, HP, 'ccccccccccc3');
+  ok(r.status === 200 && r.d.doc.importGuests.length === 3000, 'amelie: a big list under 1 MB comes through (the cap counts bytes)');
+
+  // ---- every way Amelie can fail → 502 amelie_unreachable, nothing marked, the link keeps working ----
+  const failWith = async (label, handler, extraCheck) => {
+    pastWindow(P.id); up.handler = handler; const n1 = upN(), t0 = Date.now();
+    const x = await pull(P.id, HP, 'ddddddddddd4'); up.handler = null;
+    const am = raw('plan:' + P.id).amelie;
+    ok(x.status === 502 && x.d.error === 'amelie_unreachable' && upN() === n1 + 1 && !am.dead && !am.retryAt && am.ok && (!extraCheck || extraCheck(Date.now() - t0)), 'amelie: ' + label + ' → 502 amelie_unreachable, the link stays connected', x.d);
+  };
+  // (the failing answers below carry a perfectly good document wherever they can: only the rule under test may refuse them)
+  const goodDoc = JSON.stringify(mkDoc('eeeeeeeeeee5', 1));
+  for (const s of [301, 302, 303, 307, 308]) await failWith('a ' + s + ' redirect (never followed)', () => new Response(goodDoc, { status: s, headers: { Location: 'https://evil.example/steal', 'Content-Type': 'application/json' } }));
+  for (const s of [500, 502, 503, 400, 401, 403, 201, 204]) await failWith('HTTP ' + s, () => new Response(s === 204 ? null : goodDoc, { status: s }));
+  await failWith('an HTML 404 (not Amelie\'s own «not_found»)', () => new Response('<html>404</html>', { status: 404, headers: { 'Content-Type': 'text/html' } }));
+  await failWith('a 404 with some other error', () => jres({ ok: false, error: 'maintenance' }, 404));
+  await failWith('bad JSON', () => new Response('{"ok":true, "format": "amelie-guests/1", ', { status: 200 }));
+  await failWith('an empty body', () => new Response(null, { status: 200 }));
+  await failWith('JSON that is not amelie-guests/1', () => jres({ ok: true, hello: 'world' }));
+  await failWith('a document without a list', () => jres({ ...mkDoc('eeeeeeeeeee5', 1), importGuests: 'nope' }));
+  await failWith('a document with a bad version', () => jres({ ...mkDoc('eeeeeeeeeee5', 1), version: 'v 1/../2' }));
+  await failWith('the network failing', () => { throw new TypeError('fetch failed'); });
+  // a valid document followed by whitespace (still valid JSON), streamed in 64 KB chunks
+  const bigBody = (bytes, headers = {}) => new Response(new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode(goodDoc)); for (let left = bytes; left > 0; left -= 65536) c.enqueue(new Uint8Array(Math.min(65536, left)).fill(32)); c.close(); } }), { status: 200, headers });
+  ok(JSON.parse(new TextDecoder().decode(new Uint8Array(await bigBody(1100000).arrayBuffer()))).version === 'eeeeeeeeeee5', 'amelie: (test data: the oversized bodies are valid JSON — only the byte cap can refuse them)');
+  await failWith('a body over 1 MB, no Content-Length', () => bigBody(1100000));
+  await failWith('a body over 1 MB that claims Content-Length: 100', () => bigBody(2000000, { 'Content-Length': '100' }));
+  await failWith('a declared Content-Length over 1 MB', () => new Response(goodDoc, { status: 200, headers: { 'Content-Length': '5000000' } }));
+  await failWith('valid JSON over 1 MB', () => jres(mkDoc('eeeeeeeeeee5', 4000, ' '.repeat(150))));
+  env.AMELIE_TIMEOUT_MS = 150;
+  await failWith('no answer at all (timeout)', (url, init) => new Promise((res, rej) => init.signal.addEventListener('abort', () => rej(new Error('aborted')))), ms => ms < 2000);
+  await failWith('an answer that ignores the abort (timeout)', () => new Promise(() => {}), ms => ms < 2000);
+  await failWith('headers, then a body that never ends (timeout)', () => new Response(new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode('{"ok":')); } }), { status: 200 }), ms => ms < 2000);
+  delete env.AMELIE_TIMEOUT_MS;
+  ok(logs.some(l => /amelie: pull failed \(timeout\)/.test(l)) && logs.some(l => /amelie: pull failed \(redirect\)/.test(l)) && logs.some(l => /amelie: pull failed \(too large\)/.test(l)), 'amelie: each failure is logged by kind');
+  // a failure inside the minute is not retried: the next device hears the same, Amelie is not asked
+  n0 = upN();
+  r = await pull(P.id, HS, 'somethingold');
+  ok(r.status === 502 && upN() === n0, 'amelie: right after a failure another device gets 502 from the server — no second call');
+  r = await pull(P.id, HS, 'ddddddddddd4');
+  ok(r.status === 200 && r.d.unchanged === true && upN() === n0, 'amelie: … and an up-to-date device just hears «unchanged»');
+
+  // ---- 429 from Amelie: Retry-After is honoured ----
+  pastWindow(P.id);
+  up.handler = () => jres({ ok: false, error: 'rate_limited' }, 429, { 'Retry-After': '120' });
+  r = await pull(P.id, HP, 'ddddddddddd4'); up.handler = null;
+  const ra = raw('plan:' + P.id).amelie.retryAt;
+  ok(r.status === 429 && r.d.error === 'amelie_busy' && r.d.retryAfter === 120 && r.h.get('Retry-After') === '120' && ra > Date.now() + 115000 && ra <= Date.now() + 120000, 'amelie: Amelie says 429 Retry-After 120 → 429 amelie_busy, retryAfter 120, stored', r.d);
+  n0 = upN();
+  pastWindow(P.id);
+  r = await pull(P.id, HP, 'ddddddddddd4');
+  ok(r.status === 429 && r.d.retryAfter > 100 && r.d.retryAfter <= 120 && upN() === n0, 'amelie: until then every pull is answered by the server — Amelie is not asked', r.d);
+  r = await pull(P.id, HS);
+  ok(r.status === 429 && upN() === n0, 'amelie: from any device');
+  patchRaw('plan:' + P.id, o => { o.amelie.retryAt = Date.now() - 1; });
+  r = await pull(P.id, HP, 'ddddddddddd4');
+  ok(r.status === 200 && r.d.unchanged === true && upN() === n0 + 1 && !raw('plan:' + P.id).amelie.retryAt, 'amelie: once the time is up Amelie is asked again');
+  const retryCase = async (h, lo, hi, label) => { pastWindow(P.id); up.handler = () => new Response('', { status: 429, headers: h }); const x = await pull(P.id, HP, 'ddddddddddd4'); up.handler = null;
+    ok(x.status === 429 && x.d.retryAfter >= lo && x.d.retryAfter <= hi, 'amelie: ' + label, x.d); patchRaw('plan:' + P.id, o => { o.amelie.retryAt = null; }); };
+  await retryCase({ 'Retry-After': new Date(Date.now() + 90000).toUTCString() }, 85, 91, 'Retry-After as an HTTP date');
+  await retryCase({}, 60, 60, 'no Retry-After → wait 60 s');
+  await retryCase({ 'Retry-After': '99999999' }, 86400, 86400, 'an absurd Retry-After is capped at one day');
+  await retryCase({ 'Retry-After': 'soon' }, 60, 60, 'an unreadable Retry-After → 60 s');
+
+  // ---- 404 not_found: the link is dead — marked, and never asked about again ----
+  pastWindow(P.id);
+  amelie.delete(K1);   // the couple rotated / revoked the link on Amelie
+  const planBeforeGone = JSON.stringify(raw('plan:' + P.id).plan);
+  r = await pull(P.id, HP, 'ddddddddddd4');
+  ok(r.status === 404 && r.d.error === 'amelie_gone' && raw('plan:' + P.id).amelie.dead === true, 'amelie: Amelie says not_found → 404 amelie_gone, the link is marked dead', r.d);
+  ok(JSON.stringify(raw('plan:' + P.id).plan) === planBeforeGone && raw('plan:' + P.id).updated === upd1, 'amelie: everyone already imported stays — the plan is untouched');
+  n0 = upN();
+  for (let i = 0; i < 4; i++) { pastWindow(P.id); patchRaw('plan:' + P.id, o => { o.amelie.callAt = 1; }); r = await pull(P.id, i % 2 ? HS : HP, 'ddddddddddd4'); if (r.status !== 404 || r.d.error !== 'amelie_gone') ok(false, 'amelie: dead stays dead', r); }
+  ok(upN() === n0, 'amelie: however often and from whichever device, a dead link never reaches Amelie again');
+  r = await acall('GET', '/plans/' + P.id, undefined, HP);
+  ok(r.d.amelie.connected === true && r.d.amelie.dead === true, 'amelie: GET shows the link as expired', r.d.amelie);
+  r = await connect(P.id, HP, good);
+  ok(r.status === 200 && r.d.amelie.dead === true && (await pull(P.id, HP)).status === 404 && upN() === n0, 'amelie: pasting the SAME dead link again keeps it dead — still no call');
+  const K2 = newKey(); amelie.set(K2, mkDoc('fffffffffff6', 2));
+  r = await connect(P.id, HP, 'https://amelie.gr/g/#' + K2);
+  const am2 = raw('plan:' + P.id).amelie;
+  ok(r.status === 200 && r.d.amelie.dead === false && r.d.amelie.lastPullAt === null && am2.key === K2 && am2.lastVersion === null && !am2.dead && !am2.ok && !am2.callAt, 'amelie: a NEW link clears dead / lastVersion');
+  r = await pull(P.id, HP, 'ddddddddddd4');
+  ok(r.status === 200 && r.d.doc.version === 'fffffffffff6' && upN() === n0 + 1 && up.calls.at(-1).body.token === K2, 'amelie: … and the new link is pulled at once');
+  // a link replaced / removed while Amelie is still answering about the old one
+  const slow = answer => { release = null; up.handler = (url, init) => new Promise(res => { release = () => res(answer(url, init)); }); };
+  const tick = () => new Promise(res => setTimeout(res, 30));
+  pastWindow(P.id); slow(() => jres({ ok: false, error: 'not_found' }, 404));
+  let inflight = pull(P.id, HP, 'fffffffffff6'), coalesced; await tick();
+  coalesced = pull(P.id, HS, 'fffffffffff6'); await tick();
+  const K2b = newKey(); amelie.set(K2b, mkDoc('fffffffffff7', 2));
+  ok((await connect(P.id, HP, K2b)).status === 200, 'amelie: (a new link is pasted while Amelie is still answering about the old one)');
+  release(); up.handler = null; r = await inflight; const r2 = await coalesced;
+  ok(r.status === 429 && r.d.retryAfter === 1 && r2.status === 429 && raw('plan:' + P.id).amelie.key === K2b && !raw('plan:' + P.id).amelie.dead, 'amelie: the old link\'s «not_found» never lands on the new one — the devices are told to ask again at once', [r.d, r2.d]);
+  n0 = upN();
+  r = await pull(P.id, HP, 'fffffffffff6');
+  ok(r.status === 200 && r.d.doc.version === 'fffffffffff7' && upN() === n0 + 1 && up.calls.at(-1).body.token === K2b, 'amelie: … and asking again pulls the new link straight away');
+  pastWindow(P.id); slow(liveAmelie);
+  inflight = pull(P.id, HP, 'aaaaaaaaaaa1'); await tick();
+  ok((await acall('DELETE', '/plans/' + P.id + '/amelie', undefined, HP)).status === 200, 'amelie: (disconnected while Amelie is answering)');
+  release(); up.handler = null; r = await inflight;
+  ok(r.status === 412 && r.d.error === 'not_connected' && !raw('plan:' + P.id).amelie, 'amelie: … → 412 not_connected, and nothing is written back', r.d);
+  await connect(P.id, HP, K2b);
+
+  // ---- read-only phases: 409 not_writable, nobody called; a disconnect is always allowed ----
+  const phase = async (label, patch, H, unpatch) => {
+    patchRaw('plan:' + P.id, patch); pastWindow(P.id); const n1 = upN();
+    const x = await pull(P.id, H, 'fffffffffff6'), y = await connect(P.id, H, 'https://amelie.gr/g/#' + K2), g = await acall('GET', '/plans/' + P.id, undefined, H);
+    ok(x.status === 409 && x.d.error === 'not_writable' && y.status === 409 && y.d.error === 'not_writable' && upN() === n1 && g.d.amelie && g.d.amelie.connected, 'amelie: ' + label + ' → pull and connect 409 not_writable, no call (GET still shows the link)', [x.d, y.d]);
+    patchRaw('plan:' + P.id, unpatch);
+  };
+  await phase('waiting out the withdrawal period', o => { o.opensAt = Date.now() + 86400000; }, HP, o => { delete o.opensAt; });
+  await phase('frozen after a date change', o => { o.frozenUntil = Date.now() + 86400000; }, HP, o => { delete o.frozenUntil; });
+  await phase('after the wedding (locked)', o => { o.weddingDate = athensDay(-2); }, HP, o => { delete o.weddingDate; });
+  pastWindow(P.id);
+  ok((await pull(P.id, HP, 'fffffffffff6')).status === 200, 'amelie: open again → pulls again');
+
+  // ---- roles on a venue wedding: the venue, its console, the couple (names phase), support ----
+  const VA = (await acall('POST', '/admin/venues', { name: 'Amelie Κτήμα', license: { type: 'per_wedding', quota: 5 } }, OWN)).d, HVC = { 'X-Venue-Key': VA.key };
+  const WV = (await acall('POST', '/venues/' + VA.id + '/weddings', { label: 'Amelie γάμος', date: athensDay(60) }, HVC)).d;
+  const K3 = newKey(); amelie.set(K3, mkDoc('aaaa0000bbb1', 2));
+  ok((await acall('GET', '/plans/' + WV.planId, undefined, { 'X-Edit-Key': WV.editKey })).d.life.phase === 'names', 'amelie: (a venue wedding 60 days out: the couple is in the names phase)');
+  r = await connect(WV.planId, { 'X-Edit-Key': WV.venueKey }, 'https://amelie.gr/g/#' + K3);
+  ok(r.status === 200 && raw('plan:' + WV.planId).amelie.by === 'venue', 'amelie: the venue can connect its couple\'s link');
+  ok((await pull(WV.planId, { 'X-Edit-Key': WV.editKey })).status === 200, 'amelie: the couple of a venue wedding pulls in the names phase (guest names are theirs)');
+  pastWindow(WV.planId);
+  ok((await pull(WV.planId, HVC, 'aaaa0000bbb1')).d.unchanged === true, 'amelie: the venue console key pulls too');
+  ok((await pull(WV.planId, { 'X-View-Key': raw('plan:' + WV.planId).readKey })).status === 403, 'amelie: the wedding\'s view link cannot');
+  ok(!('amelie' in (await acall('GET', '/plans/' + WV.planId, undefined, { 'X-View-Key': raw('plan:' + WV.planId).readKey })).d), 'amelie: and does not see the status');
+  await acall('POST', '/plans/' + WV.planId + '/support', { hours: 1 }, { 'X-Edit-Key': WV.venueKey });
+  const HSUP = { 'X-Support-Key': raw('plan:' + WV.planId).support.key };
+  pastWindow(WV.planId);
+  ok((await pull(WV.planId, HSUP, 'aaaa0000bbb1')).status === 200 && (await acall('GET', '/plans/' + WV.planId, undefined, HSUP)).d.amelie.connected, 'amelie: support pulls while its grant is open');
+  patchRaw('plan:' + WV.planId, o => { o.support.expires = Date.now() - 1; });
+  ok((await pull(WV.planId, HSUP)).status === 403 && (await connect(WV.planId, HSUP, 'https://amelie.gr/g/#' + K3)).status === 403, 'amelie: an expired grant cannot');
+  patchRaw('plan:' + WV.planId, o => { o.weddingDate = athensDay(-3); });
+  pastWindow(WV.planId);
+  ok((await pull(WV.planId, HVC)).status === 409 && (await pull(WV.planId, { 'X-Edit-Key': WV.venueKey })).status === 409, 'amelie: a locked venue wedding → 409 for the venue as well');
+  ok((await acall('DELETE', '/plans/' + WV.planId + '/amelie', undefined, HVC)).status === 200 && !raw('plan:' + WV.planId).amelie, 'amelie: but the venue can still disconnect it');
+  const TV = (await acall('POST', '/venues/' + VA.id + '/template', {}, HVC)).d;
+  ok((await connect(TV.planId, { 'X-Edit-Key': TV.venueKey }, 'https://amelie.gr/g/#' + K3)).status === 409 && !('amelie' in (await acall('GET', '/plans/' + TV.planId, undefined, { 'X-Edit-Key': TV.venueKey })).d), 'amelie: a venue template never gets a link (no guests there) — and GET offers none');
+
+  // ---- keys Amelie never accepted are budgeted: 5 an hour per CUSTOMER (never per plan), 15 for the whole server, the last
+  // 5 kept for customers who have not tried this hour; a call Amelie accepts frees its slot ----
+  m.delete('meta:amelie-new');
+  const slots = () => { const o = m.has('meta:amelie-new') ? JSON.parse(m.get('meta:amelie-new')) : {}; return { o, all: Object.values(o).flat().length }; };
+  const P3 = (await acall('POST', '/plans', { name: 'Typo', plan: layout() }, OWN)).d, H3 = { 'X-Edit-Key': P3.editKey };
+  await connect(P3.id, H3, newKey());
+  up.handler = () => jres({ ok: false }, 503);
+  n0 = upN();
+  for (let i = 0; i < 5; i++) { r = await pull(P3.id, H3); pastWindow(P3.id); }
+  ok(r.status === 502 && upN() === n0 + 5 && slots().all === 5 && slots().o['p:' + P3.id].length === 5, 'amelie: a link Amelie never accepted: its failed calls are counted for the customer (and server-wide)', slots().o);
+  r = await pull(P3.id, H3);
+  ok(r.status === 429 && r.d.error === 'amelie_busy' && r.d.retryAfter > 3500 && upN() === n0 + 5, 'amelie: the 6th in an hour is refused here — Amelie\'s failed-call budget is everyone\'s', r.d);
+  await acall('DELETE', '/plans/' + P3.id + '/amelie', undefined, H3); await connect(P3.id, H3, newKey());
+  ok((await pull(P3.id, H3)).status === 429 && upN() === n0 + 5, 'amelie: disconnecting and pasting another link does not reset it');
+  // the review's attack: extra plans (parentId) used to bring a fresh 5 each — now they share the customer's
+  const X1 = (await acall('POST', '/plans', { name: 'Extra 1', plan: layout(), parentId: P3.id }, H3)).d;
+  const X2 = (await acall('POST', '/plans', { name: 'Extra 2', plan: layout(), parentId: X1.id }, { 'X-Edit-Key': X1.editKey })).d;
+  ok(X1.editKey && X2.editKey && raw('plan:' + X1.id).rootId === P3.id && raw('plan:' + X2.id).rootId === P3.id, 'amelie: (a plan without a licence record: its extra plans, and theirs, remember the first plan)');
+  for (const X of [X1, X2]) {
+    const HX = { 'X-Edit-Key': X.editKey };
+    for (let i = 0; i < 5; i++) { await connect(X.id, HX, newKey()); r = await pull(X.id, HX); if (r.status !== 429) ok(false, 'amelie: an extra plan must not bring a fresh budget', r); }
+  }
+  ok(upN() === n0 + 5 && slots().all === 5, 'amelie: 10 junk links on two extra plans of the same customer → refused here, Amelie not called once', slots().all);
+  // a different customer's real link still goes through, and its accepted call gives the slot back
+  const P4 = (await acall('POST', '/plans', { name: 'Fresh', plan: layout() }, OWN)).d, H4 = { 'X-Edit-Key': P4.editKey }, K4 = newKey();
+  amelie.set(K4, mkDoc('abcabcabcabc', 1)); up.handler = null;
+  await connect(P4.id, H4, K4);
+  r = await pull(P4.id, H4);
+  ok(r.status === 200 && r.d.doc.version === 'abcabcabcabc' && upN() === n0 + 6 && raw('plan:' + P4.id).amelie.ok === true, 'amelie: another customer\'s new link goes through (the attacker only used its own 5)', r.d);
+  ok(slots().all === 5 && !slots().o['p:' + P4.id], 'amelie: … and Amelie accepted it, so it does not count — only failed calls use the budget');
+  // the last 5 of the 15 are for customers who have not tried this hour
+  const fill = (k, t) => { const o = slots().o; o[k] = [...(o[k] || []), ...Array.from({ length: t }, (_, i) => [Date.now() - 1000 * (i + 1), 'x' + k + i])]; m.set('meta:amelie-new', JSON.stringify(o)); };
+  fill('v:someVenue', 4); fill('c:someCouple', 1);   // 10 under way
+  const P5 = (await acall('POST', '/plans', { name: 'Five', plan: layout() }, OWN)).d, H5 = { 'X-Edit-Key': P5.editKey };
+  await connect(P5.id, H5, newKey()); up.handler = () => jres({ ok: false, error: 'not_found' }, 404);
+  r = await pull(P5.id, H5);
+  ok(r.status === 404 && upN() === n0 + 7 && slots().all === 11, 'amelie: at 10 under way, a customer who has not tried this hour still gets a call', r.d);
+  await connect(P5.id, H5, newKey()); pastWindow(P5.id);
+  r = await pull(P5.id, H5);
+  ok(r.status === 429 && upN() === n0 + 7, 'amelie: … but its second try waits: a customer with one under way only while fewer than 10 are', r.d);
+  for (const k of ['c:a', 'c:b', 'c:c', 'c:d']) fill(k, 1);   // 15 under way now
+  const P6 = (await acall('POST', '/plans', { name: 'Six', plan: layout() }, OWN)).d, H6 = { 'X-Edit-Key': P6.editKey }, K6 = newKey();
+  amelie.set(K6, mkDoc('abcabcabc666', 1)); up.handler = null;
+  await connect(P6.id, H6, K6);
+  r = await pull(P6.id, H6);
+  ok(r.status === 429 && r.d.retryAfter > 3000 && upN() === n0 + 7, 'amelie: 15 not-yet-accepted calls server-wide in an hour → even a first try waits (Amelie allows 20 failed per IP)', r.d);
+  pastWindow(P.id);
+  ok((await pull(P.id, HP, 'fffffffffff6')).status === 200 && upN() === n0 + 8, 'amelie: a link Amelie already accepted is never held back by that');
+  m.delete('meta:amelie-new'); pastWindow(P6.id);
+  r = await pull(P6.id, H6);
+  ok(r.status === 200 && r.d.doc.version === 'abcabcabc666' && raw('plan:' + P6.id).amelie.ok === true && slots().all === 0, 'amelie: once the hour frees up the new link goes through, is marked accepted and leaves no slot behind');
+
+  // ---- new keys after a leak: a link connected with the OLD couple key goes with it ----
+  const lic = (await acall('POST', '/admin/couples', { name: 'Leak', weddingDate: athensDay(10), startNow: true }, OWN)).d;
+  const LC = (await acall('POST', '/claim', { token: lic.claimToken, nonce: 'leak-1' })).d, HL = { 'X-Edit-Key': LC.editKey }, KL = newKey();
+  amelie.set(KL, mkDoc('1eak1eak1eak', 1));
+  ok((await connect(LC.id, HL, KL)).status === 200 && raw('plan:' + LC.id).amelie.by === 'couple', 'amelie: (someone holding the couple\'s leaked key connects an invitation)');
+  r = await acall('POST', '/admin/couples/' + lic.couple.id + '/reset', {}, OWN);
+  const afterReset = raw('plan:' + LC.id);
+  ok(r.status === 200 && !afterReset.amelie && afterReset.audit.some(e => e.who === 'admin' && e.what === 'amelie_off'), 'amelie: the admin\'s «new keys» reset drops that link too, and the access log says so', afterReset.audit);
+  const LC2 = (await acall('POST', '/claim', { token: r.d.claimToken, nonce: 'leak-2' })).d, HL2 = { 'X-Edit-Key': LC2.editKey };
+  n0 = upN();
+  r = await pull(LC.id, HL2);
+  ok(r.status === 412 && upN() === n0 && (await acall('GET', '/plans/' + LC.id, undefined, HL2)).d.amelie.connected === false, 'amelie: the couple\'s new key finds nothing connected — nobody\'s guests come in', r.d);
+  await connect(LC.id, HL2, KL);
+  r = await acall('POST', '/plans/' + LC.id + '/rotate', {}, HL2);
+  ok(r.status === 200 && !raw('plan:' + LC.id).amelie && raw('plan:' + LC.id).audit.at(-1).what === 'amelie_off', 'amelie: the couple\'s own «new links» drop a link connected with a couple key', raw('plan:' + LC.id).audit.slice(-2));
+  const WV2 = (await acall('POST', '/venues/' + VA.id + '/weddings', { label: 'Amelie γάμος 2', date: athensDay(60) }, HVC)).d;
+  await connect(WV2.planId, { 'X-Edit-Key': WV2.editKey }, KL);
+  r = await acall('POST', '/venues/' + VA.id + '/weddings/' + WV2.planId + '/couple-link', {}, HVC);
+  ok(r.status === 200 && !raw('plan:' + WV2.planId).amelie && raw('plan:' + WV2.planId).audit.some(e => e.who === 'venue' && e.what === 'amelie_off'), 'amelie: the venue\'s new couple link drops a link the couple connected');
+  await connect(WV2.planId, HVC, KL);
+  r = await acall('POST', '/venues/' + VA.id + '/weddings/' + WV2.planId + '/couple-link', {}, HVC);
+  ok(r.status === 200 && raw('plan:' + WV2.planId).amelie && raw('plan:' + WV2.planId).amelie.by === 'venue', 'amelie: … but not one the venue connected itself (the old couple key never had it)');
+
+  // ---- AMELIE_API_URL (dev / tests only): a mock on this machine, never anywhere else ----
+  pastWindow(P4.id); n0 = upN();
+  env.AMELIE_API_URL = 'https://evil.example/api/guests';
+  r = await pull(P4.id, H4);
+  ok(r.status === 502 && upN() === n0, 'amelie: an AMELIE_API_URL that is not this machine → refused, nothing sent anywhere');
+  pastWindow(P4.id);
+  env.AMELIE_API_URL = 'http://127.0.0.1:8099/api/guests';
+  r = await pull(P4.id, H4);
+  ok(r.status === 200 && upN() === n0 + 1 && up.calls.at(-1).url === 'http://127.0.0.1:8099/api/guests', 'amelie: a local mock address is used');
+  delete env.AMELIE_API_URL;
+
+  // ---- disconnect ----
+  ok((await acall('DELETE', '/plans/' + P4.id + '/amelie', undefined, { 'X-View-Key': P4.readKey })).status === 403 && (await acall('DELETE', '/plans/' + P4.id + '/amelie')).status === 401 && raw('plan:' + P4.id).amelie, 'amelie: a viewer (or nobody) cannot disconnect');
+  r = await acall('DELETE', '/plans/' + P4.id + '/amelie', undefined, H4);
+  ok(r.status === 200 && r.d.amelie.connected === false && !raw('plan:' + P4.id).amelie, 'amelie: DELETE forgets the key → {amelie:{connected:false}}', r.d);
+  ok((await acall('GET', '/plans/' + P4.id, undefined, H4)).d.amelie.connected === false && raw('plan:' + P4.id).audit.some(e => e.what === 'amelie_off'), 'amelie: GET says not connected; the log shows the disconnect');
+  pastWindow(P4.id); n0 = upN();
+  ok((await pull(P4.id, H4)).status === 412 && upN() === n0, 'amelie: after it, a pull → 412 not_connected, nobody called');
+  ok((await acall('DELETE', '/plans/' + P4.id + '/amelie', undefined, H4)).status === 200, 'amelie: disconnecting twice is fine');
+
+  // ---- the lock forgets the key (nothing pulls a view-only plan) ----
+  patchRaw('plan:' + P.id, o => { o.weddingDate = athensDay(-2); });
+  await mod.sweep(env);
+  ok(raw('plan:' + P.id).lockedAt && !raw('plan:' + P.id).amelie, 'amelie: when the plan locks after the wedding the Amelie key is dropped');
+
+  // ---- the key never leaves the plan record: not in any answer, log line, plan JSON, history or other row ----
+  ok(netCalls === 0, 'amelie: no real network was touched');
+  const leaks = [];
+  for (const K of KEYS) {
+    bodies.forEach((b, i) => { if (b.includes(K)) leaks.push('response #' + i); });
+    logs.forEach(l => { if (l.includes(K)) leaks.push('log: ' + l.slice(0, 80)); });
+    for (const [k, v] of m) if (v.includes(K)) { const o = JSON.parse(v); if (!k.startsWith('plan:') || !o.amelie || o.amelie.key !== K || JSON.stringify({ ...o, amelie: null }).includes(K)) leaks.push('row ' + k); }
+  }
+  ok(KEYS.length >= 6 && bodies.length > 100 && leaks.length === 0, 'amelie: no key in any of ' + bodies.length + ' responses, ' + logs.length + ' log lines, or any stored row but its own plan record\'s amelie.key', leaks);
+  for (const k of Object.keys(orig)) console[k] = orig[k];
+  globalThis.fetch = realFetch; delete env.AMELIE_FETCH;
+}
 console.log(`\nall ${n} checks passed`);

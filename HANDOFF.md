@@ -66,7 +66,7 @@ is on — §1c; otherwise send the **claim link** yourself, §1b). Never again a
 - **Honest limit**: this is enforced by the software (API, consoles, planner). Root on the server can still read the
   SQLite file, because the server itself must read plans (wipe guard, history, lock enforcement). End-to-end
   encryption would be a separate project (lost link = lost plan).
-- **Tests**: `node tools/test-api.mjs` (every role, migration, legacy, race guards, email — §1c). The build also
+- **Tests**: `node tools/test-api.mjs` (every role, migration, legacy, race guards, email — §1c, Amelie — §1g). The build also
   fails on duplicate dictionary keys (a later key silently overrides the earlier one).
 
 ## 1c. Email: customers get their own links and recover on their own (2026-09-18)
@@ -181,6 +181,78 @@ Working on paper is the model: you should always see what is already in an invit
   are unchanged, below it.
 - A mobile layout of the same panel exists (the rail reserves its width via `body.invrail`); it has been tested only at
   375×812 emulation, never on a real handset.
+
+## 1g. Amelie connection — server and planner (2026-09-22)
+
+The couple's Amelie RSVP link (`https://amelie.gr/g/#<key>`) can be connected to a plan; the planner then pulls the
+answers and merges them with `mergeGuestList` (step 1, commit 5de45a8). Contract from Amelie's agent: `amelie-guests/1`.
+- **Storage**: the key lives on the plan RECORD, `rec.amelie = {key, at, by, lastVersion, lastPullAt, dead, retryAt,
+  callAt, ok}` — never in the plan JSON (view links read that), never in a response, log line, URL or error. Responses
+  only ever carry `amelie: {connected, at, dead, lastPullAt}` (GET /plans/:id, writer roles only, not on templates).
+  The lock after the wedding drops `rec.amelie`, and so do new keys after a leak: the admin's «new keys» reset always;
+  the couple's own «new links» and the venue's «new couple link» when the link was connected by a couple key
+  (`by === "couple"` — it may be the leaker's own invitation, which would otherwise keep feeding names in). A link the
+  venue connected survives the couple's new keys. Each drop is an `amelie_off` entry in the access log; the planner's
+  rotate toast says so. (Not done: the venue's console-key rotation does not touch links the venue connected — decide.)
+- **Who**: whoever writes guest names — couple edit key, venue key / console key, support while its grant is open, a
+  current sync-code device. View links, retired device links: 403. Every connect / disconnect is in the access log
+  (`amelie`, `amelie_off`).
+- **Routes**: `PUT /plans/:id/amelie {link}` (only `^https://amelie\.gr/g/#[A-Za-z0-9_-]{22,64}$` or the bare key, trimmed;
+  else 400 `bad_link`, nothing stored or called; the same dead key pasted again stays dead) · `DELETE /plans/:id/amelie`
+  (always allowed, even locked) · `POST /plans/:id/amelie/pull {since?}` → `{doc}` | `{unchanged, version}` | 404
+  `amelie_gone` | 429 `amelie_busy` + `retryAfter` (and a Retry-After header) | 502 `amelie_unreachable` | 409
+  `not_writable` (locked; for the couple also waiting / frozen; templates) | 412 `not_connected`.
+- **The upstream call**: only the constant `https://amelie.gr/api/guests`, POST `{token, since?, format:"json"}`,
+  `redirect: "manual"` (any non-200/404 = 502), 8 s for headers AND body, body counted as it streams and cut at 1 MiB,
+  only amelie-guests/1 fields passed on (unknown fields are dropped — nothing like diet data can slip through later).
+  A 404 counts only with Amelie's own `{"error":"not_found"}` body (an HTML 404 from a broken deploy never kills links).
+- **Protecting Amelie's limits** (120/h per link; failed calls 20/h per IP — all of TakeaSeat is one IP):
+  one upstream call per plan per 60 s, whoever asks (devices asking meanwhile share the call or get `unchanged` /
+  `amelie_busy`); 404 → dead, never called again until a NEW link is pasted; Amelie's 429 Retry-After is stored
+  (`retryAt`) and honoured. Calls with a key Amelie never accepted need a slot of an hourly budget (one row,
+  `meta:amelie-new` = `{tenant: [[time, slotId], …]}`, never a key): 15 server-wide; 5 per **customer** — a couple's
+  licence (`c:<coupleId>`) with all its plans, a venue (`v:<venueId>`) with all its weddings, a plan without a licence
+  record (`p:<rootId or id>`; its extra plans carry `rootId`) — never per plan, since extra plans are free to make; a
+  customer with one under way only while fewer than 10 are, so the last 5 stay for customers who have not tried this
+  hour. A call Amelie accepts (doc / unchanged) gives its slot back at once: only failed calls use the budget, as on
+  Amelie's side. Refused → 429 `amelie_busy` with the wait, Amelie not called. server.mjs: 12 pulls/min per IP.
+- **The server never merges** and never moves `updated` — the planner merges and saves with `baseUpdated`, so a save
+  conflict goes through the normal 409 path. The pull runs **beside** the API queue in server.mjs (it may wait 8 s on
+  Amelie; its writes are single atomic `PLANS.update` calls), so nobody's save waits on Amelie.
+- **Planner**: ⋯ → Περισσότερα… → «Αρχεία & αντίγραφα» → «Σύνδεση με Amelie…» — only for whoever may write guest names on
+  an online plan (never viewers, read-only phases, templates, the lab), and only once GET returns `amelie`. Paste the
+  link → PUT; the dialog shows connected / last checked / gone, «Ανανέωση από Amelie», «Αποσύνδεση». Pulls: 0.4 s after
+  the plan opens, then every 12 min (`AME.every`) while the page is visible — nothing while hidden, not connected, gone
+  or read only; a 429 waits `retryAfter` (at least 60 s, a manual press included). `since` = `state.amelieVer` (the
+  Amelie version the list was merged from; it travels WITH the plan, so a 409 that adopts the server's copy adopts its
+  version too, and the planner pulls again after 61 s). Merge = step 1's `mergeGuestList(doc,{live:true})`, held while
+  the user types / drags / has a dialog open, then ONE save through the normal path (`baseUpdated`). **An automatic merge
+  only happens on a device someone is at** (visible, focused, a key / click / touch / mouse move in the last 90 s —
+  `ameAttended`): an unattended device that saved on its own made the save of the device someone was typing on come back
+  409, and the conflict path adopted the server's copy over the typed names. There the answer waits (`AME.pending`) for
+  the first input; a manual «Ανανέωση» merges at once. A held answer whose base version the plan no longer has (another
+  device merged, a 409, ↶, a reset) is dropped and asked again. `since` is sent only while the list still holds an
+  `amelie:` guest; a reset / «replace names» / an older Amelie FILE that changed Amelie guests also drops
+  `state.amelieVer`, so the next pull brings the whole current document. Guests that came in through Amelie's CSV
+  (no srcId) are LINKED on the first pull (same name + same invitation, one to one; a different status counts as set by
+  hand), not added twice. Read-only phases still show the dialog with «Αποσύνδεση» only. Summary dialog only
+  when a seated guest became «ακυρώθηκε» or a hand-set status was kept; otherwise a toast («Amelie: +3 νέοι, 2 άλλαξαν
+  απάντηση»), or nothing. 404 → «Η σύνδεση με την Amelie έληξε…» once, pulls stop (also after a reload); a new link works.
+  Known: a guest the couple deletes in TakeaSeat comes back as new on the next changed Amelie version (the merge only
+  knows srcIds that are still in the plan) — to be decided (remember deleted `amelie:` srcIds, or warn on delete).
+- **Dev / tests**: `AMELIE_API_URL=http://127.0.0.1:8090/api/guests node tools/dev.mjs` with
+  `node tools/amelie-mock.mjs` (a fake Amelie: live / gone / busy / slow / redirect / huge test links; controls:
+  `/mock/answer {name,count,attending}` answers / changes an answer / shrinks a household, `/mock/remove`, `/mock/revoke`
+  (the live link → 404), `/mock/rotate` (a new random live link), `/mock/busy {times,retryAfter}` (429s), `/mock/reset`,
+  `GET /mock/calls`). Send Greek names from a node script, not curl on Windows (the console code page mangles them).
+  The worker accepts AMELIE_API_URL **only on this machine** (localhost / 127.0.0.1 / [::1]);
+  **production sets none**. `tools/test-api.mjs` §11 injects a fake upstream (`env.AMELIE_FETCH`) and switches the real
+  network off. Never call the real amelie.gr from a test.
+- **Legal**: privacy.html (v. 22/9/2026: guests may come from the couple's Amelie invitation, §2 / §3 / §9, and the
+  access-log row lists connecting / disconnecting Amelie) and dpa.html (v. 22/9/2026: the same access-log entry in §3)
+  go live together with this feature, not before.
+- **Before going live**: check the container reaches `https://amelie.gr` (outbound HTTPS; if Amelie is on the same
+  box this goes out and back through Caddy) — e.g. connect a real test invitation on a test plan and pull once.
 
 ## 2. Architecture
 

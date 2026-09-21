@@ -24,6 +24,8 @@
 //   POST   /plans/:id/support {hours, message}  ·  DELETE /plans/:id/support      (the plan's owner)
 //   POST   /plans/:id/rotate      (couple of a couple-owned plan: new links, other devices signed out)
 //   POST   /plans/:id/legacy-off  (end the 14-day id-only grace early)
+//   PUT    /plans/:id/amelie {link} · DELETE /plans/:id/amelie · POST /plans/:id/amelie/pull {since?}
+//          (the couple's Amelie RSVP link — any role that writes guest names; see "Amelie" below)
 //   POST   /claim {token, nonce}  (a couple opens the link TakeaSeat sent — once)
 //   POST   /recover {email, lang} · POST /recover/couple {token, nonce} · POST /recover/venue {token, secret?}
 //   POST   /verify {token} · POST /plans/:id/email {email} · POST /venues/:id/email {email}
@@ -350,7 +352,8 @@ async function lifecycleSweep(env, now) {
     const L = await planLife(env, rec, id, { settings, since, venue: v, couple: c });
     if (!L.over) continue;
     if (L.locked && !rec.lockedAt) {
-      await kvUpdate(env, k, cur => { if (!cur) return null; cur.lockedAt = now; cur.support = null; addAudit(cur, "system", "locked"); return cur; });
+      await kvUpdate(env, k, cur => { if (!cur) return null; cur.lockedAt = now; cur.support = null; delete cur.amelie; addAudit(cur, "system", "locked"); return cur; });   // a view-only plan never pulls again: the Amelie key goes too
+      AMELIE_MEM.delete(id);
       await removeIndex(env, "support:index", id); out.locked++;
       if (own.type === "venue" && rec.support) await mirrorVenueSupport(env, own.venueId, id, null);
     }
@@ -440,8 +443,8 @@ async function renewSweep(env, now) {
   return out;
 }
 async function forgetEmail(env, email) { if (email) { await env.PLANS.delete("rlmail:recover:" + email); await env.PLANS.delete("rlmail:verify:" + email); } }
-function json(obj, status = 200) {
-  return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...CORS } });   // never cached: a 410 must not outlive a restore
+function json(obj, status = 200, extra) {
+  return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...CORS, ...(extra || {}) } });   // never cached: a 410 must not outlive a restore
 }
 function safeParse(raw) { try { return raw ? JSON.parse(raw) : null; } catch (e) { return null; } }
 function tooBig(v) { try { return JSON.stringify(v ?? null).length > MAX_PLAN_BYTES; } catch (e) { return true; } }
@@ -603,6 +606,225 @@ function layoutOnly(src, fromWedding) {
   return p;
 }
 
+// ---- Amelie (amelie.gr digital invitations): the couple's RSVP answers become the plan's guest list ----
+// The key of the couple's link (https://amelie.gr/g/#<key>) lives on the plan RECORD as rec.amelie = {key, at, by,
+// lastVersion, lastPullAt, dead, retryAt, callAt, ok} — never in the plan JSON (view links read that), never in a
+// response, a log line, a URL or an error. Only whether it exists and its state are ever returned (amelieOut).
+// The server only fetches: the planner merges (mergeGuestList) and saves through its normal path with baseUpdated. A merge
+// here would bump `updated`, and the planner's next 409 would adopt this plan over what the user was typing.
+// Amelie's limits: 120 calls/hour per link; FAILED calls (wrong / dead keys) count per IP, 20/hour — and all of TakeaSeat
+// is one IP. Hence: a 404 kills the key for good (no call with it ever again), one upstream call per plan per minute
+// whoever asks, and calls with a key Amelie never accepted are budgeted (per customer and server-wide, see amelieReserve).
+const AMELIE_URL = "https://amelie.gr/api/guests";   // the only address ever called — never one from a request (SSRF)
+const AMELIE_LINK = /^https:\/\/amelie\.gr\/g\/#([A-Za-z0-9_-]{22,64})$/, AMELIE_KEY = /^[A-Za-z0-9_-]{22,64}$/, AMELIE_VER = /^[A-Za-z0-9_-]{1,64}$/;
+const AMELIE_TIMEOUT = 8000, AMELIE_MAX_BYTES = 1024 * 1024, AMELIE_WINDOW = 60000, HOUR = 3600000;
+// Calls with a key Amelie has not accepted yet, per rolling hour (Amelie allows 20 FAILED calls per IP, and all of TakeaSeat
+// is one IP): 15 server-wide · 5 per customer — a couple's licence with ALL its plans, a venue with all its weddings, never
+// one plan (extra plans are free to make) · a customer who already has one under way only while fewer than 10 are, so the
+// last 5 stay for customers who have not tried this hour. A call Amelie ACCEPTS (doc / unchanged) frees its slot at once:
+// only failed calls use the budget, as on Amelie's side.
+const AMELIE_NEW_PER_HOUR = 15, AMELIE_NEW_SHARED = 10, AMELIE_NEW_PER_TENANT = 5;
+// This process's memory of each plan's last upstream call (≤ 60 s): lets several devices share one call and its answer.
+const AMELIE_MEM = new Map();   // planId → {gen, callAt, flight: {promise, resolve} | null, res}
+const amelieOut = am => (am && am.key) ? { connected: true, at: am.at || null, dead: !!am.dead, lastPullAt: am.lastPullAt || null }
+  : { connected: false, at: null, dead: false, lastPullAt: null };
+// New keys because a key leaked (the admin's reset, the couple's own new links, the venue's new couple link): an Amelie link
+// connected with the OLD key (by === role; null = whoever) may be the leaker's own invitation, which would keep feeding names
+// into the list — it goes too, and the access log says so. A link the venue connected survives the couple's new keys.
+function amelieDropFor(rec, role, who) {
+  if (!rec.amelie || (role && rec.amelie.by !== role)) return false;
+  delete rec.amelie; addAudit(rec, who, "amelie_off"); return true;
+}
+function amelieKeyOf(link) {   // the pasted link (or the bare key) → the key, or null
+  if (typeof link !== "string" || link.length > 200) return null;
+  const s = link.trim(), m = AMELIE_LINK.exec(s);
+  return m ? m[1] : (AMELIE_KEY.test(s) ? s : null);
+}
+function amelieUrl(env) {   // tests / local dev only: AMELIE_API_URL may point at a mock ON THIS MACHINE; production sets none
+  if (!env.AMELIE_API_URL) return AMELIE_URL;
+  try { const u = new URL(env.AMELIE_API_URL); if (/^https?:$/.test(u.protocol) && ["localhost", "127.0.0.1", "[::1]"].includes(u.hostname)) return u.href; } catch (e) {}
+  return null;   // anything else fails closed: a stray setting can never send a key somewhere else
+}
+// Whose budget a not-yet-accepted key uses: the customer's, never just the plan's.
+function amelieTenant(rec, id) {
+  const o = ownerOf(rec);
+  if (o.type === "venue") return "v:" + o.venueId;
+  if (rec.coupleId) return "c:" + rec.coupleId;
+  return "p:" + (rec.rootId || id);   // a couple plan without a licence record: its extra plans (rootId) count with it
+}
+// The budget row meta:amelie-new = {tenant: [[time, slotId], …]}, only the last hour kept. Never holds a key.
+function amelieSlots(o, now) {
+  const out = Object.create(null);
+  if (o && typeof o === "object" && !Array.isArray(o)) for (const k of Object.keys(o)) {
+    const l = (Array.isArray(o[k]) ? o[k] : []).filter(e => Array.isArray(e) && typeof e[0] === "number" && now - e[0] < HOUR);
+    if (l.length) out[k] = l;
+  }
+  return out;
+}
+const amSlotWait = (list, limit, now) => { const ts = list.map(e => e[0]).sort((a, b) => a - b); return amSecs(ts[Math.max(0, ts.length - limit)] + HOUR - now); };   // until one too many has aged out
+// One atomic step: take a slot for this customer → {slot} | {wait: seconds}.
+async function amelieReserve(env, tenant, now) {
+  const slot = rnd(12);
+  const r = await kvUpdate(env, "meta:amelie-new", cur => {
+    const s = amelieSlots(cur, now), mine = s[tenant] || [], all = Object.values(s).flat();
+    if (mine.length >= AMELIE_NEW_PER_TENANT) return { __res: { wait: amSlotWait(mine, AMELIE_NEW_PER_TENANT, now) } };
+    const cap = mine.length ? AMELIE_NEW_SHARED : AMELIE_NEW_PER_HOUR;
+    if (all.length >= cap) return { __res: { wait: amSlotWait(all, cap, now) } };
+    s[tenant] = [...mine, [now, slot]];
+    return { __obj: s, __res: { slot } };
+  });
+  return (r && r.res) || { wait: 60 };
+}
+async function amelieRelease(env, tenant, slot) {   // Amelie accepted the key: that call was not a failed one
+  await kvUpdate(env, "meta:amelie-new", cur => {
+    const s = amelieSlots(cur, Date.now());
+    if (s[tenant]) { s[tenant] = s[tenant].filter(e => e[1] !== slot); if (!s[tenant].length) delete s[tenant]; }
+    return { __obj: s };
+  });
+}
+// The same rule as a guest-name save (PUT /plans/:id): nobody after the lock, the couple not while waiting / frozen.
+async function amelieWritable(env, rec, id, a) {
+  if (rec.template) return false;   // a venue's default space never has guests
+  const L = await planLife(env, rec, id);
+  return !L.locked && !(a.role === "couple" && couplePerms(a, L) === null);
+}
+// Only the fields of amelie-guests/1 reach the browser — nothing Amelie might add one day (never health data).
+const amPrim = (v, strOnly) => typeof v === "string" ? v.slice(0, 500) : (!strOnly && ((typeof v === "number" && Number.isFinite(v)) || typeof v === "boolean")) ? v : undefined;
+function amPick(o, keys, strOnly) { const out = {}; if (o && typeof o === "object" && !Array.isArray(o)) for (const k of keys) { const v = amPrim(o[k], strOnly); if (v !== undefined) out[k] = v; } return out; }
+const amObjs = a => (Array.isArray(a) ? a : []).filter(x => x && typeof x === "object" && !Array.isArray(x));
+function amelieDoc(d) {
+  if (!d || typeof d !== "object" || Array.isArray(d) || d.format !== "amelie-guests/1" || typeof d.version !== "string" || !AMELIE_VER.test(d.version) || !Array.isArray(d.importGuests)) return null;
+  const inv = (d.invitation && typeof d.invitation === "object") ? d.invitation : {};
+  return { ok: true, format: d.format, version: d.version, generated_at: amPrim(d.generated_at, true) ?? null,
+    invitation: { names: amPick(inv.names, ["a", "b"], true), ...amPick(inv, ["date", "status", "rsvp_open"]) },
+    options: amObjs(d.options).map(o => amPick(o, ["key", "label", "attending"], true)),
+    totals: amPick(d.totals, ["parties", "answers", "people_yes", "people_ceremony", "people_unknown", "parties_no"]),
+    parties: amObjs(d.parties).map(p => amPick(p, ["id", "name", "named", "count", "choice", "label", "attending", "people", "answers", "first_at", "updated_at"])),
+    importGuests: amObjs(d.importGuests).map(g => amPick(g, ["name", "party", "status", "note", "srcId"], true)) };
+}
+function retryAfterSecs(h) {   // Retry-After: seconds or an HTTP date → 1 s … 1 day (60 s when missing or unreadable)
+  const s = String(h == null ? "" : h).trim();
+  let n = /^\d+$/.test(s) ? parseInt(s, 10) : Math.ceil((Date.parse(s) - Date.now()) / 1000);
+  if (!Number.isFinite(n)) n = 60;
+  return Math.max(1, Math.min(86400, n));
+}
+// One call to Amelie → {kind: "doc", doc} | {kind: "unchanged", version} | {kind: "gone"} | {kind: "busy", retryAfter} |
+// {kind: "fail", why}. No redirects, ~8 s for everything (headers AND body), the body counted as it streams and cut at 1 MB.
+async function amelieCall(env, key, since) {
+  const url = amelieUrl(env);
+  if (!url) return { kind: "fail", why: "AMELIE_API_URL is not on this machine" };
+  const go = typeof env.AMELIE_FETCH === "function" ? env.AMELIE_FETCH : fetch;   // AMELIE_FETCH: the tests' fake Amelie
+  const ctrl = new AbortController(); let timer = null, reader = null;
+  const readCapped = async r => {   // Content-Length is only a hint; the count is what decides
+    if (+(r.headers.get("content-length") || 0) > AMELIE_MAX_BYTES) return null;
+    if (!r.body) return "";
+    reader = r.body.getReader(); const chunks = []; let n = 0;
+    for (;;) { const { done, value } = await reader.read(); if (done) break; n += value.byteLength; if (n > AMELIE_MAX_BYTES) return null; chunks.push(value); }
+    const all = new Uint8Array(n); let o = 0; for (const c of chunks) { all.set(c, o); o += c.byteLength; }
+    return new TextDecoder().decode(all);
+  };
+  const work = (async () => {
+    let r;
+    try {
+      r = await go(url, { method: "POST", redirect: "manual", signal: ctrl.signal,
+        headers: { "Content-Type": "application/json", "Accept": "application/json", "User-Agent": "TakeaSeat (+https://takeaseat.gr)" },
+        body: JSON.stringify(since ? { token: key, since, format: "json" } : { token: key, format: "json" }) });
+    } catch (e) { return { kind: "fail", why: ctrl.signal.aborted ? "timeout" : "network" }; }
+    try {
+      if (r.type === "opaqueredirect" || (r.status >= 300 && r.status < 400)) return { kind: "fail", why: "redirect" };
+      if (r.status === 429) return { kind: "busy", retryAfter: retryAfterSecs(r.headers.get("retry-after")) };
+      if (r.status !== 200 && r.status !== 404) return { kind: "fail", why: "status " + r.status };
+      const text = await readCapped(r);
+      if (text === null) return { kind: "fail", why: "too large" };
+      let b; try { b = JSON.parse(text); } catch (e) { b = undefined; }
+      // 404 counts only as Amelie's own answer: a misrouted deploy's HTML 404 must never kill every connected plan
+      if (r.status === 404) return (b && b.error === "not_found") ? { kind: "gone" } : { kind: "fail", why: "status 404" };
+      if (b === undefined) return { kind: "fail", why: "bad json" };
+      if (b && b.unchanged === true && typeof b.version === "string" && AMELIE_VER.test(b.version)) return { kind: "unchanged", version: b.version };
+      const doc = amelieDoc(b);
+      return doc ? { kind: "doc", doc } : { kind: "fail", why: "not amelie-guests/1" };
+    } catch (e) { return { kind: "fail", why: ctrl.signal.aborted ? "timeout" : "read" }; }
+  })();
+  const timeout = new Promise(res => { timer = setTimeout(() => res({ kind: "fail", why: "timeout" }), +env.AMELIE_TIMEOUT_MS || AMELIE_TIMEOUT); });
+  try { return await Promise.race([work, timeout]); }
+  finally { clearTimeout(timer); ctrl.abort(); if (reader) reader.cancel().catch(() => {}); }
+}
+const amSecs = ms => Math.max(1, Math.ceil(ms / 1000));
+const amelieBusy = s => json({ error: "amelie_busy", retryAfter: s }, 429, { "Retry-After": String(s) });
+function amelieReply(res, since) {
+  if (res.kind === "doc") return (since && since === res.doc.version) ? json({ unchanged: true, version: since }) : json({ doc: res.doc });
+  if (res.kind === "unchanged") return json({ unchanged: true, version: res.version });
+  if (res.kind === "gone") return json({ error: "amelie_gone" }, 404);
+  if (res.kind === "busy") return amelieBusy(res.retryAfter);
+  if (res.kind === "none") return json({ error: "not_connected" }, 412);
+  return json({ error: "amelie_unreachable" }, 502);
+}
+// Inside the minute after an upstream call: answer from what the server knows, never from Amelie.
+async function amelieFromWindow(id, am, since) {
+  const mem = AMELIE_MEM.get(id);
+  const res = (mem && mem.gen === am.at && mem.callAt === am.callAt) ? (mem.flight ? await mem.flight.promise : mem.res) : null;   // a call still running: wait for its answer
+  if (res && (res.kind === "doc" || res.kind === "gone" || res.kind === "busy" || res.kind === "none")) return amelieReply(res, since);
+  const known = (res && res.kind === "unchanged") ? res.version : am.lastVersion;   // the newest version Amelie confirmed
+  if (since && since === known) return json({ unchanged: true, version: since });
+  if (res && res.kind === "fail") return json({ error: "amelie_unreachable" }, 502);   // Amelie just failed — not asked again this minute
+  return amelieBusy(amSecs(am.callAt + AMELIE_WINDOW - Date.now()));   // this device needs the list, which only a new call brings
+}
+async function ameliePull(env, id, since) {
+  const now = Date.now();
+  for (const [k, e] of AMELIE_MEM) if (!e.flight && (now - e.callAt >= AMELIE_WINDOW || AMELIE_MEM.size > 500)) AMELIE_MEM.delete(k);
+  // Decide and reserve in one atomic step: whoever gets here first in a minute calls Amelie; everyone else is answered.
+  const r = await kvUpdate(env, "plan:" + id, cur => {
+    const am = cur && cur.amelie;
+    if (!am || !am.key) return { __res: { out: "not_connected" } };
+    if (am.dead) return { __res: { out: "gone" } };
+    if (am.retryAt && now < am.retryAt) return { __res: { out: "busy", s: amSecs(am.retryAt - now) } };
+    if (am.callAt && now - am.callAt < AMELIE_WINDOW) return { __res: { out: "window", am } };
+    am.callAt = now;
+    let resolve; const flight = { promise: new Promise(ok => { resolve = ok; }), resolve: v => resolve(v) };
+    AMELIE_MEM.set(id, { gen: am.at, callAt: now, flight, res: null });
+    return { __obj: cur, __res: { out: "call", key: am.key, ok: !!am.ok, flight, tenant: amelieTenant(cur, id) } };
+  });
+  const d = (r && r.res) || { out: "not_connected" };
+  if (d.out === "not_connected") return json({ error: "not_connected" }, 412);
+  if (d.out === "gone") return json({ error: "amelie_gone" }, 404);
+  if (d.out === "busy") return amelieBusy(d.s);
+  if (d.out === "window") return amelieFromWindow(id, d.am, since);
+  let got = { kind: "fail", why: "error" }, res = got, held = null;
+  try {
+    if (!d.ok) {   // Amelie has never accepted this key: it may be a typo or long dead — it needs a slot of the hourly budget
+      held = await amelieReserve(env, d.tenant, now);
+      if (held.wait) { res = got = { kind: "busy", retryAfter: held.wait, budget: true }; held = null; }   // not asked; told when to try again
+    }
+    if (!got.budget) {
+      res = got = await amelieCall(env, d.key, since);
+      if (held && (got.kind === "doc" || got.kind === "unchanged")) { const h = held; held = null; await amelieRelease(env, d.tenant, h.slot); }
+      const w = await kvUpdate(env, "plan:" + id, cur => {
+        const am = cur && cur.amelie;
+        if (!am || !am.key) return { __res: "removed" };
+        if (am.key !== d.key) return { __res: "replaced" };   // nothing Amelie said about the old link may land on the new one
+        const t = Date.now();
+        if (got.kind === "doc" || got.kind === "unchanged") { am.ok = true; am.lastPullAt = t; am.lastVersion = got.kind === "doc" ? got.doc.version : got.version; am.retryAt = null; }
+        else if (got.kind === "gone") { am.dead = true; am.deadAt = t; }
+        else if (got.kind === "busy") am.retryAt = t + got.retryAfter * 1000;
+        else return { __res: "ok" };
+        return { __obj: cur, __res: "ok" };   // `updated` never moves: this is not a change to the plan
+      });
+      // Disconnected while Amelie answered → not connected; a new link pasted meanwhile → "ask again now" (it has its own minute).
+      if (w && w.res === "removed") res = { kind: "none" }; else if (w && w.res === "replaced") res = { kind: "busy", retryAfter: 1 };
+    }
+  } catch (e) { console.error("amelie: pull error " + ((e && e.name) || "")); }
+  finally {
+    const mem = AMELIE_MEM.get(id);
+    if (mem && mem.flight === d.flight) { mem.flight = null; mem.res = res; }
+    d.flight.resolve(res);
+  }
+  if (got.budget) console.log("amelie: a link Amelie has not accepted yet waits for the hourly budget (" + got.retryAfter + " s)");
+  else if (got.kind === "fail") console.error("amelie: pull failed (" + got.why + ")");
+  else if (got.kind === "gone") console.log("amelie: a link was revoked on Amelie" + (res === got ? " — marked, never called again" : ""));
+  else if (got.kind === "busy") console.log("amelie: Amelie asked to wait " + got.retryAfter + " s");
+  return amelieReply(res, since);
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") return new Response(null, { headers: CORS });
@@ -620,7 +842,7 @@ export default {
           const body = await request.json().catch(() => ({}));
           if (body.plan != null && !isPlan(body.plan)) return json({ error: "bad_plan" }, 422);
           if (tooBig(body.plan)) return json({ error: "plan too large" }, 413);
-          let coupleId = null, ok = await ownerOk(request, env);
+          let coupleId = null, rootId = null, ok = await ownerOk(request, env);
           if (!ok && body.parentId) {
             const parent = safeParse(await env.PLANS.get("plan:" + String(body.parentId)));
             if (parent && ownerOf(parent).type === "couple" && eq(request.headers.get("X-Edit-Key") || "", parent.editKey)) {
@@ -628,11 +850,12 @@ export default {
               if (PL.over) return json({ error: "wedding_over" }, 403);   // no new plans after the wedding
               if (PL.phase !== "full") return json({ error: "not_open", life: lifeOut(PL, parent, false) }, 403);   // extra plans only once the room is open
               ok = true; coupleId = parent.coupleId || null;
+              if (!coupleId) rootId = parent.rootId || String(body.parentId);   // no licence record: the first plan stands for the customer (Amelie's budget)
             }
           }
           if (!ok) return json({ error: "not_allowed" }, 403);
           const id = rnd(22), editKey = rnd(28), readKey = rnd(24);
-          const rec = { name: String(body.name || "Untitled").slice(0, 120), plan: body.plan ?? null, editKey, readKey, owner: { type: "couple" }, coupleId, keyGen: 0, createdAt: Date.now(), updated: Date.now() };
+          const rec = { name: String(body.name || "Untitled").slice(0, 120), plan: body.plan ?? null, editKey, readKey, owner: { type: "couple" }, coupleId, ...(rootId ? { rootId } : {}), keyGen: 0, createdAt: Date.now(), updated: Date.now() };
           if (coupleId) {   // an extra plan of a couple who bought TakeaSeat: recorded on the licence (erased with it)
             const lic = await kvUpdate(env, "couple:" + coupleId, cp => { if (!cp || cp.deletedAt) return null; cp.plans = [...(cp.plans || []), id]; return cp; });
             if (!lic.obj || lic.obj.deletedAt) return json({ error: "not_allowed" }, 403);
@@ -677,6 +900,7 @@ export default {
             out.support = supportActive(rec) ? { expires: rec.support.expires, by: rec.support.by || "", ...(a.full ? { message: rec.support.message || "" } : {}) } : null;
             out.audit = (rec.audit || []).slice(-20);
             if (rec.resetAt) out.resetAt = rec.resetAt;
+            if (!rec.template) out.amelie = amelieOut(rec.amelie);   // whether a link is connected and its state — never the key
           }
           const L = await planLife(env, rec, id), directCouple = a.role === "couple" && a.owner.type === "couple";
           out.life = lifeOut(L, rec, directCouple || a.role === "venue", directCouple ? COUPLE_DATE_CHANGES : DATE_CHANGES);   // never for extra plans
@@ -797,7 +1021,9 @@ export default {
           if (!a) return denied(request, rec);
           if (!(a.role === "couple" && a.owner.type === "couple")) return json({ error: "unauthorized" }, 403);
           const r = await kvUpdate(env, key, cur => { if (!cur) return null;
-            cur.editKey = rnd(28); cur.readKey = rnd(24); cur.keyGen = (cur.keyGen || 0) + 1; cur.legacyOpenUntil = null; addAudit(cur, "couple", "rotate"); return cur; });
+            cur.editKey = rnd(28); cur.readKey = rnd(24); cur.keyGen = (cur.keyGen || 0) + 1; cur.legacyOpenUntil = null; addAudit(cur, "couple", "rotate");
+            amelieDropFor(cur, "couple", "couple"); return cur; });
+          AMELIE_MEM.delete(id);
           return json({ ok: true, editKey: r.obj.editKey, readKey: r.obj.readKey });
         }
         if (parts.length === 3 && parts[2] === "email" && request.method === "POST") {   // the couple changes its recovery email (confirmed by mail)
@@ -849,6 +1075,36 @@ export default {
           if (!(a.role === "couple" || a.role === "venue")) return json({ error: "unauthorized" }, 403);
           await kvUpdate(env, key, cur => { if (!cur || !cur.legacyOpenUntil) return null; cur.legacyOpenUntil = null; return cur; });
           return json({ ok: true });
+        }
+        // ---- Amelie: connect / disconnect the couple's RSVP link, and fetch its answers for the planner to merge ----
+        // Whoever may write guest names (couple, venue, support with an open grant); a view link never. `updated` never moves.
+        if (parts[2] === "amelie" && ((parts.length === 3 && (request.method === "PUT" || request.method === "DELETE")) || (parts.length === 4 && parts[3] === "pull" && request.method === "POST"))) {
+          if (!a) return denied(request, rec);
+          if (!a.write) return json({ error: "read_only" }, 403);
+          if (request.method === "DELETE") {   // forgetting the key is always allowed, even after the lock
+            await kvUpdate(env, key, cur => { if (!cur || !cur.amelie) return null; delete cur.amelie; addAudit(cur, a.role, "amelie_off"); return cur; });
+            AMELIE_MEM.delete(id);
+            return json({ amelie: amelieOut(null) });
+          }
+          if (parts.length === 4) {
+            if (!rec.amelie || !rec.amelie.key) return json({ error: "not_connected" }, 412);
+            if (rec.amelie.dead) return json({ error: "amelie_gone" }, 404);   // never asked again with this key
+            if (!(await amelieWritable(env, rec, id, a))) return json({ error: "not_writable" }, 409);
+            const b = await readBody(request);
+            return ameliePull(env, id, (typeof b.since === "string" && AMELIE_VER.test(b.since)) ? b.since : null);   // any other `since` is simply not sent
+          }
+          if (!(await amelieWritable(env, rec, id, a))) return json({ error: "not_writable" }, 409);
+          const b = await readBody(request);
+          const k = amelieKeyOf(b.link);
+          if (!k) return json({ error: "bad_link" }, 400);   // checked here, before anything is stored or anyone is called
+          const r = await kvUpdate(env, key, cur => { if (!cur) return null; const old = cur.amelie, now = Date.now();
+            // The same key again keeps what Amelie said about it (a dead key stays dead: pasting it again costs no failed call).
+            cur.amelie = (old && old.key === k) ? { ...old, at: now, by: a.role }
+              : { key: k, at: now, by: a.role, lastVersion: null, lastPullAt: null, dead: false, retryAt: null, callAt: null, ok: false };
+            addAudit(cur, a.role, "amelie"); return cur; });
+          AMELIE_MEM.delete(id);
+          if (!r.obj) return json({ error: "not found" }, 404);
+          return json({ amelie: amelieOut(r.obj.amelie) });
         }
       }
       // ---------------- claim: a couple opens the link TakeaSeat sent (once; the same device may retry briefly) ----------------
@@ -1314,8 +1570,9 @@ export default {
             const token = rnd(32), now = Date.now();
             const r = await kvUpdate(env, "plan:" + c.planId, cur => { if (!cur || cur.coupleId !== c.id) return null;
               cur.editKey = rnd(28); cur.readKey = rnd(24); cur.keyGen = (cur.keyGen || 0) + 1; cur.support = null; cur.legacyOpenUntil = null; cur.resetAt = now;
-              addAudit(cur, "admin", "reset"); return cur; });
+              addAudit(cur, "admin", "reset"); amelieDropFor(cur, null, "admin"); return cur; });   // whoever held the old key may have connected an invitation of their own
             if (!r.obj || r.obj.resetAt !== now) return json({ error: "plan_gone" }, 410);
+            AMELIE_MEM.delete(c.planId);
             await removeIndex(env, "support:index", c.planId);
             if (c.claimToken) await env.PLANS.delete("claim:" + c.claimToken);
             await env.PLANS.put("claim:" + token, JSON.stringify({ cid: c.id, planId: c.planId, createdAt: now, gen: r.obj.keyGen || 0, reset: true }));
@@ -1504,7 +1761,9 @@ export default {
           if (!w || !wp) return json({ error: "not found" }, 404);
           if ((await planLife(env, wp, parts[3], { venue: v })).locked) return json({ error: "locked" }, 403);
           const r = await kvUpdate(env, "plan:" + parts[3], rec => { if (!rec) return null;
-            rec.editKey = rnd(28); rec.readKey = rnd(24); rec.keyGen = (rec.keyGen || 0) + 1; rec.legacyOpenUntil = null; addAudit(rec, "venue", "rotate"); return rec; });
+            rec.editKey = rnd(28); rec.readKey = rnd(24); rec.keyGen = (rec.keyGen || 0) + 1; rec.legacyOpenUntil = null; addAudit(rec, "venue", "rotate");
+            amelieDropFor(rec, "couple", "venue"); return rec; });
+          AMELIE_MEM.delete(parts[3]);
           await kvUpdate(env, vkey, cur => { if (!cur) return null; const cw = (cur.weddings || []).find(x => x.planId === parts[3]); if (!cw) return null; cw.editKey = r.obj.editKey; return cur; });
           console.log("venue " + v.id + ": new couple link for " + parts[3]);
           return json({ ok: true, editKey: r.obj.editKey, readKey: r.obj.readKey });
@@ -1526,7 +1785,7 @@ export default {
       }
       return json({ error: "not found" }, 404);
     } catch (e) {
-      console.error("api error " + request.method + " " + new URL(request.url).pathname.replace(/[A-Za-z0-9]{16,}/g, "…") + ": " + ((e && e.stack) || e));
+      console.error("api error " + request.method + " " + new URL(request.url).pathname.replace(/[A-Za-z0-9_-]{16,}/g, "…") + ": " + ((e && e.stack) || e));
       return json({ error: "server error" }, 500);      // never leak internal exception text
     }
   },

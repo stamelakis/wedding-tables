@@ -53,6 +53,9 @@ if (process.env.KV_BACKEND === 'memory') {
   console.log('KV backend: sqlite at ' + DB_PATH);
 }
 const env = { OWNER_KEY: (process.env.OWNER_KEY || '').trim(), PLANS, PUBLIC_URL: process.env.PUBLIC_URL || 'https://takeaseat.gr' };   // a stray space in server.env would silently make the admin key unusable
+// Amelie (amelie.gr): the worker calls only https://amelie.gr/api/guests. AMELIE_API_URL is for tests / local dev ONLY — a
+// mock on this machine (http://127.0.0.1:<port>/api/guests); any other host is refused by the worker. Production sets none.
+if (process.env.AMELIE_API_URL) { env.AMELIE_API_URL = process.env.AMELIE_API_URL.trim(); console.log('amelie: AMELIE_API_URL is set — Amelie calls go to a local mock (dev/test only, never in production)'); }
 // ---- mail: sent after the response, one at a time (the API answers in the same time whether or not a mail goes out) ----
 const MAIL_FROM = process.env.MAIL_FROM || '';
 let transport = null;
@@ -147,6 +150,7 @@ const wellFormed = x => (typeof x.toWellFormed === 'function' ? x.toWellFormed()
 const pdfFileName = (name, mode, lang) => ([...wellFormed(String(name || 'TakeaSeat'))].slice(0, 80).join('').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').trim() || 'TakeaSeat') + ' — ' + PDF_WORDS[lang][mode === 'keepsake' ? 1 : 0] + '.pdf';
 const ymd = s => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
 const isApiPath = p => API_PREFIXES.some(pre => p === pre || p.startsWith(pre + '/'));
+const AMELIE_PULL = /^\/plans\/[^/]+\/amelie\/pull$/;
 
 function serveStatic(req, res, urlPath) {
   let rel;
@@ -199,6 +203,12 @@ http.createServer(async (req, res) => {
   if ((canon === '/pdf' || /^\/plans\/[^/]+\/pdf$/.test(canon)) && req.method !== 'OPTIONS' && !rateOk(clientIp(req) + ':pdf', 10, 60000)) {
     res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '60' }); res.end('{"error":"rate_limited"}'); return;
   }
+  // Amelie pulls: 12 a minute per IP (a planner asks once on opening and then every 10–15 minutes; a looping client is
+  // stopped here — Amelie itself is already shielded by the worker's one-call-per-plan-per-minute rule)
+  const isAmeliePull = req.method === 'POST' && AMELIE_PULL.test(canon);
+  if (isAmeliePull && !rateOk(clientIp(req) + ':amelie', 12, 60000)) {
+    res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '60' }); res.end('{"error":"amelie_busy","retryAfter":60}'); return;
+  }
   // ---- abuse guards on writes (unauth POST /plans is the disk-fill vector) ----
   if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS') {
     const ip = clientIp(req);
@@ -246,14 +256,16 @@ http.createServer(async (req, res) => {
       method: req.method, headers: req.headers,
       body: ['GET', 'HEAD', 'OPTIONS'].includes(req.method) ? undefined : body,
     });
-    const r = await serial(() => worker.fetch(request, env));
+    // An Amelie pull may wait up to 8 s on amelie.gr, so it runs BESIDE the queue — nobody's save waits on Amelie. That is
+    // safe because its only writes are single atomic PLANS.update calls (the plan record's Amelie fields, one counter row).
+    const r = isAmeliePull ? await worker.fetch(request, env) : await serial(() => worker.fetch(request, env));
     failed = r.status === 401 || r.status === 403 || ((r.status === 404 || r.status === 410) && /^\/(claim|recover\/|verify|admin\/recover)/.test(canon));
     const buf = Buffer.from(await r.arrayBuffer());
     const headers = {}; r.headers.forEach((v, k) => { headers[k] = v; });
     res.writeHead(r.status, headers);
     res.end(buf);
   } catch (e) {
-    console.error('server error ' + req.method + ' ' + canon.replace(/[A-Za-z0-9]{16,}/g, '…') + ': ' + ((e && e.stack) || e));   // never bodies or keys
+    console.error('server error ' + req.method + ' ' + canon.replace(/[A-Za-z0-9_-]{16,}/g, '…') + ': ' + ((e && e.stack) || e));   // never bodies or keys (Amelie keys also use _ and -)
     if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' });
     res.end('{"error":"server error"}');
   } finally {

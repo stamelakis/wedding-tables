@@ -1247,6 +1247,12 @@ __ROBOTS__
     </div>
   </div>
 </div>
+<div id="amelieModal" class="modal-back">
+  <div class="modal narrow">
+    <div class="modal-head"><strong data-t="ameTitle"></strong><button class="mx" id="ameClose">✕</button></div>
+    <div id="amelieBody" class="mbody"></div>
+  </div>
+</div>
 <div id="cloudModal" class="modal-back">
   <div class="modal">
     <div class="modal-head"><strong data-t="cloudTitle"></strong><button class="mx" id="cloudClose">✕</button></div>
@@ -1466,6 +1472,7 @@ el:{
   csvEnc:"Το αρχείο δεν ήταν σε UTF-8 και διαβάστηκε ως {e}. Αν τα ονόματα φαίνονται λάθος, αποθηκεύστε το στο Excel ως «CSV UTF-8» και δοκιμάστε ξανά.", csvBad:"Κάποιοι χαρακτήρες δεν διαβάστηκαν (�). Αποθηκεύστε το αρχείο στο Excel ως «CSV UTF-8» και δοκιμάστε ξανά.", csvXlsx:"Αυτό είναι αρχείο Excel (.xlsx). Στο Excel: Αποθήκευση ως → «CSV UTF-8», και διαλέξτε αυτό το αρχείο.",
   csvDone:"Προστέθηκαν στη λίστα: {n}", csvDoneSeated:" · σε τραπέζια: {s}", csvDoneNoRoom:" · χωρίς θέση: {k} (το τραπέζι τους δεν βρέθηκε ή είναι γεμάτο)",
   rsvpTitle:"Απαντήσεις από την Amelie", rsvpOk:"Εντάξει", rsvpNothing:"Καμία αλλαγή — η λίστα σας έχει ήδη αυτές τις απαντήσεις.", rsvpNew:"Νέοι καλεσμένοι: {n}", rsvpChanged:"Άλλαξαν απάντηση: {n}", rsvpCutSeated:"Έχουν θέση, αλλά τώρα δεν έρχονται — οι θέσεις τους έμειναν όπως ήταν· αποφασίστε εσείς:", rsvpAtTable:"{n} — τραπέζι {t}", rsvpKept:"Η απάντηση στην Amelie άλλαξε, αλλά κρατήθηκε η κατάσταση που βάλατε εσείς:", rsvpAbsent:"Λείπουν από αυτό το αρχείο: {n} — έμειναν όπως ήταν (σβήστηκαν στην Amelie ή είναι από άλλο προσκλητήριο).", rsvpUndo:"Το ↶ αναιρεί όλη την εισαγωγή.", rsvpGoneNote:"Amelie: δεν είναι πια στην απάντηση του νοικοκυριού", tImportTooBig:"Η λίστα είναι πολύ μεγάλη για ένα σχέδιο — δεν εισήχθη τίποτα.",
+  mAmelie:"Σύνδεση με Amelie…", ameTitle:"Σύνδεση με Amelie", ameLead:"Οι απαντήσεις (RSVP) από το ψηφιακό σας προσκλητήριο στην Amelie μπαίνουν μόνες τους στη λίστα καλεσμένων — όσο έρχονται.", ameHow:"Στη σελίδα σας στην Amelie αντιγράψτε τον σύνδεσμο για το TakeaSeat (https://amelie.gr/g/#…) και επικολλήστε τον εδώ.", ameConnect:"Σύνδεση", ameBad:"Αυτός δεν είναι σύνδεσμος της Amelie. Αντιγράψτε ολόκληρο τον σύνδεσμο https://amelie.gr/g/#… από τη σελίδα σας.", ameOn:"Συνδεδεμένο με την Amelie από {d}", ameLast:"Τελευταίος έλεγχος: {t}", ameLastNever:"Δεν έχει γίνει ακόμη έλεγχος.", ameAuto:"Όσο είναι ανοιχτό το σχέδιο, οι νέες απαντήσεις έρχονται μόνες τους κάθε λίγα λεπτά. Κανείς δεν σβήνεται και καμία θέση δεν αλλάζει· όσους γράψατε εσείς (π.χ. από τα έντυπα) δεν τους αγγίζει.", ameRefresh:"Ανανέωση από Amelie", ameOffBtn:"Αποσύνδεση", ameOffConfirm:"Να σταματήσει η σύνδεση με την Amelie; Όσοι ήρθαν ήδη μένουν στη λίστα.", ameOffDone:"Η σύνδεση με την Amelie σταμάτησε. Όσοι ήρθαν ήδη μένουν στη λίστα.", ameConnected:"Συνδέθηκε με την Amelie — φέρνω τις απαντήσεις…", ameGone:"Η σύνδεση με την Amelie έληξε — ζητήστε νέο σύνδεσμο από τη σελίδα σας.", ameGoneKept:"Όσοι ήρθαν ήδη μένουν στη λίστα.", amePrivacy:"Ο σύνδεσμος φυλάγεται μόνο στον server του TakeaSeat, όχι στο σχέδιο: όσοι έχουν σύνδεσμο προβολής δεν τον βλέπουν.", ameNothing:"Amelie: τίποτα καινούργιο.", ameDown:"Η Amelie δεν απαντά αυτή τη στιγμή — θα ξαναδοκιμάσω σε λίγο.", ameBusy:"Η Amelie ζήτησε μια μικρή παύση — ξανά μετά τις {t}", ameNoRight:"Αυτή η συσκευή δεν μπορεί να αλλάξει τη σύνδεση με την Amelie.", ameNotConn:"Το σχέδιο δεν είναι πια συνδεδεμένο με την Amelie.", ameToast:"Amelie: {w}", ameNew:"+{n} νέοι", ameNew1:"+{n} νέος", ameChg:"{n} άλλαξαν απάντηση", ameChg1:"{n} άλλαξε απάντηση", rsvpAbsentLive:"Δεν είναι πια στην Amelie: {n} — έμειναν όπως ήταν (σβήστηκαν εκεί).", rsvpUndoLive:"Το ↶ δεν αρκεί εδώ: όσο το σχέδιο είναι συνδεδεμένο, ο επόμενος έλεγχος φέρνει ξανά τις απαντήσεις της Amelie. Για να μείνει κάποιος όπως ήταν, αλλάξτε την κατάστασή του με το χέρι.", rsvpLinked:"Υπήρχαν ήδη στη λίστα (π.χ. από Excel) και συνδέθηκαν με την Amelie — δεν προστέθηκαν δεύτερη φορά: {n}", ameLinked:"{n} υπήρχαν ήδη — συνδέθηκαν", ameLinked1:"{n} υπήρχε ήδη — συνδέθηκε", ameRoNow:"Το σχέδιο είναι αυτή τη στιγμή μόνο για προβολή, οπότε δεν έρχονται νέες απαντήσεις. Τη σύνδεση μπορείτε να τη σταματήσετε οποτεδήποτε.", ameOffKeys:"Σταμάτησε και η σύνδεση με την Amelie (είχε γίνει με τους παλιούς συνδέσμους)· αν ήταν δική σας, συνδέστε την ξανά («Σύνδεση με Amelie…»).", atAmelie:"συνέδεσε την Amelie (απαντήσεις προσκλητηρίου)", atAmelieOff:"αποσύνδεσε την Amelie",
   labBride:"Νύφη", labGroom:"Γαμπρός",
   labNames:["Μαρία Π.","Γιώργος Κ.","Ελένη Α.","Νίκος Δ.","Κατερίνα Μ.","Δημήτρης Σ.","Σοφία Λ.","Κώστας Β.","Άννα Χ.","Παναγιώτης Ρ.","Χριστίνα Τ.","Μιχάλης Γ.","Ειρήνη Ν.","Βασίλης Ζ.","Δέσποινα Φ.","Αλέξανδρος Κ.","Ιωάννα Π.","Θανάσης Μ.","Αγγελική Σ.","Στέλιος Α.","Φωτεινή Δ.","Μανώλης Λ.","Ζωή Β.","Πέτρος Χ.","Ευαγγελία Ρ.","Σπύρος Τ.","Ναταλία Γ.","Χρήστος Ν.","Μαρίνα Ζ.","Λευτέρης Φ.","Αναστασία Κ.","Αντώνης Π.","Ελευθερία Μ.","Σταύρος Σ.","Νεφέλη Α.","Ορέστης Δ.","Δανάη Λ.","Άρης Β.","Ισμήνη Χ.","Φίλιππος Ρ."],
 },
@@ -1615,6 +1622,7 @@ en:{
   csvEnc:"The file was not UTF-8 and was read as {e}. If the names look wrong, save it in Excel as “CSV UTF-8” and try again.", csvBad:"Some characters could not be read (�). Save the file in Excel as “CSV UTF-8” and try again.", csvXlsx:"This is an Excel file (.xlsx). In Excel: Save as → “CSV UTF-8”, then choose that file.",
   csvDone:"Added to the list: {n}", csvDoneSeated:" · at tables: {s}", csvDoneNoRoom:" · unseated: {k} (their table was not found or is full)",
   rsvpTitle:"Answers from Amelie", rsvpOk:"OK", rsvpNothing:"Nothing changed — your list already has these answers.", rsvpNew:"New guests: {n}", rsvpChanged:"Changed their answer: {n}", rsvpCutSeated:"Seated, but no longer coming — their seats were left as they are; your decision:", rsvpAtTable:"{n} — table {t}", rsvpKept:"Their answer in Amelie changed, but the status you set was kept:", rsvpAbsent:"Missing from this file: {n} — left as they were (deleted in Amelie, or from another invitation).", rsvpUndo:"↶ undoes the whole import.", rsvpGoneNote:"Amelie: no longer in the household's answer", tImportTooBig:"This list is too large for one plan — nothing was imported.",
+  mAmelie:"Connect to Amelie…", ameTitle:"Connect to Amelie", ameLead:"The answers (RSVPs) to your digital invitation on Amelie join your guest list by themselves — as they come in.", ameHow:"On your Amelie page, copy the link for TakeaSeat (https://amelie.gr/g/#…) and paste it here.", ameConnect:"Connect", ameBad:"This is not an Amelie link. Copy the whole link https://amelie.gr/g/#… from your page.", ameOn:"Connected to Amelie since {d}", ameLast:"Last checked: {t}", ameLastNever:"Not checked yet.", ameAuto:"While the plan is open, new answers come in by themselves every few minutes. Nobody is deleted and no seat changes; the names you typed yourselves (e.g. from paper invitations) are never touched.", ameRefresh:"Refresh from Amelie", ameOffBtn:"Disconnect", ameOffConfirm:"Stop the connection to Amelie? Everyone already imported stays on the list.", ameOffDone:"Disconnected from Amelie. Everyone already imported stays on the list.", ameConnected:"Connected to Amelie — fetching the answers…", ameGone:"The connection to Amelie has expired — ask for a new link on your page.", ameGoneKept:"Everyone already imported stays on the list.", amePrivacy:"The link is kept only on TakeaSeat's server, not in the plan: people with a view link never see it.", ameNothing:"Amelie: nothing new.", ameDown:"Amelie is not answering right now — I will try again shortly.", ameBusy:"Amelie asked for a short pause — again after {t}", ameNoRight:"This device cannot change the Amelie connection.", ameNotConn:"This plan is no longer connected to Amelie.", ameToast:"Amelie: {w}", ameNew:"+{n} new", ameNew1:"+{n} new", ameChg:"{n} changed their answer", ameChg1:"{n} changed their answer", rsvpAbsentLive:"No longer in Amelie: {n} — left as they were (deleted there).", rsvpUndoLive:"↶ is not enough here: while the plan is connected, the next check brings Amelie's answers again. To keep someone as they were, change their status by hand.", rsvpLinked:"Already on the list (e.g. from Excel) and now linked to Amelie — not added a second time: {n}", ameLinked:"{n} already listed — linked", ameLinked1:"{n} already listed — linked", ameRoNow:"The plan is view-only right now, so no new answers come in. You can end the connection at any time.", ameOffKeys:"The Amelie connection was ended too (it was made with the old links); if it was yours, connect it again («Connect to Amelie…»).", atAmelie:"connected Amelie (invitation answers)", atAmelieOff:"disconnected Amelie",
   labBride:"Bride", labGroom:"Groom",
   labNames:["Maria P.","George K.","Helen A.","Nick D.","Katerina M.","Jim S.","Sophia L.","Kostas V.","Anna C.","Peter R.","Christina T.","Michael G.","Irene N.","Bill Z.","Despina F.","Alex K.","Joanna P.","Thanos M.","Angela S.","Steve A.","Fay D.","Manolis L.","Zoe V.","Petros C.","Eva R.","Spyros T.","Natalie G.","Chris N.","Marina Z.","Lefteris F.","Anastasia K.","Tony P.","Ellie M.","Stavros S.","Nefeli A.","Orestis D.","Danae L.","Aris V.","Ismene C.","Philip R."],
 },
@@ -1764,6 +1772,7 @@ de:{
   csvEnc:"Die Datei war nicht UTF-8 und wurde als {e} gelesen. Wenn die Namen falsch aussehen, speichern Sie sie in Excel als „CSV UTF-8“ und versuchen Sie es erneut.", csvBad:"Einige Zeichen konnten nicht gelesen werden (�). Speichern Sie die Datei in Excel als „CSV UTF-8“ und versuchen Sie es erneut.", csvXlsx:"Das ist eine Excel-Datei (.xlsx). In Excel: Speichern unter → „CSV UTF-8“, dann diese Datei wählen.",
   csvDone:"Zur Liste hinzugefügt: {n}", csvDoneSeated:" · an Tischen: {s}", csvDoneNoRoom:" · ohne Platz: {k} (ihr Tisch wurde nicht gefunden oder ist voll)",
   rsvpTitle:"Antworten aus Amelie", rsvpOk:"OK", rsvpNothing:"Nichts geändert — Ihre Liste hat diese Antworten schon.", rsvpNew:"Neue Gäste: {n}", rsvpChanged:"Antwort geändert: {n}", rsvpCutSeated:"Haben einen Platz, kommen aber nicht mehr — die Plätze blieben, wie sie waren; Sie entscheiden:", rsvpAtTable:"{n} — Tisch {t}", rsvpKept:"Die Antwort in Amelie hat sich geändert, Ihr eigener Status wurde beibehalten:", rsvpAbsent:"Fehlen in dieser Datei: {n} — unverändert (in Amelie gelöscht oder aus einer anderen Einladung).", rsvpUndo:"↶ macht den ganzen Import rückgängig.", rsvpGoneNote:"Amelie: nicht mehr in der Antwort des Haushalts", tImportTooBig:"Diese Liste ist zu groß für einen Plan — nichts wurde importiert.",
+  mAmelie:"Mit Amelie verbinden…", ameTitle:"Mit Amelie verbinden", ameLead:"Die Antworten (RSVPs) auf Ihre digitale Einladung bei Amelie kommen von selbst in Ihre Gästeliste — sobald sie eintreffen.", ameHow:"Kopieren Sie auf Ihrer Amelie-Seite den Link für TakeaSeat (https://amelie.gr/g/#…) und fügen Sie ihn hier ein.", ameConnect:"Verbinden", ameBad:"Das ist kein Amelie-Link. Kopieren Sie den ganzen Link https://amelie.gr/g/#… von Ihrer Seite.", ameOn:"Mit Amelie verbunden seit {d}", ameLast:"Zuletzt geprüft: {t}", ameLastNever:"Noch nicht geprüft.", ameAuto:"Solange der Plan offen ist, kommen neue Antworten alle paar Minuten von selbst. Niemand wird gelöscht und kein Platz ändert sich; selbst eingetragene Namen (z. B. von Papiereinladungen) bleiben unberührt.", ameRefresh:"Aus Amelie aktualisieren", ameOffBtn:"Trennen", ameOffConfirm:"Verbindung zu Amelie beenden? Alle bereits übernommenen Gäste bleiben auf der Liste.", ameOffDone:"Von Amelie getrennt. Alle bereits übernommenen Gäste bleiben auf der Liste.", ameConnected:"Mit Amelie verbunden — die Antworten werden geholt…", ameGone:"Die Verbindung zu Amelie ist abgelaufen — fordern Sie auf Ihrer Seite einen neuen Link an.", ameGoneKept:"Alle bereits übernommenen Gäste bleiben auf der Liste.", amePrivacy:"Der Link wird nur auf dem Server von TakeaSeat aufbewahrt, nicht im Plan: Wer einen Ansichtslink hat, sieht ihn nie.", ameNothing:"Amelie: nichts Neues.", ameDown:"Amelie antwortet gerade nicht — ich versuche es gleich noch einmal.", ameBusy:"Amelie bittet um eine kurze Pause — wieder nach {t}", ameNoRight:"Dieses Gerät kann die Amelie-Verbindung nicht ändern.", ameNotConn:"Dieser Plan ist nicht mehr mit Amelie verbunden.", ameToast:"Amelie: {w}", ameNew:"+{n} neu", ameNew1:"+{n} neu", ameChg:"{n} Antworten geändert", ameChg1:"{n} Antwort geändert", rsvpAbsentLive:"Nicht mehr in Amelie: {n} — unverändert (dort gelöscht).", rsvpUndoLive:"↶ reicht hier nicht: Solange der Plan verbunden ist, bringt die nächste Prüfung die Antworten aus Amelie wieder. Damit jemand so bleibt, wie er war, ändern Sie seinen Status von Hand.", rsvpLinked:"Schon auf der Liste (z. B. aus Excel) und jetzt mit Amelie verknüpft — nicht doppelt hinzugefügt: {n}", ameLinked:"{n} schon auf der Liste — verknüpft", ameLinked1:"{n} schon auf der Liste — verknüpft", ameRoNow:"Der Plan ist gerade nur zur Ansicht, daher kommen keine neuen Antworten. Die Verbindung können Sie jederzeit beenden.", ameOffKeys:"Auch die Verbindung zu Amelie wurde beendet (sie stammte von den alten Links); falls es Ihre war, verbinden Sie sie erneut („Mit Amelie verbinden…“).", atAmelie:"verband Amelie (Antworten der Einladung)", atAmelieOff:"trennte Amelie",
   labBride:"Braut", labGroom:"Bräutigam",
   labNames:["Maria P.","Georg K.","Helena A.","Niko D.","Katharina M.","Jan S.","Sophie L.","Konstantin V.","Anna C.","Peter R.","Christina T.","Michael G.","Irene N.","Wilhelm Z.","Despina F.","Alex K.","Johanna P.","Thomas M.","Angelika S.","Stefan A.","Frieda D.","Manuel L.","Zoe V.","Petra C.","Eva R.","Sebastian T.","Natalie G.","Christoph N.","Marina Z.","Leon F.","Anastasia K.","Anton P.","Elli M.","Stefanos S.","Nefeli A.","Oliver D.","Diana L.","Aris V.","Isabel C.","Philipp R."],
 },
@@ -4692,6 +4701,7 @@ function resetPlan(){
   setPick(null); unfocusTable();
   if(!PERM_KEYS.every(k=>can(k))){   // a venue plan: names, seating and invitations go — the venue's space stays
     state.guests={}; state.parties=[]; state.activeGroupId=null; state.tables.forEach(t=>{ t.seats=t.seats.map(()=>null); });
+    delete state.amelieVer;   // the list is empty now: a connected plan must get the whole Amelie document again, not «unchanged»
     save(); renderAll(); toast(ACCESS.owner==="venue"?tr("tResetKeepSpace",{v:ACCESS.venueName||tr("theVenue")}):tr("tResetKeepRoom"),4500); return;
   }
   state=IS_LAB?labState():defaultState(); uid=state._uid; fontScale=1;
@@ -4738,7 +4748,7 @@ function mergePlanInto(src, mode){
     restoreSnapshot(JSON.stringify(src)); uid=state._uid||uid; save();   // save() stacks the previous state, so ↶ brings it back
     toast(tr("tMergedPlan",{g:Object.keys(state.guests).length, t:state.tables.length})); if(cut) labCapNote(tr("labCapCut",{n:LAB_MAX_TABLES,k:cut})); return;
   }
-  if(mode==="replaceNames"||mode==="replaceSeating"){ state.guests={}; state.parties=[]; state.tables.forEach(t=>{ t.seats=t.seats.map(()=>null); }); }
+  if(mode==="replaceNames"||mode==="replaceSeating"){ state.guests={}; state.parties=[]; state.tables.forEach(t=>{ t.seats=t.seats.map(()=>null); }); delete state.amelieVer; }   // no srcIds come across: Amelie's guests come back whole on the next pull
   const gmap={};   // their group id → ours (by name; new colours only for groups we don't have)
   (src.groups||[]).forEach(sg=>{ let g=state.groups.find(x=>norm(x.name)===norm(sg.name));
     if(!g){ g={id:"grp"+nextId(), name:sg.name, color:sg.color||GROUP_PALETTE[state.groups.length%GROUP_PALETTE.length]}; state.groups.push(g); } gmap[sg.id]=g.id; });
@@ -4801,10 +4811,13 @@ $("importClose").addEventListener("click",()=>$("importModal").classList.remove(
 //    empty party = no invitation. Guests whose srcId is not amelie: (paper invitations, typed names) are never touched,
 //    and nobody is ever deleted. One import = one save = one undo step; the same file twice changes nothing.
 const AMELIE_SRC=/^amelie:([^:]+):(\d+)$/, GUEST_ST=["confirmed","probable","cut"], PLAN_MAX_CHARS=512*1024;   // the server's plan limit (MAX_PLAN_BYTES)
-function mergeGuestList(data){
-  if(ACCESS.ro){ roToast(); return; }   // like every guest write: not while read only (viewer, waiting / frozen, after the wedding)
+// opts.live (the Amelie connection, ameApply): the same merge and the same single save, but what it did is RETURNED for the
+// caller to tell (a quiet toast, or this summary only when something needs a decision); null = nothing was taken.
+function mergeGuestList(data, opts){
+  const live=!!(opts&&opts.live);
+  if(ACCESS.ro){ if(!live) roToast(); return null; }   // like every guest write: not while read only (viewer, waiting / frozen, after the wedding)
   const rows=(Array.isArray(data.importGuests)?data.importGuests:[]).filter(r=>r&&typeof r==="object");
-  if(rows.length>2000){ toast(tr("tImportTooBig"),6000); return; }
+  if(rows.length>2000){ toast(tr("tImportTooBig"),6000); return null; }
   const before=JSON.stringify(state);
   const nameToId=Object.create(null); state.groups.forEach(g=>nameToId[g.name]=g.id);   // no prototype: a group called «constructor» is just a name
   (Array.isArray(data.importGroups)?data.importGroups:[]).forEach(g=>{ if(!g||typeof g!=="object"||typeof g.name!=="string"||!g.name.trim()) return;
@@ -4820,13 +4833,28 @@ function mergeGuestList(data){
     const m=AMELIE_SRC.exec(s); if(m&&g.partyId&&(!homeOf[m[1]]||+m[2]<homeOf[m[1]].k)) homeOf[m[1]]={k:+m[2], pid:g.partyId}; });
   const inFile=new Set(), house=Object.create(null);   // every srcId of this file · Amelie household → its rows in this file
   rows.forEach(gi=>{ const s=srcOf(gi); if(!s) return; inFile.add(s); const m=AMELIE_SRC.exec(s); if(m) (house[m[1]]=house[m[1]]||[]).push(gi); });
-  let added=0, skipped=0, absent=0; const changed=[], cutSeated=[], kept=[], filled=[], done=new Set();   // filled: only their srcName written now
+  let added=0, addedAme=0, skipped=0, absent=0; const changed=[], cutSeated=[], kept=[], filled=[], linked=[], done=new Set();   // filled: only their srcName written now
   const update=(id, st, note)=>{   // an Amelie guest already here: the answer follows the file, the couple's hand wins
     const g=state.guests[id], newNote=note!==(g.note||""), newSt=st!==gStatus(id);
     if(newNote){ if(note) g.note=note; else delete g.note; }
     if(g.statusHand){ if(newNote) (newSt?kept:changed).push(id); return; }   // Amelie says something new, but the status is theirs
     if(newSt){ g.status=st; if(st==="cut"&&seatOf[id]) cutSeated.push(id); }   // a seated guest keeps the seat — the couple decides
     if(newNote||newSt) changed.push(id);
+  };
+  // Amelie's CSV («Εισαγωγή ονομάτων από Excel…») brings the same people WITHOUT a srcId. A new Amelie row whose name AND
+  // invitation (or both none) match such a guest IS that guest: linked (srcId, srcName) instead of added a second time — one
+  // guest per row; seat, name, group and invitation untouched. A status that differs from Amelie's is taken as set by hand
+  // (statusHand: theirs stays, listed as kept); a note of their own (not «Amelie: …») stays too.
+  const lkey=(n,p)=>norm(n).replace(/\s+/g," ")+"\u0001"+norm(p).replace(/\s+/g," ");
+  const pName=Object.create(null); (state.parties||[]).forEach(p=>{ if(p&&p.id) pName[p.id]=p.name; });
+  const loose=Object.create(null);   // name + invitation → guests without a srcId, in list order
+  Object.keys(state.guests).forEach(id=>{ const g=state.guests[id]; if(g.srcId) return; const k=lkey(g.name, g.partyId?pName[g.partyId]||"":""); (loose[k]=loose[k]||[]).push(id); });
+  const adopt=(id, gi, src, nm, m)=>{
+    const g=state.guests[id]; g.srcId=src; g.srcName=nm; bySrc[src]=id; linked.push(id);
+    if(g.partyId&&(!homeOf[m[1]]||+m[2]<homeOf[m[1]].k)) homeOf[m[1]]={k:+m[2], pid:g.partyId};   // the rest of the household joins them
+    const st=stOf(gi.status), note=noteOf(gi.note);
+    if(st!==gStatus(id)){ g.statusHand=true; kept.push(id); }
+    if(note!==(g.note||"") && (!g.note || /^Amelie:/.test(g.note))){ if(note) g.note=note; else delete g.note; }
   };
   rows.forEach(gi=>{
     const src=srcOf(gi), am=src.startsWith("amelie:");
@@ -4839,13 +4867,14 @@ function mergeGuestList(data){
       return; }
     const nm=String(gi.name==null?"":gi.name).trim().slice(0,80); if(!nm) return;
     const m=am?AMELIE_SRC.exec(src):null, pty=String(gi.party==null?"":gi.party).trim();
+    if(m){ const pool=loose[lkey(nm, pty)]; if(pool&&pool.length){ adopt(pool.shift(), gi, src, nm, m); return; } }
     const partyId=(m&&homeOf[m[1]]&&state.parties.some(p=>p.id===homeOf[m[1]].pid))?homeOf[m[1]].pid:(pty?(ensureParty(pty)||{}).id||null:null);   // a household that grew joins its housemates, even in an invitation the couple renamed or merged
     const g={ name:nm, groupId:groupOf(gi.group), partyId, status:stOf(gi.status) };
     const note=noteOf(gi.note); if(note) g.note=note;
     if(src){ g.srcId=src; if(am) g.srcName=nm; }   // srcName: the name as Amelie sent it — the couple may rename the guest here
     const id="g"+nextId(); state.guests[id]=g; if(src) bySrc[src]=id;
     if(m&&partyId&&!homeOf[m[1]]) homeOf[m[1]]={k:+m[2], pid:partyId};
-    added++;
+    added++; if(am) addedAme++;
   });
   Object.keys(state.guests).forEach(id=>{   // Amelie guests this file does not list
     const s=state.guests[id].srcId; if(typeof s!=="string"||!s.startsWith("amelie:")||inFile.has(s)) return;
@@ -4856,6 +4885,10 @@ function mergeGuestList(data){
     update(id, "cut", (rs.every(r=>stOf(r.status)==="cut")&&noteOf(first.note))||noteOf(gone));   // the household said no: its answer · it shrank: "no longer in the answer"
   });
   const amelie=[...inFile].some(s=>s.startsWith("amelie:"));
+  // A FILE that changed Amelie guests may be older than what the connection merged: the list no longer is the version
+  // amelieVer names. Forgotten, in this same save — the next pull of a connected plan asks without `since` and gets
+  // Amelie's current answers back (the merge is idempotent). The connection's own merge (live) sets the version itself.
+  if(!live && (addedAme||changed.length||kept.length||linked.length)) delete state.amelieVer;
   const after=JSON.stringify(state);
   // A plan whose Amelie guests came in before srcName existed gets it on its first import here. That alone is not news for
   // the couple: saved (so it lasts) but no undo step and no «changed» — the same file twice still changes nothing they see.
@@ -4863,11 +4896,13 @@ function mergeGuestList(data){
   if(after!==before && filled.length){ const t=JSON.parse(after); filled.forEach(id=>{ delete t.guests[id].srcName; }); quiet=JSON.stringify(t)===before; }
   if(after!==before){
     const cur=currentProfile()||{};
-    if(after.length>before.length && JSON.stringify({...state, _profileName:cur.name}).length>PLAN_MAX_CHARS){ restoreSnapshot(before); toast(tr("tImportTooBig"),6000); return; }   // too big to save online: nothing changes
+    if(after.length>before.length && JSON.stringify({...state, _profileName:cur.name}).length>PLAN_MAX_CHARS){ restoreSnapshot(before); toast(tr("tImportTooBig"),6000); return null; }   // too big to save online: nothing changes
     save(quiet?{noHistory:true}:undefined); renderAll(); if(added) checkTips("added");
   }
-  if(!amelie){ toast(tr("tMerged",{a:added})+(skipped?tr("tMergedSkipped",{s:skipped}):"")); return; }
-  showRsvpSummary({added, changed, cutSeated, kept, absent, seatOf, any:after!==before&&!quiet});
+  const sum={added, changed, cutSeated, kept, absent, seatOf, linked:linked.length, any:after!==before&&!quiet};
+  if(live) return sum;
+  if(!amelie){ toast(tr("tMerged",{a:added})+(skipped?tr("tMergedSkipped",{s:skipped}):"")); return sum; }
+  showRsvpSummary(sum); return sum;
 }
 // What an Amelie import did, in words and — for whoever needs a decision — by name. A dialog, not a toast: a list of names must stay until read.
 function showRsvpSummary(r){
@@ -4876,11 +4911,11 @@ function showRsvpSummary(r){
   const list=(ids,fmt)=>{ const ul=document.createElement("ul"); ids.forEach(id=>{ const li=document.createElement("li"); li.textContent=fmt(id); ul.appendChild(li); }); box.appendChild(ul); };
   const any=r.any;   // what was saved as an undo step — never «nothing changed» after a save the couple can undo
   if(!any) para(tr("rsvpNothing"));
-  else { para(tr("rsvpNew",{n:r.added})); para(tr("rsvpChanged",{n:r.changed.length})); }
+  else { para(tr("rsvpNew",{n:r.added})); para(tr("rsvpChanged",{n:r.changed.length})); if(r.linked) para(tr("rsvpLinked",{n:r.linked})); }
   if(r.cutSeated.length){ para(tr("rsvpCutSeated"),"rs-warn"); list(r.cutSeated, id=>tr("rsvpAtTable",{n:guestName(id), t:(r.seatOf[id]&&r.seatOf[id].label)||"—"})); }
   if(r.kept.length){ para(tr("rsvpKept")); list(r.kept, id=>guestName(id)+(gNote(id)?" — "+gNote(id):"")); }
-  if(r.absent) para(tr("rsvpAbsent",{n:r.absent}),"muted");
-  if(any) para(tr("rsvpUndo"),"muted");
+  if(r.absent) para(tr(r.live?"rsvpAbsentLive":"rsvpAbsent",{n:r.absent}),"muted");   // live: from the Amelie connection, not a file
+  if(any) para(tr(r.live?"rsvpUndoLive":"rsvpUndo"),"muted");   // live: ↶ brings back the old version too, so the next check merges the same answers again
   const m=$("rsvpModal"), close=()=>{ m.classList.remove("open"); m._close=null; };
   m._close=close; $("rsvpOk").onclick=close; $("rsvpClose").onclick=close;
   m.classList.add("open"); setTimeout(()=>$("rsvpOk").focus(),0);
@@ -5092,12 +5127,12 @@ $("moreBtn").addEventListener("click",e=>{
   { const cp=currentProfile(); if(!IS_LAB && cp && cp.cloudId) primary.push(["access",tr("mAccess")]); }
   const more=[];
   if(isNarrow()) more.push(["cap",tr("capPlan")],["newplan",tr("newPlan")],["planmore",tr("planMore")],...(ro?[]:[["cap",tr("tools")],...(can("tables")?[["round",tr("mRound")],["rect",tr("mRect")],["head",tr("mHead")]]:[]),["decor",tr("mDecor")],["auto",tr("mAuto")]]));
-  more.push(["cap",tr("capFiles")],["xlsxseat",tr("mXlsxSeated")],["xlsxall",tr("mXlsxAll")],["csvout",tr("mCsvOut")],...(ro?[]:[["csvin",tr("mCsvIn")]]),["export",tr("mExport")],...(ro?[]:[["import",tr("mImport")]]));
+  more.push(["cap",tr("capFiles")],["xlsxseat",tr("mXlsxSeated")],["xlsxall",tr("mXlsxAll")],["csvout",tr("mCsvOut")],...(ro?[]:[["csvin",tr("mCsvIn")]]),["export",tr("mExport")],...(ro?[]:[["import",tr("mImport")]]),...(ameMenuOk()?[["amelie",tr("mAmelie")]]:[]));   // Amelie: only who may write guest names on an online plan (never viewers); read only: to see it and disconnect
   if(!IS_LAB && !ro) more.push(["history",tr("mHistory")]);
   if(skipDeleteConfirm() && !ro) more.push(["askdel",tr("mAskDel")]);
   if(!ro) more.push(["reset",tr("mReset")]);
   if(!IS_LAB) more.push(["cap",tr("mLang")],["lang-el","ΕΛ · Ελληνικά"],["lang-en","EN · English"],["lang-de","DE · Deutsch"]);
-  const MI={keepsake:"heart",share:"cloud",groups:"people",inv:"mail",print:"print",tour:"help",help:"chat",askdel:"help",access:"people",newplan:"plus",planmore:"edit",round:"table",rect:"longtable",head:"heart",decor:"decor",auto:"spark",xlsxseat:"up",xlsxall:"up",csvout:"up",csvin:"dl",export:"up",import:"dl",history:"clock"};
+  const MI={keepsake:"heart",share:"cloud",groups:"people",inv:"mail",print:"print",tour:"help",help:"chat",askdel:"help",access:"people",newplan:"plus",planmore:"edit",round:"table",rect:"longtable",head:"heart",decor:"decor",auto:"spark",xlsxseat:"up",xlsxall:"up",csvout:"up",csvin:"dl",export:"up",import:"dl",amelie:"mail",history:"clock"};
   const row=([a,l])=>a==="cap"?`<div class="gm-cap">${escapeHtml(l)}</div>`:`<div class="gm-item${a==="reset"?" danger":""}${a==="lang-"+LANG?" on":""}" data-act="${a}">${MI[a]?ICON(MI[a]):'<span class="ic"></span>'}${escapeHtml(l)}</div>`;
   m.innerHTML=primary.map(row).join("")+`<div class="gm-sep"></div><div class="gm-item more" data-act="more"><span class="ic"></span>${escapeHtml(tr("mMore"))} ›</div><div class="gm-more">${more.map(row).join("")}</div>`;
   m.querySelectorAll(".gm-item").forEach(it=>it.onclick=ev=>{ ev.stopPropagation(); const a=it.dataset.act;
@@ -5107,7 +5142,7 @@ $("moreBtn").addEventListener("click",e=>{
     else if(a==="newplan") newProfile(); else if(a==="planmore") openProfileMenu(anchorOf($("moreBtn")));
     else if(a==="access") openAccess(); else if(a==="help") openHelp(); else if(a==="keepsake") downloadPdf("keepsake", null);
     else if(a==="round") addRoundTable(); else if(a==="rect") addRectTable(); else if(a==="history") openHistory(); else if(a==="groups") openGroupsModal(); else if(a==="inv") enterInv(null); else if(a==="tour") startTour();
-    else if(a==="auto") autoSeat(); else if(a==="export"){ if((currentProfile()||{}).support){ toast(tr("tNoCopySupport"),4000); return; } openExport(); } else if(a==="import") openImport(); else if(a==="print") openPrint(); else if(a==="reset") resetPlan();
+    else if(a==="auto") autoSeat(); else if(a==="export"){ if((currentProfile()||{}).support){ toast(tr("tNoCopySupport"),4000); return; } openExport(); } else if(a==="import") openImport(); else if(a==="amelie") openAmelie(); else if(a==="print") openPrint(); else if(a==="reset") resetPlan();
     else if(a==="askdel"){ try{ localStorage.removeItem(DEL_SKIP_KEY); localStorage.removeItem(MERGE_SKIP_KEY); }catch(e){} toast(tr("tAskDel"),2500); }
     else if(a.startsWith("lang-")){ const l=a.slice(5); location.href=({el:"seating-planner-el.html",en:"seating-planner.html",de:"seating-planner-de.html"})[l]; } });
   showPopover(m, anchorOf(e.currentTarget));
@@ -5260,6 +5295,11 @@ function adoptAccess(prof, d){
   if(d.supportExpires) prof.supportExpires=d.supportExpires;
   if("email" in d){ prof.hasRecEmail=true; prof.recEmail=d.email||""; prof.mailOn=!!d.mail; }
   if("life" in d) prof.life=d.life||null;   // wedding date, lock / delete times (the server decides; see renderLifeBar)
+  // Amelie (writers only): connected / dead / last pulled — never the key. Kept out of the comparison below (lastPullAt moves on
+  // every pull); connected or gone on another device → this one follows (ameSync).
+  { const was=String([ameOn(prof), !!(prof.amelie&&prof.amelie.dead)]);
+    if(d.amelie && typeof d.amelie==="object") prof.amelie=ameNorm(d.amelie); else if(d.role==="viewer") prof.amelie=null;
+    if(was!==String([ameOn(prof), !!(prof.amelie&&prof.amelie.dead)])) setTimeout(ameSync,0); }
   let back=false; if(prof.gone){ prof.gone=false; prof._goneAt=0; back=true;   // restored from the venue's trash
     if(prof.id===profiles.activeId){ toast(tr("goneBack"),4000); if(prof.goneDirty){ prof.goneDirty=false; setTimeout(scheduleCloudPush,0); } } }   // after the caller's applyAccess: the refused change goes up
   if(prof.phaseDirty && !phaseRo(prof) && prof.id===profiles.activeId){ prof.phaseDirty=false; back=true; if(!(prof.life&&prof.life.locked)){ waitPushFor=prof.id; setTimeout(scheduleCloudPush,0); } }   // the planner opened: the change that waited goes up (on its old base — never over a newer copy)
@@ -5656,6 +5696,7 @@ function applyAccess(){
   ["venue","support","viewer"].forEach(r=>document.body.classList.toggle("role-"+r, role===r));
   renderRoleBadge(); renderLifeBar(); updateUndoButtons(); schedulePhaseCheck();
   if(wasRo!==ACCESS.ro){ setPick(null); closeMenu(); renderAll(); }   // chairs, chips and seat rows are built read-only (or not)
+  ameSync();   // the Amelie connection follows: another plan, read only now, writable again
 }
 // ---- a couple's phases (the server decides: life.phase) — "waiting" 14 days after a direct purchase, "names" until 30 days
 // before the wedding (guests & seating; the room stays closed), "full", "frozen" after the one date change, "locked" after ----
@@ -5762,7 +5803,7 @@ function permListHtml(p, keys){
 }
 function auditHtml(list){
   if(!list||!list.length) return `<div class="mhint" style="padding:4px 0 0">${escapeHtml(tr("accLogEmpty"))}</div>`;
-  const WHO={couple:"awCouple",venue:"awVenue",support:"awSupport",admin:"awAdmin",system:"awSystem"}, WHAT={date:"atDate",locked:"atLocked",invite:"atInvite",revoke:"atRevoke",open:"atOpen",save:"atSave",restore:"atRestore",reset:"atReset",claim:"atClaim",claim_reset:"atClaimReset",rotate:"atRotate",recover:"atRecover",email:"atEmail",unfreeze:"atUnfreeze"};
+  const WHO={couple:"awCouple",venue:"awVenue",support:"awSupport",admin:"awAdmin",system:"awSystem"}, WHAT={date:"atDate",locked:"atLocked",invite:"atInvite",revoke:"atRevoke",open:"atOpen",save:"atSave",restore:"atRestore",reset:"atReset",claim:"atClaim",claim_reset:"atClaimReset",rotate:"atRotate",recover:"atRecover",email:"atEmail",unfreeze:"atUnfreeze",amelie:"atAmelie",amelie_off:"atAmelieOff"};
   return `<ul class="acc-log">${list.slice().reverse().map(e=>`<li><span class="t">${escapeHtml(fmtTime(e.t))}</span><span><b>${escapeHtml(WHO[e.who]?tr(WHO[e.who]):String(e.who))}</b> · ${escapeHtml(WHAT[e.what]?tr(WHAT[e.what],{h:e.h||"",d:e.d?fmtDate(e.d):""}):String(e.what))}</span></li>`).join("")}</ul>`;
 }
 async function refreshAccess(){ const cur=currentProfile(); if(!cur||!cur.cloudId) return;
@@ -5780,7 +5821,7 @@ function renderAccessBody(){
     const se=$("accSupEdit"); if(se) se.onclick=async()=>{ se.disabled=true;
       try{ const d=await cloudFetch(cur.cloudId, cur); pendingSnap=null; clearTimeout(cloudTimer); cloudTimer=null; applyPulledPlan(cur,d); }   // whatever was tried while viewing is dropped
       catch(e){ se.disabled=false; toast(tr("accFail")); return; }
-      cur.supportEdit=true; renderAccessBody(); renderRoleBadge(); toast(tr("tSupportEditOn"),4000); };
+      cur.supportEdit=true; renderAccessBody(); renderRoleBadge(); ameSync(); toast(tr("tSupportEditOn"),4000); };
     return; }
   const dsec=dateSecHtml(cur);
   if(a.role==="viewer"){ body.innerHTML=(dsec?sec(dsec):"")+sec(`<div class="mhint" style="padding:0">${escapeHtml(tr("rbViewerTip"))}</div>`); return; }
@@ -5815,12 +5856,14 @@ function renderAccessBody(){
   html+=sec(`<h4>${escapeHtml(tr("accLog"))}</h4>${auditHtml(cur.audit)}`);
   body.innerHTML=html; wireDateSec(cur);
   const ro=$("accRotate"); if(ro) ro.onclick=async()=>{ if(!confirm(tr("accRotateConfirm"))) return;
+    const hadAme=!!(cur.amelie && cur.amelie.connected);
     try{ const r=await fetch(planPath(cur.cloudId)+"/rotate",{method:"POST",headers:authHeaders(cur)}); if(!r.ok) throw 0; const d=await r.json();
       cur.editKey=d.editKey; cur.viewKey=d.readKey; cur.legacyOpenUntil=0; cur.codeOff=true; saveProfilesIdx();
       if(pendingSnap&&pendingSnap.profId===cur.id){ pendingSnap.editKey=cur.editKey; pendingSnap.headers=authHeaders(cur); }
       if(getSyncCode()){ try{ await fetch(codeUrl(),{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:cur.cloudId})}); }catch(x){} }
       await refreshAccess();
-      $("accessModal").classList.remove("open"); openCloud(); toast(tr("tRotated"),6000); }
+      $("accessModal").classList.remove("open"); openCloud(); const ameOff=hadAme && !(cur.amelie && cur.amelie.connected);   // a link connected with the old key goes with it (it may be the leaker's)
+      toast(tr("tRotated")+(ameOff?" "+tr("ameOffKeys"):""),ameOff?10000:6000); }
     catch(e){ toast(tr("accFail")); } };
   const es=$("accEmailSave"); if(es) es.onclick=async()=>{ const email=$("accEmailIn").value.trim();
     if(!EMAIL_OK(email)){ toast(tr("recBad")); return; }
@@ -5846,6 +5889,187 @@ function renderAccessBody(){
 $("cloudBtn").addEventListener("click",openCloud);
 $("cloudClose").addEventListener("click",()=>$("cloudModal").classList.remove("open"));
 $("cloudModal").addEventListener("click",e=>{ if(e.target.id==="cloudModal") e.currentTarget.classList.remove("open"); });
+
+// ============================================================
+//  AMELIE — the couple's digital invitation (amelie.gr) feeds the guest list while the plan is open
+// ============================================================
+// The link's key lives only on the plan's record on the server: never in the plan JSON (view links read that), never on
+// this device, never in a URL. The page only learns connected / dead / last pulled (GET → amelie, writers only). The
+// SERVER asks Amelie (POST /plans/:id/amelie/pull — Amelie sends no CORS, and one fixed upstream origin); the MERGE
+// happens HERE, with step 1's mergeGuestList, and is saved through the normal path (baseUpdated): a merge on the server
+// would move `updated` and the next 409 would adopt the server's copy over whatever the user was typing.
+// state.amelieVer = the Amelie version this plan's list was merged from, sent as `since` (unchanged → no save at all). It
+// travels WITH the plan: a 409 that adopts the server's copy adopts its version too, so a merge that got lost is fetched again.
+// When: once right after the plan opens, then every AME.every while the page is visible — nothing while hidden, nothing
+// read only, nothing after Amelie said the link is gone (404: the server never asks Amelie with it again), 429 → wait.
+// Merged only on a device someone is AT (ameAttended): an automatic merge is a save, and a device nobody is using that saved
+// on its own would make the next save of the device someone IS typing on come back 409 — and the conflict path adopts the
+// server's copy over what was typed. On an unattended device the answer waits (AME.pending) for the first key, click or touch.
+const AME_LINK=/^https:\/\/amelie\.gr\/g\/#[A-Za-z0-9_-]{22,64}$/, AME_KEY=/^[A-Za-z0-9_-]{22,64}$/;   // what the server accepts (anything else: 400 bad_link, never sent upstream)
+const AME={ every:12*60e3, open:400, idle:90e3, timer:null, nextAt:0, busyUntil:0, inflight:"", pending:null, applyTimer:null, profId:undefined, ready:false, denied:"", seen:null, inputAt:Date.now() };   // inflight: the plan (profile id) whose pull is on its way · inputAt: opening the page counts as being there
+function ameTime(v){ return (typeof v==="number"&&isFinite(v))?v:(typeof v==="string"&&!isNaN(Date.parse(v)))?Date.parse(v):0; }
+function ameNorm(a){ return { connected:!!a.connected, dead:!!a.dead, at:ameTime(a.at), lastPullAt:ameTime(a.lastPullAt) }; }   // only these four, whatever else arrives
+function ameOn(prof){ return !!(prof && prof.amelie && prof.amelie.connected && !prof.amelie.dead); }
+// Who may connect, pull and merge: whoever may write guest names on this ONLINE plan right now — couple edit key, venue key,
+// support with editing on (canPush) — never a viewer, a read-only phase, a trashed plan or the venue's template.
+function ameAllowed(prof){ return !IS_LAB && !!prof && !!prof.cloudId && prof.id===profiles.activeId && !ACCESS.ro && !ACCESS.template && canPush(prof); }
+// Read only for now (waiting / frozen, or locked before the key is dropped): nothing is pulled, but whoever may write names
+// still sees the connection and can end it — the server allows DELETE in every phase (privacy §2: «οποτεδήποτε, από το σχέδιο»).
+function ameOffOnly(prof){ return !IS_LAB && !!prof && !!prof.cloudId && prof.id===profiles.activeId && !!ACCESS.ro && !ACCESS.template && !ACCESS.gone && ACCESS.role!=="viewer" && !prof.readonly && (!prof.support || prof.supportEdit)
+  && !!(prof.editKey || prof.supportKey || getSyncCode()) && !!(prof.amelie && prof.amelie.connected); }
+function ameMenuOk(){ const cur=currentProfile(); return (ameAllowed(cur) && !!(cur.amelie && typeof cur.amelie==="object")) || ameOffOnly(cur); }   // the server said it knows Amelie (an older server: no entry)
+// Someone is at THIS device: the page is visible, has the focus, and saw a key, a click, a touch or the mouse lately.
+function ameAttended(){ return document.visibilityState==="visible" && (typeof document.hasFocus!=="function" || document.hasFocus()) && Date.now()-AME.inputAt<AME.idle; }
+function ameInput(){ AME.inputAt=Date.now(); if(AME.pending && !AME.applyTimer) AME.applyTimer=setTimeout(ameApply,600); }   // a held answer goes in now (ameApply still waits for free hands)
+["pointerdown","pointermove","keydown","wheel","touchstart"].forEach(t=>window.addEventListener(t,ameInput,{capture:true,passive:true}));
+window.addEventListener("focus",ameInput);
+const ameVer=()=>typeof state.amelieVer==="string"?state.amelieVer:"";
+function ameSoon(){ const id=profiles.activeId; if(AME.inflight!==id && (!AME.timer || AME.nextAt-Date.now()>61e3)) ameArm(61e3); }   // not at once: the server asks Amelie at most once a minute per plan
+function ameStop(){ clearTimeout(AME.timer); AME.timer=null; AME.nextAt=0; }
+function ameArm(ms){ clearTimeout(AME.timer); AME.nextAt=Date.now()+ms; AME.timer=setTimeout(()=>{ AME.timer=null; ameTick(); }, ms); }
+function ameTick(){
+  const cur=currentProfile(); if(!AME.ready || !ameAllowed(cur) || !ameOn(cur) || AME.denied===cur.id){ ameStop(); if(cur && ameAllowed(cur) && cur.amelie && cur.amelie.dead) ameGoneNote(cur); return; }
+  if(document.visibilityState!=="visible") return;   // nobody is looking: it runs the moment the page is visible again (below)
+  if(Date.now()<AME.busyUntil){ ameArm(AME.busyUntil-Date.now()); return; }
+  amePull(false);
+}
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && AME.ready && !AME.timer && AME.nextAt && Date.now()>=AME.nextAt) ameTick(); });
+function ameStart(){ if(IS_LAB) return; AME.ready=true; ameSync(); }
+// After every applyAccess: another plan on screen → its own first pull · read only / disconnected / gone → stop · writable again → start.
+function ameSync(){
+  if(!AME.ready) return;
+  const cur=currentProfile(), id=cur?cur.id:null;
+  if(id!==AME.profId){ AME.profId=id; AME.pending=null; AME.busyUntil=0; AME.denied=""; AME.seen=null; ameStop(); }
+  if(!cur || !ameAllowed(cur)){ ameStop(); return; }
+  if(cur.amelie && cur.amelie.connected && cur.amelie.dead) ameGoneNote(cur);
+  if(!ameOn(cur) || AME.denied===id){ ameStop(); return; }
+  if(!AME.timer && AME.inflight!==id && !AME.nextAt){ ameArm(AME.open); return; }   // just opened (or writable again): pull now, before the typing starts
+  // the plan was replaced by the server's copy (a 409 or another device's save) that lacks what this device merged: fetch it again
+  // soon — not at once, the server asks Amelie at most once a minute per plan
+  if(AME.seen && AME.seen.profId===id && AME.seen.ver!==state.amelieVer && !AME.pending && AME.inflight!==id && AME.timer && AME.nextAt-Date.now()>61e3){ AME.seen=null; ameArm(61e3); }
+}
+function ameGoneNote(cur){ if(cur.ameGoneShown) return; cur.ameGoneShown=true; saveProfilesIdx(); toast(tr("ameGone")+" "+tr("ameGoneKept"),10000); }
+async function amePull(manual){
+  const cur=currentProfile();
+  if(!ameAllowed(cur)){ if(manual) roToast(); return; }
+  if(!ameOn(cur)){ if(manual) toast(tr(cur.amelie&&cur.amelie.dead?"ameGone":"ameNotConn"),6000); return; }
+  if(AME.inflight===cur.id) return;
+  if(Date.now()<AME.busyUntil){ if(manual) toast(tr("ameBusy",{t:ameClock(AME.busyUntil)}),5000); ameArm(AME.busyUntil-Date.now()); return; }   // Retry-After: not even the server is asked before then
+  AME.inflight=cur.id; ameStop();
+  // `since` = the version this list was merged from — but only while the list still holds Amelie guests: a list emptied
+  // (reset, «replace names», deleted by hand) must get the whole document again, not «unchanged» over nothing
+  const base=ameVer(), since=(base && Object.values(state.guests).some(g=>typeof g.srcId==="string"&&g.srcId.startsWith("amelie:")))?base:"";
+  let r=null, d={};
+  try{ r=await fetch(planPath(cur.cloudId)+"/amelie/pull",{method:"POST",headers:authHeaders(cur),cache:"no-store",body:JSON.stringify(since?{since}:{})}); d=await r.json().catch(()=>({})); }catch(e){}
+  if(AME.inflight===cur.id) AME.inflight="";
+  if(currentProfile()!==cur || !AME.ready){ ameSync(); return; }   // another plan is on screen now: this answer is not for it — and it gets its own first pull (held back while this one ran)
+  ameArm(AME.every);   // the next regular pull, whatever this one said (never a tight loop)
+  const st=r?r.status:0; d=(d&&typeof d==="object")?d:{};
+  if(st===200 && (d.unchanged || d.doc)){
+    cur.amelie={...(cur.amelie||{}), lastPullAt:Date.now()}; saveProfilesIdx(); ameRender();
+    if(d.unchanged){ if(manual) toast(tr("ameNothing")); return; }   // nothing new since this plan's version: no merge, no save
+    ameDeliver(cur, d.doc, manual, base); return; }
+  if(st===404 && d.error==="amelie_gone"){ cur.amelie={...(cur.amelie||{}), connected:true, dead:true}; saveProfilesIdx(); ameStop(); ameGoneNote(cur); ameRender(); return; }   // stop asking: a dead key would burn the shared per-IP budget
+  if(st===429){ const s=Math.min(6*3600, Math.max(60, +d.retryAfter || +(r.headers.get("Retry-After")||0) || 600)); AME.busyUntil=Date.now()+s*1000; ameArm(s*1000); if(manual) toast(tr("ameBusy",{t:ameClock(AME.busyUntil)}),5000); return; }
+  if(st===412){ cur.amelie={...(cur.amelie||{}), connected:false, dead:false}; saveProfilesIdx(); ameStop(); ameRender(); if(manual) toast(tr("ameNotConn"),5000); return; }   // disconnected from another device
+  if(st===409){ refreshAccess(); if(manual) roToast(); return; }   // not_writable: the server sees a read-only phase — the page follows (applyAccess → ameSync stops)
+  if(st===401 || st===403){ AME.denied=cur.id; ameStop(); refreshAccess(); if(manual) toast(tr("ameNoRight"),5000); return; }
+  if(manual) toast(tr("ameDown"),5000);   // 502 amelie_unreachable, offline, anything else: quietly again at the next turn
+}
+function ameClock(ms){ try{ return new Date(ms).toLocaleTimeString(LANG,{hour:"2-digit",minute:"2-digit"}); }catch(e){ return ""; } }
+function ameDeliver(cur, doc, manual, base){
+  if(!doc || typeof doc!=="object" || doc.format!=="amelie-guests/1" || !Array.isArray(doc.importGuests)){ if(manual) toast(tr("ameDown"),5000); return; }
+  AME.pending={profId:cur.id, doc, manual, base}; ameApply();
+}
+// The merge waits until someone is at this device (ameAttended — a press of «Ανανέωση» is someone) and their hands are free
+// (typing, a drag, an open dialog or menu): never under the fingers, so no keystroke is lost and nothing is re-drawn mid-edit.
+// Then ONE merge = one save (step 1: one undo step), through scheduleCloudPush.
+function ameApply(){
+  clearTimeout(AME.applyTimer); AME.applyTimer=null;
+  const p=AME.pending; if(!p) return;
+  const cur=currentProfile(); if(!cur || cur.id!==p.profId || !ameAllowed(cur)){ AME.pending=null; return; }   // another plan, or read only now: a later pull brings it again
+  // The list moved on while this answer waited (another device's save, a 409, ↶, a reset): it answers a question about a
+  // version this plan no longer has — merging it could bring older answers back. Dropped, and asked again (unless it is in).
+  if(ameVer()!==(p.base||"")){ AME.pending=null; if(ameVer()!==p.doc.version) ameSoon(); return; }
+  if(!p.manual && !ameAttended()) return;   // nobody at this device: held — the first key, click or touch here brings it in (ameInput)
+  if(interactionBusy()){ AME.applyTimer=setTimeout(ameApply,1500); return; }
+  AME.pending=null;
+  const doc=p.doc, ver=(typeof doc.version==="string" && /^[\w-]{1,64}$/.test(doc.version))?doc.version:null, had="amelieVer" in state, prev=state.amelieVer;
+  if(ver) state.amelieVer=ver;   // inside the merge's own save (and its undo step)
+  const r=mergeGuestList(doc,{live:true});
+  if(!r){ if(had) state.amelieVer=prev; else delete state.amelieVer; return; }   // refused (too big): nothing taken, not even the version
+  if(JSON.stringify(state)!==lastJSON) save({noHistory:true});   // only the version moved (nothing new for the list): kept, no undo step
+  if(ver) AME.seen={profId:cur.id, ver};
+  if(r.cutSeated.length || r.kept.length){ showRsvpSummary({...r, live:true}); return; }   // someone needs a decision: the list of names stays until read
+  const parts=[]; if(r.added) parts.push(tr(r.added===1?"ameNew1":"ameNew",{n:r.added})); if(r.changed.length) parts.push(tr(r.changed.length===1?"ameChg1":"ameChg",{n:r.changed.length}));
+  if(r.linked) parts.push(tr(r.linked===1?"ameLinked1":"ameLinked",{n:r.linked}));
+  if(parts.length) toast(tr("ameToast",{w:parts.join(", ")}),5000);
+  else if(p.manual) toast(tr("ameNothing"));   // automatic and nothing new: say nothing
+}
+// ---- the dialog: paste the link · connected / gone / last checked · refresh now · disconnect ----
+function openAmelie(){ if(!ameMenuOk()){ roToast(); return; } const old=$("ameLink"); if(old) old.value="";   // a link pasted earlier and not sent does not linger
+  ameRender(true); $("amelieModal").classList.add("open"); refreshAccess().then(()=>ameRender()); }
+function ameRender(force){
+  const m=$("amelieModal"); if(!force && !m.classList.contains("open")) return;
+  const cur=currentProfile()||{}, A=cur.amelie||{}, b=$("amelieBody"), e=escapeHtml;
+  if(!ameMenuOk()){ ameClose(); return; }   // read only / another plan meanwhile
+  const typed=$("ameLink")?$("ameLink").value:"";   // a re-draw (the GET came back) must not eat what is being pasted
+  let h="";
+  if(!ameAllowed(cur)){   // read only for now: what is connected, and the way to end it — nothing to paste, nothing to pull
+    h+=A.dead?`<div class="acc-live">${e(tr("ameGone"))}<div class="mhint" style="padding:4px 0 0">${e(tr("ameGoneKept"))}</div></div>`
+      :`<div class="acc-live">${e(tr("ameOn",{d:fmtTime(A.at)}))}<div class="mhint" style="padding:4px 0 0">${e(A.lastPullAt?tr("ameLast",{t:fmtTime(A.lastPullAt)}):tr("ameLastNever"))}</div></div>
+      <div class="mhint" style="padding:8px 0 0">${e(tr("ameRoNow"))}</div>`;
+    h+=`<div class="acc-row"><button class="ibtn danger" id="ameOff">${e(tr("ameOffBtn"))}</button></div>`;
+  } else if(A.connected && !A.dead){
+    h+=`<div class="acc-live">${e(tr("ameOn",{d:fmtTime(A.at)}))}<div class="mhint" style="padding:4px 0 0">${e(A.lastPullAt?tr("ameLast",{t:fmtTime(A.lastPullAt)}):tr("ameLastNever"))}</div></div>
+      <div class="mhint" style="padding:8px 0 0">${e(tr("ameAuto"))}</div>
+      <div class="acc-row"><button class="ibtn primary" id="ameRefresh">${e(tr("ameRefresh"))}</button><button class="ibtn danger" id="ameOff">${e(tr("ameOffBtn"))}</button></div>`;
+  } else {
+    h+=A.dead?`<div class="acc-live">${e(tr("ameGone"))}<div class="mhint" style="padding:4px 0 0">${e(tr("ameGoneKept"))}</div></div>`:`<p class="claim-lead">${e(tr("ameLead"))}</p>`;
+    h+=`<div class="mhint" style="padding:8px 0 0">${e(tr("ameHow"))}</div>
+      <div class="acc-row"><input id="ameLink" type="text" inputmode="url" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="200" placeholder="https://amelie.gr/g/#…" style="flex:1;min-width:0;height:36px;border:1px solid var(--line);border-radius:8px;padding:0 10px;background:var(--paper);color:inherit;font-size:14px">
+      <button class="ibtn primary" id="ameGo">${e(tr("ameConnect"))}</button></div><div class="mhint" id="ameErr" style="color:#b3261e;padding:6px 0 0" hidden></div>`;
+    if(A.dead) h+=`<div class="acc-row"><button class="ibtn danger" id="ameOff">${e(tr("ameOffBtn"))}</button></div>`;
+  }
+  h+=`<div class="mhint" style="padding:12px 0 0">${e(tr("amePrivacy"))}</div>`;
+  b.innerHTML=h;
+  const inp=$("ameLink"); if(inp){ inp.value=typed; inp.addEventListener("keydown",ev=>{ ev.stopPropagation(); if(ev.key==="Enter"){ ev.preventDefault(); ameConnect(); } else if(ev.key==="Escape"){ ev.preventDefault(); ameClose(); } }); }
+  const go=$("ameGo"); if(go) go.onclick=ameConnect;
+  const rf=$("ameRefresh"); if(rf) rf.onclick=()=>{ ameClose(); amePull(true); };   // closed first: an open dialog would hold the merge back
+  const off=$("ameOff"); if(off) off.onclick=ameDisconnect;
+}
+// Closing never leaves the focus in the hidden field: a focused input counts as "typing" (interactionBusy) and would hold the merge back.
+function ameClose(){ const m=$("amelieModal"); if(m.contains(document.activeElement)) document.activeElement.blur(); m.classList.remove("open"); }
+function ameErr(msg){ const el=$("ameErr"); if(el){ el.textContent=msg; el.hidden=!msg; } }
+async function ameConnect(){
+  const cur=currentProfile(), inp=$("ameLink"), go=$("ameGo"); if(!inp||!cur) return;
+  const v=inp.value.trim();
+  if(!AME_LINK.test(v) && !AME_KEY.test(v)){ ameErr(tr("ameBad")); inp.focus(); return; }   // refused here; the server refuses the same, never asking Amelie
+  ameErr(""); if(go) go.disabled=true;
+  let r=null, d={};
+  try{ r=await fetch(planPath(cur.cloudId)+"/amelie",{method:"PUT",headers:authHeaders(cur),body:JSON.stringify({link:v})}); d=await r.json().catch(()=>({})); }catch(e){}
+  if(go) go.disabled=false;
+  if(r && r.ok && d && d.amelie){
+    inp.value=""; cur.amelie=ameNorm(d.amelie); AME.busyUntil=0; AME.denied=""; AME.seen=null;
+    if(cur.amelie.dead){ cur.ameGoneShown=true; saveProfilesIdx(); ameRender(); return; }   // the same dead link pasted again: the server keeps it dead (no failed call)
+    cur.ameGoneShown=false; saveProfilesIdx();
+    ameClose(); toast(tr("ameConnected"),4000);
+    amePull(true); return; }
+  const err=(d&&d.error)||"", st=r?r.status:0;
+  ameErr(!r?tr("ameDown"):err==="bad_link"?tr("ameBad"):(err==="locked"||ACCESS.locked)?tr("tLockedWed"):(st===401||st===403||st===409)?tr("ameNoRight"):tr("accFail"));
+  if(st===409 || err==="locked") refreshAccess().then(()=>{ ameRender(); if(ACCESS.ro) roToast(); });   // a read-only phase / after the wedding: the page follows (the dialog closes, the strip says why)
+}
+async function ameDisconnect(){
+  const cur=currentProfile(); if(!cur || !confirm(tr("ameOffConfirm"))) return;
+  let r=null; try{ r=await fetch(planPath(cur.cloudId)+"/amelie",{method:"DELETE",headers:authHeaders(cur)}); }catch(e){}
+  if(!r || !r.ok){ toast(r&&(r.status===401||r.status===403)?tr("ameNoRight"):tr("accFail"),5000); return; }
+  const d=await r.json().catch(()=>({}));
+  cur.amelie=(d&&d.amelie)?ameNorm(d.amelie):{connected:false, dead:false, at:0, lastPullAt:0}; cur.ameGoneShown=false; saveProfilesIdx();
+  ameStop(); AME.pending=null; AME.seen=null; ameRender(); toast(tr("ameOffDone"),5000);
+}
+$("ameClose").addEventListener("click",ameClose);
+$("amelieModal").addEventListener("click",e=>{ if(e.target.id==="amelieModal") ameClose(); });
+$("amelieModal")._close=ameClose;   // Escape (the global handler) closes it the same way
 
 // ============================================================
 //  PRINT
@@ -6111,7 +6335,7 @@ function rasterizeMaterials(){
 setTimeout(rasterizeMaterials, 0);
 // ☁ open a shared link if present, otherwise refresh the active profile from the cloud (the lab never talks to the cloud)
 if(!IS_LAB){ const p0=currentProfile(); if(loadError && p0 && p0.cloudId) toast(tr("cLocalErr",{e:loadError}),7000); }
-if(!IS_LAB) (async()=>{ if(!(await openSharedFromURL())) await pullIfNewer(); if(getSyncCode()) await syncFromCode(); startCloudPoll(); maybeWelcome(); setTimeout(maybeDateNudge,2500); })();
+if(!IS_LAB) (async()=>{ if(!(await openSharedFromURL())) await pullIfNewer(); if(getSyncCode()) await syncFromCode(); startCloudPoll(); ameStart(); maybeWelcome(); setTimeout(maybeDateNudge,2500); })();
 else { maybeWelcome(); flushLabNote(); }
 </script>
 </body>
