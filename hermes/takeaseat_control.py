@@ -9,6 +9,15 @@ THE ONE RULE: we never write into a venue we have sold to. Writes that create we
 venues listed in TAKEASEAT_OWN_VENUES (ours — Jockey, a "direct couples" venue…). Creating a venue
 is onboarding a customer; from that moment it is theirs and the shim will not touch it again.
 
+CREATION IS TWO SPOKEN STEPS (2026-09-21). takeaseat_new_wedding / takeaseat_new_venue only PROPOSE
+(«Να φτιάξω γάμο «Μαρία και Νίκος», 12/9/2027, στο Jockey;») and keep that one proposal for
+PENDING_SECONDS; nothing is written until he says «επιβεβαιώνω στο TakeaSeat» (takeaseat_confirmtakeaseat)
+— that phrase and nothing else: a question («τι επιβεβαιώνω στο TakeaSeat;»), a deferral («… αύριο») or a
+negation ("I won't confirm TakeaSeat") creates nothing. A sentence that asks to delete / remove / cancel
+never proposes or creates anything (there is no voice deletion), and a question never proposes. Hermes
+matches by substrings of the descriptions, so the descriptions of the actions that create hold only
+imperative phrases of a creation request (see ACTIONS, and sim_match.py).
+
 Config — a git-ignored .env beside this file (see .env.example):
   TAKEASEAT_URL            default https://takeaseat.gr
   TAKEASEAT_OWNER_KEY      the OWNER_KEY of admin.html (server.env on the box)
@@ -37,6 +46,7 @@ import subprocess
 import sys
 import threading
 import time
+import unicodedata
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -176,7 +186,7 @@ def _clip(text: str) -> None:
 _FILLER = r"^[\s:,\-–—]*(?:(?:για|τον|την|το|τους|τις|με\s+όνομα|ονόματι|πελάτη|πελάτης|ζευγάρι|named|called|for|of|the|a|customer|client|couple)\s+)*"
 _KEYS = ["ζευγάρι", "ζευγαρι", "γάμου", "γαμου", "γάμος", "γαμος", "γάμο", "γαμο", "wedding", "couple",
          "κτήματος", "κτηματος", "κτήμα", "κτημα", "venue", "customer", "client", "πελάτη", "πελατη", "πελάτης"]
-_NOT_NAMES = {"takeaseat", "hermes", "jockey"}
+_NOT_NAMES = {"takeaseat", "hermes", "jockey", "τζοκει", "τραπεζολογιο"}
 
 
 _MONTHS = {}
@@ -192,15 +202,16 @@ for _i, _names in enumerate([
 _ACCENTS = str.maketrans("άέήίόύώϊϋΐΰ", "αεηιουωιυιυ")
 
 
-_STOP_TAIL = {"στις", "στη", "στην", "την", "τη", "τις", "το", "στο", "για", "του", "με", "ημερομηνια", "on", "the", "am", "of", "at",
+_STOP_TAIL = {"στις", "στη", "στην", "την", "τη", "τις", "το", "στο", "στον", "για", "του", "με", "ημερομηνια", "on", "the", "am", "of", "at", "in",
               "δευτερα", "τριτη", "τεταρτη", "πεμπτη", "παρασκευη", "σαββατο", "κυριακη",
               "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"}
 
 
 def _clean_name(name: str) -> str:
-    """Drop the words that belonged to the date («… για τις», «… το Σάββατο», "on") from the end of the couple's name."""
+    """Drop the words that belonged to the date («… για τις», «… το Σάββατο», "on") from the end of the couple's name,
+    and the place («… στο Jockey», «… στο TakeaSeat τραπεζολόγιο» — run_action appends the app's name to his sentence)."""
     toks = [t for t in (name or "").split() if not re.fullmatch(r"\d{1,2}[:.]\d{2}(?:μμ|πμ|am|pm)?", t.lower())]   # a time is not part of a name
-    while toks and toks[-1].lower().strip(" ,.;").translate(_ACCENTS) in _STOP_TAIL:
+    while toks and toks[-1].lower().strip(" ,.;").translate(_ACCENTS) in (_STOP_TAIL | _NOT_NAMES):
         toks.pop()
     return " ".join(toks).strip(" ,.;")[:80]
 
@@ -238,6 +249,49 @@ def _date_from(task: str):
     return d.isoformat(), t[m.start():m.end()]
 
 
+def _cut_date(text: str, said: str) -> str:
+    """His sentence without the date and the words that led into it («… στις 12/9 …», "… on the 12/9 …"), wherever the
+    date sits — so a date in the middle leaves no «στις» inside the couple's name."""
+    text = text or ""
+    i = text.find(said) if said else -1
+    if i < 0:
+        return re.sub(r"\s+", " ", text).strip()
+    head = text[:i].split()
+    while head and head[-1].lower().strip(" ,.;").translate(_ACCENTS) in _STOP_TAIL:
+        head.pop()
+    return re.sub(r"\s+", " ", " ".join(head) + " " + text[i + len(said):]).strip()
+
+
+# «στο / στον / στη / στην <Όνομα>», "at / in <Name>": a run of capitalised words after the preposition.
+_PLACE_RE = re.compile(r"(?<!\w)(?:[Σσ]το|[Σσ]τον|[Σσ]την|[Σσ]τη|[Aa]t|[Ii]n)\s+"
+                       r"([A-ZΑ-ΩΆΈΉΊΌΎΏ][^\s,.;:!?«»\"]*(?:\s+[A-ZΑ-ΩΆΈΉΊΌΎΏ][^\s,.;:!?«»\"]*)*)")
+_MONTH_WORDS = set(_MONTHS) | {k[:-1] for k in _MONTHS if k.endswith("ς")}   # «τον Σεπτέμβριο» is a date, not a place
+
+
+def _strip_our_place(text: str, vname: str) -> tuple[str, str]:
+    """(his sentence without «στο <our venue>», the first place he named that is NOT ours — "" if none).
+    Ours = our venue's name word by word (a prefix of it is enough: «στο Jockey» for "Jockey Club"), or TakeaSeat /
+    Jockey; the words after it («στο Jockey Μαρία και Νίκος») stay, they are the couple's."""
+    vw = _fold(vname).split()
+    out = text or ""
+    for m in reversed(list(_PLACE_RE.finditer(out))):
+        toks = m.group(1).split()
+        if toks[0].lower().strip(".,").translate(_ACCENTS) in (_MONTH_WORDS | _STOP_TAIL):
+            out = out[:m.start()] + " " + out[m.end():]   # «στον Σεπτέμβριο», «στη Δευτέρα»: the date's words, not a place
+            continue
+        k = 0
+        while k < len(toks):
+            w = _fold(toks[k]).strip(".,'’")
+            if w in _NOT_NAMES or (k < len(vw) and w == vw[k]):
+                k += 1
+            else:
+                break
+        if k == 0:
+            return out, m.group(1)
+        out = out[:m.start()] + " " + " ".join(toks[k:]) + out[m.end():]
+    return re.sub(r"\s+", " ", out).strip(), ""
+
+
 def _name_from(task: str) -> str:
     """Pull the name out of his sentence.
     «νέος γάμος για Μαρία και Νίκο» → «Μαρία και Νίκο» · "create a venue customer Κτήμα Ηλιοβασίλεμα" → «Κτήμα Ηλιοβασίλεμα».
@@ -271,6 +325,184 @@ def _dedupe(key: str, make):
     result = make()
     _recent[key] = (now, result)
     return result
+
+
+def _done_lately(key: str) -> str:
+    """The spoken result of the same creation if it was made in the last 2 minutes, else ""."""
+    hit = _recent.get(key)
+    return hit[1] if hit and time.monotonic() - hit[0] < 120 else ""
+
+
+# ── Voice guards for the actions that create ──────────────────────────────────
+APP_NAME = "TakeaSeat τραπεζολόγιο"
+CONFIRM_PHRASE = "επιβεβαιώνω στο TakeaSeat"
+CONFIRM_ACTION = "takeaseat_confirmtakeaseat"   # no bare "confirm" in the name: Hermes counts action-name words too
+PENDING_SECONDS = 180.0      # a proposal waits this long for CONFIRM_PHRASE, then it is gone
+CONFIRM_GAP_SECONDS = 10.0   # a confirm sooner than this after the proposal did not come from him: he has to
+#                              hear the proposal first. The orchestrator is told «Don't ask him to confirm things
+#                              he already asked for», so it may try to chain the confirm itself — that is refused.
+
+
+def _fold(text: str) -> str:
+    """Lower case, no accents, σ for ς — «Σβήσε», «σβησε» and «ΣΒΉΣΕ» read the same."""
+    d = unicodedata.normalize("NFD", str(text or "").casefold())
+    return "".join(c for c in d if not unicodedata.combining(c))
+
+
+def _squash(text: str) -> str:
+    """What Hermes's matcher hears (appbridge._squash): letters and digits only, the words run together."""
+    return re.sub(r"[^a-z0-9α-ω]+", "", _fold(text))
+
+
+# Delete / remove / cancel, in Greek and English, on _fold()ed text (so a final ς is written σ in these patterns). «σβήσε το ζευγάρι Μαρία» used to land on
+# takeaseat_new_wedding («ζευγάρι» was the only word that told it apart) and created a wedding at once.
+_DELETE_RE = re.compile(
+    r"σβησ|σβην|σβυσ|σβυν|διαγραφ|διαγραψ|διεγραψ|αφαιρ|ακυρ|καταργ|ξεχνα"
+    r"|\b(?:delet|remov|cancel|erase|wipe|destroy|undo|forget|purg)"
+    r"|\b(?:drop|scrap|kill|trash|clear|get\s+rid|throw\s+away|throw\s+out)\b")
+# «πέτα», «βγάλε» (throw out, take out) — on accent-stripped text that keeps its case: lower case anywhere, capitalised
+# only as the first word, because «Πέτα» / «Βγάλε…» inside a sentence is a name.
+_THROW_RE = re.compile(r"(?<!\w)(?:πετα|πεταξε|πεταξτε|πεταχτε|βγαλε|βγαλτε|βγαλ)(?!\w)"
+                       r"|^\W*(?:Πετα|Πεταξε|Πεταξτε|Πεταχτε|Βγαλε|Βγαλτε|Βγαλ)(?!\w)")
+_NEGATION_RE = re.compile(
+    r"(?<!\w)(?:οχι|μη|μην|δεν|no|not|nope|never|cannot|dont|wont|cant|shouldnt|wouldnt|mustnt|didnt|doesnt|isnt|arent)(?!\w)"
+    r"|\w+n[’']t(?!\w)")   # don't, won't, can't, shouldn't…
+# A question: a question mark (the Greek one is «;»), a question word anywhere, or an English question's first word.
+# Checked on _fold()ed text, except «πού» / «πώς», which are «που» / «πως» (that, which) without their accent.
+_QUESTION_RE = re.compile(
+    r"[?;\u037e]"
+    r"|(?<!\w)(?:τι|ποιοσ|ποια|ποιο|ποιοι|ποιεσ|ποιον|ποιου|ποιων|ποτε|γιατι|υπαρχει|υπαρχουν|ποσοι|ποσα|ποσεσ|ποσουσ|ποσο|μηπωσ"
+    r"|what|whats|when|whens|how|hows|why|where|wheres|whether)(?!\w)"
+    r"|^\W*(?:is|are|was|were|do|does|did|any|who|whos|which|should|shall|has|have|had)(?!\w)"
+    r"|(?<!\w)(?:is|are)\s+there(?!\w)")
+_QUESTION_ACCENTED_RE = re.compile(r"(?<!\w)(?:πού|πώς)(?!\w)")
+_POLITE_RE = re.compile(r"^\W*(?:(?:can|could|would|will)\s+you|μπορεισ\s+να|μπορειτε\s+να|θα\s+μπορουσεσ\s+να|θα\s+μπορουσατε\s+να)(?!\w)")
+# The confirm is a WHITELIST: once the app's name, these fillers and punctuation are taken out, only the confirm word may
+# be left. «τι επιβεβαιώνω στο TakeaSeat», «επιβεβαιώνω στο TakeaSeat αύριο», "I won't confirm TakeaSeat" leave words behind.
+_CONFIRM_WORDS = {"επιβεβαιωνω", "confirm"}
+_CONFIRM_FILLER = {"ναι", "yes", "yeah", "yep", "ok", "okay", "οκ", "οκει", "ενταξει", "i", "εγω", "it", "please", "παρακαλω",
+                   "στο", "στον", "στη", "στην", "σε", "το", "in", "on", "at", "to", "for", "the", "with",
+                   "takeaseat", "τραπεζολογιο", "hermes", "ερμη", "ερμησ"}
+_OWN_TOKENS = ("takeaseat", "τραπεζολογ", "τεικασιτ", "τεικεσιτ")   # squashed: «TakeaSeat», "Take a Seat", «τέικ α σιτ»
+_APPS_DIR = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local")) / "Hermes" / "apps"
+_others_cache: dict = {}
+
+
+def _deaccent(text: str) -> str:
+    d = unicodedata.normalize("NFD", str(text or ""))
+    return "".join(c for c in d if not unicodedata.combining(c))
+
+
+def _asks_to_delete(*texts: str) -> bool:
+    return any(_DELETE_RE.search(_fold(t)) or _THROW_RE.search(_deaccent(t)) for t in texts if t)
+
+
+def _negated(*texts: str) -> bool:
+    return any(_NEGATION_RE.search(_fold(t)) for t in texts if t)
+
+
+def _asks(*texts: str) -> bool:
+    """A question, not a request: «ποιος είναι ο νέος γάμος στις 12/9», "is there a new venue", "what's the new venue
+    called", «υπάρχει νέος γάμος 12/9;». A polite request ("can you create…", «μπορείς να φτιάξεις…») may end in «?»."""
+    for t in texts:
+        if not t:
+            continue
+        if _QUESTION_ACCENTED_RE.search(str(t).casefold()):
+            return True
+        f = _fold(_without_app(t))
+        if _POLITE_RE.search(f):
+            f = _POLITE_RE.sub(" ", re.sub(r"[?;\u037e]", " ", f))
+        if _QUESTION_RE.search(f):
+            return True
+    return False
+
+
+def _plain_confirm(text: str) -> bool:
+    """True only when the sentence is the confirm phrase and nothing more (see _CONFIRM_WORDS)."""
+    f = _fold(_without_app(text))
+    f = re.sub(r"take\s*a\s*seat|τεικ\s*[αε]?\s*σιτ", " takeaseat ", f)
+    rest = [w for w in re.split(r"[^a-z0-9α-ω]+", f) if w and w not in _CONFIRM_FILLER]
+    return bool(rest) and all(w in _CONFIRM_WORDS for w in rest)
+
+
+def _names_us(text: str) -> bool:
+    heard = _squash(text)
+    return any(t in heard for t in _OWN_TOKENS)
+
+
+def _other_apps() -> list:
+    """[(name, its 4+ letter squashed words)] of every OTHER app registered with Hermes — read only, names only,
+    cached 30 s. Words that are also ours are left out."""
+    now = time.monotonic()
+    hit = _others_cache.get("apps")
+    if hit and now - hit[0] < 30:
+        return hit[1]
+    out = []
+    try:
+        files = sorted(_APPS_DIR.glob("*.json"))
+    except OSError:
+        files = []
+    for p in files:
+        try:
+            name = json.loads(p.read_text(encoding="utf-8")).get("name") or p.stem
+        except Exception:
+            continue
+        if not isinstance(name, str) or name == APP_NAME:
+            continue
+        words = {w for w in (_squash(t) for t in re.split(r"[^0-9A-Za-zΆ-ώ]+", name)) if len(w) >= 4}
+        words = {w for w in words if not any(o in w or w in o for o in _OWN_TOKENS)}
+        if words:
+            out.append((name, words))
+    _others_cache["apps"] = (now, out)
+    return out
+
+
+def _other_app_named(text: str) -> str:
+    """The other registered app his sentence names («επιβεβαιώνω στον λογιστή» → Λογιστή), else ""."""
+    heard = _squash(text)
+    best, longest = "", 0
+    for name, words in _other_apps():
+        n = max((len(w) for w in words if w in heard), default=0)
+        if n > longest:
+            best, longest = name, n
+    return best
+
+
+def _refuse_delete_or_no(value: str, task: str, example: str = "φτιάξε γάμο Μαρία και Νίκος στις 12 Σεπτεμβρίου") -> None:
+    """Before any proposal: a sentence that deletes, removes, cancels or says no creates nothing, and it also drops
+    a proposal that is waiting (whatever he meant, he did not mean «go ahead»). A question proposes nothing either
+    (a proposal that is waiting stays: a question is not a no)."""
+    if _asks_to_delete(value, task):
+        _disarm()
+        raise RuntimeError("Στο TakeaSeat δεν σβήνω, δεν αφαιρώ και δεν ακυρώνω τίποτα με φωνή — αυτό γίνεται μόνο "
+                           "από την κονσόλα στον υπολογιστή. Δεν έφτιαξα τίποτα.")
+    if _negated(value, task):
+        _disarm()
+        raise RuntimeError("Ακούω άρνηση («όχι», «μην», «δεν») — δεν πρότεινα και δεν έφτιαξα τίποτα.")
+    if _asks(value, task):
+        raise RuntimeError("Ακούω ερώτηση, όχι αίτημα — δεν πρότεινα και δεν έφτιαξα τίποτα στο TakeaSeat. "
+                           f"Για να το φτιάξω, πείτε π.χ. «{example}».")
+
+
+# The one creation that waits for CONFIRM_PHRASE. hermes_control serves one request at a time; the lock is for
+# safety, and the confirm takes the proposal OUT before it runs, so a retry can never create twice.
+_pending: dict = {}
+_pending_lock = threading.Lock()
+
+
+def _arm(what: str, key: str, make, task: str, says: str) -> str:
+    with _pending_lock:
+        _pending.clear()
+        _pending.update(what=what, key=key, make=make, at=time.monotonic(), heard=_squash(_without_app(task)))
+    return f"{says} Αν ναι, πείτε «{CONFIRM_PHRASE}» μέσα σε {int(PENDING_SECONDS // 60)} λεπτά."
+
+
+def _disarm() -> str:
+    """Forget the waiting proposal; returns what it was ("" if none)."""
+    with _pending_lock:
+        what = _pending.get("what", "")
+        _pending.clear()
+    return what
 
 
 # ── Questions (read-only) ─────────────────────────────────────────────────────
@@ -362,39 +594,68 @@ def takeaseat_open_lab(**_):
 
 
 # ── Creation (only ever in OUR venues; onboarding a venue is allowed) ──────────
+# Two spoken steps: these two only PROPOSE and read back exactly what would be created; takeaseat_confirm creates it.
+def _without_app(text: str) -> str:
+    """His sentence without the app name run_action appends to it (it is not part of a couple's or venue's name)."""
+    return re.sub(re.escape(APP_NAME), " ", str(text or ""), flags=re.I).strip()
+
+
 def takeaseat_new_wedding(value: str = "", task: str = "", **_):
-    """`value` = the thing he named (Hermes ≥ 2026-09-10), `task` = his whole sentence; either gives the couple's name."""
+    """`value` = the thing he named (Hermes ≥ 2026-09-10), `task` = his whole sentence; either gives the couple's name.
+    Creates nothing: reads the venue, then proposes. takeaseat_confirm does the POST."""
+    _refuse_delete_or_no(value, task)
     if not OWN_VENUE or OWN_VENUE not in OWN_VENUES:
         raise RuntimeError("Δεν έχει οριστεί δικό μας κτήμα για νέους γάμους — δεν γράφω σε κτήμα πελάτη.")
+    task = _without_app(task)
     date, said = _date_from(task or value)
     if not date:   # the server needs the date: it decides when the couple can arrange the tables and when the plan closes
-        raise RuntimeError("Πείτε μου και την ημερομηνία του γάμου, π.χ. «νέος γάμος Μαρία και Νίκος στις 12 Σεπτεμβρίου».")
-    spoken = re.sub(r"\s+", " ", (task or "").replace(said, " ") if said else (task or "")).strip()
-    name = _clean_name((value or "").replace(said, " ") if value else "") or _clean_name(_name_from(spoken)) \
+        raise RuntimeError("Πείτε μου και την ημερομηνία του γάμου, π.χ. «φτιάξε γάμο Μαρία και Νίκος στις 12 Σεπτεμβρίου».")
+    vd = _api(f"/venues/{OWN_VENUE}", headers={"X-Venue-Key": _venue_key(OWN_VENUE)})   # read only
+    if not vd.get("canCreate"):
+        raise RuntimeError("Το κτήμα μας δεν επιτρέπει νέο γάμο τώρα — έληξε η άδεια ή το όριο. Δεν πρότεινα τίποτα.")
+    vname = (vd.get("venue") or {}).get("name", "κτήμα μας")
+    # The place he named: ours → taken out of the couple's name; any other («στο Κτήμα Ηλιοβασίλεμα») → nothing proposed.
+    spoken, foreign = _strip_our_place(_cut_date(task, said), vname)
+    val, foreign_v = _strip_our_place(_cut_date(value or "", said), vname)
+    foreign = foreign or foreign_v
+    if foreign:
+        raise RuntimeError(f"Το «{foreign}» δεν είναι δικό μας κτήμα — σε κτήμα πελάτη δεν γράφω. Με φωνή φτιάχνω "
+                           f"γάμους μόνο στο {vname}. Δεν πρότεινα τίποτα.")
+    name = _clean_name(val) or _clean_name(_name_from(spoken)) \
         or ("Νέος γάμος " + _dt.datetime.now().strftime("%d/%m %H:%M"))
+    key = "wedding:" + name.lower()
+    if _done_lately(key):
+        return "Ήδη έγινε πριν λίγο: " + _done_lately(key)
+    d = _dt.date.fromisoformat(date)
 
     def make():
-        key = _venue_key(OWN_VENUE)
-        vd = _api(f"/venues/{OWN_VENUE}", headers={"X-Venue-Key": key})
-        if not vd.get("canCreate"):
+        vkey = _venue_key(OWN_VENUE)
+        v = _api(f"/venues/{OWN_VENUE}", headers={"X-Venue-Key": vkey})
+        if not v.get("canCreate"):
             raise RuntimeError("Το κτήμα μας δεν επιτρέπει νέο γάμο τώρα — έληξε η άδεια ή το όριο.")
-        r = _api(f"/venues/{OWN_VENUE}/weddings", "POST", {"label": name, "date": date}, {"X-Venue-Key": key})
+        r = _api(f"/venues/{OWN_VENUE}/weddings", "POST", {"label": name, "date": date}, {"X-Venue-Key": vkey})
         link = f"{BASE}/seating-planner-el.html?plan={r['planId']}#key={r['editKey']}"
         _clip(link)
-        vname = (vd.get("venue") or {}).get("name", "κτήμα μας")
-        d = _dt.date.fromisoformat(date)
         return (f"Δημιουργήθηκε ο γάμος «{name}» στις {d.day}/{d.month}/{d.year} στο {vname}. "
                 "Ο σύνδεσμος του ζευγαριού είναι στο πρόχειρο του υπολογιστή και στην κονσόλα κτήματος.")
 
-    return _dedupe("wedding:" + name.lower(), make)
+    return _arm(f"τον γάμο «{name}»", key, make, task,
+                f"Να φτιάξω γάμο «{name}», {d.day}/{d.month}/{d.year}, στο {vname};")
 
 
 def takeaseat_new_venue(value: str = "", task: str = "", **_):
-    name = (value or "").strip()[:80] or _name_from(task) or ("Νέο κτήμα " + _dt.datetime.now().strftime("%d/%m %H:%M"))
+    """Creates nothing: proposes onboarding a new customer venue. takeaseat_confirm does the POST."""
+    _refuse_delete_or_no(value, task, "φτιάξε κτήμα Κτήμα Ηλιοβασίλεμα")
+    task = _without_app(task)
+    name = _clean_name(value) or _clean_name(_name_from(task)) or ("Νέο κτήμα " + _dt.datetime.now().strftime("%d/%m %H:%M"))
+    key = "venue:" + name.lower()
+    if _done_lately(key):
+        return "Ήδη έγινε πριν λίγο: " + _done_lately(key)
+    today = _dt.date.today()
+    end = today + _dt.timedelta(days=365)
+    lic = {"type": "seasonal", "seasonStart": today.isoformat(), "seasonEnd": end.isoformat(), "cap": 0}
 
     def make():
-        today = _dt.date.today()
-        lic = {"type": "seasonal", "seasonStart": today.isoformat(), "seasonEnd": (today + _dt.timedelta(days=365)).isoformat(), "cap": 0}
         r = _owner("/admin/venues", "POST", {"name": name, "contact": "", "license": lic})
         if not r.get("key"):   # created with an email while mail is on: the venue sets its own key from the e-mailed link
             return f"Δημιουργήθηκε το κτήμα «{name}». Ο σύνδεσμος ρύθμισης κωδικού στάλθηκε στο email του κτήματος."
@@ -402,21 +663,76 @@ def takeaseat_new_venue(value: str = "", task: str = "", **_):
         return (f"Δημιουργήθηκε το κτήμα «{name}» με εποχιακή άδεια έως {lic['seasonEnd']}. "
                 f"Ο κωδικός του είναι στο πρόχειρο του υπολογιστή — είναι πελάτης, δεν θα γράψω μέσα του.")
 
-    return _dedupe("venue:" + name.lower(), make)
+    return _arm(f"το κτήμα «{name}»", key, make, task,
+                f"Να φτιάξω νέο κτήμα-πελάτη «{name}» με εποχιακή άδεια έως {end.day}/{end.month}/{end.year};")
 
 
+def takeaseat_confirm(value: str = "", task: str = "", **_):
+    """The second step: creates the ONE proposal that is waiting — only if it is still fresh, only on a sentence that
+    is the confirm phrase and nothing else (no question, no «later», no no — _plain_confirm), names TakeaSeat and no
+    other app, and came after he heard the proposal."""
+    said = f"{task} {value}"
+    if _asks_to_delete(said) or _negated(said):
+        what = _disarm()
+        return (f"Εντάξει, ακύρωσα την πρόταση για {what} — δεν έφτιαξα τίποτα." if what
+                else "Δεν περίμενε τίποτα στο TakeaSeat — δεν έφτιαξα τίποτα.")
+    say_it = f"Για να γίνει, πείτε μόνο «{CONFIRM_PHRASE}»."
+    with _pending_lock:
+        waiting = _pending.get("what", "") if _pending and time.monotonic() - _pending["at"] <= PENDING_SECONDS else ""
+    if _asks(task, value):   # «τι επιβεβαιώνω στο TakeaSeat;» — answered, never taken as a yes
+        raise RuntimeError((f"Περιμένει επιβεβαίωση: {waiting}. " if waiting else "Δεν περιμένει τίποτα στο TakeaSeat. ")
+                           + f"Δεν έφτιαξα τίποτα. {say_it if waiting else ''}".rstrip())
+    other = _other_app_named(said)
+    if other:
+        raise RuntimeError(f"Ακούστηκε και το {other} — δεν έφτιαξα τίποτα. {say_it}")
+    if not _plain_confirm(said) or not _names_us(said):   # «… αύριο», «… μετά», "wait, confirm TakeaSeat later"
+        raise RuntimeError(f"Δεν έφτιαξα τίποτα. {say_it}")
+    now = time.monotonic()
+    with _pending_lock:
+        p = dict(_pending)
+        if not p:
+            raise RuntimeError("Καμία δημιουργία δεν περιμένει επιβεβαίωση στο TakeaSeat — δεν έφτιαξα τίποτα.")
+        if now - p["at"] > PENDING_SECONDS:
+            _pending.clear()
+            raise RuntimeError(f"Η πρόταση για {p['what']} έληξε — δεν έφτιαξα τίποτα. Ζητήστε τη ξανά αν τη θέλετε.")
+        if now - p["at"] < CONFIRM_GAP_SECONDS or _squash(_without_app(task)) == p["heard"]:
+            raise RuntimeError(f"Η επιβεβαίωση πρέπει να έρθει από εσάς, αφού ακούσετε την πρόταση — δεν έφτιαξα τίποτα ακόμη. {say_it}")
+        _pending.clear()   # taken out BEFORE it runs: a retry of this confirm finds nothing and creates nothing
+    return _dedupe(p["key"], p["make"])
+
+
+# How Hermes picks an action (hermes.appbridge.match): every 4+ letter word of an action's NAME and describe is looked
+# for as a SUBSTRING of his whole sentence with the spaces squeezed out; a word two of our actions share counts for
+# nothing; and this shim is always live while other apps sleep, so our words also take their sentences. Hence:
+#  - The two proposals hold only run-together IMPERATIVE phrases («φτιάξεγάμο» hears «φτιάξε γάμο», "createawedding"
+#    hears "create a wedding" — do NOT split them) and an explanation both share word for word (so it counts for
+#    nothing). No noun phrase: «νέοςγάμος», "newwedding", "newvenue", «νέοκτήμα» are inside questions («ποιος είναι
+#    ο νέος γάμος στις 12/9», "is there a new venue") and delete requests ("drop the new wedding"). Never a bare
+#    «γάμος», «ζευγάρι», «κτήμα», «πελάτη», "wedding", "venue", "couple", "client" either («σβήσε το ζευγάρι Μαρία»
+#    created a wedding; "revenue" holds "venue"; Education's «νέος πελάτης»). The shim refuses questions anyway.
+#  - "wedding" and "venue", the words of those two action NAMES, are repeated in the two list questions so they count
+#    for nothing; "seat" twice too, because «TakeaSeat» holds it and run_action appends the app name to every sentence.
+#  - The confirm (name and describe) holds only the whole phrase run together WITH our name («επιβεβαιώνωστοTakeaSeat»,
+#    "confirmTakeaSeat"): a bare «επιβεβαιώνω» or "confirm" is every app's gate word, and with those apps asleep it
+#    took their sentences («επιβεβαιώνω στην Αμελί» never woke Amelie). Nothing may contain a bare «επιβεβαιώνω» or
+#    "confirm" — hence the name takeaseat_confirmtakeaseat.
+#  - No bare function words («είναι», «πόσα», «στον», «χωρίς»): each one took other apps' sentences — «χωρίςθέση» and
+#    "noseat" are run together for the same reason.
+# Run sim_match.py after changing any of them.
+_PROPOSAL_ONLY = " — μόνο πρόταση, χρειάζεται δεύτερη φράση / proposal only, needs a second phrase"
 ACTIONS = {
-    "takeaseat_site_health": (takeaseat_site_health, "λειτουργεί το TakeaSeat, είναι online η σελίδα / is TakeaSeat online, is the site working"),
-    "takeaseat_venues": (takeaseat_venues, "πόσα κτήματα πελάτες έχουμε στο TakeaSeat / how many venues customers do we have, list clients"),
-    "takeaseat_weddings": (takeaseat_weddings, "λίστα γάμων στο Jockey, πόσους γάμους έχουμε / weddings list at Jockey, our own weddings"),
+    "takeaseat_site_health": (takeaseat_site_health, "λειτουργεί το TakeaSeat, online η σελίδα / is TakeaSeat online, is the site working"),
+    "takeaseat_venues": (takeaseat_venues, "τα κτήματα-πελάτες που έχουμε στο TakeaSeat / how many venues customers do we have, venue list, list clients"),
+    "takeaseat_weddings": (takeaseat_weddings, "λίστα γάμων στο Jockey, πόσους γάμους έχουμε / wedding list at Jockey, our own weddings"),
     "takeaseat_seating_progress": (takeaseat_seating_progress, "πρόοδος τραπεζολογίου, πόσοι καλεσμένοι έχουν θέση / seating progress, how many guests are seated"),
-    "takeaseat_unseated_guests": (takeaseat_unseated_guests, "ποιοι καλεσμένοι λείπουν, ονόματα χωρίς θέση / which names are still missing a seat"),
-    "takeaseat_empty_tables": (takeaseat_empty_tables, "ποια τραπέζια έχουν κενές θέσεις, άδεια τραπέζια / which tables have free seats, empty tables"),
+    "takeaseat_unseated_guests": (takeaseat_unseated_guests, "ποιοι καλεσμένοι λείπουν, ονόματα που δεν έχουν θέση, χωρίςθέση / which names are still missing a seat, hasnoseat, noseat"),
+    "takeaseat_empty_tables": (takeaseat_empty_tables, "ποια τραπέζια έχουν κενές θέσεις, άδεια τραπέζια / which tables have free seats, a free seat, empty tables"),
     "takeaseat_last_change": (takeaseat_last_change, "πότε άλλαξε τελευταία φορά το πλάνο / when was the seating plan last updated"),
-    "takeaseat_open_editor": (takeaseat_open_editor, "άνοιξε τον επεξεργαστή τραπεζιών στον υπολογιστή / open the seating editor in the browser"),
+    "takeaseat_open_editor": (takeaseat_open_editor, "άνοιξε τον επεξεργαστή τραπεζιών, υπολογιστή / open the seating editor on the PC"),
     "takeaseat_open_lab": (takeaseat_open_lab, "άνοιξε το εργαστήριο δοκιμών / open the seating sandbox laboratory"),
-    "takeaseat_new_wedding": (takeaseat_new_wedding, "δημιούργησε νέο γάμο για ζευγάρι / create a new wedding for a couple"),
-    "takeaseat_new_venue": (takeaseat_new_venue, "δημιούργησε νέο κτήμα πελάτη / create a new venue customer, onboard a client"),
+    "takeaseat_new_wedding": (takeaseat_new_wedding, "δημιούργησενέογάμο, δημιούργησεγάμο, δημιούργησεέναγάμο, φτιάξενέογάμο, φτιάξεγάμο, φτιάξεέναγάμο / createanewwedding, createnewwedding, createawedding, createwedding" + _PROPOSAL_ONLY),
+    "takeaseat_new_venue": (takeaseat_new_venue, "δημιούργησενέοκτήμα, δημιούργησεκτήμα, δημιούργησεένακτήμα, φτιάξενέοκτήμα, φτιάξεκτήμα, φτιάξεένακτήμα / createanewvenue, createnewvenue, createavenue, createvenue, onboardaclient, onboardanewclient" + _PROPOSAL_ONLY),
+    CONFIRM_ACTION: (takeaseat_confirm, "επιβεβαιώνωστοTakeaSeat, επιβεβαιώνωTakeaSeat / confirmTakeaSeat, confirminTakeaSeat"),
 }
 
 

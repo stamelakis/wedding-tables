@@ -146,7 +146,15 @@ not serve other couples' weddings. Owner decisions (Andreas):
   to admin.html (`localStorage.weddingOwnerDevice`, a non-secret flag). A couple's **extra plans** (POST /plans with
   parentId) can only be put online once the main plan is in the `full` phase (`not_open` otherwise).
 - **Invitations editor** in the planner (list, members, rename, delete, add/remove/move people, seat all).
-- Hermes «νέος γάμος …» must include the date («… στις 12 Σεπτεμβρίου»); it asks for it otherwise.
+- Hermes «φτιάξε γάμο …» must include the date («… στις 12 Σεπτεμβρίου»); it asks for it otherwise. Only in our own
+  venue: naming another place («… στο Κτήμα Ηλιοβασίλεμα») proposes nothing.
+- Hermes creation is **two spoken steps** (2026-09-21/22): «φτιάξε / δημιούργησε γάμο …», «… κτήμα …» only *propose* and
+  read back what they would create; nothing is written until he says «επιβεβαιώνω στο TakeaSeat» within 3 minutes
+  (action `takeaseat_confirmtakeaseat`) — that phrase alone: a question, «αύριο», "won't"… create nothing. Noun phrases
+  («νέος γάμος …») no longer route by words: they are inside questions. A question never proposes; a sentence with a
+  delete / remove / cancel / «όχι» word never proposes or creates (there is no voice deletion) — «σβήσε το ζευγάρι Μαρία»
+  used to create a wedding. Check routing with `hermes/sim_match.py` (pinned pre-change baseline), logic with
+  `hermes/test_takeaseat_control.py` (both stub the API; run with the Hermes venv).
 
 ## 1f. Invitations panel and the A–Z print (2026-09-21)
 
@@ -205,7 +213,7 @@ Browser ──HTTPS──> Caddy (edu-admin-caddy-1, owns :80/:443 on the shared
 | `planner.src.html` | **THE planner source.** One file with all three UI languages embedded (`T_ALL`) and `__LANG__` / `__MODE__` / `__TITLE__` placeholders. Edit only this. |
 | `tools/build-planner.mjs` | Builds every planner output from the source: 3 language files + 3 `.artifact.html` twins + `lab.html`. `--check` fails if outputs are stale. |
 | `tools/dev.mjs` | Local dev server (`node tools/dev.mjs` → http://127.0.0.1:8080, loopback only): the real server over an in-memory KV. |
-| `hermes/takeaseat_control.py` | **Hermes voice shim** (Andreas's local voice/watch assistant, `C:\Users\andre\hermes`). Headless local process that registers "TakeaSeat τραπεζολόγιο" and forwards each spoken question to the live API. Config in git-ignored `hermes/.env` (see `.env.example`). Autostarts via the Startup shortcut `TakeaSeatHermes.lnk`. Writes only ever go to venues listed in `TAKEASEAT_OWN_VENUES` — never to a venue we have sold to. |
+| `hermes/takeaseat_control.py` | **Hermes voice shim** (Andreas's local voice/watch assistant, `C:\Users\andre\hermes`). Headless local process that registers "TakeaSeat τραπεζολόγιο" and forwards each spoken question to the live API. Config in git-ignored `hermes/.env` (see `.env.example`). Autostarts via the Startup shortcut `TakeaSeatHermes.lnk`. Writes only ever go to venues listed in `TAKEASEAT_OWN_VENUES` — never to a venue we have sold to. Creating is propose → «επιβεβαιώνω στο TakeaSeat» (§1e). `sim_match.py` runs Hermes's real matcher over the registered apps; `test_takeaseat_control.py` tests the shim with the API stubbed. |
 | `seating-planner.html` / `-de.html` / `-el.html` | **Generated** seat editor — EN / DE / EL. Do not hand-edit. |
 | `seating-planner*.artifact.html` | **Generated** claude.ai-artifact twins (the file minus its `<head>/<body>` wrapper). |
 | `lab.html` | **Generated** sandbox build (Greek, `MODE=lab`: demo data, storage under `weddingSeatingPlanner.lab.*`, no gate). |

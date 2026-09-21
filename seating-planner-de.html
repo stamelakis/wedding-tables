@@ -680,6 +680,11 @@
   #guesteditor .ge-type .chk{ margin-left:auto; color:var(--good); font-weight:700; }
   #guesteditor .ge-inv{ margin:-4px 0 8px; padding:6px 8px; color:var(--accent-ink); font-size:12.5px; white-space:normal; line-height:1.3; }
   #guesteditor .ge-inv span{ min-width:0; overflow-wrap:anywhere; }
+  #guesteditor .ge-sts{ display:flex; flex-wrap:wrap; gap:4px; margin:0 0 8px; }
+  #guesteditor .ge-st{ flex:1 1 auto; padding:5px 6px; border:1px solid var(--line); border-radius:7px; background:var(--card); color:var(--ink); font:inherit; font-size:11.5px; cursor:pointer; white-space:nowrap; }
+  #guesteditor .ge-st:hover{ background:var(--paper); }
+  #guesteditor .ge-st.sel{ background:var(--accent-soft); border-color:var(--accent); font-weight:600; }
+  #guesteditor .ge-st.cut.sel{ background:#fdeaea; border-color:#f2c7c7; color:#b03535; }
   #featuremenu{ width:230px; padding:8px; }
   #featuremenu .fm-mats{ display:flex; flex-wrap:wrap; gap:6px; margin:0 6px 8px; }
   #featuremenu .fm-mat{ cursor:pointer; border-radius:7px; padding:2px; border:2px solid transparent; }
@@ -706,6 +711,12 @@
   .csvt td{ padding:4px 6px; border-bottom:1px solid var(--line); max-width:170px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .csvsum{ font-size:13px; margin-top:10px; line-height:1.45; }
   .csvsum .muted{ color:var(--soft); font-size:12px; }
+  .rsvpsum{ font-size:14px; line-height:1.45; color:var(--ink); }
+  .rsvpsum p{ margin:0 0 6px; }
+  .rsvpsum p.muted{ color:var(--soft); font-size:12.5px; }
+  .rsvpsum p.rs-warn{ margin-top:10px; font-weight:600; color:#b03535; }
+  .rsvpsum ul{ margin:0 0 8px; padding-left:20px; max-height:40vh; overflow:auto; }
+  .rsvpsum li{ margin:2px 0; overflow-wrap:anywhere; }
   #csvModal .mrow{ position:sticky; bottom:0; background:var(--card); margin:0 -16px; padding:10px 16px 12px; border-top:1px solid var(--line); }
   #importModal .mrow{ position:sticky; bottom:0; background:var(--card); margin:0 -16px; padding:10px 16px 12px; border-top:1px solid var(--line); }   /* Load / Choose file stay reachable while the mode list scrolls */
   .imodes{ display:flex; flex-direction:column; gap:4px; }
@@ -1226,6 +1237,15 @@
     </div>
   </div>
 </div>
+<div id="rsvpModal" class="modal-back">
+  <div class="modal narrow">
+    <div class="modal-head"><strong data-t="rsvpTitle"></strong><button class="mx" id="rsvpClose">✕</button></div>
+    <div class="mbody">
+      <div id="rsvpBody" class="rsvpsum"></div>
+      <div class="mrow"><button class="ibtn primary" id="rsvpOk" data-t="rsvpOk"></button></div>
+    </div>
+  </div>
+</div>
 <div id="cloudModal" class="modal-back">
   <div class="modal">
     <div class="modal-head"><strong data-t="cloudTitle"></strong><button class="mx" id="cloudClose">✕</button></div>
@@ -1444,6 +1464,7 @@ el:{
   csvSum:"Ονόματα: {n} · νέα: {k}", csvSumDup:" · ήδη στη λίστα (παραλείπονται): {d}", csvCols:"Στήλες: {c}", csvNoHead:"Χωρίς επικεφαλίδες: η πρώτη στήλη γίνεται όνομα.", csvAdd:"Προσθήκη στη λίστα ({n})",
   csvEnc:"Το αρχείο δεν ήταν σε UTF-8 και διαβάστηκε ως {e}. Αν τα ονόματα φαίνονται λάθος, αποθηκεύστε το στο Excel ως «CSV UTF-8» και δοκιμάστε ξανά.", csvBad:"Κάποιοι χαρακτήρες δεν διαβάστηκαν (�). Αποθηκεύστε το αρχείο στο Excel ως «CSV UTF-8» και δοκιμάστε ξανά.", csvXlsx:"Αυτό είναι αρχείο Excel (.xlsx). Στο Excel: Αποθήκευση ως → «CSV UTF-8», και διαλέξτε αυτό το αρχείο.",
   csvDone:"Προστέθηκαν στη λίστα: {n}", csvDoneSeated:" · σε τραπέζια: {s}", csvDoneNoRoom:" · χωρίς θέση: {k} (το τραπέζι τους δεν βρέθηκε ή είναι γεμάτο)",
+  rsvpTitle:"Απαντήσεις από την Amelie", rsvpOk:"Εντάξει", rsvpNothing:"Καμία αλλαγή — η λίστα σας έχει ήδη αυτές τις απαντήσεις.", rsvpNew:"Νέοι καλεσμένοι: {n}", rsvpChanged:"Άλλαξαν απάντηση: {n}", rsvpCutSeated:"Έχουν θέση, αλλά τώρα δεν έρχονται — οι θέσεις τους έμειναν όπως ήταν· αποφασίστε εσείς:", rsvpAtTable:"{n} — τραπέζι {t}", rsvpKept:"Η απάντηση στην Amelie άλλαξε, αλλά κρατήθηκε η κατάσταση που βάλατε εσείς:", rsvpAbsent:"Λείπουν από αυτό το αρχείο: {n} — έμειναν όπως ήταν (σβήστηκαν στην Amelie ή είναι από άλλο προσκλητήριο).", rsvpUndo:"Το ↶ αναιρεί όλη την εισαγωγή.", rsvpGoneNote:"Amelie: δεν είναι πια στην απάντηση του νοικοκυριού", tImportTooBig:"Η λίστα είναι πολύ μεγάλη για ένα σχέδιο — δεν εισήχθη τίποτα.",
   labBride:"Νύφη", labGroom:"Γαμπρός",
   labNames:["Μαρία Π.","Γιώργος Κ.","Ελένη Α.","Νίκος Δ.","Κατερίνα Μ.","Δημήτρης Σ.","Σοφία Λ.","Κώστας Β.","Άννα Χ.","Παναγιώτης Ρ.","Χριστίνα Τ.","Μιχάλης Γ.","Ειρήνη Ν.","Βασίλης Ζ.","Δέσποινα Φ.","Αλέξανδρος Κ.","Ιωάννα Π.","Θανάσης Μ.","Αγγελική Σ.","Στέλιος Α.","Φωτεινή Δ.","Μανώλης Λ.","Ζωή Β.","Πέτρος Χ.","Ευαγγελία Ρ.","Σπύρος Τ.","Ναταλία Γ.","Χρήστος Ν.","Μαρίνα Ζ.","Λευτέρης Φ.","Αναστασία Κ.","Αντώνης Π.","Ελευθερία Μ.","Σταύρος Σ.","Νεφέλη Α.","Ορέστης Δ.","Δανάη Λ.","Άρης Β.","Ισμήνη Χ.","Φίλιππος Ρ."],
 },
@@ -1592,6 +1613,7 @@ en:{
   csvSum:"Names: {n} · new: {k}", csvSumDup:" · already on the list (skipped): {d}", csvCols:"Columns: {c}", csvNoHead:"No headings: the first column becomes the name.", csvAdd:"Add to list ({n})",
   csvEnc:"The file was not UTF-8 and was read as {e}. If the names look wrong, save it in Excel as “CSV UTF-8” and try again.", csvBad:"Some characters could not be read (�). Save the file in Excel as “CSV UTF-8” and try again.", csvXlsx:"This is an Excel file (.xlsx). In Excel: Save as → “CSV UTF-8”, then choose that file.",
   csvDone:"Added to the list: {n}", csvDoneSeated:" · at tables: {s}", csvDoneNoRoom:" · unseated: {k} (their table was not found or is full)",
+  rsvpTitle:"Answers from Amelie", rsvpOk:"OK", rsvpNothing:"Nothing changed — your list already has these answers.", rsvpNew:"New guests: {n}", rsvpChanged:"Changed their answer: {n}", rsvpCutSeated:"Seated, but no longer coming — their seats were left as they are; your decision:", rsvpAtTable:"{n} — table {t}", rsvpKept:"Their answer in Amelie changed, but the status you set was kept:", rsvpAbsent:"Missing from this file: {n} — left as they were (deleted in Amelie, or from another invitation).", rsvpUndo:"↶ undoes the whole import.", rsvpGoneNote:"Amelie: no longer in the household's answer", tImportTooBig:"This list is too large for one plan — nothing was imported.",
   labBride:"Bride", labGroom:"Groom",
   labNames:["Maria P.","George K.","Helen A.","Nick D.","Katerina M.","Jim S.","Sophia L.","Kostas V.","Anna C.","Peter R.","Christina T.","Michael G.","Irene N.","Bill Z.","Despina F.","Alex K.","Joanna P.","Thanos M.","Angela S.","Steve A.","Fay D.","Manolis L.","Zoe V.","Petros C.","Eva R.","Spyros T.","Natalie G.","Chris N.","Marina Z.","Lefteris F.","Anastasia K.","Tony P.","Ellie M.","Stavros S.","Nefeli A.","Orestis D.","Danae L.","Aris V.","Ismene C.","Philip R."],
 },
@@ -1740,6 +1762,7 @@ de:{
   csvSum:"Namen: {n} · neu: {k}", csvSumDup:" · schon auf der Liste (übersprungen): {d}", csvCols:"Spalten: {c}", csvNoHead:"Keine Überschriften: die erste Spalte wird der Name.", csvAdd:"Zur Liste hinzufügen ({n})",
   csvEnc:"Die Datei war nicht UTF-8 und wurde als {e} gelesen. Wenn die Namen falsch aussehen, speichern Sie sie in Excel als „CSV UTF-8“ und versuchen Sie es erneut.", csvBad:"Einige Zeichen konnten nicht gelesen werden (�). Speichern Sie die Datei in Excel als „CSV UTF-8“ und versuchen Sie es erneut.", csvXlsx:"Das ist eine Excel-Datei (.xlsx). In Excel: Speichern unter → „CSV UTF-8“, dann diese Datei wählen.",
   csvDone:"Zur Liste hinzugefügt: {n}", csvDoneSeated:" · an Tischen: {s}", csvDoneNoRoom:" · ohne Platz: {k} (ihr Tisch wurde nicht gefunden oder ist voll)",
+  rsvpTitle:"Antworten aus Amelie", rsvpOk:"OK", rsvpNothing:"Nichts geändert — Ihre Liste hat diese Antworten schon.", rsvpNew:"Neue Gäste: {n}", rsvpChanged:"Antwort geändert: {n}", rsvpCutSeated:"Haben einen Platz, kommen aber nicht mehr — die Plätze blieben, wie sie waren; Sie entscheiden:", rsvpAtTable:"{n} — Tisch {t}", rsvpKept:"Die Antwort in Amelie hat sich geändert, Ihr eigener Status wurde beibehalten:", rsvpAbsent:"Fehlen in dieser Datei: {n} — unverändert (in Amelie gelöscht oder aus einer anderen Einladung).", rsvpUndo:"↶ macht den ganzen Import rückgängig.", rsvpGoneNote:"Amelie: nicht mehr in der Antwort des Haushalts", tImportTooBig:"Diese Liste ist zu groß für einen Plan — nichts wurde importiert.",
   labBride:"Braut", labGroom:"Bräutigam",
   labNames:["Maria P.","Georg K.","Helena A.","Niko D.","Katharina M.","Jan S.","Sophie L.","Konstantin V.","Anna C.","Peter R.","Christina T.","Michael G.","Irene N.","Wilhelm Z.","Despina F.","Alex K.","Johanna P.","Thomas M.","Angelika S.","Stefan A.","Frieda D.","Manuel L.","Zoe V.","Petra C.","Eva R.","Sebastian T.","Natalie G.","Christoph N.","Marina Z.","Leon F.","Anastasia K.","Anton P.","Elli M.","Stefanos S.","Nefeli A.","Oliver D.","Diana L.","Aris V.","Isabel C.","Philipp R."],
 },
@@ -2097,7 +2120,9 @@ function sanitizePlan(s){ if(!s||typeof s!=="object") return s;
     s.parties=s.parties.filter(p=>p&&typeof p==="object"&&p.id!=null).map(p=>({ id:String(p.id).replace(/[^\w-]/g,"").slice(0,40)||("p"+Math.floor(Math.random()*1e6)), name:String(p.name??"").slice(0,80) }));
     for(const k of Object.keys(s.guests)){ const g=s.guests[k]; if(!g||typeof g!=="object"){ delete s.guests[k]; continue; }
       g.name=String(g.name??"").slice(0,80); if(g.groupId!=null&&(typeof g.groupId!=="string"||!s.groups.some(x=>String(x.id)===g.groupId))) g.groupId=null; if(g.note!=null) g.note=String(g.note).slice(0,200);
-      if(g.partyId!=null&&(typeof g.partyId!=="string"||!s.parties.some(p=>p.id===g.partyId))) g.partyId=null; }
+      if(g.partyId!=null&&(typeof g.partyId!=="string"||!s.parties.some(p=>p.id===g.partyId))) g.partyId=null;
+      if(g.srcId!=null) g.srcId=String(g.srcId).slice(0,80); if(g.srcName!=null) g.srcName=String(g.srcName).slice(0,80);   // where an imported guest came from (mergeGuestList)
+      if(g.statusHand!=null&&g.statusHand!==true) delete g.statusHand; }
     const seen=new Set();   // a guest id in two chairs (hand-edited / external file): the first chair wins
     s.tables.forEach(t=>{
       t.shape=(t.shape==="head"||t.shape==="rect")?t.shape:"round";   // rect = a long table (chairs on both long sides)
@@ -2933,6 +2958,7 @@ function openGuestEditor(guestId, evt){
   menu.innerHTML=`<input id="geName" class="ge-name" type="text" maxlength="40" placeholder="${escapeHtml(tr("geName"))}">
     <div class="ge-lab">${escapeHtml(tr("geParty"))}</div><input id="geParty" class="ge-name" type="text" maxlength="60" list="partyList" autocomplete="off" placeholder="${escapeHtml(tr("gePartyPh"))}"><datalist id="partyList">${plist}</datalist>
     <div class="gm-item ge-inv" id="geInv">${ICON("mail")}<span></span></div>
+    <div class="ge-lab">${escapeHtml(tr("csvStatus"))}</div><div class="ge-sts">${GUEST_ST.map(s=>`<button type="button" class="ge-st${s==="cut"?" cut":""}${gStatus(guestId)===s?" sel":""}" data-st="${s}">${escapeHtml(tr(s==="probable"?"stProbable":s==="cut"?"stCut":"stConfirmed"))}</button>`).join("")}</div>
     <div class="ge-lab">${escapeHtml(tr("geType"))}</div><div class="ge-types">${rows}</div>
     <div class="gm-sep"></div><div class="gm-item" id="geManage">${ICON("gear")}${escapeHtml(tr("gmManage"))}</div>`;
   menu.querySelector("#geManage").onclick=()=>{ closeGuestEditor(); openGroupsModal(); };
@@ -2950,6 +2976,11 @@ function openGuestEditor(guestId, evt){
   invLabel(); partyInp.addEventListener("blur",invLabel);
   invLink.onclick=()=>{ commitParty(); const p=partyOf(guestId); const g=state.guests[guestId], sn=g?String(g.name||"").trim().split(/\s+/).slice(-1)[0]:"";
     closeGuestEditor(); enterInv(p?p.id:null, (!p&&sn.length>2)?{q:sn}:null); };   // no invitation yet: the INDEX, pre-filtered by that surname («Σ.» is not one)   // «Προσκλητήριο: X — επεξεργασία»
+  // The status by hand — the only place the couple sets it. A guest imported from Amelie keeps it from then on (statusHand):
+  // a later import still brings Amelie's words (the note), never over this choice (mergeGuestList).
+  menu.querySelectorAll(".ge-st").forEach(b=>{ b.onclick=()=>{ commitName(); const s=b.dataset.st; if(s===gStatus(guestId)) return;
+      g.status=s; if(g.srcId) g.statusHand=true; save(); renderTables(); renderPool();
+      menu.querySelectorAll(".ge-st").forEach(x=>x.classList.toggle("sel", x.dataset.st===s)); }; });
   menu.querySelectorAll(".ge-type").forEach(it=>{ it.onclick=()=>{ commitName(); g.groupId=it.dataset.gid||null; save(); renderTables(); renderPool(); renderGroups();
       menu.querySelectorAll(".ge-type").forEach(x=>{ const on=((g.groupId||"")===x.dataset.gid); x.classList.toggle("sel",on); let chk=x.querySelector(".chk"); if(on&&!chk) x.insertAdjacentHTML("beforeend",'<span class="chk">✓</span>'); if(!on&&chk) chk.remove(); }); }; });
   showPopover(menu,evt);
@@ -4756,26 +4787,104 @@ $("importPaste").addEventListener("click",()=>{
 $("importFile").addEventListener("click",pickImportFile);
 $("importClose").addEventListener("click",()=>$("importModal").classList.remove("open"));
 ["exportModal","importModal"].forEach(id=>$(id).addEventListener("click",e=>{ if(e.target.id===id) e.currentTarget.classList.remove("open"); }));
-// Merge a guest LIST ({importGuests} file, through the import modal) into the current plan (adds to the pool; never touches tables or existing guests)
+// Merge a guest LIST ({importGuests} file, through the import modal) into the current plan. Never touches tables or seats.
+// Rows without an Amelie srcId behave as they always did: new names join the list, a srcId already here is skipped.
+// An Amelie file (the couple's «Λήψη για TakeaSeat», format amelie-guests/1, srcId "amelie:<household>:<k>") is a snapshot
+// of the RSVP answers, so a srcId already here is UPDATED:
+//  · status and note follow the file — unless the couple set that status by hand (statusHand): then the status stays theirs
+//    and only the note (Amelie's own words for the answer) follows. Name, invitation, group and seat never change;
+//  · a household that is in the file but lost a position (3 → 2): that companion becomes "cut", with a note saying so;
+//  · a household missing from the file altogether: untouched, only counted — it may belong to ANOTHER Amelie invitation's
+//    file, and one file must never cancel the other's guests;
+//  · a new row joins its household's invitation (the one its housemates already sit in, else ensureParty(party)); an
+//    empty party = no invitation. Guests whose srcId is not amelie: (paper invitations, typed names) are never touched,
+//    and nobody is ever deleted. One import = one save = one undo step; the same file twice changes nothing.
+const AMELIE_SRC=/^amelie:([^:]+):(\d+)$/, GUEST_ST=["confirmed","probable","cut"], PLAN_MAX_CHARS=512*1024;   // the server's plan limit (MAX_PLAN_BYTES)
 function mergeGuestList(data){
-  const nameToId={}; state.groups.forEach(g=>nameToId[g.name]=g.id);
-  (data.importGroups||[]).forEach(g=>{
-    if(!nameToId[g.name]){ const id="grp"+nextId(); state.groups.push({id,name:g.name,color:(g.color?safeColor(g.color):GROUP_PALETTE[state.groups.length%GROUP_PALETTE.length])}); nameToId[g.name]=id; }
+  if(ACCESS.ro){ roToast(); return; }   // like every guest write: not while read only (viewer, waiting / frozen, after the wedding)
+  const rows=(Array.isArray(data.importGuests)?data.importGuests:[]).filter(r=>r&&typeof r==="object");
+  if(rows.length>2000){ toast(tr("tImportTooBig"),6000); return; }
+  const before=JSON.stringify(state);
+  const nameToId=Object.create(null); state.groups.forEach(g=>nameToId[g.name]=g.id);   // no prototype: a group called «constructor» is just a name
+  (Array.isArray(data.importGroups)?data.importGroups:[]).forEach(g=>{ if(!g||typeof g!=="object"||typeof g.name!=="string"||!g.name.trim()) return;
+    const gn=g.name.slice(0,80);   // looked up as it is stored: a longer name must find its group again on the next import, not add another
+    if(!nameToId[gn]){ const id="grp"+nextId(); state.groups.push({id,name:gn,color:(g.color?safeColor(g.color):GROUP_PALETTE[state.groups.length%GROUP_PALETTE.length])}); nameToId[gn]=id; }
+    nameToId[g.name]=nameToId[gn];
   });
-  const seenSrc=new Set(Object.values(state.guests).map(g=>g.srcId).filter(Boolean));
-  let added=0, skipped=0;
-  (data.importGuests||[]).forEach(gi=>{
-    const nm=(gi.name||"").trim(); if(!nm) return;
-    if(gi.srcId && seenSrc.has(gi.srcId)){ skipped++; return; }
-    const id="g"+nextId();
-    state.guests[id]={ name:nm, groupId: gi.group? (nameToId[gi.group]||null):null, status: gi.status||"confirmed", note: gi.note||"", srcId: gi.srcId||null };
-    if(gi.srcId) seenSrc.add(gi.srcId);
+  const groupOf=v=>(typeof v==="string"&&(nameToId[v]||nameToId[v.slice(0,80)]))||null;
+  const srcOf=gi=>gi.srcId==null?"":String(gi.srcId).slice(0,80), stOf=v=>GUEST_ST.includes(v)?v:"confirmed", noteOf=v=>String(v==null?"":v).slice(0,200);
+  const seatOf={}; state.tables.forEach(t=>t.seats.forEach(id=>{ if(id) seatOf[id]=t; }));
+  const bySrc=Object.create(null), homeOf=Object.create(null);   // srcId → our guest · Amelie household → the invitation its lowest position sits in here
+  Object.keys(state.guests).forEach(id=>{ const g=state.guests[id], s=g.srcId; if(typeof s!=="string"||!s) return; if(!bySrc[s]) bySrc[s]=id;
+    const m=AMELIE_SRC.exec(s); if(m&&g.partyId&&(!homeOf[m[1]]||+m[2]<homeOf[m[1]].k)) homeOf[m[1]]={k:+m[2], pid:g.partyId}; });
+  const inFile=new Set(), house=Object.create(null);   // every srcId of this file · Amelie household → its rows in this file
+  rows.forEach(gi=>{ const s=srcOf(gi); if(!s) return; inFile.add(s); const m=AMELIE_SRC.exec(s); if(m) (house[m[1]]=house[m[1]]||[]).push(gi); });
+  let added=0, skipped=0, absent=0; const changed=[], cutSeated=[], kept=[], filled=[], done=new Set();   // filled: only their srcName written now
+  const update=(id, st, note)=>{   // an Amelie guest already here: the answer follows the file, the couple's hand wins
+    const g=state.guests[id], newNote=note!==(g.note||""), newSt=st!==gStatus(id);
+    if(newNote){ if(note) g.note=note; else delete g.note; }
+    if(g.statusHand){ if(newNote) (newSt?kept:changed).push(id); return; }   // Amelie says something new, but the status is theirs
+    if(newSt){ g.status=st; if(st==="cut"&&seatOf[id]) cutSeated.push(id); }   // a seated guest keeps the seat — the couple decides
+    if(newNote||newSt) changed.push(id);
+  };
+  rows.forEach(gi=>{
+    const src=srcOf(gi), am=src.startsWith("amelie:");
+    if(src){ if(done.has(src)) return; done.add(src); }   // the same srcId twice in one file: the first row counts
+    const have=src?bySrc[src]:null;
+    if(have){ if(!am){ skipped++; return; }
+      update(have, stOf(gi.status), noteOf(gi.note));
+      const hg=state.guests[have], sn=String(gi.name==null?"":gi.name).trim().slice(0,80);
+      if(!hg.srcName&&sn){ hg.srcName=sn; filled.push(have); }   // imported before srcName existed: remember Amelie's name now (quietly, see below)
+      return; }
+    const nm=String(gi.name==null?"":gi.name).trim().slice(0,80); if(!nm) return;
+    const m=am?AMELIE_SRC.exec(src):null, pty=String(gi.party==null?"":gi.party).trim();
+    const partyId=(m&&homeOf[m[1]]&&state.parties.some(p=>p.id===homeOf[m[1]].pid))?homeOf[m[1]].pid:(pty?(ensureParty(pty)||{}).id||null:null);   // a household that grew joins its housemates, even in an invitation the couple renamed or merged
+    const g={ name:nm, groupId:groupOf(gi.group), partyId, status:stOf(gi.status) };
+    const note=noteOf(gi.note); if(note) g.note=note;
+    if(src){ g.srcId=src; if(am) g.srcName=nm; }   // srcName: the name as Amelie sent it — the couple may rename the guest here
+    const id="g"+nextId(); state.guests[id]=g; if(src) bySrc[src]=id;
+    if(m&&partyId&&!homeOf[m[1]]) homeOf[m[1]]={k:+m[2], pid:partyId};
     added++;
   });
-  save(); renderAll();
-  toast(tr("tMerged",{a:added})+(skipped?tr("tMergedSkipped",{s:skipped}):""));
-  checkTips("added");
+  Object.keys(state.guests).forEach(id=>{   // Amelie guests this file does not list
+    const s=state.guests[id].srcId; if(typeof s!=="string"||!s.startsWith("amelie:")||inFile.has(s)) return;
+    const m=AMELIE_SRC.exec(s), rs=m&&house[m[1]];
+    if(!rs){ absent++; return; }   // the whole household is missing: deleted in Amelie, or another invitation's file — untouched
+    const first=rs.find(r=>AMELIE_SRC.exec(srcOf(r))[2]==="1")||rs[0], had=state.guests[id].note;
+    const gone=["el","en","de"].some(l=>T_ALL[l].rsvpGoneNote===had)?had:tr("rsvpGoneNote");   // written in another UI language last time: still the same news
+    update(id, "cut", (rs.every(r=>stOf(r.status)==="cut")&&noteOf(first.note))||noteOf(gone));   // the household said no: its answer · it shrank: "no longer in the answer"
+  });
+  const amelie=[...inFile].some(s=>s.startsWith("amelie:"));
+  const after=JSON.stringify(state);
+  // A plan whose Amelie guests came in before srcName existed gets it on its first import here. That alone is not news for
+  // the couple: saved (so it lasts) but no undo step and no «changed» — the same file twice still changes nothing they see.
+  let quiet=false;
+  if(after!==before && filled.length){ const t=JSON.parse(after); filled.forEach(id=>{ delete t.guests[id].srcName; }); quiet=JSON.stringify(t)===before; }
+  if(after!==before){
+    const cur=currentProfile()||{};
+    if(after.length>before.length && JSON.stringify({...state, _profileName:cur.name}).length>PLAN_MAX_CHARS){ restoreSnapshot(before); toast(tr("tImportTooBig"),6000); return; }   // too big to save online: nothing changes
+    save(quiet?{noHistory:true}:undefined); renderAll(); if(added) checkTips("added");
+  }
+  if(!amelie){ toast(tr("tMerged",{a:added})+(skipped?tr("tMergedSkipped",{s:skipped}):"")); return; }
+  showRsvpSummary({added, changed, cutSeated, kept, absent, seatOf, any:after!==before&&!quiet});
 }
+// What an Amelie import did, in words and — for whoever needs a decision — by name. A dialog, not a toast: a list of names must stay until read.
+function showRsvpSummary(r){
+  const box=$("rsvpBody"); box.textContent="";
+  const para=(txt,cls)=>{ const p=document.createElement("p"); p.textContent=txt; if(cls) p.className=cls; box.appendChild(p); };
+  const list=(ids,fmt)=>{ const ul=document.createElement("ul"); ids.forEach(id=>{ const li=document.createElement("li"); li.textContent=fmt(id); ul.appendChild(li); }); box.appendChild(ul); };
+  const any=r.any;   // what was saved as an undo step — never «nothing changed» after a save the couple can undo
+  if(!any) para(tr("rsvpNothing"));
+  else { para(tr("rsvpNew",{n:r.added})); para(tr("rsvpChanged",{n:r.changed.length})); }
+  if(r.cutSeated.length){ para(tr("rsvpCutSeated"),"rs-warn"); list(r.cutSeated, id=>tr("rsvpAtTable",{n:guestName(id), t:(r.seatOf[id]&&r.seatOf[id].label)||"—"})); }
+  if(r.kept.length){ para(tr("rsvpKept")); list(r.kept, id=>guestName(id)+(gNote(id)?" — "+gNote(id):"")); }
+  if(r.absent) para(tr("rsvpAbsent",{n:r.absent}),"muted");
+  if(any) para(tr("rsvpUndo"),"muted");
+  const m=$("rsvpModal"), close=()=>{ m.classList.remove("open"); m._close=null; };
+  m._close=close; $("rsvpOk").onclick=close; $("rsvpClose").onclick=close;
+  m.classList.add("open"); setTimeout(()=>$("rsvpOk").focus(),0);
+}
+$("rsvpModal").addEventListener("click",e=>{ if(e.target===e.currentTarget&&e.currentTarget._close) e.currentTarget._close(); });
 function downloadBlob(blob, name){ const url=URL.createObjectURL(blob), a=document.createElement("a"); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),60000); }
 function fileBase(){ const cur=currentProfile()||{}; return (cur.name||"").replace(/[^\p{L}\p{N}\-]+/gu,"_").replace(/^_+|_+$/g,"")||"wedding"; }
 // ---- Guest list for Excel: CSV with a UTF-8 BOM and ";" (what Greek / German Excel opens with a double click) ----
