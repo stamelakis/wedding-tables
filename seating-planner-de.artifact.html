@@ -93,7 +93,7 @@
   .acc-date{ font-family:var(--serif); font-size:17px; font-weight:700; margin:2px 0 4px; }
   .acc-row input[type=date]{ font:inherit; font-size:14px; height:36px; border:1px solid var(--line); border-radius:8px; padding:0 10px; background:var(--paper); color:inherit; }
   /* read only (the wedding is over, or a view link): nothing looks editable — save() reverts anything that slips through */
-  body.ro #toolsSec, body.ro #addNames, body.ro .grip, body.ro .fx, body.ro .gchip .acts, body.ro .pparty .pedit, body.ro .tgear, body.ro .rot-h, body.ro .feat-gear, body.ro .rz, body.ro #stageResize,
+  body.ro #toolsSec, body.ro #addNames, body.ro .grip, body.ro .fx, body.ro .gchip .acts, body.ro .pparty .pedit, body.ro .tgear, body.ro .rot-h, body.ro .feat-gear, body.ro .rz, body.ro .srz,
   body.ro .ffoot, body.ro #fSettings, body.ro .chip.add, body.ro .chip .gmore{ display:none !important; }
   body.ro .frow .fdot, body.ro .chip .dot{ pointer-events:none; }
   body.ro .gchip, body.ro .pparty{ cursor:default; }
@@ -104,7 +104,8 @@
   body.ro .invnew-guest, body.ro #invFoot [data-a="new"]{ display:none !important; }
   body.ro .gchip.tickable{ cursor:default; }
   .feature.flocked{ cursor:default; }
-  body.lock-floor #stageResize{ display:none !important; }
+  body.lock-floor .srz{ display:none !important; }
+  body.noshift .srz.w, body.noshift .srz.n, body.noshift .srz.nw, body.noshift .srz.ne, body.noshift .srz.sw{ display:none !important; }   /* growing left/up moves everything: only for whoever may move everything */
   body.lock-tables #addTableBtn, body.lock-tables #addRectBtn, body.lock-tables #addHeadBtn, body.lock-tables #menuDelete{ display:none !important; }
   #tablemenu .caps button:disabled, #menuCapCustom:disabled{ opacity:.45; cursor:not-allowed; }
   #menuLabel[readonly]{ background:var(--paper); color:var(--soft); }
@@ -489,10 +490,37 @@
   body.picking .seat:not(.occupied){ border-color:#2f8f4e; border-style:solid; background:#d9f2df; color:#1f6b38; animation:pulseFree 1.3s ease-in-out infinite; }
   body.picking .seat:not(.occupied) .nm{ opacity:1 !important; font-weight:700; }
   @keyframes pulseFree{ 0%,100%{ box-shadow:0 0 0 2px rgba(255,255,255,.9),0 0 0 4px rgba(47,143,78,.9); } 50%{ box-shadow:0 0 0 2px rgba(255,255,255,.9),0 0 0 9px rgba(47,143,78,0); } }
-  #stageResize{ position:absolute; right:-4px; bottom:-4px; width:26px; height:26px; background:var(--accent); border:2px solid #fff; border-radius:7px; cursor:nwse-resize; z-index:8; box-shadow:0 2px 6px rgba(0,0,0,.3); }
+  /* The room's edges: drag a side (or a corner) out for more space, in for less. Each handle is a tab on the OUTSIDE of
+     its edge: its grip overlaps the edge by a hair (--r) and the rest of its target lies on the free canvas, so a zone's
+     name or a card near the edge keeps its own press. Constant size on screen: --iz = 1/zoom, set on each handle by
+     applyZoom (never on #stage — an inherited property there restyles every chair on every zoom step). z -1, before the
+     decor in the DOM: tables, cards and names paint above; floor zones below. On touch a knob (⟳, resize corner) that
+     falls inside a handle's target steps aside (knobClearance). */
+  .srz{ --r:4px; --ri:calc(var(--r) * var(--iz,1)); position:absolute; z-index:-1; width:30px; height:30px; touch-action:none; }
+  .srz::before{ content:""; position:absolute; box-sizing:border-box; width:16px; height:16px; background:var(--accent); border:2px solid #fff; border-radius:5px; box-shadow:0 1px 4px rgba(0,0,0,.32); opacity:.8; transition:opacity .15s, background-color .15s; }
+  .srz:hover::before, .srz.on::before{ opacity:1; background-color:var(--accent-ink); }
+  .srz.e, .srz.w{ width:26px; height:60px; cursor:ew-resize; } .srz.n, .srz.s{ width:60px; height:26px; cursor:ns-resize; }
+  .srz.e::before, .srz.w::before{ width:10px; height:42px; border-radius:6px; top:50%; transform:translateY(-50%); }
+  .srz.n::before, .srz.s::before{ width:42px; height:10px; border-radius:6px; left:50%; transform:translateX(-50%); }
+  .srz.nw, .srz.se{ cursor:nwse-resize; } .srz.ne, .srz.sw{ cursor:nesw-resize; }
+  /* anchored at the edge point, the target turned outwards (transform-origin = the corner of the target that meets the room) */
+  .srz.s{ left:50%; top:100%; transform-origin:50% 0; transform:translate(-50%, calc(-1 * var(--ri))) scale(var(--iz,1)); } .srz.s::before{ top:0; }
+  .srz.n{ left:50%; top:0; transform-origin:50% 100%; transform:translate(-50%, calc(-100% + var(--ri))) scale(var(--iz,1)); } .srz.n::before{ bottom:0; }
+  .srz.e{ left:100%; top:50%; transform-origin:0 50%; transform:translate(calc(-1 * var(--ri)), -50%) scale(var(--iz,1)); } .srz.e::before{ left:0; }
+  .srz.w{ left:0; top:50%; transform-origin:100% 50%; transform:translate(calc(-100% + var(--ri)), -50%) scale(var(--iz,1)); } .srz.w::before{ right:0; }
+  .srz.se{ left:100%; top:100%; transform-origin:0 0; transform:translate(calc(-1 * var(--ri)), calc(-1 * var(--ri))) scale(var(--iz,1)); } .srz.se::before{ left:0; top:0; }
+  .srz.nw{ left:0; top:0; transform-origin:100% 100%; transform:translate(calc(-100% + var(--ri)), calc(-100% + var(--ri))) scale(var(--iz,1)); } .srz.nw::before{ right:0; bottom:0; }
+  .srz.ne{ left:100%; top:0; transform-origin:0 100%; transform:translate(calc(-1 * var(--ri)), calc(-100% + var(--ri))) scale(var(--iz,1)); } .srz.ne::before{ left:0; bottom:0; }
+  .srz.sw{ left:0; top:100%; transform-origin:100% 0; transform:translate(calc(-100% + var(--ri)), calc(-1 * var(--ri))) scale(var(--iz,1)); } .srz.sw::before{ right:0; top:0; }
+  .srz.se::before{ width:24px; height:24px; border-radius:7px; opacity:1; }
+  .srz.se::after{ content:"⤡"; position:absolute; left:0; top:0; width:24px; height:24px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px; line-height:1; pointer-events:none; }
+  /* touch: a finger-sized target lying wholly OUTSIDE the room (a press that starts inside the room is always the room's —
+     at the phone overview his wood floor's name ends 1 px above the edge); a finger on a handle pans like anywhere else
+     until it is held (~⅓ s) — see makeStageResizable */
+  body.touch .srz{ --r:0px; width:44px; height:44px; touch-action:pan-x pan-y; } body.touch .srz.e, body.touch .srz.w{ width:40px; height:72px; } body.touch .srz.n, body.touch .srz.s{ width:72px; height:40px; }
+  .kn-off{ visibility:hidden !important; pointer-events:none !important; }
   body:not(.touch) #stagewrap{ cursor:grab; }
   #stagewrap.grabbing, #stagewrap.grabbing *{ cursor:grabbing !important; }
-  #stageResize::after{ content:"⤡"; color:#fff; font-size:15px; display:flex; align-items:center; justify-content:center; height:100%; }
 
   /* ---------- Focus panel (table sheet) ---------- */
   #focus{ width:var(--focus-w); flex:none; background:var(--card); border-left:1px solid var(--line); display:none; flex-direction:column; min-height:0; }
@@ -577,7 +605,7 @@
   #pickbar button{ border:none; background:rgba(255,255,255,.14); color:#fff; border-radius:999px; padding:7px 12px; font-size:12px; cursor:pointer; white-space:nowrap; }
   #pickbar button:hover{ background:rgba(255,255,255,.28); }
   .gchip, .seat, .chip, button, .fsug div, .frow, .gm-item, #pickbar, #focus, .fhead{ touch-action:manipulation; }
-  .table-disc, .feature, .rz, .rot-h, #stageResize{ touch-action:none; }
+  .table-disc, .feature, .rz, .rot-h{ touch-action:none; }
   /* touch: a finger on a table or decor PANS the floor; a HELD finger (long-press) lifts it to move — see makeDraggable */
   body.touch .table-disc, body.touch .feature{ touch-action:pan-x pan-y; }
   /* touch: cheaper paint — no soft shadows on 300 pills, no drape ring, no dotted paper */
@@ -1409,7 +1437,7 @@ el:{
   decorTitle:"Προσθήκη διακόσμησης & αντικειμένων", decorHint:"Πατήστε ένα αντικείμενο για να μπει στον χώρο· μετά σύρετέ το στη θέση του και αλλάξτε μέγεθος από τη γωνία του.", decorAdded:"{n} — σύρετέ το στη θέση του",
   featTip:"Σύρετε για μετακίνηση · γωνία για μέγεθος · ⟳ για περιστροφή · γρανάζι για επιφάνεια / επίπεδο / διαγραφή", featGear:"Επιφάνεια / επίπεδο / διαγραφή",
   fmSurface:"Επιφάνεια", fmLayer:"Επίπεδο", fmBack:"⤓ Τέρμα πίσω", fmBackward:"↓ Πιο πίσω", fmForward:"↑ Πιο μπροστά", fmFront:"⤒ Τέρμα μπροστά", fmRename:"Ετικέτα", fmDelete:"Διαγραφή", fmStage:"Δάπεδο για ολόκληρο τον χώρο", fmLabelPrompt:"Ετικέτα (κενό για καμία):",
-  stageResizeTip:"Σύρετε για αλλαγή μεγέθους του χώρου", tableTip:"Πατήστε για ονόματα · σύρετε για μετακίνηση · γρανάζι για ρυθμίσεις · Delete για διαγραφή",
+  stageResizeTip:"Σύρετε προς τα έξω για περισσότερο χώρο, προς τα μέσα για λιγότερο", tStageMax:"Ο χώρος έφτασε στο μέγιστο μέγεθός του — δεν μεγαλώνει άλλο.", tableTip:"Πατήστε για ονόματα · σύρετε για μετακίνηση · γρανάζι για ρυθμίσεις · Delete για διαγραφή",
   gmRename:"Μετονομασία «{n}»", gmRecolor:"Αλλαγή χρώματος", gmDelete:"Διαγραφή ομάδας", noGroup:"Χωρίς ομάδα", geName:"Όνομα καλεσμένου", geType:"Ομάδα",
   pRename:"Μετονομασία", pDup:"Αντιγραφή", pDel:"Διαγραφή",
   promptNewGroup:"Όνομα νέας ομάδας:", groupN:"Ομάδα {n}", promptRenameGroup:"Μετονομασία ομάδας:", confirmDeleteGroup:"Διαγραφή ομάδας «{n}»; Οι καλεσμένοι κρατούν τις θέσεις τους αλλά χάνουν το χρώμα.",
@@ -1559,7 +1587,7 @@ en:{
   decorTitle:"Add decor & items", decorHint:"Click an item to drop it into the space, then drag it into place and resize from its corner.", decorAdded:"{n} — drag it into place",
   featTip:"Drag to move · corner to resize · ⟳ to rotate · gear for surface / layer / delete", featGear:"Surface / layer / delete",
   fmSurface:"Surface", fmLayer:"Layer", fmBack:"⤓ Send to back", fmBackward:"↓ Send backward", fmForward:"↑ Bring forward", fmFront:"⤒ Bring to front", fmRename:"Label", fmDelete:"Delete", fmStage:"Floor for the whole space", fmLabelPrompt:"Label (leave empty for none):",
-  stageResizeTip:"Drag to resize the whole space", tableTip:"Click for names · drag to move · gear for settings · Delete to remove",
+  stageResizeTip:"Drag out for more space, in for less", tStageMax:"The space has reached its largest size — it can’t grow any further.", tableTip:"Click for names · drag to move · gear for settings · Delete to remove",
   gmRename:"Rename “{n}”", gmRecolor:"Change colour", gmDelete:"Delete group", noGroup:"No group", geName:"Guest name", geType:"Group",
   pRename:"Rename", pDup:"Duplicate", pDel:"Delete",
   promptNewGroup:"New group name:", groupN:"Group {n}", promptRenameGroup:"Rename group:", confirmDeleteGroup:"Delete group “{n}”? Guests keep their seats but lose the colour.",
@@ -1709,7 +1737,7 @@ de:{
   decorTitle:"Deko & Objekte hinzufügen", decorHint:"Objekt anklicken, um es auf die Fläche zu setzen; dann an die richtige Stelle ziehen und an der Ecke die Größe ändern.", decorAdded:"{n} — an die richtige Stelle ziehen",
   featTip:"Ziehen zum Verschieben · Ecke für Größe · ⟳ zum Drehen · Zahnrad für Oberfläche / Ebene / löschen", featGear:"Oberfläche / Ebene / löschen",
   fmSurface:"Oberfläche", fmLayer:"Ebene", fmBack:"⤓ Ganz nach hinten", fmBackward:"↓ Nach hinten", fmForward:"↑ Nach vorne", fmFront:"⤒ Ganz nach vorne", fmRename:"Beschriftung", fmDelete:"Löschen", fmStage:"Boden für die gesamte Fläche", fmLabelPrompt:"Beschriftung (leer für keine):",
-  stageResizeTip:"Ziehen, um die gesamte Fläche zu vergrößern", tableTip:"Antippen für Namen · ziehen zum Verschieben · Zahnrad für Einstellungen · Entf zum Löschen",
+  stageResizeTip:"Nach außen ziehen für mehr Fläche, nach innen für weniger", tStageMax:"Die Fläche hat ihre größte Ausdehnung erreicht — sie kann nicht weiter wachsen.", tableTip:"Antippen für Namen · ziehen zum Verschieben · Zahnrad für Einstellungen · Entf zum Löschen",
   gmRename:"„{n}“ umbenennen", gmRecolor:"Farbe ändern", gmDelete:"Gruppe löschen", noGroup:"Keine Gruppe", geName:"Gastname", geType:"Gruppe",
   pRename:"Umbenennen", pDup:"Duplizieren", pDel:"Löschen",
   promptNewGroup:"Name der neuen Gruppe:", groupN:"Gruppe {n}", promptRenameGroup:"Gruppe umbenennen:", confirmDeleteGroup:"Gruppe „{n}“ löschen? Die Gäste behalten ihre Plätze, verlieren aber die Farbe.",
@@ -1875,6 +1903,7 @@ const SYNC_URL = "";
 // ============================================================
 const FEATURE_KINDS=["zone","prop","marker","label"];
 const isNum=v=>typeof v==="number"&&isFinite(v);   // used by sanitizePlan, which runs inside the top-level loadPlan() below — must be declared first (TDZ)
+let viewCache=null, srzEls=[], knobTimer=0, rightsSig=null;   // (declared up here: nothing on the load path may meet them uninitialised) — see viewSize, knobClearance, applyAccess
 let loadError="";   // why the local copy could not be loaded (shown once at startup, so the cause can be reported)
 let profiles = ensureProfiles();
 let state = loadPlan(profiles.activeId);
@@ -1882,6 +1911,10 @@ let state = loadPlan(profiles.activeId);
 // allowed to push anything until that pull has succeeded (otherwise a blank default could overwrite the real plan).
 if(!state){ const p0=profiles.profiles.find(p=>p.id===profiles.activeId); if(p0&&p0.cloudId){ p0.unsynced=true; try{ localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles)); }catch(e){} } state=defaultState(); }
 let zoom = 1;
+// Extra canvas (screen px) beyond the half-view of free paper around the room, only while the view needs it: left/top
+// when a left/top change could not be followed by the scroll, right/bottom when the room shrank under a far-scrolled view.
+let padL=0, padT=0, padR=0, padB=0, offApplied=null, scrollCarry={x:0, y:0};
+let shownProf=null;   // whose plan the floor shows now: a newer copy of the SAME plan keeps his view, another plan opens fitted
 let fontScale = state.seatFontScale || 1;
 let activeMenuTableId = null;
 let uid = state._uid || 2001;
@@ -1941,32 +1974,43 @@ function ensureProfiles(){
 }
 // ---------- save + undo / redo (one snapshot per saved change; the stacks reset when another plan is loaded) ----------
 let undoStack=[], redoStack=[], lastJSON=null;
+// Beside each step: how far the room grew on the left/top in it (every item moved by that much) — undo and redo scroll by
+// exactly that, so the floor stays still. Recorded, never guessed (a guess from the items mistook a plain drag for it).
+let undoShift=[], redoShift=[], roomShiftAcc={dx:0, dy:0};
 const VIEW_KEYS=["seatFontScale","tableFontScale","nameMode","nameCase","printMode","activeGroupId"];   // how this device shows the plan, not the plan
 function planCore(json){ const o=JSON.parse(json); VIEW_KEYS.forEach(k=>delete o[k]); return JSON.stringify(o); }
 function save(opts){
-  const now=JSON.stringify(state);
-  if(ACCESS.ro && lastJSON!==null && now!==lastJSON && planCore(now)!==planCore(lastJSON)){ restoreSnapshot(lastJSON); roToast(); return; }   // read only: whatever slipped past the UI goes back
-  if(lastJSON!==null && now!==lastJSON && !(opts&&opts.noHistory)){ undoStack.push(lastJSON); if(undoStack.length>60) undoStack.shift(); redoStack.length=0; }
+  const now=JSON.stringify(state), sh=roomShiftAcc; roomShiftAcc={dx:0, dy:0};   // the shift since the last save belongs to this step
+  if(ACCESS.ro && lastJSON!==null && now!==lastJSON && planCore(now)!==planCore(lastJSON)){ restoreSnapshot(lastJSON, {dx:-sh.dx, dy:-sh.dy}); roToast(); return; }   // read only: whatever slipped past the UI goes back
+  if(lastJSON!==null && now!==lastJSON && !(opts&&opts.noHistory)){ undoStack.push(lastJSON); undoShift.push(sh); if(undoStack.length>60){ undoStack.shift(); undoShift.shift(); } redoStack.length=0; redoShift.length=0; }
   lastJSON=now;
   const sp=(profiles&&profiles.profiles)?profiles.profiles.find(p=>p.id===profiles.activeId):null;
   if(sp&&sp.support) sp._mem=now; else { try{ localStorage.setItem(planKey(profiles.activeId), now); }catch(e){} }
-  scheduleCloudPush(); updateUndoButtons();
+  scheduleCloudPush(); updateUndoButtons(); queueKnobCheck();
 }
-function resetHistory(){ undoStack=[]; redoStack=[]; lastJSON=JSON.stringify(state); updateUndoButtons(); }
+function resetHistory(){ undoStack=[]; redoStack=[]; undoShift=[]; redoShift=[]; roomShiftAcc={dx:0, dy:0}; lastJSON=JSON.stringify(state); updateUndoButtons(); }
 function updateUndoButtons(){
   ["undoBtn","mbUndo"].forEach(id=>{ const b=$(id); if(b) b.disabled=!undoStack.length||ACCESS.ro; });
   ["redoBtn","mbRedo"].forEach(id=>{ const b=$(id); if(b) b.disabled=!redoStack.length||ACCESS.ro; });
 }
-function restoreSnapshot(json){
+// sh = {dx,dy}: every item moved by that much between the plan on screen and this one (the room grew/shrank on the
+// left/top) — the view scrolls along so the floor stays still. Afterwards the view comes back to where the room is
+// (settleView): an undo that took back a far growth must not leave him looking at empty paper.
+function restoreSnapshot(json, sh){
   const s=sanitizePlan(JSON.parse(json)); if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s);
   setPick(null); dragData=null; hideSug(); closePlaceMenu(); closeGroupMenu();
+  const want=(sh&&(sh.dx||sh.dy))?{l:stagewrap.scrollLeft+sh.dx*zoom, t:stagewrap.scrollTop+sh.dy*zoom}:undefined;
   state=s; uid=Math.max(uid, state._uid||0); fontScale=state.seatFontScale||1;
-  applyStage(); $("stageFloor").value=state.stageMaterial||"grass";
+  applyStage(want); $("stageFloor").value=state.stageMaterial||"grass";
   if(focusId!=null && !state.tables.some(t=>t.id===focusId)) unfocusTable();
   renderAll();
+  relayoutKeep(); settleView();
+  const ft=focusId!=null && focusedTable(); if(ft && !ptInView(ft.x, ft.y, 40)) viewTo(ft.x, ft.y, zoom, true);   // the open table's sheet is on screen: so is the table
 }
-function undo(){ if(!undoStack.length||ACCESS.ro) return; const cur=JSON.stringify(state); const j=undoStack.pop(); redoStack.push(cur); restoreSnapshot(j); lastJSON=j; wipeAllowedUntil=Date.now()+15000; save({noHistory:true}); toast(tr("tUndo")); }
-function redo(){ if(!redoStack.length||ACCESS.ro) return; const cur=JSON.stringify(state); const j=redoStack.pop(); undoStack.push(cur); restoreSnapshot(j); lastJSON=j; wipeAllowedUntil=Date.now()+15000; save({noHistory:true}); toast(tr("tRedo")); }
+// Is room point (x,y) inside the visible floor, at least m px from its edges?
+function ptInView(x, y, m){ const o=stageOff(), vb=visibleBox(), px=o.x+x*zoom-stagewrap.scrollLeft, py=o.y+y*zoom-stagewrap.scrollTop; return px>=m && px<=vb.w-m && py>=m && py<=vb.h-m; }
+function undo(){ if(!undoStack.length||ACCESS.ro) return; const cur=JSON.stringify(state); const j=undoStack.pop(), sh=undoShift.pop()||{dx:0,dy:0}; redoStack.push(cur); redoShift.push(sh); restoreSnapshot(j, {dx:-sh.dx, dy:-sh.dy}); lastJSON=j; wipeAllowedUntil=Date.now()+15000; save({noHistory:true}); toast(tr("tUndo")); }
+function redo(){ if(!redoStack.length||ACCESS.ro) return; const cur=JSON.stringify(state); const j=redoStack.pop(), sh=redoShift.pop()||{dx:0,dy:0}; undoStack.push(cur); undoShift.push(sh); restoreSnapshot(j, sh); lastJSON=j; wipeAllowedUntil=Date.now()+15000; save({noHistory:true}); toast(tr("tRedo")); }
 // Version-aware migration — keeps guests / groups / seat assignments (and, from v4 on, table positions).
 function migrateLayout(s){
   const from=s.layoutVersion||0;
@@ -2231,6 +2275,8 @@ function renderFeatures(){
     makeDraggable(el, el, f, ()=>{});
     stage.appendChild(el);
   });
+  updateGrowUI();   // whether the left/top room handles are offered depends on who placed each decor item
+  queueKnobCheck();
 }
 
 const BASE_SLOT=46; // reference seat spacing — table size depends on this + seat count, NOT on name length
@@ -2690,17 +2736,18 @@ function renderStrip(seated,total){
   grid.innerHTML=state.tables.map(t=>{ const occ=t.seats.filter(Boolean).length, full=occ>=t.capacity;
     return `<div class="ts-chip${full?" full":""}" data-id="${t.id}"><div class="lbl">${t.shape==="head"?ICON("heart"):escapeHtml(t.label)}</div><div class="occ">${occ}/${t.capacity}</div><div class="bar"><i style="width:${Math.round(100*occ/Math.max(1,t.capacity))}%"></i></div></div>`; }).join("");
 }
-function overview(){ unfocusTable(); setPick(null); requestAnimationFrame(()=>{ layoutCanvas(true); zoom=clamp(fitZoom(),0.1,2.5); applyZoom(); stagewrap.scrollTop=0; stagewrap.scrollLeft=0; }); }
+function overview(){ unfocusTable(); setPick(null); requestAnimationFrame(()=>{ layoutCanvas(true); fitView(clamp(fitZoom(),0.1,2.5)); }); }
 // Phone overview: make the canvas exactly as tall as the floor fitted to the screen width, so the table list
 // gets the rest instead of dead space. Once the user zooms in (>1.25× fit) the canvas takes over and the list shrinks.
 function layoutCanvas(forceOverview){
+  viewCache=null;   // whatever this does to the canvas, its size is read afresh
   if(!isNarrow() || document.body.classList.contains("focused")){ stagewrap.style.height=""; stagewrap.style.flex=""; document.body.classList.remove("zoomed"); return; }
-  const m=12, zf=Math.max(0.1,(stagewrap.clientWidth-2*m)/state.stage.w);
+  const m=viewMargin(), f=fitExtent(), zf=Math.max(0.1,(stagewrap.clientWidth-2*m)/f.w);   // the whole floor: the room and whatever hangs out of it
   const zoomedIn=!forceOverview && zoom>zf*1.25;
   document.body.classList.toggle("zoomed", zoomedIn);
   if(zoomedIn){ stagewrap.style.height=""; stagewrap.style.flex=""; return; }
   const avail=window.innerHeight-52;
-  stagewrap.style.flex="none"; stagewrap.style.height=clamp(Math.round(state.stage.h*zf+2*m+10), 200, Math.round(avail*0.62))+"px";
+  stagewrap.style.flex="none"; stagewrap.style.height=clamp(Math.round(f.h*zf+2*m+10), 200, Math.round(avail*0.62))+"px";
 }
 
 // ============================================================
@@ -3015,15 +3062,15 @@ function initFloorSelect(){
   sel.addEventListener("change",()=>{ if(!can("floor")){ sel.value=state.stageMaterial||"grass"; lockedToast("floor"); return; } state.stageMaterial=sel.value; applyStage(); save(); });
 }
 function visibleCenter(){   // centre of the visible part of the canvas, in stage coordinates
-  const m=isNarrow()?12:24, box=visibleBox();
-  return { x:Math.round((stagewrap.scrollLeft + box.w/2 - m)/zoom), y:Math.round((stagewrap.scrollTop + box.h/2 - m)/zoom) };
+  const o=stageOff(), box=visibleBox();
+  return { x:Math.round((stagewrap.scrollLeft + box.w/2 - o.x)/zoom), y:Math.round((stagewrap.scrollTop + box.h/2 - o.y)/zoom) };
 }
 function addDecor(item){
   const c=visibleCenter();
-  state.features.push({ id:"f"+nextId(), kind:item.kind||"prop",
-    x:clamp(c.x,60,state.stage.w-60), y:clamp(c.y,60,state.stage.h-60),
+  const f={ id:"f"+nextId(), kind:item.kind||"prop", x:c.x, y:c.y,
     w:item.w, h:item.h, label:item.label, icon:item.icon||null, material:item.material||null,
-    ...(ACCESS.owner==="venue"?{by:ACCESS.role==="venue"?"venue":"couple"}:{}) });   // who placed it decides who may move it later
+    ...(ACCESS.owner==="venue"?{by:ACCESS.role==="venue"?"venue":"couple"}:{}) };   // who placed it decides who may move it later
+  settleNew(f, 60); state.features.push(f);   // near an edge the room grows to hold it (or, without that right, the old inset)
   save(); renderFeatures(); toast(tr("decorAdded",{n:item.label}));
 }
 function initDecor(){
@@ -3055,7 +3102,8 @@ function loadActive(){
   applyAccess();
   applyStage(); $("stageFloor").value=state.stageMaterial||"grass";
   renderProfiles(); renderAll(); resetHistory(); flushLabNote();
-  setTimeout(()=>{ zoom=initialZoom(); applyZoom(); },30);
+  shownProf=profiles.activeId;
+  setTimeout(()=>fitView(initialZoom()),30);
 }
 function switchProfile(id){ save();
   const snap=pendingSnap; if(snap){ pendingSnap=null; clearTimeout(cloudTimer); cloudTimer=null; cloudPush(snap).catch(()=>{}); }
@@ -3133,7 +3181,7 @@ $("mbView").addEventListener("click",e=>{ e.stopPropagation(); openViewMenu(e.cu
 $("tsGrid").addEventListener("click",e=>{ const c=e.target.closest(".ts-chip"); if(c) focusTable(+c.dataset.id); });
 $("tsAll").addEventListener("click",overview);
 $("tsToggle").addEventListener("click",()=>{ const on=document.body.classList.toggle("strip-collapsed");
-  try{ localStorage.setItem("weddingSeatingPlanner.strip", on?"1":""); }catch(e){} requestAnimationFrame(()=>{ zoom=clamp(fitZoom(),0.2,2.5); applyZoom(); }); });
+  try{ localStorage.setItem("weddingSeatingPlanner.strip", on?"1":""); }catch(e){} requestAnimationFrame(()=>fitView(clamp(fitZoom(),0.2,2.5))); });
 try{ if(localStorage.getItem("weddingSeatingPlanner.strip")==="1") document.body.classList.add("strip-collapsed"); }catch(e){}
 // phone: the tools section starts folded and remembers what the user did with it (PC: always open)
 try{ const ts=$("toolsSec"); if(isNarrow()) ts.open=localStorage.getItem("weddingSeatingPlanner.tools")==="1";
@@ -3216,7 +3264,7 @@ function markZooming(){ document.body.classList.add("zooming"); clearTimeout(zoo
     if(activeDragCancel && !pointerGesture) activeDragCancel();   // a second finger cancels a pending long-press
     if(pointerGesture){ base=null; return; }
     const m=mid(e.touches), r=wrap.getBoundingClientRect();
-    base={ d:dist(e.touches)||1, z:zoom, cx:(wrap.scrollLeft+m.x-r.left)/zoom, cy:(wrap.scrollTop+m.y-r.top)/zoom };
+    const o=stageOff(); base={ d:dist(e.touches)||1, z:zoom, cx:(wrap.scrollLeft+m.x-r.left-o.x)/zoom, cy:(wrap.scrollTop+m.y-r.top-o.y)/zoom };   // stage coordinates under the fingers
     markZooming();
   },{passive:true});
   wrap.addEventListener("touchmove",e=>{
@@ -3225,7 +3273,7 @@ function markZooming(){ document.body.classList.add("zooming"); clearTimeout(zoo
     const m=mid(e.touches), r=wrap.getBoundingClientRect();
     pending={ z:clamp(base.z*dist(e.touches)/base.d, 0.2, 2.5), mx:m.x-r.left, my:m.y-r.top };
     if(!raf) raf=requestAnimationFrame(()=>{ raf=null; const p=pending; if(!p||!base) return; markZooming();   // one layout per frame, not per touch event
-      zoom=p.z; applyZoom(); wrap.scrollLeft=base.cx*zoom-p.mx; wrap.scrollTop=base.cy*zoom-p.my; });
+      zoom=p.z; applyZoom(); const o=stageOff(); wrap.scrollLeft=o.x+base.cx*zoom-p.mx; wrap.scrollTop=o.y+base.cy*zoom-p.my; });
   },{passive:false});
   const end=e=>{ if(e.touches.length<2) base=null; };
   wrap.addEventListener("touchend",end,{passive:true});
@@ -3235,10 +3283,10 @@ function markZooming(){ document.body.classList.add("zooming"); clearTimeout(zoo
 stagewrap.addEventListener("wheel",e=>{
   if(!(e.ctrlKey||e.metaKey)) return;
   e.preventDefault(); markZooming();
-  const r=stagewrap.getBoundingClientRect(), m=isNarrow()?12:24;
-  const cx=(stagewrap.scrollLeft+e.clientX-r.left-m)/zoom, cy=(stagewrap.scrollTop+e.clientY-r.top-m)/zoom;
+  const r=stagewrap.getBoundingClientRect(), o0=stageOff();
+  const cx=(stagewrap.scrollLeft+e.clientX-r.left-o0.x)/zoom, cy=(stagewrap.scrollTop+e.clientY-r.top-o0.y)/zoom;
   zoom=clamp(zoom*(e.deltaY<0?1.1:0.9), 0.2, 2.5); applyZoom();
-  stagewrap.scrollLeft=m+cx*zoom-(e.clientX-r.left); stagewrap.scrollTop=m+cy*zoom-(e.clientY-r.top);
+  const o=stageOff(); stagewrap.scrollLeft=o.x+cx*zoom-(e.clientX-r.left); stagewrap.scrollTop=o.y+cy*zoom-(e.clientY-r.top);
 },{passive:false});
 // Zoom buttons keep the centre of the visible floor where it is.
 function zoomBy(f){ const c=visibleCenter(); markZooming(); viewTo(c.x, c.y, clamp(zoom*f, 0.2, 2.5), false); }
@@ -3868,7 +3916,7 @@ poolEl.addEventListener("drop",e=>{ e.preventDefault(); poolEl.classList.remove(
 // Mouse: grab and drag at once. Touch: a finger on an object PANS the floor (touch-action pan-x pan-y);
 // holding still for ~⅓ s "lifts" the object (haptic tick + glow) and only then does the finger move it.
 let activeDragCancel=null;   // cancels a pending hold / active drag (a second finger = pinch)
-function makeDraggable(handleEl, moveEl, obj, onEnd, onTap, hooks){   // hooks: {move(obj), clear(), drop(obj,ox,oy)→true when it handled the drop}
+function makeDraggable(handleEl, moveEl, obj, onEnd, onTap, hooks){   // hooks: {move(obj), clear(), drop(obj, back)→true when it handled the drop (back(): the item and the room as before the drag)}
   handleEl.addEventListener("pointerdown",e=>{
     if(e.target.closest(".tgear")||e.target.closest(".rz")||e.target.closest(".rot-h")) return;
     if(e.button!==0) return;
@@ -3878,33 +3926,61 @@ function makeDraggable(handleEl, moveEl, obj, onEnd, onTap, hooks){   // hooks: 
     if(moveEl.classList.contains("feature")){ stage.querySelectorAll(".feature.hsel").forEach(x=>{ if(x!==moveEl) x.classList.remove("hsel"); }); moveEl.classList.add("hsel"); }
     else stage.querySelectorAll(".feature.hsel").forEach(x=>x.classList.remove("hsel"));   // grabbing a table un-chooses the decor, so Delete hits the thing chosen last   // decor keeps its handles while the mouse travels to them (tables: hover / focus)
     const sx=e.clientX, sy=e.clientY, ox=obj.x, oy=obj.y, t0=performance.now();
-    let moved=false, lifted=false, done=false, holdTimer=null;
+    let moved=false, lifted=false, done=false, holdTimer=null, grow=null, lastX=sx, lastY=sy, panRaf=0, toldWall=false, toldCap=false;
     const lockedMove=!!(hooks&&hooks.canMove&&!hooks.canMove());   // the venue fixed where this table stands
     const unblock=touch?blockCtxMenu():null; if(touch&&!lockedMove) holdArmed=true;
     const slop=touch?10:4;
-    const maxX=(state.stage?state.stage.w:1700)-20, maxY=(state.stage?state.stage.h:1360)-20;
+    // where on the item it was grabbed (room units): the item keeps that point under the pointer while the floor pans or grows
+    const r0=stage.getBoundingClientRect(), grabX=(sx-r0.left)/zoom-ox, grabY=(sy-r0.top)/zoom-oy;
     function lift(){ if(done||lifted) return; if(!handleEl.isConnected){ finish(null,true); return; } lifted=true; pointerGesture=true; try{ handleEl.setPointerCapture(e.pointerId); }catch(x){} moveEl.classList.add("lifted");
+      grow=growSession(obj);   // past an edge the room follows (no wall) — see growSession
       if(touch&&navigator.vibrate){ try{ navigator.vibrate(12); }catch(x){} } }
+    function follow(){
+      const r=stage.getBoundingClientRect();   // the room's corner on screen: it moves when the floor pans or the room grows left/up
+      grow.to((lastX-r.left)/zoom-grabX, (lastY-r.top)/zoom-grabY);
+      moveEl.style.left=obj.x+"px"; moveEl.style.top=obj.y+"px";
+      if(grow.wall && !toldWall){ toldWall=true; lockedToast(grow.wall); }   // a side this role may not grow: the old wall, and why
+      if(grow.cap && !toldCap){ toldCap=true; toast(tr("tStageMax"),4500); }
+      if(hooks&&hooks.move) hooks.move(obj);
+    }
+    // pointer near an edge of the visible floor: slide the floor that way (the item rides along, the room grows under it)
+    function edgePan(){
+      panRaf=0; if(!lifted||done) return;
+      const r=stagewrap.getBoundingClientRect(); let dx=edgeSpeed(lastX, r.left, r.right), dy=edgeSpeed(lastY, r.top, floorBottom(r));
+      // only toward an edge he is dragging to: an item held inside the band (the phone overview's top row — his couch, the
+      // kiosk) must not start growing the room on the first twitch of the finger
+      dx=pushedTo(dx, lastX, sx, r.left, r.right); dy=pushedTo(dy, lastY, sy, r.top, floorBottom(r));
+      if(!dx&&!dy) return;
+      const l0=stagewrap.scrollLeft, t0=stagewrap.scrollTop; stagewrap.scrollLeft+=dx; stagewrap.scrollTop+=dy;
+      if(stagewrap.scrollLeft===l0 && stagewrap.scrollTop===t0) return;   // nowhere left to slide (the room's largest size, a wall)
+      follow(); panRaf=requestAnimationFrame(edgePan);
+    }
     function mv(ev){
       const ddx=ev.clientX-sx, ddy=ev.clientY-sy;
       if(!lifted){ if(Math.abs(ddx)>slop||Math.abs(ddy)>slop){ moved=true; clearTimeout(holdTimer); } return; }   // not lifted: the finger is panning the floor, not us
       if(Math.abs(ddx)>slop||Math.abs(ddy)>slop) moved=true;
       if(!moved) return;
-      obj.x=clamp(ox+ddx/zoom, 20, maxX); obj.y=clamp(oy+ddy/zoom, 20, maxY);
-      moveEl.style.left=obj.x+"px"; moveEl.style.top=obj.y+"px";
-      if(hooks&&hooks.move) hooks.move(obj);
+      lastX=ev.clientX; lastY=ev.clientY; follow();
+      if(!panRaf) panRaf=requestAnimationFrame(edgePan);
     }
     function tm(ev){ if(lifted) ev.preventDefault(); }   // once lifted, the finger must not scroll the floor
     function finish(ev, cancelled){
-      if(done) return; done=true; clearTimeout(holdTimer); pointerGesture=false; activeDragCancel=null; moveEl.classList.remove("lifted"); if(unblock) unblock(); if(touch) holdArmed=false;
+      if(done) return; done=true; clearTimeout(holdTimer); cancelAnimationFrame(panRaf); pointerGesture=false; activeDragCancel=null; moveEl.classList.remove("lifted"); if(unblock) unblock(); if(touch) holdArmed=false;
       try{ handleEl.releasePointerCapture(e.pointerId); }catch(x){}
       handleEl.removeEventListener("pointermove",mv); handleEl.removeEventListener("pointerup",up); handleEl.removeEventListener("pointercancel",up); handleEl.removeEventListener("touchmove",tm);
       if(hooks&&hooks.clear) hooks.clear();
-      if(cancelled){ if(lifted&&moved){ obj.x=ox; obj.y=oy; moveEl.style.left=ox+"px"; moveEl.style.top=oy+"px"; } return; }
+      if(cancelled){ if(lifted&&moved){ grow.revert(); moveEl.style.left=ox+"px"; moveEl.style.top=oy+"px"; } return; }   // a pinch: item and room as they were
       if(lockedMove){ if(moved && !touch) lockedToast("layout"); }
       else if(touch && !lifted && (moved || (ev && ev.type==="pointercancel"))) hintHold();   // tried to drag, the floor panned instead (iOS often cancels before a >10px move is seen)
       if(touch && lifted && moved) markHint(HINT_HOLD);                                  // already knows the gesture
-      if(lifted&&moved){ if(hooks&&hooks.drop&&hooks.drop(obj,ox,oy)) return; save(); if(onEnd)onEnd(); }
+      if(lifted&&moved){
+        // dropped onto another table (merge, or refused): `back` puts it where it came from and gives back what the room grew
+        // for this drag — the hook calls it BEFORE anything saves (a merge without its confirmation saves at once)
+        const back=()=>{ const g=grow.changed(); grow.revert(); placeItemEl(obj); if(g) relayoutKeep(); };
+        if(hooks&&hooks.drop&&hooks.drop(obj, back)) return;
+        const grew=grow.changed(); save(); if(onEnd)onEnd(); if(grew) relayoutKeep();   // one save: the move and the growth are one undo step; the canvas follows without a jump
+        queueKnobCheck();
+      }
       else if(!moved && onTap && ev && ev.type!=="pointercancel") onTap();
     }
     function up(ev){ finish(ev,false); }
@@ -3935,9 +4011,12 @@ function makeRotatable(handle, centerEl, obj, applyFn, onEnd){
   handle.addEventListener("pointerdown",e=>{
     if(e.button!==0) return;
     e.preventDefault(); e.stopPropagation(); handle.setPointerCapture(e.pointerId); pointerGesture=true;
+    // relative to where it was grabbed: the knob may sit on either side of the item (knobClearance flips it below one
+    // standing at the room's top edge) and a press a little off its centre must not jerk the item round
+    const dir=ev=>{ const r=centerEl.getBoundingClientRect(); return Math.atan2(ev.clientY-(r.top+r.height/2), ev.clientX-(r.left+r.width/2))*180/Math.PI; };
+    const a0=dir(e), rot0=+obj.rot||0;
     function mv(ev){
-      const r=centerEl.getBoundingClientRect(); const cx=r.left+r.width/2, cy=r.top+r.height/2;
-      let ang=Math.atan2(ev.clientY-cy, ev.clientX-cx)*180/Math.PI + 90;
+      let ang=rot0+dir(ev)-a0; ang=((ang%360)+540)%360-180;   // -180..180
       if(ev.shiftKey) ang=Math.round(ang/15)*15;
       obj.rot=Math.round(ang); applyFn();
     }
@@ -3965,20 +4044,290 @@ function addTableRotateHandle(wrap, t, offset){
   if(!can("layout")){ h.remove(); return; }   // the rotation is shown, but only the venue changes it
   makeRotatable(h, wrap, t, apply, ()=>renderTables([t.id]));   // the name layout depends on the rotation
 }
-// The whole space: size + floor material, plus a drag-to-resize corner handle.
-function applyStage(){
-  stage.style.width=state.stage.w+"px"; stage.style.height=state.stage.h+"px";
+// ============================================================
+//  THE ROOM — its size, the free canvas around it, growing from any side
+// ============================================================
+// Positions are the room's own coordinates: origin at its top-left corner, table and decor positions are CENTRES. The room
+// grows from every side: right/down simply enlarge it; left/up enlarge it AND move every table and decor item by the same
+// amount (the origin stays the top-left corner, nothing it grew to hold gets a negative coordinate) while the view scrolls
+// by exactly that much — nothing moves on screen. Around the room lies half a view of free canvas on every side, so at any
+// zoom there is somewhere to drag to, and the room can never be scrolled out of sight (an edge stops at mid-view).
+const STAGE_MIN_W=700, STAGE_MIN_H=600, STAGE_MAX=20000, GROW_M=16;   // sanitizePlan and server/pdf.mjs keep the same limits
+function canGrowRB(){ return can("floor"); }
+// Growing left/up moves EVERY position, so it needs the right to move all of them — the server would copy back whatever
+// this role may not move (enforcePerms) and the plan would come back half-shifted. → the missing permission, or "".
+function shiftBlocker(){ if(!can("floor")) return "floor"; if(!can("layout")) return "layout"; if((state.features||[]).some(f=>featLocked(f))) return "decor"; return ""; }
+function canShiftAll(){ return !shiftBlocker(); }
+function updateGrowUI(){ document.body.classList.toggle("noshift", !canShiftAll()); }   // no left/top handles without it
+// The free canvas on each side: half the canvas's OUTER size (scrollbars included — it must not change when they come and
+// go), plus whatever hangs outside the room on that side (an item left out there by a shrunk side stays reachable).
+function stageGutter(){ const m=viewMargin(), V=viewSize(), x=Math.max(m, Math.ceil(V.ow/2)), y=Math.max(m, Math.ceil(V.oh/2)), o=itemsOutside();
+  return { x, y, l:x+Math.ceil(o.l*zoom), t:y+Math.ceil(o.t*zoom), r:x+Math.ceil(o.r*zoom), b:y+Math.ceil(o.b*zoom) }; }
+// The paper left around the room when the whole floor is shown (fitView): a phone keeps a thumb's width beside the side
+// handles (they sit outside the room), a desktop its old margin.
+function viewMargin(){ return isNarrow()?22:24; }
+// The canvas's outer (scrollbars included) and inner size. Read once per layout change — a pointermove that grows the room
+// must not force a layout just to ask (a ResizeObserver and every re-layout of the canvas drop the copy).
+function viewSize(){ if(!viewCache) viewCache={ow:stagewrap.offsetWidth, oh:stagewrap.offsetHeight, cw:stagewrap.clientWidth, ch:stagewrap.clientHeight, pb:parseFloat(getComputedStyle(stagewrap).paddingBottom)||0}; return viewCache; }   // pb: a phone's canvas scrolls further (room for the bottom bar / the sheet)
+if(window.ResizeObserver){ try{ new ResizeObserver(()=>{ viewCache=null; }).observe(stagewrap); }catch(e){} }
+function itemsOutside(){   // how far tables and decor reach beyond the room on each side (room px, 0 = nothing out there)
+  let l=0, t=0, r=0, b=0; const W=state.stage.w, H=state.stage.h;
+  const add=o=>{ if(!o||!isNum(o.x)||!isNum(o.y)) return; const hf=itemHalf(o); l=Math.max(l,hf.x-o.x); t=Math.max(t,hf.y-o.y); r=Math.max(r,o.x+hf.x-W); b=Math.max(b,o.y+hf.y-H); };
+  state.tables.forEach(add); (state.features||[]).forEach(add);
+  const c=v=>Math.min(v,25000); return {l:c(l), t:c(t), r:c(r), b:c(b)};   // (server/pdf.mjs keeps positions within ±25000 too)
+}
+// where the room's top-left corner sits in the scrolled canvas — as last laid out (placeStage), which is what the screen shows
+function stageOff(){ if(offApplied) return { x:offApplied.x, y:offApplied.y }; const g=stageGutter(); return { x:g.l+padL, y:g.t+padT }; }
+// Lay the room into its canvas. The room keeps its place on screen through any change of the canvas around it (a resized
+// window, a taller phone canvas). want = {l,t}: the scroll the view should have, in the canvas as it was before this call
+// — may be negative (the room moved right further than the scroll can go: that becomes extra canvas on the left).
+// roomChanged: the room itself changed size — extra canvas right/bottom may appear so the current view stays reachable.
+// cur = {l,t}: the scroll before this call, when the caller read it before its own writes (reading it here, after them,
+// would force a layout on every pointermove of a growing drag).
+function placeStage(roomChanged, want, cur){
+  const g=stageGutter(), V=viewSize(), w=state.stage.w, h=state.stage.h, cw=V.cw, ch=V.ch;
+  const m0=viewMargin(), p=offApplied||{x:m0, y:m0};   // before the first call the CSS margin places the room
+  const s0=cur||{l:stagewrap.scrollLeft, t:stagewrap.scrollTop};
+  // the scroll is whole pixels: what a wanted scroll lost to that is carried into the next one, or a long drag of the
+  // left/top edge would creep (37 steps at 15 % → 11 px) — the floor must not move at all
+  let sL=(want?want.l+scrollCarry.x:s0.l)+(g.l+padL-p.x), sT=(want?want.t+scrollCarry.y:s0.t)+(g.t+padT-p.y);
+  if(sL<0){ padL-=sL; sL=0; } else { const k=Math.min(padL,sL); padL-=k; sL-=k; }   // extra canvas only while the view needs it
+  if(sT<0){ padT-=sT; sT=0; } else { const k=Math.min(padT,sT); padT-=k; sT-=k; }
+  const ox=g.l+padL, oy=g.t+padT;
+  const needR=Math.max(0, Math.ceil(sL-(ox+w*zoom+g.r-cw))), needB=Math.max(0, Math.ceil(sT-(oy+h*zoom+g.b+V.pb-ch)));
+  padR=roomChanged?needR:Math.min(padR,needR); padB=roomChanged?needB:Math.min(padB,needB);
+  // Every read above, every write below: the room's new size goes in WITH its margins. A layout forced between the two (even
+  // window.innerWidth in isNarrow does it) would see a shrunk room in the old, larger margins and clamp the scroll — the
+  // floor jumped under the finger (11 px on a phone) when a dragged item came back and the room gave its space back.
+  const sw=w+"px", sh=h+"px"; if(stage.style.width!==sw) stage.style.width=sw; if(stage.style.height!==sh) stage.style.height=sh;
+  // the scaled room keeps its unscaled layout box: the right/bottom margins make the scrolled canvas exactly as big as it looks
+  stage.style.margin=`${oy}px ${Math.round(g.r+padR+w*(zoom-1))}px ${Math.round(g.b+padB+h*(zoom-1))}px ${ox}px`;
+  offApplied={x:ox, y:oy};
+  // only a scroll that must change is written (the write lays the canvas out once); reading it back afterwards is free
+  const wl=sL!==s0.l, wt=sT!==s0.t;
+  if(wl) stagewrap.scrollLeft=sL;
+  if(wt) stagewrap.scrollTop=sT;
+  if(want){ const cx=wl?sL-stagewrap.scrollLeft:0, cy=wt?sT-stagewrap.scrollTop:0; scrollCarry={x:Math.abs(cx)<1?cx:0, y:Math.abs(cy)<1?cy:0}; }
+  queueKnobCheck();
+}
+// Re-lay the canvas around the room (a phone's overview canvas follows the room's height; a room grown wider switches it
+// to the zoomed layout) and keep the room exactly where it was on screen — extra canvas where the scroll alone can't.
+// For the end of a gesture, an undo, a pulled plan: the finger lifts and nothing jumps.
+function relayoutKeep(){
+  const r0=stage.getBoundingClientRect(); applyZoom(); const r1=stage.getBoundingClientRect();
+  const dx=r1.left-r0.left, dy=r1.top-r0.top;
+  if(Math.abs(dx)>=0.5||Math.abs(dy)>=0.5) placeStage(true, {l:stagewrap.scrollLeft+dx, t:stagewrap.scrollTop+dy});
+}
+// Outside a gesture no extra canvas is kept: the scroll comes back into the plain range, where the room (with whatever hangs
+// out of it) reaches at least the middle of the visible floor — an undo that took back a far growth, a smaller room from
+// another device, never leave him looking at empty paper. A view that already shows the room does not move.
+function settleView(){
+  if(!offApplied) return;
+  const p=offApplied, rx=stagewrap.scrollLeft-p.x, ry=stagewrap.scrollTop-p.y;   // the view's corner, measured from the room's
+  padL=padT=padR=padB=0; scrollCarry={x:0, y:0};
+  const g=stageGutter(), V=viewSize(), vb=visibleBox(), W=state.stage.w*zoom, H=state.stage.h*zoom;
+  const maxL=Math.max(0, g.l+W+g.r-V.cw), maxT=Math.max(0, g.t+H+g.b+V.pb-V.ch);
+  // the phone's table sheet covers the lower part of the floor: the room must reach the middle of what is still visible
+  const loT=vb.h<V.ch?Math.min(maxT, Math.max(0, g.y-vb.h/2)):0, hiT=vb.h<V.ch?Math.min(maxT, Math.max(loT, g.t+H+(g.b-g.y)-vb.h/2)):maxT;
+  const sL=clamp(g.l+rx, 0, maxL), sT=clamp(g.t+ry, loT, hiT);
+  placeStage(false, {l:sL-g.l+p.x, t:sT-g.t+p.y});
+}
+// The whole space: size + floor material (want: see placeStage — an undo that moved every item keeps them still on screen).
+function applyStage(want){
+  placeStage(true, want);   // (writes the room's size too)
   applyMaterial(stage, state.stageMaterial||"grass");
 }
-function makeStageResizable(h){
+function isTableObj(o){ return !!o && Array.isArray(o.seats); }
+function itemEl(o){ return isTableObj(o) ? stage.querySelector(`.table[data-table-id="${o.id}"]`) : stage.querySelector(`.feature[data-fi="${(state.features||[]).indexOf(o)}"]`); }
+function placeItemEl(o){ const el=itemEl(o); if(el){ el.style.left=o.x+"px"; el.style.top=o.y+"px"; } }
+// Every table and decor item (but `except`) by dx,dy — the data and the elements, no rebuild (names keep their layout).
+function shiftItems(dx, dy, except){
+  if(!dx && !dy) return;
+  state.tables.forEach(t=>{ if(t!==except){ t.x+=dx; t.y+=dy; } });
+  (state.features||[]).forEach(f=>{ if(f!==except){ f.x+=dx; f.y+=dy; } });
+  const byId=new Map(state.tables.map(t=>[String(t.id),t]));
+  stage.querySelectorAll(".table").forEach(el=>{ const t=byId.get(el.dataset.tableId); if(t && t!==except){ el.style.left=t.x+"px"; el.style.top=t.y+"px"; } });
+  stage.querySelectorAll(".feature").forEach(el=>{ const f=state.features[+el.dataset.fi]; if(f && f!==except){ el.style.left=f.x+"px"; el.style.top=f.y+"px"; } });
+}
+// New size, after (dL,dT) more room on the left/top: everything else moves by that much and the view follows (scroll
+// captured BEFORE the size changes — a smaller room would clamp it first).
+function resizeRoom(w, h, dL, dT, except){
+  const sL=stagewrap.scrollLeft, sT=stagewrap.scrollTop;
+  state.stage.w=w; state.stage.h=h;   // the element gets its new size in placeStage, together with its margins
+  shiftItems(dL, dT, except);
+  roomShiftAcc={dx:roomShiftAcc.dx+dL, dy:roomShiftAcc.dy+dT};   // the next save records it with its undo step
+  placeStage(true, {l:sL+dL*zoom, t:sT+dT*zoom}, {l:sL, t:sT});
+}
+// Half-size of what must stay on the floor: a table with its chairs, a decor item's box — both as turned.
+function itemHalf(o){
+  let rx, ry;
+  if(isTableObj(o)){
+    if(o.shape==="head"){ const g=headGeom(o); rx=g.tableW/2+(o.capacity>g.top?47:0); ry=g.tableH/2+g.seatH+6; }   // end chairs 30 px out, 34 wide
+    else if(o.shape==="rect"){ const g=rectGeom(o); rx=g.tableW/2; ry=g.tableH/2+g.seatH+6; }
+    else { const g=roundGeom(o); rx=ry=g.ringR+g.seatH/2; }
+  } else { rx=(+o.w||0)/2; ry=(+o.h||0)/2; }
+  const a=(+o.rot||0)*Math.PI/180, c=Math.abs(Math.cos(a)), s=Math.abs(Math.sin(a));
+  return { x:rx*c+ry*s, y:rx*s+ry*c };
+}
+// One direction of "the room follows the item". c: where the item's centre wants to be; half: its half-size; bLo/bHi: how
+// far it may reach before the room has to grow (the edge less a margin — or, for an item that already hung outside, where
+// it started: the edge then moves along with it, never with a jump); size: the room now. lo/hi: may this side grow;
+// a side that may not keeps the old wall (the centre `inset` px inside). → the centre and the growth on each side.
+function growAxis(c, half, bLo, bHi, size, lo, hi, inset){
+  let nLo=0, nHi=0, wallLo=false, wallHi=false, cap=false;
+  if(lo) nLo=Math.max(0, Math.ceil(bLo-(c-half))); else if(c<inset){ c=inset; wallLo=true; }
+  if(hi) nHi=Math.max(0, Math.ceil(c+half-bHi)); else if(c>size-inset){ c=size-inset; wallHi=true; }
+  const over=size+nLo+nHi-STAGE_MAX;
+  if(over>0){ cap=true; const k=Math.min(over,nHi); nHi-=k; c-=k; if(over>k){ nLo-=over-k; c+=over-k; } }   // the room's largest size: there the wall stays
+  return {c, nLo, nHi, wallLo, wallHi, cap};
+}
+// A drag of one table / decor item: the room follows it past any edge while it moves (and gives the space back when it
+// returns); on a side the role may not grow, the old wall. `to(x,y)`: the centre the pointer asks for, in the room's
+// current coordinates.
+function growSession(o){
+  const W0=state.stage.w, H0=state.stage.h, ox=o.x, oy=o.y, hf=itemHalf(o), hi=canGrowRB(), lo=canShiftAll();
+  const bL=Math.min(GROW_M, ox-hf.x), bR=Math.max(W0-GROW_M, ox+hf.x), bT=Math.min(GROW_M, oy-hf.y), bB=Math.max(H0-GROW_M, oy+hf.y);
+  const S={gL:0, gT:0, wall:"", cap:false};
+  S.to=(x,y)=>{
+    const a=growAxis(x-S.gL, hf.x, bL, bR, W0, lo, hi, 20), b=growAxis(y-S.gT, hf.y, bT, bB, H0, lo, hi, 20);
+    const dL=a.nLo-S.gL, dT=b.nLo-S.gT, w=W0+a.nLo+a.nHi, h=H0+b.nLo+b.nHi;
+    const resize=dL||dT||w!==state.stage.w||h!==state.stage.h;
+    S.gL=a.nLo; S.gT=b.nLo; o.x=a.c+S.gL; o.y=b.c+S.gT;   // the item first (already in the new room's coordinates): the free canvas measured around the room must not count it where it was
+    if(resize) resizeRoom(w, h, dL, dT, o);
+    if(a.wallLo||b.wallLo) S.wall=shiftBlocker()||S.wall; else if(a.wallHi||b.wallHi) S.wall="floor";
+    if(a.cap||b.cap) S.cap=true;
+  };
+  S.changed=()=>!!(S.gL||S.gT||state.stage.w!==W0||state.stage.h!==H0);
+  S.revert=()=>{ if(S.changed()) resizeRoom(W0, H0, -S.gL, -S.gT, o); S.gL=S.gT=0; o.x=ox; o.y=oy; };
+  return S;
+}
+// A new table or decor item lands where he is looking; where it would cross an edge the room grows to hold it (the same
+// rules as a drag), or — without that right — it keeps the old distance from that edge (ix / iy). Call before pushing it.
+function settleNew(o, ix, iy){
+  const W=state.stage.w, H=state.stage.h, hf=itemHalf(o), lo=canShiftAll(), hi=canGrowRB();
+  const a=growAxis(o.x, hf.x, GROW_M, W-GROW_M, W, lo, hi, ix), b=growAxis(o.y, hf.y, GROW_M, H-GROW_M, H, lo, hi, iy==null?ix:iy);
+  if(a.nLo||a.nHi||b.nLo||b.nHi) resizeRoom(W+a.nLo+a.nHi, H+b.nLo+b.nHi, a.nLo, b.nLo, null);
+  o.x=a.c+a.nLo; o.y=b.c+b.nLo;
+  if(a.cap||b.cap) toast(tr("tStageMax"),4500);
+}
+// Between the plan on screen and one that came from the cloud (another device grew or shrank the room on the left/top):
+// the offset nearly everything moved by, so the view can scroll along. Undo and redo never guess — their steps carry the
+// shift (undoShift). Only a room whose size changed on that axis counts, and only a clear majority of at least 3 items:
+// with two tables a plain drag of one of them is not a room shift. null otherwise.
+function planShift(a, b){
+  if(!a||!b||!a.stage||!b.stage) return null;
+  const cw=a.stage.w!==b.stage.w, ch=a.stage.h!==b.stage.h; if(!cw&&!ch) return null;
+  const cnt=new Map(); let n=0;
+  const add=(p,q)=>{ if(!p||!q||!isNum(p.x)||!isNum(p.y)||!isNum(q.x)||!isNum(q.y)) return; n++; const k=Math.round((q.x-p.x)*100)/100+","+Math.round((q.y-p.y)*100)/100; cnt.set(k,(cnt.get(k)||0)+1); };
+  const ta=new Map((a.tables||[]).map(t=>[String(t.id),t])); (b.tables||[]).forEach(t=>add(ta.get(String(t.id)),t));
+  const fa=new Map((a.features||[]).filter(f=>f.id!=null).map(f=>[String(f.id),f])); (b.features||[]).forEach(f=>{ if(f.id!=null) add(fa.get(String(f.id)),f); });
+  let best=null, bc=0; cnt.forEach((c,k)=>{ if(c>bc){ bc=c; best=k; } });
+  if(!best || best==="0,0" || n<3 || bc*2<=n) return null;
+  const [dx,dy]=best.split(",").map(Number);
+  if((dx && !cw) || (dy && !ch)) return null;
+  return {dx, dy};
+}
+// A handle on the room's edge (side: n s e w nw ne sw se). Mouse: grab and drag. Touch: like a table — a finger pans the
+// floor until it is held still (~⅓ s), then the edge follows it. Out = more room, in = less (down to the minimum size;
+// nothing is ever moved off or deleted — an item may end up outside, his call). Left/top: every item moves with the
+// canvas so that nothing moves on screen. One save at the end = one undo step.
+function makeStageResizable(h, side){
+  const L=side.includes("w"), R=side.includes("e"), T=side.includes("n"), B=side.includes("s");
   h.addEventListener("pointerdown",e=>{
     if(e.button!==0) return;
+    e.stopPropagation();
     if(!can("floor")){ lockedToast("floor"); return; }
-    e.preventDefault(); e.stopPropagation(); h.setPointerCapture(e.pointerId); pointerGesture=true;
+    if((L||T) && !canShiftAll()){ lockedToast(shiftBlocker()); return; }   // the handle is hidden then; a stale one still refuses
+    if(activeDragCancel) activeDragCancel();
+    const touch=e.pointerType==="touch"; if(!touch) e.preventDefault();
     const sx=e.clientX, sy=e.clientY, ow=state.stage.w, oh=state.stage.h;
-    function mv(ev){ state.stage.w=Math.max(700,Math.round(ow+(ev.clientX-sx)/zoom)); state.stage.h=Math.max(600,Math.round(oh+(ev.clientY-sy)/zoom)); stage.style.width=state.stage.w+"px"; stage.style.height=state.stage.h+"px"; }
-    function up(){ pointerGesture=false; try{ h.releasePointerCapture(e.pointerId); }catch(x){} h.removeEventListener("pointermove",mv); h.removeEventListener("pointerup",up); applyZoom(); save(); }
-    h.addEventListener("pointermove",mv); h.addEventListener("pointerup",up);
+    let gL=0, gT=0, lifted=false, done=false, holdTimer=null, capShown=false, lastX=sx, lastY=sy, panRaf=0, wrapR=null, gx=0, gy=0;
+    const unblock=touch?blockCtxMenu():null;
+    // the room's corner on screen, from what is known (the canvas's place, the room's offset in it, the scroll) — no layout read
+    const origin=()=>({x:wrapR.left+stagewrap.clientLeft+offApplied.x-stagewrap.scrollLeft, y:wrapR.top+stagewrap.clientTop+offApplied.y-stagewrap.scrollTop});
+    function lift(){ if(done||lifted) return; if(!h.isConnected){ finish(true); return; } lifted=true; pointerGesture=true; h.classList.add("on"); try{ h.setPointerCapture(e.pointerId); }catch(x){}
+      wrapR=stagewrap.getBoundingClientRect(); const o=origin(); gx=(sx-o.x)/zoom; gy=(sy-o.y)/zoom;   // where it was grabbed, in the room as it was
+      if(touch&&navigator.vibrate){ try{ navigator.vibrate(12); }catch(x){} } }
+    // The edge follows the pointer — measured in the room, so it stays under the finger while the floor slides (edgePan) or
+    // the room grows to the left/top under it.
+    function follow(){
+      const o=origin(), x=(lastX-o.x)/zoom-gL, y=(lastY-o.y)/zoom-gT;   // the pointer in the room's coordinates as they were at the start
+      const dx=x-gx, dy=y-gy;
+      const nL=L?clamp(Math.round(-dx), STAGE_MIN_W-ow, STAGE_MAX-ow):0, nR=R?clamp(Math.round(dx), STAGE_MIN_W-ow, STAGE_MAX-ow):0;
+      const nT=T?clamp(Math.round(-dy), STAGE_MIN_H-oh, STAGE_MAX-oh):0, nB=B?clamp(Math.round(dy), STAGE_MIN_H-oh, STAGE_MAX-oh):0;
+      if(!capShown && ((L&&-dx>STAGE_MAX-ow)||(R&&dx>STAGE_MAX-ow)||(T&&-dy>STAGE_MAX-oh)||(B&&dy>STAGE_MAX-oh))){ capShown=true; toast(tr("tStageMax"),4500); }
+      if(ow+nL+nR===state.stage.w && oh+nT+nB===state.stage.h && nL===gL && nT===gT) return;
+      resizeRoom(ow+nL+nR, oh+nT+nB, nL-gL, nT-gT, null); gL=nL; gT=nT;
+    }
+    // the pointer at an edge of the visible floor: slide the floor that way and keep growing (one thumb, as far as he likes)
+    function edgePan(){
+      panRaf=0; if(!lifted||done) return;
+      let dx=(L||R)?edgeSpeed(lastX, wrapR.left, wrapR.right):0, dy=(T||B)?edgeSpeed(lastY, wrapR.top, floorBottom(wrapR)):0;
+      // only once the finger has pushed that way: the phone overview puts the handles INSIDE the auto-scroll band, and a
+      // held thumb twitches — without this a hold on the left grip grew the room by ~600 before he could pull it in
+      dx=pushedTo(dx, lastX, sx, wrapR.left, wrapR.right); dy=pushedTo(dy, lastY, sy, wrapR.top, floorBottom(wrapR));
+      if(!dx&&!dy) return;
+      const l0=stagewrap.scrollLeft, t0=stagewrap.scrollTop; stagewrap.scrollLeft=l0+dx; stagewrap.scrollTop=t0+dy;
+      if(stagewrap.scrollLeft===l0 && stagewrap.scrollTop===t0) return;   // nowhere left to slide
+      follow(); panRaf=requestAnimationFrame(edgePan);
+    }
+    function mv(ev){
+      if(!lifted){ if(Math.hypot(ev.clientX-sx, ev.clientY-sy)>10) finish(true); return; }   // moved before the hold: that was a pan
+      lastX=ev.clientX; lastY=ev.clientY; follow();
+      if(!panRaf) panRaf=requestAnimationFrame(edgePan);
+    }
+    function tm(ev){ if(lifted) ev.preventDefault(); }   // once lifted, the finger must not scroll the floor
+    function finish(cancelled){
+      if(done) return; done=true; clearTimeout(holdTimer); cancelAnimationFrame(panRaf); activeDragCancel=null; h.classList.remove("on"); if(unblock) unblock();
+      if(lifted) pointerGesture=false;
+      try{ h.releasePointerCapture(e.pointerId); }catch(x){}
+      h.removeEventListener("pointermove",mv); h.removeEventListener("pointerup",up); h.removeEventListener("pointercancel",cancel); h.removeEventListener("touchmove",tm);
+      if(!lifted) return;
+      if(cancelled){ if(gL||gT||state.stage.w!==ow||state.stage.h!==oh) resizeRoom(ow, oh, -gL, -gT, null); relayoutKeep(); return; }   // a second finger (pinch): as it was
+      relayoutKeep(); save();   // the canvas follows the new size without moving the room under the lifted finger; one undo step
+    }
+    function up(){ finish(false); }
+    function cancel(){ finish(true); }
+    activeDragCancel=()=>finish(true);
+    h.addEventListener("pointermove",mv); h.addEventListener("pointerup",up); h.addEventListener("pointercancel",cancel); h.addEventListener("touchmove",tm,{passive:false});
+    if(touch) holdTimer=setTimeout(lift, 320); else lift();
+  });
+}
+// Edge auto-scroll, shared by item drags and room handles: within 36 px of an edge of the visible floor the floor slides
+// that way, faster the closer the pointer is (px per frame; 0 = not at an edge).
+function edgeSpeed(p, lo, hi){ const m=36, sp=d=>Math.round(Math.min(24, 6+d/3)); return p<lo+m ? -sp(lo+m-p) : p>hi-m ? sp(p-(hi-m)) : 0; }
+// The edge band only slides the floor toward an edge the pointer has been pushed to — 4 px past where it was pressed, or
+// right up against the edge (no room left to push). Pressed inside the band and held still, nothing slides.
+function pushedTo(d, p, p0, lo, hi){ return !d ? 0 : (d<0 ? (p<p0-4 || p<=lo+3) : (p>p0+4 || p>=hi-3)) ? d : 0; }
+function floorBottom(r){ return (isNarrow() && document.body.classList.contains("focused")) ? Math.min(r.bottom, focusEl.getBoundingClientRect().top) : r.bottom; }   // the phone's sheet ends the visible floor
+// Touch: a knob of a table or decor item (⟳, the resize corner) that falls inside a room handle's target would take the thumb
+// meant for the edge (touch-action none: a pan starting there turned the venue's couch). A ⟳ steps to the other side of its
+// item (his couch at the top edge: below it — still turnable); where that is taken too, or for a resize corner, the knob
+// hides while it is there. Zooming or moving the item brings it back. Positions only change with zoom, a move or a resize:
+// checked after those.
+function queueKnobCheck(){ if(!srzEls.length || !isTouch) return; clearTimeout(knobTimer); knobTimer=setTimeout(knobClearance, 150); }
+function knobClearance(){
+  const hs=srzEls.map(x=>x.getBoundingClientRect()).filter(r=>r.width>0);
+  const hit=r=>hs.some(b=>r.left<b.right && r.right>b.left && r.top<b.bottom && r.bottom>b.top);
+  const todo=[];
+  stage.querySelectorAll(".rot-h, .rz").forEach(k=>{   // every read first, then every write (one layout)
+    const r=k.getBoundingClientRect(); if(!r.width) return;   // not laid out (read only)
+    const flipped=k.classList.contains("kn-flip"), item=k.classList.contains("rot-h") && (k.closest(".feature") || k.closest(".table"));
+    let other=null;   // the knob mirrored through its item's centre
+    if(item){ const c=(item.querySelector(".table-disc")||item).getBoundingClientRect(), mx=c.left+c.right-r.left-r.right, my=c.top+c.bottom-r.top-r.bottom;
+      other={left:r.left+mx, right:r.right+mx, top:r.top+my, bottom:r.bottom+my}; }
+    const home=flipped?other:r, away=flipped?r:other;
+    const want=!hit(home) ? "" : (away && !hit(away)) ? "flip" : "off";
+    todo.push([k, want]);
+  });
+  todo.forEach(([k, want])=>{
+    const flip=want==="flip";
+    if(flip!==k.classList.contains("kn-flip")){
+      if(flip){ k.dataset.top0=k.style.top; k.style.top=k.closest(".feature") ? "calc(100% + 6px)" : (-parseFloat(k.style.top)||0)+"px"; }
+      else { k.style.top=k.dataset.top0||k.style.top; delete k.dataset.top0; }
+      k.classList.toggle("kn-flip", flip);
+    }
+    if((want==="off")!==k.classList.contains("kn-off")) k.classList.toggle("kn-off", want==="off");
   });
 }
 
@@ -4050,9 +4399,10 @@ function tableHooks(){ return {
   canMove:()=>can("layout"),
   move:t=>{ if(can("tables")) markMergeTarget(t, mergeTargetFor(t)); },
   clear:()=>markMergeTarget(null,null),
-  drop:(t,ox,oy)=>{ if(!can("tables")) return false; const dst=mergeTargetFor(t); markMergeTarget(null,null); if(!dst) return false;
+  drop:(t,back)=>{ if(!can("tables")) return false; const dst=mergeTargetFor(t); markMergeTarget(null,null); if(!dst) return false;
+    back();           // back where it was, and the room as it was before this drag — FIRST: whatever follows may save
     flushLiveRow();   // a name still being typed in the sheet joins the merge
-    t.x=ox; t.y=oy; renderTables([t.id]);   // back where it was: the merge is the outcome, not the overlap
+    renderTables([t.id]);   // the merge is the outcome, not the overlap
     const n=tableSeated(t).length, c=Math.max(dst.capacity, tableSeated(dst).length+n);
     if(c>30){ toast(tr("tMergeTooBig",{b:dst.label,c}),3500); return true; }   // 30 = the sanitizer's clamp: a bigger table would lose chairs on reload
     if(c>dst.capacity && (!can("seats") || c>maxSeatsFor(dst))){ lockedToast("seats"); return true; }
@@ -4179,11 +4529,11 @@ function visibleBox(){
 }
 // Glide the view so stage point (cx,cy) sits at the visible centre at zoom z.
 function viewTo(cx,cy,z,animate){
-  const m=isNarrow()?12:24, wrap=stagewrap;
+  const wrap=stagewrap;
   if(viewAnim){ cancelAnimationFrame(viewAnim); viewAnim=null; }
-  const place=(zz,x,y)=>{ zoom=zz; applyZoom(); const b=visibleBox(); wrap.scrollLeft=m+x*zoom-b.w/2; wrap.scrollTop=m+y*zoom-b.h/2; };
+  const place=(zz,x,y)=>{ zoom=zz; applyZoom(); const b=visibleBox(), o=stageOff(); wrap.scrollLeft=o.x+x*zoom-b.w/2; wrap.scrollTop=o.y+y*zoom-b.h/2; };
   if(!animate){ place(z,cx,cy); return; }
-  const b0=visibleBox(), z0=zoom, cx0=(wrap.scrollLeft+b0.w/2-m)/z0, cy0=(wrap.scrollTop+b0.h/2-m)/z0, t0=performance.now(), dur=280;
+  const b0=visibleBox(), o0=stageOff(), z0=zoom, cx0=(wrap.scrollLeft+b0.w/2-o0.x)/z0, cy0=(wrap.scrollTop+b0.h/2-o0.y)/z0, t0=performance.now(), dur=280;
   const step=now=>{ const p=Math.min(1,(now-t0)/dur), e=1-Math.pow(1-p,3);
     place(z0+(z-z0)*e, cx0+(cx-cx0)*e, cy0+(cy-cy0)*e);
     viewAnim = p<1 ? requestAnimationFrame(step) : null; };
@@ -4599,7 +4949,8 @@ function addRoundTable(){
   const id=nextId(); const c=visibleCenter();
   const roundCount=state.tables.filter(t=>t.shape!=="head").length;
   const cap=Math.min(10, maxSeatsFor({shape:"round"}));
-  state.tables.push({id, label:String(roundCount+1), shape:"round", x:clamp(c.x,120,state.stage.w-120), y:clamp(c.y,120,state.stage.h-120), capacity:cap, seats:Array(cap).fill(null)});
+  const t={id, label:String(roundCount+1), shape:"round", x:c.x, y:c.y, capacity:cap, seats:Array(cap).fill(null)};
+  settleNew(t, 120); state.tables.push(t);   // near an edge the room grows to hold it (or, without that right, the old inset)
   save(); renderTables(); setNav(false); toast(tr("tTableAdded")); focusTable(id,{row:isTouch?null:0});
 }
 $("addTableBtn").addEventListener("click",addRoundTable);
@@ -4608,11 +4959,12 @@ function addRectTable(){
   if(labFull("rect")) return;
   const id=nextId(), c=visibleCenter(), cap=Math.min(can("seats")?12:10, maxSeatsFor({shape:"rect"})), g=rectGeom({capacity:cap});   // no seat-count right: the server gives a new table at most 10
   const n=state.tables.filter(t=>t.shape!=="head").length;
-  state.tables.push({id, label:String(n+1), shape:"rect", x:clamp(c.x,g.tableW/2+20,state.stage.w-g.tableW/2-20), y:clamp(c.y,120,state.stage.h-120), rot:0, capacity:cap, seats:Array(cap).fill(null)});
+  const t={id, label:String(n+1), shape:"rect", x:c.x, y:c.y, rot:0, capacity:cap, seats:Array(cap).fill(null)};
+  settleNew(t, g.tableW/2+20, 120); state.tables.push(t);
   save(); renderTables(); setNav(false); toast(tr("tTableAdded")); focusTable(id,{row:isTouch?null:0});
 }
 $("addRectBtn").addEventListener("click",addRectTable);
-$("addHeadBtn").addEventListener("click",()=>{ if(!can("tables")){ lockedToast("tables"); return; } if(labFull("head")) return; const c=visibleCenter(); const t=makeHeadTable(nextId()); t.x=clamp(c.x,200,state.stage.w-200); t.y=clamp(c.y,100,state.stage.h-100); state.tables.push(t); save(); renderTables(); setNav(false); toast(tr("tHeadAdded")); focusTable(t.id); });
+$("addHeadBtn").addEventListener("click",()=>{ if(!can("tables")){ lockedToast("tables"); return; } if(labFull("head")) return; const c=visibleCenter(); const t=makeHeadTable(nextId()); t.x=c.x; t.y=c.y; settleNew(t, 200, 100); state.tables.push(t); save(); renderTables(); setNav(false); toast(tr("tHeadAdded")); focusTable(t.id); });
 $("addGuestBtn").addEventListener("click",()=>{
   const ta=$("guestInput");
   // "Οικ. Παπαδόπουλου:" on its own line names an invitation; the names under it belong to it until a blank line or the next such line
@@ -5213,6 +5565,7 @@ async function cloudPush(snap){
     if(newer) pendingSnap.baseUpdated=d.updated;   // a newer save is waiting: it will come back fixed too, without losing what was typed meanwhile
     else if(!interactionBusy()) applyPulledPlan(prof,{plan:d.plan, updated:d.updated, name:prof.name});
     else { clearTimeout(conflictTimer); conflictTimer=setTimeout(()=>pullIfNewer(true),4000); }
+    refreshAccess();   // the rights this device went by were out of date (the venue changed them since): learn the new ones now, not at the next poll — the room handles and undo follow
     if(Date.now()-(prof._enfToast||0)>60000){ prof._enfToast=Date.now(); const L=prof.life||{};
       toast(prof.owner==="venue"?tr("tLockedByVenue",{v:prof.venueName||tr("theVenue")}):(L.fullAt && L.fullAt>Date.now())?tr("tPhaseEnforced",{d:fmtDate(L.fullAt)}):tr("tPhaseEnforced0"),4500); }   // a couple's own plan: never "the venue"
   }
@@ -5363,6 +5716,9 @@ window.addEventListener("pagehide",flushCloudPush);
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") flushCloudPush(); });
 function applyPulledPlan(cur, d){
   closePlaceMenu();
+  // a newer copy of the plan already on screen (the 15 s poll, a save that came back fixed, a conflict): his view stays
+  // where it is — only a plan opened over another one (or over this device's blank stand-in) opens fitted
+  const keepView=shownProf===cur.id && cur.id===profiles.activeId && !cur.unsynced && !!offApplied, before=keepView?state:null;
   if(cur.phaseDirty){ cur.phaseDirty=false; setTimeout(()=>toast(tr("cWaitReplaced"),7000),60); }   // the server's copy replaces the change that waited
   adoptAccess(cur, d);
   const s=d.plan||{}; delete s._profileName;
@@ -5375,19 +5731,23 @@ function applyPulledPlan(cur, d){
       // kept on this device only: the starter goes online with the first real edit (an untouched template stays empty,
       // so new weddings never inherit — and lock — a layout nobody designed)
       if(cur.support) cur._mem=JSON.stringify(state); else { try{ localStorage.setItem(planKey(cur.id), JSON.stringify(state)); }catch(e){} }
-      setTimeout(()=>{ zoom=initialZoom(); applyZoom(); },30);
+      shownProf=cur.id; setTimeout(()=>fitView(initialZoom()),30);
     } else if(cur.id===profiles.activeId){ saveProfilesIdx(); setPick(null); dragData=null; loadActive(); return; }   // this device's own copy — not whatever plan was on screen (a link opened over another plan)
     saveProfilesIdx(); applyAccess(); return; }
   sanitizePlan(s); if(s.layoutVersion!==LAYOUT_VERSION) migrateLayout(s);
   setPick(null); dragData=null;
+  // the other device grew/shrank the room on the left/top: every item moved by that much — scroll along, as undo does
+  const sh=keepView?planShift(before, s):null, want=sh?{l:stagewrap.scrollLeft+sh.dx*zoom, t:stagewrap.scrollTop+sh.dy*zoom}:undefined;
   state=s; uid=state._uid||2001; fontScale=state.seatFontScale||1;
   if(d.name) cur.name=d.name; cur.cloudUpdated=d.updated; cur.cloudGuests=Object.keys(state.guests).length; cur.unsynced=false; saveProfilesIdx();
   if(cur.support) cur._mem=JSON.stringify(state);
   else { try{ localStorage.setItem(planKey(cur.id), JSON.stringify(state)); }catch(e){ toast(tr("cLocalErr",{e:String(e&&e.message||e)}),6000); } }
-  applyStage(); $("stageFloor").value=state.stageMaterial||"grass";
+  applyStage(want); $("stageFloor").value=state.stageMaterial||"grass";
   renderProfiles(); applyAccess(); renderAll(); resetHistory();
+  shownProf=cur.id;
   if(focusId!=null && focusedTable()) requestAnimationFrame(()=>focusTable(focusId));   // keep the open table in view
-  else setTimeout(()=>{ zoom=initialZoom(); applyZoom(); },30);
+  else if(keepView){ relayoutKeep(); settleView(); }
+  else setTimeout(()=>fitView(initialZoom()),30);
 }
 function renderCloudBody(){
   const cur=currentProfile(); const body=$("cloudBody"); const code=getSyncCode();
@@ -5648,6 +6008,7 @@ window.addEventListener("hashchange",()=>{ if(!IS_LAB && /[#&]((claim|key|vkey|v
 const PERM_KEYS=["floor","decor","layout","tables","seats","labels"];
 const PERM_LABEL={floor:"permFloor",decor:"permDecor",layout:"permLayout",tables:"permTables",seats:"permSeats",labels:"permLabels"};
 let ACCESS={role:"couple", restricted:false, preview:false, perms:null};
+function dropHistoryForRights(){ if(pointerGesture){ setTimeout(dropHistoryForRights, 250); return; } resetHistory(); }   // not under a finger: after the gesture's own save
 function can(k){ return IS_LAB || (!ACCESS.ro && (!ACCESS.perms || ACCESS.perms[k]!==false)); }   // read only: nothing
 function applyAccess(){
   const cur=(profiles&&profiles.profiles)?currentProfile():null;
@@ -5665,6 +6026,13 @@ function applyAccess(){
   document.body.classList.toggle("ro", ACCESS.ro);
   PERM_KEYS.forEach(k=>document.body.classList.toggle("lock-"+k, !can(k)));
   const fl=$("stageFloor"); if(fl) fl.disabled=!can("floor");
+  updateGrowUI();
+  // Rights changed (the venue closed or opened a part, a phase began, view only): no undo across it — an undo step made
+  // under the old rights (a room grown to the left moved every table) would go up half-refused. Whoever calls this after
+  // a fetch (the poll, the access dialog, a pull) gets the same rule.
+  const sig=JSON.stringify([ACCESS.ro, ACCESS.restricted?ACCESS.perms:null]);
+  if(rightsSig!==null && sig!==rightsSig) dropHistoryForRights();
+  rightsSig=sig;
   ["venue","support","viewer"].forEach(r=>document.body.classList.toggle("role-"+r, role===r));
   renderRoleBadge(); renderLifeBar(); updateUndoButtons(); schedulePhaseCheck();
   if(wasRo!==ACCESS.ro){ setPick(null); closeMenu(); renderAll(); }   // chairs, chips and seat rows are built read-only (or not)
@@ -6259,11 +6627,14 @@ function renderViewMenu(){
   m.querySelectorAll("[data-a]").forEach(b=>b.onclick=ev=>{ ev.stopPropagation(); const a=b.dataset.a;
     if(a==="fdown") setFontScale(fontScale-0.15); else if(a==="fup") setFontScale(fontScale+0.15);
     else if(a==="ndown") setTableFontScale((state.tableFontScale||1)-0.2); else if(a==="nup") setTableFontScale((state.tableFontScale||1)+0.2);
-    else if(a==="zout") zoomBy(1/1.2); else if(a==="zin") zoomBy(1.2); else if(a==="fit"){ zoom=clamp(fitZoom(),0.2,2.5); applyZoom(); }
+    else if(a==="zout") zoomBy(1/1.2); else if(a==="zin") zoomBy(1.2); else if(a==="fit") fitView(clamp(fitZoom(),0.2,2.5));
     renderViewMenu(); });
 }
 function openViewMenu(anchorEl){ const m=$("viewmenu"); if(m.style.display==="block"){ m.style.display="none"; return; } renderViewMenu(); showPopover(m, anchorOf(anchorEl)); }
-function fitZoom(){ const b=visibleBox(), n=isNarrow(); return Math.min(1,(b.w-(n?24:60))/state.stage.w,(b.h-(n?34:80))/state.stage.h); }
+// The whole floor = the room and whatever hangs out of it (an item left outside by a shrunk side is still his, and the
+// floor PDF shows it): what the overview fits.
+function fitExtent(){ const o=itemsOutside(); return { w:state.stage.w+o.l+o.r, h:state.stage.h+o.t+o.b, l:o.l, t:o.t }; }
+function fitZoom(){ const b=visibleBox(), n=isNarrow(), m=viewMargin(), f=fitExtent(); return Math.min(1,(b.w-(n?2*m:60))/f.w,(b.h-(n?2*m+10:80))/f.h); }
 // Opening view: the 0.5 floor keeps names readable on a desktop; a phone fits the whole space instead.
 function initialZoom(){ if(isNarrow()) layoutCanvas(true); return Math.min(1, Math.max(fitZoom(), isNarrow()?0.1:0.5)); }
 function applyZoom(){
@@ -6271,13 +6642,18 @@ function applyZoom(){
   // far view (phones only, overview zoom): one big number per table instead of counters/gear/'+' nobody can read at 16 % — hysteresis so a pinch at the edge doesn't flicker
   const far=document.body.classList.contains("far"); document.body.classList.toggle("far", isNarrow() && (far ? zoom<0.50 : zoom<0.40));
   stage.style.transform=`scale(${zoom})`;
-  const m=isNarrow()?12:24, w=(state.stage&&state.stage.w)||1700, h=(state.stage&&state.stage.h)||1360;
-  stage.style.margin=`${m}px ${Math.round(m+w*(zoom-1))}px ${Math.round(m+h*(zoom-1))}px ${m}px`;
+  // the room's edge handles keep their size on screen: set on the 8 handles only — on #stage the inherited property made
+  // every chair and name restyle on every pinch frame
+  const iz=String(1/zoom); if(srzEls.length && srzEls[0].style.getPropertyValue("--iz")!==iz) srzEls.forEach(h=>h.style.setProperty("--iz", iz));
+  placeStage();
   $("zoomLabel").textContent=Math.round(zoom*100)+"%";
 }
+// Show the whole floor from its top-left corner (the old "scroll to 0,0" — the canvas now has free paper around the room;
+// an item hanging out on the left/top is shown too).
+function fitView(z){ padL=padT=padR=padB=0; zoom=z; applyZoom(); const o=stageOff(), m=viewMargin(), f=fitExtent(); stagewrap.scrollLeft=o.x-f.l*zoom-m; stagewrap.scrollTop=o.y-f.t*zoom-m; }
 $("zoomIn").addEventListener("click",()=>zoomBy(1.15));
 $("zoomOut").addEventListener("click",()=>zoomBy(1/1.15));
-$("zoomFit").addEventListener("click",()=>{ zoom=clamp(fitZoom(),0.2,2.5); applyZoom(); });
+$("zoomFit").addEventListener("click",()=>fitView(clamp(fitZoom(),0.2,2.5)));
 
 // ============================================================
 //  INIT
@@ -6286,11 +6662,11 @@ function renderAll(){ renderFeatures(); renderTables(); renderGroups(); renderPo
 if(!state.stage) state.stage={w:2100,h:1400};
 if(!state.stageMaterial) state.stageMaterial="grass";
 applyStage();
-const _stageResize=document.createElement("div"); _stageResize.id="stageResize"; _stageResize.title=tr("stageResizeTip");
-stage.appendChild(_stageResize); makeStageResizable(_stageResize);
+// the room's eight edge handles — BEFORE any table or decor item in the DOM (same z-index as the cards: those paint above)
+srzEls=["n","s","e","w","nw","ne","sw","se"].map(k=>{ const h=document.createElement("div"); h.className="srz "+k; h.title=tr("stageResizeTip"); h.style.setProperty("--iz", String(1/zoom)); stage.appendChild(h); makeStageResizable(h, k); return h; });
 initFloorSelect(); initDecor(); renderProfiles();
-applyAccess(); renderAll(); resetHistory();
-setTimeout(()=>{ zoom=initialZoom(); applyZoom(); },50);
+applyAccess(); renderAll(); resetHistory(); shownProf=profiles.activeId;
+setTimeout(()=>fitView(initialZoom()),50);
 // Turn each SVG texture into a plain bitmap once (canvas → JPEG data URI). Browsers re-render the SVG noise
 // filters at every zoom step, which is what made pinch-zoom crawl on phones; a bitmap just gets resampled.
 function rasterizeMaterials(){

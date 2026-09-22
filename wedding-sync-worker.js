@@ -568,7 +568,52 @@ function enforcePerms(cur, next, perms, ownerIsVenue) {
     if (cap !== t.capacity) { t.capacity = cap; const s = (Array.isArray(t.seats) ? t.seats : []).slice(0, cap); while (s.length < cap) s.push(null); t.seats = s; }
   }
   out.tables = tables;
-  return out;
+  return unshiftRefused(cur, next, out, perms, ownerIsVenue);
+}
+// The planner grows the room to the LEFT/UP by enlarging it and moving EVERY table and decor item by the same offset (the
+// room's corner stays 0,0). A role that may not move some of them — or may not change the room — never gets that offer,
+// but a device that has not yet heard its rights changed can still send it. Copying back only the locked parts would leave
+// the rest shifted against them (every table off from the room and the decor by the whole growth). So when the change is
+// such a shift and part of it is refused, the shift is refused as a whole: the kept positions and the room lose the offset
+// again — the plan comes back as it was, plus whatever else was allowed. Never half of it.
+function unshiftRefused(cur, next, out, perms, ownerIsVenue) {
+  const num = v => typeof v === "number" && isFinite(v);
+  const cs = cur.stage, ns = next.stage;
+  if (!cs || !ns || typeof cs !== "object" || typeof ns !== "object" || !num(cs.w) || !num(cs.h) || !num(ns.w) || !num(ns.h)) return out;
+  const cw = cs.w !== ns.w, chg = cs.h !== ns.h; if (!cw && !chg) return out;   // a left/up shift always changes the room's size
+  const obj = x => x && typeof x === "object";
+  const curT = new Map(cur.tables.filter(obj).map(t => [String(t.id), t]));
+  const curF = new Map((Array.isArray(cur.features) ? cur.features : []).filter(obj).map(f => [String(f.id), f]));
+  const rev = [], kept = [];   // [cur, next] pairs: positions the server copies back / keeps from `next`
+  const pair = (a, b, list) => { if (obj(a) && obj(b) && num(a.x) && num(a.y) && num(b.x) && num(b.y)) list.push([a, b]); };
+  next.tables.filter(obj).forEach(t => pair(curT.get(String(t.id)), t, perms.layout ? kept : rev));
+  (Array.isArray(next.features) ? next.features : []).filter(obj).forEach(f => { const c = curF.get(String(f.id)); pair(c, f, (!perms.decor && venueItem(c, ownerIsVenue)) ? rev : kept); });
+  const key = ([a, b]) => Math.round((b.x - a.x) * 100) / 100 + "," + Math.round((b.y - a.y) * 100) / 100;
+  const all = rev.concat(kept), cnt = new Map(); all.forEach(p => { const k = key(p); cnt.set(k, (cnt.get(k) || 0) + 1); });
+  let best = null, bc = 0; cnt.forEach((c, k) => { if (c > bc) { bc = c; best = k; } });
+  if (!best || best === "0,0" || bc * 2 <= all.length) return out;
+  const [dx, dy] = best.split(",").map(Number);
+  if ((dx && !cw) || (dy && !chg)) return out;
+  if (all.length < 3 && ((dx && ns.w - cs.w !== dx) || (dy && ns.h - cs.h !== dy))) return out;   // too few items to tell a shift from a drag: the room must have grown by exactly that
+  const share = list => list.filter(p => key(p) === best).length * 2 > list.length;
+  const refused = !perms.floor || (rev.length > 0 && share(rev));   // the room goes back, or the moved-by-it items do
+  if (!refused || (kept.length && !share(kept))) return out;
+  // take the offset off everything `out` keeps from `next`; an item that only rode along gets its old position exactly
+  const back = (o, c) => { if (!obj(o) || !num(o.x) || !num(o.y)) return o;
+    if (c && num(c.x) && num(c.y) && Math.abs(o.x - dx - c.x) < 1e-6 && Math.abs(o.y - dy - c.y) < 1e-6) return { ...o, x: c.x, y: c.y };
+    return { ...o, x: o.x - dx, y: o.y - dy }; };
+  const nextT = new Set(next.tables.filter(obj).map(t => String(t.id)));
+  const res = { ...out };
+  res.tables = out.tables.map(t => { const id = String(t && t.id), c = curT.get(id);
+    return (!nextT.has(id) || (c && !perms.layout)) ? t : back(t, c); });   // copied from cur (locked position / a table put back): already right
+  const curVenue = new Set([...curF.values()].filter(f => venueItem(f, ownerIsVenue)).map(f => String(f.id)));
+  res.features = (Array.isArray(out.features) ? out.features : []).map(f => { if (!obj(f)) return f; const id = String(f.id);
+    return (!perms.decor && curVenue.has(id)) ? f : back(f, curF.get(id)); });
+  if (perms.floor) {   // the room keeps whatever else changed (its right/bottom side), without the left/top part
+    const w = ns.w - dx, h = ns.h - dy;
+    res.stage = (w >= 700 && h >= 600 && w <= 20000 && h <= 20000) ? { ...ns, w, h } : cs;
+  }
+  return res;
 }
 // For every role: an old client can never make everyone's planner rebuild the layout (layoutVersion) or reuse ids (_uid).
 const cnt = v => { v = +v; return Number.isSafeInteger(v) && v >= 0 && v <= 1e9 ? v : 0; };

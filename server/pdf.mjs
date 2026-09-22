@@ -22,7 +22,7 @@ import PDFDocument from 'pdfkit';
 
 // ---------------------------------------------------------------- limits
 const MAX_TABLES = 200, MAX_GUESTS = 2000, MAX_FEATURES = 300, MAX_GROUPS = 200, MAX_SEATS = 30;
-const COORD_MIN = -5000, COORD_MAX = 25000;
+const COORD_MIN = -25000, COORD_MAX = 25000;   // the room grows to 20000 from any side; a side shrunk afterwards can leave items far out on the left/top (negative), still on the plan
 
 // ---------------------------------------------------------------- palette (index.html :root)
 const C = {

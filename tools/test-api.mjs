@@ -301,6 +301,48 @@ ok(r.d.role === 'couple' && r.d.perms.labels === false, 'code auth keeps the cou
   await call('DELETE', '/admin/couples/' + cid2, undefined, OWN);
   ok(!m.has('plan:' + child.id) && !m.has('plan:' + k2.id), 'erasure removes the extra plans too');
 }
+{ // a room grown to the LEFT/UP moves every item: when part of that is refused, all of it is (never a half-shifted plan)
+  const V5 = (await call('POST', '/admin/venues', { name: 'V5' }, OWN)).d, H5 = { 'X-Venue-Key': V5.key };
+  const W5 = (await call('POST', '/venues/' + V5.id + '/weddings', { label: 'W5' }, H5)).d;
+  const room = () => ({ ...layout(), tables: [1, 2, 3].map(i => ({ id: i, shape: 'round', x: 100.25 * i + 0.13, y: 300.7, label: String(i), capacity: 8, seats: Array(8).fill(null) })),
+    features: [{ id: 'fa', kind: 'zone', x: 378.18, y: 1554, w: 2167, h: 296, label: 'Wood' }, { id: 'fb', kind: 'prop', x: 41, y: 1554, w: 100, h: 60, label: 'WC' }] });
+  const setRoom = async perms => { await call('PUT', '/plans/' + W5.planId, { plan: room() }, { 'X-Edit-Key': W5.venueKey });
+    await call('PATCH', '/venues/' + V5.id + '/weddings/' + W5.planId, { perms }, H5);
+    return (await call('GET', '/plans/' + W5.planId, undefined, { 'X-Edit-Key': W5.editKey })).d; };
+  const shifted = (p, dx, dy, dw, dh) => { const q = JSON.parse(JSON.stringify(p)); q.tables.forEach(t => { t.x += dx; t.y += dy; }); q.features.forEach(f => { f.x += dx; f.y += dy; }); q.stage = { ...q.stage, w: q.stage.w + dw, h: q.stage.h + dh }; return q; };
+  const same = (s, p) => s.stage.w === p.stage.w && s.stage.h === p.stage.h && s.tables.every((t, i) => t.x === p.tables[i].x && t.y === p.tables[i].y) && s.features.every((f, i) => f.x === p.features[i].x && f.y === p.features[i].y);
+  const pos = s => [s.stage, s.tables.map(t => [t.x, t.y]), s.features.map(f => [f.x, f.y])];
+  let g = await setRoom({ floor: true, decor: true, layout: false, tables: true, seats: true, labels: true });
+  let pr = await call('PUT', '/plans/' + W5.planId, { plan: shifted(g.plan, 140, 0, 140, 0), baseUpdated: g.updated }, { 'X-Edit-Key': W5.editKey });
+  let st = raw('plan:' + W5.planId).plan;
+  ok(pr.d.enforced && same(st, room()), 'room grown left while tables are locked: refused as a whole — the room, every table and the decor exactly as they were', pos(st));
+  g = await setRoom({ floor: true, decor: false, layout: true, tables: true, seats: true, labels: true });
+  pr = await call('PUT', '/plans/' + W5.planId, { plan: shifted(g.plan, 0, 90, 0, 90), baseUpdated: g.updated }, { 'X-Edit-Key': W5.editKey });
+  st = raw('plan:' + W5.planId).plan;
+  ok(pr.d.enforced && same(st, room()), 'room grown up while the venue\'s decor is locked: tables back too, the room as it was', pos(st));
+  g = await setRoom({ floor: true, decor: true, layout: false, tables: true, seats: true, labels: true });
+  pr = await call('PUT', '/plans/' + W5.planId, { plan: shifted(g.plan, 140, 0, 200, 0), baseUpdated: g.updated }, { 'X-Edit-Key': W5.editKey });
+  st = raw('plan:' + W5.planId).plan;
+  ok(st.stage.w === 2060 && same({ ...st, stage: room().stage }, room()), 'grown left 140 and right 60 in one save, tables locked: the right side stays (the floor is open), the left shift goes', pos(st));
+  g = await setRoom({ floor: false, decor: true, layout: true, tables: true, seats: true, labels: true });
+  pr = await call('PUT', '/plans/' + W5.planId, { plan: shifted(g.plan, 140, 60, 140, 60), baseUpdated: g.updated }, { 'X-Edit-Key': W5.editKey });
+  st = raw('plan:' + W5.planId).plan;
+  ok(pr.d.enforced && same(st, room()), 'floor locked, everything else open: the room stays and so do the items (not shifted against it)', pos(st));
+  g = await setRoom({ floor: true, decor: true, layout: true, tables: true, seats: true, labels: true });
+  pr = await call('PUT', '/plans/' + W5.planId, { plan: shifted(g.plan, 140, 60, 140, 60), baseUpdated: g.updated }, { 'X-Edit-Key': W5.editKey });
+  st = raw('plan:' + W5.planId).plan;
+  ok(!pr.d.enforced && st.stage.w === 2140 && st.tables[0].x === 100.25 + 0.13 + 140 && st.features[0].x === 378.18 + 140, 'with every right the growth to the left/up is kept as sent', pos(st));
+  g = await setRoom({ floor: true, decor: true, layout: false, tables: true, seats: true, labels: true });
+  const one = JSON.parse(JSON.stringify(g.plan)); one.tables[1].x += 50; one.features[1].x += 30; one.stage = { ...one.stage, w: one.stage.w + 300 };
+  pr = await call('PUT', '/plans/' + W5.planId, { plan: one, baseUpdated: g.updated }, { 'X-Edit-Key': W5.editKey });
+  st = raw('plan:' + W5.planId).plan;
+  ok(st.stage.w === 2300 && st.tables[1].x === room().tables[1].x && st.features[1].x === 41 + 30 && st.features[0].x === 378.18, 'no shift: a table move is refused alone, the decor move and the room grown right are kept', pos(st));
+  const add = shifted(g.plan, 0, 75, 0, 75); add.tables.push({ id: 9, shape: 'round', x: 500, y: 40, label: '9', capacity: 8, seats: Array(8).fill(null) }); add.tables[0].seats[0] = 'gz'; add.guests = { gz: { name: 'Ζωή' } };
+  g = await setRoom({ floor: true, decor: true, layout: false, tables: true, seats: true, labels: true });
+  pr = await call('PUT', '/plans/' + W5.planId, { plan: add, baseUpdated: g.updated }, { 'X-Edit-Key': W5.editKey });
+  st = raw('plan:' + W5.planId).plan;
+  ok(same({ ...st, tables: st.tables.slice(0, 3) }, room()) && st.tables[3].id === 9 && st.tables[3].y === 40 - 75 && st.tables[0].seats[0] === 'gz', 'a table added in the same save keeps its place in the room as it was; names and seats stay', pos(st));
+}
 { // capacity coercion, poisoned counters, label normalisation, support acting for the venue, the venue's message
   const V3 = (await call('POST', '/admin/venues', { name: 'V3' }, OWN)).d, H3 = { 'X-Venue-Key': V3.key };
   const T3 = (await call('POST', '/venues/' + V3.id + '/template', {}, H3)).d;
