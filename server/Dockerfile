@@ -22,7 +22,9 @@ RUN npm ci --omit=dev && npm cache clean --force
 COPY server/server.mjs server/pdf.mjs server/pdf-worker.mjs ./
 COPY wedding-sync-worker.js ./worker.mjs
 RUN mkdir -p /app/public
-COPY index.html seating-planner.html seating-planner-de.html seating-planner-el.html lab.html admin.html venue.html privacy.html terms.html dpa.html robots.txt sitemap.xml /app/public/
+# Every marketing page and asset that the sitemap or a canonical points at MUST be in this list, or it 404s in
+# production while Search Console has already been told it exists.
+COPY index.html plano-trapezion-gamou.html seating-planner.html seating-planner-de.html seating-planner-el.html lab.html admin.html venue.html privacy.html terms.html dpa.html robots.txt sitemap.xml og-takeaseat.png /app/public/
 
 ENV PORT=8080 \
     DB_PATH=/data/wedding.db \

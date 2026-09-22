@@ -1,28 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- lastmod is the one hint Google actually uses; changefreq and priority it ignores, so they are not here.
+     lab.html is NOT listed: it ships with <meta name="robots" content="noindex,nofollow">, and submitting a
+     noindexed URL is a Search Console error. If the free demo should compete for «δωρεάν πλάνο τραπεζιών γάμου»,
+     drop the noindex in tools/build-planner.mjs (mode === 'lab') first, then add it back here. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://takeaseat.gr/</loc>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
+    <lastmod>2026-09-22</lastmod>
   </url>
   <url>
-    <loc>https://takeaseat.gr/lab.html</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
+    <loc>https://takeaseat.gr/plano-trapezion-gamou.html</loc>
+    <lastmod>2026-09-22</lastmod>
   </url>
   <url>
     <loc>https://takeaseat.gr/terms.html</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.3</priority>
+    <lastmod>2026-09-22</lastmod>
   </url>
   <url>
     <loc>https://takeaseat.gr/privacy.html</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.3</priority>
+    <lastmod>2026-09-22</lastmod>
   </url>
   <url>
     <loc>https://takeaseat.gr/dpa.html</loc>
-    <changefreq>yearly</changefreq>
-    <priority>0.2</priority>
+    <lastmod>2026-09-22</lastmod>
   </url>
 </urlset>

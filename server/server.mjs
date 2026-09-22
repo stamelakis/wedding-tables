@@ -135,14 +135,17 @@ catch (e) { console.error('migration failed', e); process.exit(1); }   // never 
 let chain = Promise.resolve();
 const serial = fn => { const p = chain.then(fn, fn); chain = p.catch(() => {}); return p; };
 // Hourly housekeeping: expired one-time links and rate-limit rows (through the same queue as requests).
-const runSweep = () => serial(() => sweep(env)).then(r => { if (r.tok || r.rlmail || r.claim) console.log('sweep: ' + JSON.stringify(r)); }, e => console.error('sweep failed', e));
+const runSweep = () => serial(() => sweep(env)).then(r => { if (r.tok || r.rlmail || r.claim || r.find || r.findEnded) console.log('sweep: ' + JSON.stringify(r)); }, e => console.error('sweep failed', e));
 setTimeout(runSweep, 60000).unref?.(); setInterval(runSweep, 3600000).unref?.();
 
 // ---- static files ----
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png',
   '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.ico': 'image/x-icon', '.webp': 'image/webp', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml; charset=utf-8' };
-const API_PREFIXES = ['/plans', '/codes', '/venues', '/admin', '/claim', '/health', '/recover', '/verify', '/pdf'];
+const API_PREFIXES = ['/plans', '/codes', '/venues', '/admin', '/claim', '/health', '/recover', '/verify', '/pdf', '/find'];
+// The guest finder's page: never indexed. robots.txt disallows it too; this header is what a crawler that ignores robots.txt
+// still gets. Renaming the page means changing this one line and the Disallow in robots.txt.
+const NOINDEX = new Set(['/trapezi.html']);
 const MAX_BODY = 3 * 1024 * 1024;   // the largest plan is 512 KB of JSON; anything far bigger is refused before it is read
 const PDF_LANG = { el: 1, en: 1, de: 1 };
 const PDF_WORDS = { el: ['κάτοψη', 'αναμνηστικό'], en: ['floor plan', 'keepsake'], de: ['Grundriss', 'Erinnerung'] };
@@ -166,10 +169,11 @@ function serveStatic(req, res, urlPath) {
     if (serr || !st.isFile()) { res.writeHead(404, { 'Content-Type': 'text/plain' }); res.end('not found'); return; }
     const etag = '"' + st.size + '-' + Math.floor(st.mtimeMs) + '"';
     const cache = ext === '.html' ? 'no-cache' : 'public, max-age=3600';
-    if (req.headers['if-none-match'] === etag) { res.writeHead(304, { 'ETag': etag, 'Cache-Control': cache }); res.end(); return; }   // revalidation → 304, not a 168 KB re-download
+    const robots = NOINDEX.has(rel.toLowerCase()) ? { 'X-Robots-Tag': 'noindex, nofollow, noarchive' } : {};
+    if (req.headers['if-none-match'] === etag) { res.writeHead(304, { 'ETag': etag, 'Cache-Control': cache, ...robots }); res.end(); return; }   // revalidation → 304, not a 168 KB re-download
     fs.readFile(full, (err, data) => {
       if (err) { res.writeHead(404, { 'Content-Type': 'text/plain' }); res.end('not found'); return; }
-      res.writeHead(200, { 'Content-Type': MIME[ext], 'Cache-Control': cache, 'ETag': etag });
+      res.writeHead(200, { 'Content-Type': MIME[ext], 'Cache-Control': cache, 'ETag': etag, ...robots });
       res.end(data);
     });
   });
@@ -184,14 +188,27 @@ function rateOk(key, limit, windowMs) {
   if (arr.length >= limit) { RL.set(key, arr); return false; }
   arr.push(now); RL.set(key, arr); return true;
 }
+const RL_WINDOW = k => k.endsWith(':mail') || k.endsWith(':findfail') ? 3600000 : k.endsWith(':find') ? 600000 : 60000;   // the housekeeping must never drop a row that is still counting
 setInterval(() => { const now = Date.now();
-  for (const [k, arr] of RL) { const w = k.endsWith(':mail') ? 3600000 : 60000; const f = arr.filter(t => now - t < w); if (f.length) RL.set(k, f); else RL.delete(k); }
+  for (const [k, arr] of RL) { const w = RL_WINDOW(k); const f = arr.filter(t => now - t < w); if (f.length) RL.set(k, f); else RL.delete(k); }
 }, 300000).unref?.();
 async function diskLow() {
   try { const s = await fs.promises.statfs(path.dirname(DB_PATH)); return (s.bavail * s.bsize) < 300 * 1024 * 1024; }
   catch (e) { return false; }   // fail-open if statfs is unavailable
 }
-const clientIp = req => (req.headers['x-forwarded-for'] || '').split(',').pop().trim() || req.socket.remoteAddress || 'unknown';   // the entry the proxy added
+// The identity every rate limit is keyed on, so a forged one hands an attacker a fresh budget for each of them.
+// In production the only way in is Caddy, on the internal docker network: it APPENDS the address it sees to
+// X-Forwarded-For, so the LAST entry is the real client and anything the client put there itself sits in front of it.
+// A connection that did not come through that private hop is somebody talking to the port directly, and its header is
+// its own invention: that peer's address is the identity. TRUST_PROXY=all restores blind trust for a deployment whose
+// proxy has a public address (a CDN in front of the origin); it must never be set on a port reachable from outside.
+const PRIVATE_PEER = /^(::1|127\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|::ffff:(10\.|127\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)|f[cd][0-9a-f]{2}:|fe80:)/i;
+const TRUST_ALL = process.env.TRUST_PROXY === 'all';
+const clientIp = req => {
+  const peer = (req.socket.remoteAddress || '').trim();
+  if (!TRUST_ALL && peer && !PRIVATE_PEER.test(peer)) return peer;   // direct caller: its X-Forwarded-For is worth nothing
+  return (req.headers['x-forwarded-for'] || '').split(',').pop().trim() || peer || 'unknown';   // the entry the proxy added
+};
 
 http.createServer(async (req, res) => {
   const urlPath = req.url.split('?')[0];
@@ -209,8 +226,26 @@ http.createServer(async (req, res) => {
   if (isAmeliePull && !rateOk(clientIp(req) + ':amelie', 12, 60000)) {
     res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '60' }); res.end('{"error":"amelie_busy","retryAfter":60}'); return;
   }
+  // ---- the guest finder (POST /find): the one public, unauthenticated read of guest data, so it is generous to humans and
+  // hard on scripts. 300 guests behind the venue's one wifi are ONE IP and they all arrive within the hour, most of them
+  // searching more than once, so the per-IP ceiling is a wedding's worth — 400 lookups per 10 minutes — not a phone's: a
+  // tighter number locks the room out at guest 41. What actually bounds a valid token is the token's own cap (1,500 a day,
+  // kept in the worker so it survives a move back to Cloudflare). The only way to probe for other weddings' finders is an
+  // unknown token, and that stays expensive: 10 tries an hour per IP, the slot reserved before the request runs and given
+  // back unless the answer was 404. Nothing about the request is logged — not the query, not the answer.
+  const isFind = req.method === 'POST' && canon === '/find';
+  let findSlot = null, findStatus = 0;
+  if (isFind) {
+    const ip = clientIp(req);
+    if (!rateOk(ip + ':find', 400, 600000)) { res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '600' }); res.end('{"error":"busy"}'); return; }
+    if (!rateOk(ip + ':findfail', 10, 3600000)) { res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '3600' }); res.end('{"error":"busy"}'); return; }
+    const a = RL.get(ip + ':findfail'); findSlot = { key: ip + ':findfail', t: a[a.length - 1] };
+  }
   // ---- abuse guards on writes (unauth POST /plans is the disk-fill vector) ----
-  if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS') {
+  // A finder lookup is a POST but not a write — it stores nothing but its own counter — and it has the two stricter
+  // limiters above. Left in the shared write budget (120 a minute per IP) the guests arriving at a venue would spend
+  // the same budget as the venue's own laptop saving the plan on that wifi, and each would lock the other out.
+  if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS' && !isFind) {
     const ip = clientIp(req);
     const isCreate = req.method === 'POST' && canon === '/plans';
     if (!rateOk(ip + (isCreate ? ':create' : ':write'), isCreate ? 20 : 120, 60000)) {
@@ -246,7 +281,7 @@ http.createServer(async (req, res) => {
       const mode = b.mode === 'keepsake' ? 'keepsake' : 'floor', lang = PDF_LANG[b.lang] ? b.lang : 'el';
       const name = String(b.name || '').slice(0, 120);
       let pdf;
-      try { pdf = await renderPlanPdf(b.plan, { name, weddingDate: ymd(b.weddingDate), venueName: String(b.venueName || '').slice(0, 120), mode, lang }); }
+      try { pdf = await renderPlanPdf(b.plan, { name, weddingDate: ymd(b.weddingDate), venueName: String(b.venueName || '').slice(0, 120), mode, lang, brand: b.brand !== false }); }
       catch (e) { res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '30' }); res.end(e && e.busy ? '{"error":"pdf_busy"}' : '{"error":"pdf_failed"}'); return; }
       res.writeHead(200, { 'Content-Type': 'application/pdf', 'Cache-Control': 'no-store',
         'Content-Disposition': 'attachment; filename="takeaseat.pdf"; filename*=UTF-8\'\'' + encodeURIComponent(pdfFileName(name, mode, lang)) });
@@ -259,7 +294,10 @@ http.createServer(async (req, res) => {
     // An Amelie pull may wait up to 8 s on amelie.gr, so it runs BESIDE the queue — nobody's save waits on Amelie. That is
     // safe because its only writes are single atomic PLANS.update calls (the plan record's Amelie fields, one counter row).
     const r = isAmeliePull ? await worker.fetch(request, env) : await serial(() => worker.fetch(request, env));
-    failed = r.status === 401 || r.status === 403 || ((r.status === 404 || r.status === 410) && /^\/(claim|recover\/|verify|admin\/recover)/.test(canon));
+    findStatus = r.status;
+    // The finder has its own two limiters; a guest scanning outside the window (403 closed) must never spend the shared
+    // key-guessing budget — at a wedding every phone on the venue's wifi is the same IP.
+    failed = !isFind && (r.status === 401 || r.status === 403 || ((r.status === 404 || r.status === 410) && /^\/(claim|recover\/|verify|admin\/recover)/.test(canon)));
     const buf = Buffer.from(await r.arrayBuffer());
     const headers = {}; r.headers.forEach((v, k) => { headers[k] = v; });
     res.writeHead(r.status, headers);
@@ -270,5 +308,7 @@ http.createServer(async (req, res) => {
     res.end('{"error":"server error"}');
   } finally {
     if (!failed) { const a = RL.get(failKey); const i = a ? a.lastIndexOf(slot) : -1; if (i >= 0) a.splice(i, 1); }
+    // only an unknown token (404) keeps its slot; a real lookup, a closed window or a server error gives it back
+    if (findSlot && findStatus !== 404) { const a = RL.get(findSlot.key); const i = a ? a.lastIndexOf(findSlot.t) : -1; if (i >= 0) a.splice(i, 1); }
   }
 }).listen(PORT, process.env.HOST || '0.0.0.0', () => console.log(`TakeaSeat server on ${process.env.HOST || '0.0.0.0'}:${PORT}  (static: ${PUBLIC_DIR})`));

@@ -55,6 +55,7 @@ const L10N = {
     table: 'Τραπέζι', warm: 'Όλοι όσοι γιόρτασαν μαζί σας.', ourWedding: 'Ο γάμος μας', seatingPlan: 'Σχέδιο τραπεζιών',
     floor: 'Η κάτοψη', whoSat: 'Ποιος κάθισε πού', index: 'Αλφαβητικός κατάλογος', namesByTable: 'Ονόματα ανά τραπέζι',
     unseated: 'Χωρίς θέση', cancelled: 'ακυρώθηκε', cont: 'συνέχεια',
+    brand: 'Φτιάχτηκε με TakeaSeat · takeaseat.gr', brandWarm: 'Φτιαγμένο με αγάπη · TakeaSeat · takeaseat.gr',
     numbersNote: p => `Οι αριθμοί δείχνουν τις θέσεις — τα ονόματα ανά τραπέζι στη σελίδα ${p}.`,
     unseatedMore: (n, p) => `${n} χωρίς θέση — η λίστα στη σελίδα ${p}.`,
   },
@@ -68,6 +69,7 @@ const L10N = {
     table: 'Table', warm: 'Everyone who celebrated with you.', ourWedding: 'Our wedding', seatingPlan: 'Seating plan',
     floor: 'The floor plan', whoSat: 'Who sat where', index: 'Alphabetical index', namesByTable: 'Names by table',
     unseated: 'Without a seat', cancelled: 'cancelled', cont: 'continued',
+    brand: 'Made with TakeaSeat · takeaseat.gr', brandWarm: 'Made with love · TakeaSeat · takeaseat.gr',
     numbersNote: p => `Numbers mark the seats — the names per table are on page ${p}.`,
     unseatedMore: (n, p) => `${n} without a seat — listed on page ${p}.`,
   },
@@ -81,6 +83,7 @@ const L10N = {
     table: 'Tisch', warm: 'Alle, die mit Ihnen gefeiert haben.', ourWedding: 'Unsere Hochzeit', seatingPlan: 'Sitzplan',
     floor: 'Der Sitzplan', whoSat: 'Wer saß wo', index: 'Alphabetisches Verzeichnis', namesByTable: 'Namen pro Tisch',
     unseated: 'Ohne Platz', cancelled: 'abgesagt', cont: 'Fortsetzung',
+    brand: 'Erstellt mit TakeaSeat · takeaseat.gr', brandWarm: 'Mit Liebe erstellt · TakeaSeat · takeaseat.gr',
     numbersNote: p => `Die Zahlen markieren die Plätze — die Namen pro Tisch stehen auf Seite ${p}.`,
     unseatedMore: (n, p) => `${n} ohne Platz — Liste auf Seite ${p}.`,
   },
@@ -308,9 +311,17 @@ export async function renderPlanPdf(plan, meta = {}) {
     // parsed fonts are kept between renders (parsing DejaVu costs more than drawing a whole plan); pdfkit ≥ 0.20 takes them
     const faces = ['S', 'SB', 'R', 'RB', 'RI', 'N'];
     for (const k of faces) doc.registerFont(k, (fonts.parsed && fonts.parsed[k]) || fonts[k]);
+    // …but a parsed face also caches its Glyph objects, and each one keeps the code points of whoever asked for it
+    // FIRST. pdfkit reads exactly those when it writes the PDF's ToUnicode map, so a face carried over from an
+    // earlier document hands this one the earlier document's code points — and a glyph that was first fetched
+    // without any (a width measurement, a coverage test) maps to nothing at all. The ink is correct either way; what
+    // breaks is the text layer, so the footer of a German plan rendered after a Greek one COPIES and SEARCHES as
+    // «it Liebe erstellt …» with the M gone, and a screen reader reads it that way too. Emptying the glyph cache
+    // costs a few objects per render and keeps the parse, which is the expensive part.
+    if (fonts.parsed) for (const k of faces) { const f = fonts.parsed[k]; if (f && f._glyphs) f._glyphs = {}; }
     const ctx = makeCtx(doc, fonts.nameScale);
     if (!fonts.parsed) { const parsed = {}; for (const k of faces) { doc.font(k); if (doc._font && doc._font.font && typeof doc._font.font.layout === 'function') parsed[k] = doc._font.font; } if (Object.keys(parsed).length === faces.length) fonts.parsed = parsed; }
-    const K = { doc, ctx, P, W, lang, mode, title, venue, longDate, shortDate, date, budget: makeBudget() };
+    const K = { doc, ctx, P, W, lang, mode, title, venue, longDate, shortDate, date, brand: meta.brand !== false, budget: makeBudget() };
     if (mode === 'keepsake') renderKeepsake(K); else renderFloor(K);
     footers(K);
   } catch (e) { done.catch(() => {}); try { doc.end(); } catch { /* ignore */ } throw e; }
@@ -865,14 +876,22 @@ function usedGroups(K) {
   return [...P.groups.values()].filter(g => set.has(g));
 }
 
+// The credit lives in the footer strip that was already there — same corner, same grey, same size as the bare
+// «takeaseat.gr» it replaces — so it costs the document nothing. K.brand false (the venue's switch in the print
+// dialog) leaves that corner empty rather than half-credited: the switch must not lie. The keepsake's cover says it
+// a little more warmly; it is a gift, not a door list.
 function footers(K) {
-  const { doc, ctx, mode, title, shortDate } = K;
+  const { doc, ctx, mode, title, shortDate, W, brand } = K;
   const range = doc.bufferedPageRange(), total = range.count;
   for (let i = range.start; i < range.start + total; i++) {
     doc.switchToPage(i);
     const pw = doc.page.width, ph = doc.page.height, m = pw > 1000 ? 42 : 34, y = ph - 18;
-    if (mode === 'keepsake' && i === 0) { ctx.draw('takeaseat.gr', pw / 2, ph - 40, { face: 'S', size: 7, color: C.faint, align: 'center', spacing: 0.6 }); continue; }
-    ctx.draw('takeaseat.gr', pw - m, y, { face: 'S', size: 6.5, color: C.faint, align: 'right', spacing: 0.4 });
+    if (mode === 'keepsake' && i === 0) {
+      if (brand) { const [b, bf] = ctx.prep(W.brandWarm, 'S'); const [b2] = ctx.fit(b, bf, 7, pw - 2 * m, 5.5, 0.6); ctx.draw(b2, pw / 2, ph - 40, { face: bf, size: 7, color: C.faint, align: 'center', spacing: 0.6 }); }
+      continue;
+    }
+    // the left half of a keepsake footer already carries the couple and the date, so the credit keeps to its own half
+    if (brand) { const [b, bf] = ctx.prep(W.brand, 'S'); const [b2] = ctx.fit(b, bf, 6.5, pw / 2 - m - 30, 5, 0.4); ctx.draw(b2, pw - m, y, { face: bf, size: 6.5, color: C.faint, align: 'right', spacing: 0.4 }); }
     if (total > 1) ctx.draw(String(i + 1), pw / 2, y, { face: 'R', size: 8, color: C.soft, align: 'center' });
     if (mode === 'keepsake') { const [t, f] = ctx.prep(title + (shortDate ? ' · ' + shortDate : ''), 'S'); const [t2] = ctx.fit(t, f, 6.5, pw / 2 - m - 40, 5); ctx.draw(t2, m, y, { face: f, size: 6.5, color: C.faint }); }
   }

@@ -1,6 +1,8 @@
 # TakeaSeat — https://takeaseat.gr
-# The marketing pages and the free demo are for everyone. The consoles and the seat editor need a private key
-# in the URL fragment; there is nothing there for a crawler, and a plan link must never end up in an index.
+# The marketing pages and the free demo are for everyone. The consoles, the seat editor and the door-list finder
+# («βρες το τραπέζι σου») need a private key in the URL fragment; there is nothing there for a crawler, and a plan
+# link — or a finder link, which reads guest names — must never end up in an index. The server also sends
+# X-Robots-Tag: noindex for /trapezi.html, for crawlers that ignore this file.
 
 User-agent: *
 Allow: /
@@ -9,5 +11,6 @@ Disallow: /venue.html
 Disallow: /seating-planner.html
 Disallow: /seating-planner-el.html
 Disallow: /seating-planner-de.html
+Disallow: /trapezi.html
 
 Sitemap: https://takeaseat.gr/sitemap.xml

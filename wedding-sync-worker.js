@@ -26,6 +26,8 @@
 //   POST   /plans/:id/legacy-off  (end the 14-day id-only grace early)
 //   PUT    /plans/:id/amelie {link} · DELETE /plans/:id/amelie · POST /plans/:id/amelie/pull {since?}
 //          (the couple's Amelie RSVP link — any role that writes guest names; see "Amelie" below)
+//   PUT    /plans/:id/find {on, rotate?}   (the door-list QR: any role that writes guest names; the key is returned, to print)
+//   POST   /find {token, q}       PUBLIC, no credential: a guest at the door is told their own table and nothing else
 //   POST   /claim {token, nonce}  (a couple opens the link TakeaSeat sent — once)
 //   POST   /recover {email, lang} · POST /recover/couple {token, nonce} · POST /recover/venue {token, secret?}
 //   POST   /verify {token} · POST /plans/:id/email {email} · POST /venues/:id/email {email}
@@ -311,9 +313,14 @@ async function ownerOk(request, env) {
 async function markMailed(env, cid, email) { await kvUpdate(env, "couple:" + cid, cp => { if (!cp) return null; cp.mailed = true; cp.mailedTo = email; return cp; }); }
 // Housekeeping (the server runs it hourly): expired one-time links, old rate-limit rows, old claim rows.
 export async function sweep(env) {
-  const out = { tok: 0, rlmail: 0, claim: 0 };
+  const out = { tok: 0, rlmail: 0, claim: 0, find: 0 };
   if (typeof env.PLANS.list !== "function") return out;
   const now = Date.now();
+  for (const k of (await env.PLANS.list("find:")) || []) {   // a finder row outlives its plan only until the next sweep
+    const f = safeParse(await env.PLANS.get(k));
+    const p = (f && f.id) ? safeParse(await env.PLANS.get("plan:" + f.id)) : null;
+    if (!p || !p.find || p.find.key !== k.slice(5)) { await env.PLANS.delete(k); out.find++; }
+  }
   for (const k of (await env.PLANS.list("tok:")) || []) {
     const t = safeParse(await env.PLANS.get(k));
     const gone = t && ((t.cid && !(await env.PLANS.get("couple:" + t.cid))) || (t.vid && !(await env.PLANS.get("venue:" + t.vid))));
@@ -332,7 +339,7 @@ export async function sweep(env) {
 }
 // After the wedding: view only (+ a keepsake PDF by mail to couples who bought directly), deleted keepDays later.
 async function lifecycleSweep(env, now) {
-  const out = { locked: 0, keepsakes: 0, purged: 0, trash: 0 };
+  const out = { locked: 0, keepsakes: 0, purged: 0, trash: 0, findEnded: 0 };
   const settings = await getSettings(env), since = await lifecycleSince(env);
   const venues = new Map(), couples = new Map();
   const cached = async (map, key) => { if (!map.has(key)) map.set(key, safeParse(await env.PLANS.get(key))); return map.get(key); };
@@ -356,6 +363,14 @@ async function lifecycleSweep(env, now) {
       AMELIE_MEM.delete(id);
       await removeIndex(env, "support:index", id); out.locked++;
       if (own.type === "venue" && rec.support) await mirrorVenueSupport(env, own.venueId, id, null);
+    }
+    // The door list dies at the END of its window (2 days after the wedding), not at the lock the night before: the QR on
+    // the door has to answer while the last guests are still arriving. Then the key goes, and every printed QR is an
+    // unknown token from that moment on.
+    if (rec.find && rec.find.key && now >= findEndsAt(L)) {
+      await env.PLANS.delete("find:" + rec.find.key);
+      await kvUpdate(env, k, cur => { if (!cur || !cur.find) return null; delete cur.find; return cur; });
+      out.findEnded++;
     }
     // The keepsake: once, to a couple who bought directly (main plan) — before any deletion; if it could not be made or
     // sent, the plan waits up to 3 more days for another try rather than disappearing without it.
@@ -475,7 +490,8 @@ function ownerOf(rec) {
   if (rec && rec.owner && rec.owner.type === "couple") return { type: "couple" };
   return (rec && rec.venueId) ? { type: "venue", venueId: rec.venueId } : { type: "couple" };
 }
-// Access log entries are codes the planner translates: invite(h) · revoke · open · save · restore · reset · claim · rotate.
+// Access log entries are codes the planner translates: invite(h) · revoke · open · save · restore · reset · claim · rotate ·
+// find_on · find_off · find_rotated (the door-list QR: only that it was switched on, off or rotated, and by which role).
 function addAudit(rec, who, what, throttleMs, extra) {
   const a = Array.isArray(rec.audit) ? rec.audit : [];
   const last = a[a.length - 1];
@@ -870,6 +886,68 @@ async function ameliePull(env, id, since) {
   return amelieReply(res, since);
 }
 
+// ---- the guest finder: the QR on the door list («βρες το τραπέζι σου») ----
+// The only public, unauthenticated read of guest data in the product. It answers ONE line to someone who already knows the
+// name they are looking for — never the list. Every other key (editKey, readKey, venueKey) opens the whole plan; this one
+// must not, so it is its own credential and nothing else.
+//   · rec.find = {key, on, at, by, rotatedAt} lives on the plan RECORD, never in the plan JSON (view links read that).
+//   · find:<key> → {id, day, n} is the only way from a token to a plan, and holds the token's daily cap, so the rule
+//     survives a move back to Cloudflare (where server.mjs's per-IP limiters would not exist).
+//   · The guest's page keeps the token in the URL FRAGMENT, so it never reaches us in a URL, a Referer or an access log —
+//     hence the POST body, and a token in the query string is refused outright.
+//   · Nothing a guest types is stored or logged: not the query, not a name, not a match. This code writes no log line.
+//   · Off by default; only the plan's own writers switch it on, and rotating the key stops every QR already printed.
+//   · It outlives the lock: the plan goes view-only at 00:00 the day after the wedding, the door list answers to the end
+//     of its window (2 days after). A locked plan takes no NEW door list, but switching the running one off always works.
+const FIND_KEY_LEN = 26, FIND_TOKEN = /^[A-Za-z0-9]{22,64}$/;
+const FIND_BEFORE_DAYS = 7, FIND_AFTER_DAYS = 2;   // 00:00 Athens 7 days before the wedding → 23:59 Athens 2 days after it
+const FIND_MAX = 5, FIND_Q_MAX = 40, FIND_Q_MIN = 3, FIND_PER_TOKEN_DAY = 1500;
+const findOut = f => (f && f.key) ? { on: !!f.on, key: f.key, at: f.at || null, rotatedAt: f.rotatedAt || null }
+  : { on: false, key: null, at: null, rotatedAt: null };
+// Case- and accent-insensitive, the way the planner's own search is, plus the final sigma (ΠΑΠΠΑΣ = παππάς) and runs of
+// spaces. Dialytika go with the other marks, so ΝΑΪΜ is found by «ναιμ».
+const findFold = s => String(s == null ? "" : s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/ς/g, "σ").replace(/\s+/g, " ").trim();
+const findResetSecs = () => Math.max(1, Math.ceil((athensMidnight(addDays(todayAthens(), 1)) - Date.now()) / 1000));
+// When the door list is over for good: 00:00 Athens the day AFTER the last day it answers. The lock does NOT end it —
+// the plan becomes view-only at 00:00 the day after the wedding, but the reception is still going and the guests are
+// still arriving, so the finder (a read, never a write) outlives it by the two days the window promises. A plan with no
+// date has no window at all; it loses its key when it locks. A purged plan has no record left, so it answers nothing.
+const findEndsAt = L => (L && L.weddingDate) ? athensMidnight(addDays(L.weddingDate, FIND_AFTER_DAYS + 1)) : ((L && L.lockAt) || 0);
+function findOpen(L) {
+  if (!L || !L.weddingDate) return false;
+  const now = Date.now();
+  return now >= athensMidnight(addDays(L.weddingDate, -FIND_BEFORE_DAYS)) && now < findEndsAt(L);
+}
+// The guest's own line and nothing else: the name as the plan displays it and the label of their table (null = no seat yet).
+// Never a note, a status, an invitation, a group, a seat index, an id, another guest, or any count but "too many".
+function findMatches(plan, q) {
+  const guests = (plan && plan.guests && typeof plan.guests === "object" && !Array.isArray(plan.guests)) ? plan.guests : {};
+  const seat = new Map();   // guest id → the label of the table they sit at
+  for (const t of (plan && Array.isArray(plan.tables) ? plan.tables : [])) {
+    if (!t || typeof t !== "object") continue;
+    const label = String(t.label == null ? "" : t.label).slice(0, 60).trim() || null;
+    for (const g of (Array.isArray(t.seats) ? t.seats : [])) if (g && !seat.has(String(g))) seat.set(String(g), label);
+  }
+  const out = [];
+  for (const id of Object.keys(guests)) {
+    const g = guests[id];
+    const name = String(((g && typeof g === "object") ? g.name : g) ?? "").trim();
+    const f = findFold(name);
+    if (!name || !f) continue;
+    let rank = -1, at = 0;                                   // prefix on the whole name first, then on a word, then anywhere
+    if (f.startsWith(q)) rank = 0;
+    else {
+      const i = f.split(" ").findIndex(w => w.startsWith(q));
+      if (i >= 0) { rank = 1; at = i; }
+      else { const p = f.indexOf(q); if (p >= 0) { rank = 2; at = p; } }
+    }
+    if (rank < 0) continue;
+    out.push({ rank, at, name: name.slice(0, 120), table: seat.has(id) ? seat.get(id) : null });
+  }
+  out.sort((a, b) => a.rank - b.rank || a.at - b.at || a.name.length - b.name.length || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  return out;
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") return new Response(null, { headers: CORS });
@@ -946,6 +1024,7 @@ export default {
             out.audit = (rec.audit || []).slice(-20);
             if (rec.resetAt) out.resetAt = rec.resetAt;
             if (!rec.template) out.amelie = amelieOut(rec.amelie);   // whether a link is connected and its state — never the key
+            if (!rec.template) out.find = findOut(rec.find);   // the door-list QR: its token IS given to a writer, who prints it — never to a view link
           }
           const L = await planLife(env, rec, id), directCouple = a.role === "couple" && a.owner.type === "couple";
           out.life = lifeOut(L, rec, directCouple || a.role === "venue", directCouple ? COUPLE_DATE_CHANGES : DATE_CHANGES);   // never for extra plans
@@ -1151,6 +1230,77 @@ export default {
           if (!r.obj) return json({ error: "not found" }, 404);
           return json({ amelie: amelieOut(r.obj.amelie) });
         }
+        // ---- the guest finder: switch the door-list QR on or off, or rotate its key ----
+        // Whoever may write guest names (couple, venue, support with an open grant); a view link never. The key IS returned
+        // to them — they print it on the QR. `updated` never moves: this is not a change to the plan.
+        if (parts.length === 3 && parts[2] === "find" && request.method === "PUT") {
+          if (!a) return denied(request, rec);
+          if (!a.write) return json({ error: "read_only" }, 403);
+          const L = await planLife(env, rec, id);
+          const b = await readBody(request);
+          if (typeof b.on !== "boolean") return json({ error: "bad_request" }, 400);
+          // A locked plan takes no new door list — but switching the one that is running OFF (and dropping the printed
+          // QR's key with it) must never be refused: the window outlives the lock by two days, and the venue's only
+          // stop button is this one.
+          if (L.locked && b.on) return json({ error: "locked", life: lifeOut(L, rec, false) }, 403);
+          const rotate = b.rotate === true, now = Date.now();
+          if (b.on && !L.weddingDate) return json({ error: "no_date" }, 409);   // without a date the window cannot exist
+          let minted = null, dropped = null;
+          const r = await kvUpdate(env, key, cur => {
+            if (!cur) return null;
+            const old = (cur.find && typeof cur.find === "object") ? cur.find : null;
+            if (!b.on && !old) return { __res: "none" };   // nothing to switch off: nothing is stored, nothing is logged
+            const f = { key: (old && old.key) || null, on: b.on, at: (old && old.at) || now, by: a.role, rotatedAt: (old && old.rotatedAt) || null };
+            if (!f.key || rotate) { dropped = (old && old.key) || null; minted = f.key = rnd(FIND_KEY_LEN); if (dropped) f.rotatedAt = now; }
+            if (b.on && !(old && old.on)) f.at = now;       // `at` = since when it has been on
+            cur.find = f;
+            // Only a real change is logged. A no-op call (switching on what is already on) is a supported, repeatable
+            // call, and the log holds 50 entries: logging every one of them would let anyone with a writing key — support
+            // included — flush the plan's whole access log in a loop. The throttle folds a burst of real changes into one.
+            const changed = !old || !old.key || !!old.on !== !!b.on || !!dropped;
+            if (changed) addAudit(cur, a.role, dropped ? "find_rotated" : b.on ? "find_on" : "find_off", 30 * 60000);   // a first key is not a rotation
+            if (changed && dropped && !b.on) addAudit(cur, a.role, "find_off", 30 * 60000);   // rotated and switched off in one go: the log says both
+            return { __obj: cur, __res: "ok" };
+          });
+          if (r.res === "none") return json({ find: findOut(null) });
+          if (!r.obj) return json({ error: "not found" }, 404);
+          if (dropped) await env.PLANS.delete("find:" + dropped);   // every QR already printed with the old key stops working
+          if (minted) await env.PLANS.put("find:" + minted, JSON.stringify({ id, day: todayAthens(), n: 0 }));
+          else await kvUpdate(env, "find:" + r.obj.find.key, cur => (cur && cur.id === id) ? null : { __obj: { id, day: todayAthens(), n: 0 } });   // repair a lost index row without clearing today's count
+          return json({ find: findOut(r.obj.find) });
+        }
+      }
+      // ---------------- the guest finder: PUBLIC, no credential — a guest at the door scans the QR and types their name ----------------
+      if (parts[0] === "find" && parts.length === 1) {
+        if (request.method !== "POST") return json({ error: "method" }, 405);
+        // Nothing is ever taken from the URL: the token belongs in the fragment on the guest's page and in this body, so
+        // that it is never in a URL we are sent, in a Referer, or in anybody's access log.
+        if ([...new URL(request.url).searchParams.keys()].length) return json({ error: "bad_request" }, 400);
+        const b = await readBody(request);
+        const q = findFold((typeof b.q === "string" ? b.q : "").slice(0, FIND_Q_MAX));   // only a typed string is a query
+        if (q.length < FIND_Q_MIN) return json({ error: "too_short" }, 400);
+        const token = typeof b.token === "string" ? b.token.trim() : "";
+        if (!FIND_TOKEN.test(token)) return json({ error: "not_found" }, 404);   // unknown, rotated, switched off: one answer for all three
+        const day = todayAthens();
+        // Resolve the token and spend one of its 1,500 lookups a day in a single atomic step. An unknown token writes nothing.
+        const idx = await kvUpdate(env, "find:" + token, cur => {
+          if (!cur || typeof cur !== "object" || !cur.id) return { __res: { miss: true } };
+          const n = (cur.day === day ? (cur.n || 0) : 0) + 1;
+          if (n > FIND_PER_TOKEN_DAY) return { __res: { over: true } };
+          cur.day = day; cur.n = n;
+          return { __obj: cur, __res: { id: String(cur.id) } };
+        });
+        const d = (idx && idx.res) || { miss: true };
+        if (d.miss) return json({ error: "not_found" }, 404);
+        if (d.over) { const s = findResetSecs(); return json({ error: "busy", retryAfter: s }, 429, { "Retry-After": String(s) }); }
+        const rec = safeParse(await env.PLANS.get("plan:" + d.id));
+        if (!rec || rec.deletedAt || !rec.find || !rec.find.on || !eq(rec.find.key, token)) return json({ error: "not_found" }, 404);
+        const L = await planLife(env, rec, d.id);
+        if (!findOpen(L)) return json({ error: "closed" }, 403);
+        const hits = findMatches(rec.plan, q);
+        // Too many: the count and nothing else — the guest types more of their name rather than being handed a list.
+        if (hits.length > FIND_MAX) return json({ ok: true, tooMany: true, count: hits.length });
+        return json({ ok: true, event: String(rec.name || ""), date: L.weddingDate, matches: hits.map(h => ({ name: h.name, table: h.table })) });
       }
       // ---------------- claim: a couple opens the link TakeaSeat sent (once; the same device may retry briefly) ----------------
       if (parts[0] === "claim" && parts.length === 1 && request.method === "POST") {
@@ -1894,7 +2044,9 @@ async function pushHistory(env, id, rec) {
     return h;
   });
 }
-async function purgePlan(env, id) {
+async function purgePlan(env, id, rec) {
+  const r = rec !== undefined ? rec : safeParse(await env.PLANS.get("plan:" + id));
+  if (r && r.find && r.find.key) await env.PLANS.delete("find:" + r.find.key);   // a purged plan's QR stops working with it
   await env.PLANS.delete("plan:" + id);
   await env.PLANS.delete("hist:" + id);
   await removeIndex(env, "support:index", id);

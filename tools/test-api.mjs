@@ -1313,4 +1313,218 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
   for (const k of Object.keys(orig)) console[k] = orig[k];
   globalThis.fetch = realFetch; delete env.AMELIE_FETCH;
 }
+// ---------- 12. «Βρες το τραπέζι σου»: the door-list QR — the only public, unauthenticated read of guest data ----------
+// It hands ONE line to a guest who already knows the name they are looking for, and nothing at all to anyone else: never the
+// list, never a note, a status, an invitation, a group or an id, and no count but "too many". Nothing typed is stored or
+// logged. Every response body and every log line of this section is kept and checked at the end.
+{
+  const day = athensDay;
+  const bodies = [], logs = [], QUERIES = [];
+  const hooks = { log: console.log, error: console.error, warn: console.warn, info: console.info };
+  const capture = async fn => {   // only what the WORKER prints while it answers — not this file's own ✓ lines
+    for (const k of Object.keys(hooks)) console[k] = (...a) => { logs.push(a.map(x => (x && x.stack) || String(x)).join(' ')); hooks[k](...a); };
+    try { return await fn(); } finally { for (const k of Object.keys(hooks)) console[k] = hooks[k]; }
+  };
+  async function fcall(method, url, body, headers = {}) {
+    const r = await capture(() => worker.fetch(new Request('http://t' + url, { method, headers: { 'Content-Type': 'application/json', ...NEW, ...headers }, body: body === undefined ? undefined : JSON.stringify(body) }), env));
+    const text = await r.text(); bodies.push({ url, text });
+    let d = null; try { d = JSON.parse(text); } catch (e) {}
+    return { status: r.status, d, h: r.headers };
+  }
+  const look = (token, q) => { if (q !== undefined) QUERIES.push(String(q)); return fcall('POST', '/find', { token, q }); };
+  const setFind = (id, body, headers) => fcall('PUT', '/plans/' + id + '/find', body, headers);
+  const names = m => (m || []).map(x => x.name);
+
+  // ---- a wedding of 316 guests: 300 who all share a word, and the handful the checks are about ----
+  const TABLES = Array.from({ length: 30 }, (_, i) => ({ id: 't' + (i + 1), shape: 'round', x: 100 + i * 20, y: 100, label: String(i + 1), capacity: 10, seats: Array(10).fill(null) }));
+  const guests = {};
+  const extra = { status: 'confirmed', note: 'Αλλεργία στα θαλασσινά', party: 'Οικογένεια Παππά', group: 'grp1', srcId: 'amelie:zz:1' };
+  for (let i = 0; i < 300; i++) guests['gfind_' + i] = { name: 'Καλεσμένος ' + (i + 1) + ' Δοκιμή', ...extra };
+  guests['gfind_maria'] = { name: 'ΜΑΡΙΑ ΠΑΠΠΑ', ...extra };
+  guests['gfind_maria2'] = { name: 'Μαρία Παππαδοπούλου' };
+  guests['gfind_papas'] = { name: 'Ιωάννης Παππάς' };
+  guests['gfind_naim'] = { name: 'Ναΐμ Χαλίλ' };
+  const LONG = 'Κωνσταντίνος Αλεξανδρόπουλος-Χατζηγεωργίου Τρίτος';   // 49 characters: longer than the 40-character cap
+  guests['gfind_long'] = { name: LONG };
+  const FIVE = ['Δημητρίου Άλφα', 'Δημητρίου Βήτα', 'Δημητρίου Γάμμα', 'Δημητρίου Δέλτα', 'Δημητρίου Έψιλον'];
+  const SIX = ['Νικολάου Άλφα', 'Νικολάου Βήτα', 'Νικολάου Γάμμα', 'Νικολάου Δέλτα', 'Νικολάου Έψιλον', 'Νικολάου Ζήτα'];
+  FIVE.forEach((nm, i) => { guests['gfind_five' + i] = { name: nm }; });
+  SIX.forEach((nm, i) => { guests['gfind_six' + i] = { name: nm }; });
+  const ALL_NAMES = Object.values(guests).map(g => g.name);
+  const bigPlan = () => { const p = { ...layout(), tables: JSON.parse(JSON.stringify(TABLES)), guests: JSON.parse(JSON.stringify(guests)) };
+    p.tables[11].seats[0] = 'gfind_maria';       // table «12»
+    p.tables[0].seats[0] = 'gfind_papas';        // table «1»
+    p.tables[4].seats[0] = 'gfind_five0';
+    for (let i = 0; i < 120; i++) p.tables[(i % 29) + 1].seats[(i % 9) + 1] = 'gfind_' + i;
+    return p; };
+
+  const FP = (await fcall('POST', '/plans', { name: 'Μαρία & Νίκος', plan: layout() }, OWN)).d;
+  const HW = { 'X-Edit-Key': FP.editKey }, HR = { 'X-View-Key': FP.readKey };
+  const openPlan = d => patchRaw('plan:' + FP.id, o => { o.weddingDate = d; o.retention = { lockAfter: false, keep: true }; o.lockedAt = null; o.plan = bigPlan(); });
+  openPlan(day(3));
+  ok(Object.keys(raw('plan:' + FP.id).plan.guests).length === 316, 'finder: a wedding of 316 guests on 30 tables');
+
+  // ---- off by default; only a writer is even told it exists ----
+  let r = await fcall('GET', '/plans/' + FP.id, undefined, HW);
+  ok(r.d.find && r.d.find.on === false && r.d.find.key === null && r.d.find.at === null && r.d.find.rotatedAt === null, 'finder: a writer sees it switched off, with no key yet', r.d.find);
+  ok(!('find' in (await fcall('GET', '/plans/' + FP.id, undefined, HR)).d), 'finder: a view key is not even told whether a finder exists');
+  ok((await look('MadeUpTokenThatNeverExisted', 'μαρια')).status === 404, 'finder: a made-up token → 404, before anything is switched on');
+
+  // ---- who may switch it on: whoever writes guest names, never a view link ----
+  ok((await setFind(FP.id, { on: true })).status === 401, 'finder: no credential → 401');
+  ok((await setFind(FP.id, { on: true }, { 'X-Edit-Key': 'wrong-key-entirely' })).status === 403, 'finder: a wrong key → 403');
+  r = await setFind(FP.id, { on: true }, HR);
+  ok(r.status === 403 && r.d.error === 'read_only', 'finder: a view key is refused the PUT (403 read_only)', r.d);
+  ok((await setFind(FP.id, { on: 'yes' }, HW)).status === 400 && (await setFind(FP.id, {}, HW)).status === 400, 'finder: {on} must be a boolean');
+  ok(!raw('plan:' + FP.id).find, 'finder: … and none of that stored anything');
+
+  r = await setFind(FP.id, { on: true }, HW);
+  const K1 = r.d.find.key;
+  ok(r.status === 200 && r.d.find.on === true && /^[A-Za-z0-9]{26}$/.test(K1) && r.d.find.at > 0 && r.d.find.rotatedAt === null, 'finder: the couple switches it on and is given the key to print', r.d.find);
+  ok(raw('find:' + K1).id === FP.id && raw('find:' + K1).n === 0, 'finder: the token row points at the plan and starts the day at zero');
+  ok(raw('plan:' + FP.id).find.by === 'couple' && raw('plan:' + FP.id).audit.at(-1).what === 'find_on' && raw('plan:' + FP.id).audit.at(-1).who === 'couple', 'finder: the access log says only that it was switched on, and by which role', raw('plan:' + FP.id).audit.at(-1));
+  ok(!JSON.stringify(raw('plan:' + FP.id).plan).includes(K1), 'finder: the key lives on the plan record, never in the plan JSON a view link reads');
+  ok((await fcall('GET', '/plans/' + FP.id, undefined, HW)).d.find.key === K1 && !('find' in (await fcall('GET', '/plans/' + FP.id, undefined, HR)).d), 'finder: GET hands the key to a writer and nothing at all to a view key');
+  ok((await setFind(FP.id, { on: true }, HW)).d.find.key === K1, 'finder: switching it on again keeps the same key (the printed QR goes on working)');
+  const auditBefore = JSON.stringify(raw('plan:' + FP.id).audit);
+  for (let i = 0; i < 55; i++) await setFind(FP.id, { on: true }, HW);
+  ok(JSON.stringify(raw('plan:' + FP.id).audit) === auditBefore, 'finder: 55 of those no-op calls write NOTHING to the access log — a loop must not flush its 50 entries', raw('plan:' + FP.id).audit.length);
+
+  // ---- the lookup a guest makes ----
+  r = await look(K1, 'μαρια');
+  ok(r.status === 200 && r.d.ok === true && r.d.event === 'Μαρία & Νίκος' && r.d.date === day(3) && r.d.matches.length === 2, 'finder: a guest gets the wedding, its date and their own line', r.d);
+  ok(r.d.matches[0].name === 'ΜΑΡΙΑ ΠΑΠΠΑ' && r.d.matches[0].table === '12' && JSON.stringify(Object.keys(r.d.matches[0])) === '["name","table"]', 'finder: the name as displayed and the table label — and those two fields only', r.d.matches[0]);
+  ok(r.d.matches[1].name === 'Μαρία Παππαδοπούλου' && r.d.matches[1].table === null, 'finder: a guest with no seat yet gets table:null');
+  ok(JSON.stringify(Object.keys(r.d)) === '["ok","event","date","matches"]', 'finder: the answer carries nothing else at all', Object.keys(r.d));
+  const accent = await look(K1, 'ΠΑΠΠΆΣ'), plain = await look(K1, 'παππας');
+  ok(accent.d.matches.length === 1 && accent.d.matches[0].name === 'Ιωάννης Παππάς' && JSON.stringify(accent.d) === JSON.stringify(plain.d), 'finder: accents, case and the final sigma are all the same name (ΠΑΠΠΆΣ = παππας)');
+  ok((await look(K1, 'ναιμ')).d.matches[0].name === 'Ναΐμ Χαλίλ', 'finder: the dialytika too (ναιμ → Ναΐμ)');
+  ok(JSON.stringify(names((await look(K1, 'παππα')).d.matches)) === JSON.stringify(['ΜΑΡΙΑ ΠΑΠΠΑ', 'Ιωάννης Παππάς', 'Μαρία Παππαδοπούλου']), 'finder: a word prefix matches every part of a name, best first', names((await look(K1, 'παππα')).d.matches));
+  ok(JSON.stringify(names((await look(K1, 'αδοπουλου')).d.matches)) === JSON.stringify(['Μαρία Παππαδοπούλου']), 'finder: a substring in the middle of a word is found too');
+  ok((await look(K1, 'δεν υπαρχει τετοιο ονομα')).d.matches.length === 0, 'finder: a name nobody has → an empty list, not an error');
+
+  // ---- what it refuses to be: a list ----
+  r = await look(K1, 'δημητριου');
+  ok(r.d.matches.length === 5 && r.d.matches.every(x => x.name.startsWith('Δημητρίου')) && !r.d.tooMany, 'finder: five matches are still answered in full');
+  r = await look(K1, 'νικολαου');
+  ok(r.status === 200 && r.d.tooMany === true && r.d.count === 6 && JSON.stringify(Object.keys(r.d)) === '["ok","tooMany","count"]', 'finder: six → «type more of your name», with the count and NO names', r.d);
+  r = await look(K1, 'δοκιμη');
+  ok(r.d.tooMany === true && r.d.count === 300 && !bodies.at(-1).text.includes('Καλεσμένος'), 'finder: a query that matches 300 guests hands over none of them', r.d);
+  ok((await look(K1, 'μα')).d.error === 'too_short' && (await look(K1, '  α  ')).d.error === 'too_short' && (await look(K1, '')).status === 400 && (await look(K1, undefined)).status === 400, 'finder: under three characters after trimming → 400 too_short');
+  ok((await look(K1, 'μαρ')).d.matches.length === 2, 'finder: three characters is enough');
+  ok(names((await look(K1, LONG + ' και κι άλλο')).d.matches).join() === LONG, 'finder: a query longer than 40 characters is cut to 40, not refused');
+
+  // ---- the token never travels in a URL ----
+  r = await fcall('POST', '/find?token=' + K1, { q: 'μαρια' });
+  ok(r.status === 400 && r.d.error === 'bad_request', 'finder: a token in the query string is refused — it belongs in the fragment and the body', r.d);
+  ok((await fcall('GET', '/find?token=' + K1)).status === 405 && (await fcall('PUT', '/find', { token: K1, q: 'μαρια' })).status === 405, 'finder: only POST');
+  for (const t of ['', 'short', K1 + '!', K1.slice(0, 21), 'x'.repeat(65), 12345, null]) ok((await look(t, 'μαρια')).status === 404, 'finder: a token of the wrong shape → 404, like any unknown one (' + JSON.stringify(t) + ')');
+
+  // ---- the window: 00:00 Athens seven days before → 23:59 Athens two days after ----
+  const closedAt = async d => { openPlan(d); const x = await look(K1, 'μαρια'); return x.status === 403 && x.d.error === 'closed' && JSON.stringify(Object.keys(x.d)) === '["error"]'; };
+  const openAt = async d => { openPlan(d); const x = await look(K1, 'μαρια'); return x.status === 200 && x.d.matches.length === 2; };
+  ok(await closedAt(day(8)), 'finder: eight days before the wedding → 403 closed');
+  ok(await openAt(day(7)), 'finder: seven days before → open');
+  ok(await openAt(day(0)), 'finder: the day of the wedding → open');
+  ok(await openAt(day(-2)), 'finder: two days after → still open (the door list is the last thing anyone needs)');
+  ok(await closedAt(day(-3)), 'finder: three days after → closed');
+  patchRaw('plan:' + FP.id, o => { o.weddingDate = null; });
+  r = await look(K1, 'μαρια');
+  ok(r.status === 403 && r.d.error === 'closed', 'finder: a plan with no wedding date has no window at all');
+  r = await setFind(FP.id, { on: true }, HW);
+  ok(r.status === 409 && r.d.error === 'no_date', 'finder: … and cannot be switched on: 409 no_date', r.d);
+  ok((await setFind(FP.id, { on: false }, HW)).status === 200, 'finder: switching it OFF never needs a date');
+  openPlan(day(2)); await setFind(FP.id, { on: true }, HW);
+
+  // ---- the window survives the lock, and every check here runs on the PRODUCT DEFAULT retention ----
+  // The default locks a plan at 00:00 the day after the wedding — while the reception is still going and the last guests
+  // are still looking for their table. The door list is a read, not an edit: it answers to the end of its window.
+  const shipPlan = d => patchRaw('plan:' + FP.id, o => { o.weddingDate = d; o.retention = null; o.lockedAt = null; o.plan = bigPlan(); });
+  shipPlan(day(-1));
+  ok((await fcall('GET', '/plans/' + FP.id, undefined, HW)).d.life.locked === true, 'finder: the day after the wedding the default retention has locked the plan');
+  r = await look(K1, 'μαρια');
+  ok(r.status === 200 && r.d.matches.length === 2, 'finder: … and the door list still answers — the QR outlives the lock, not the other way round', r.d);
+  shipPlan(day(-2));
+  ok((await look(K1, 'μαρια')).status === 200, 'finder: two days after, locked and on the default retention → still open');
+  shipPlan(day(-3));
+  ok((await look(K1, 'μαρια')).status === 403, 'finder: three days after → closed, default retention and all');
+  shipPlan(day(-1));
+  r = await setFind(FP.id, { on: true }, HW);
+  ok(r.status === 403 && r.d.error === 'locked', 'finder: a locked plan takes no NEW door list', r.d);
+  r = await setFind(FP.id, { on: false }, HW);
+  ok(r.status === 200 && r.d.find.on === false && (await look(K1, 'μαρια')).status === 404, 'finder: … but switching the running one off is never refused — the stop button is not locked away', r.d.find);
+  openPlan(day(2)); await setFind(FP.id, { on: true }, HW);
+
+  // ---- rotation: the old QR stops working the moment a new one is printed ----
+  r = await setFind(FP.id, { on: true, rotate: true }, HW);
+  const K2 = r.d.find.key;
+  ok(r.status === 200 && K2 !== K1 && /^[A-Za-z0-9]{26}$/.test(K2) && r.d.find.rotatedAt > 0, 'finder: rotating mints a new key', r.d.find);
+  ok((await look(K1, 'μαρια')).status === 404 && !m.has('find:' + K1), 'finder: every QR printed with the old key stops working, and its row is gone');
+  ok((await look(K2, 'μαρια')).d.matches.length === 2, 'finder: the new key works');
+  ok(raw('plan:' + FP.id).audit.at(-1).what === 'find_rotated', 'finder: the rotation is in the access log');
+
+  // ---- switched off: exactly the same answer as a token that never existed ----
+  r = await setFind(FP.id, { on: false }, HW);
+  ok(r.status === 200 && r.d.find.on === false && r.d.find.key === K2, 'finder: switching it off keeps the key (the venue may print it again)');
+  const offBody = (await look(K2, 'μαρια')), unknownBody = (await look('ZzUnknownToken0123456789ab', 'μαρια'));
+  ok(offBody.status === 404 && JSON.stringify(offBody.d) === JSON.stringify(unknownBody.d) && offBody.d.error === 'not_found', 'finder: a switched-off token and an unknown one are the same 404 — nobody can tell them apart', offBody.d);
+  ok(raw('plan:' + FP.id).audit.at(-1).what === 'find_off', 'finder: the log says it was switched off');
+  await look(K2, 'μαρια'); const spent = raw('find:' + K2).n;
+  r = await setFind(FP.id, { on: true }, HW);
+  ok(r.d.find.key === K2 && (await look(K2, 'μαρια')).status === 200 && raw('find:' + K2).n === spent + 1, 'finder: switching it on again revives the same key without clearing the day\'s count');
+
+  // ---- the token\'s own cap: 1,500 lookups a day, kept by the worker itself ----
+  patchRaw('find:' + K2, o => { o.day = day(0); o.n = 1500; });
+  r = await look(K2, 'μαρια');
+  ok(r.status === 429 && r.d.error === 'busy' && r.d.retryAfter > 0 && +r.h.get('Retry-After') === r.d.retryAfter, 'finder: the 1,500th lookup of a day is the last → 429 busy with Retry-After', r.d);
+  ok(raw('find:' + K2).n === 1500, 'finder: a refused lookup is not counted again');
+  patchRaw('find:' + K2, o => { o.day = day(-1); });
+  ok((await look(K2, 'μαρια')).status === 200 && raw('find:' + K2).n === 1, 'finder: the next Athens day starts the count again');
+
+  // ---- support and the venue: whoever may write guest names ----
+  r = await fcall('POST', '/plans/' + FP.id + '/support', { hours: 24 }, HW);
+  const SKF = (await fcall('GET', '/admin/support', undefined, OWN)).d.requests.find(x => x.key && x.kind === 'couple' && x.name === 'Μαρία & Νίκος').key;
+  await setFind(FP.id, { on: false }, { 'X-Support-Key': SKF });
+  ok((await setFind(FP.id, { on: true }, { 'X-Support-Key': SKF })).status === 200 && raw('plan:' + FP.id).audit.at(-1).who === 'support' && raw('plan:' + FP.id).audit.at(-1).what === 'find_on', 'finder: support with an open grant may switch it on, and the log names the role', raw('plan:' + FP.id).audit.at(-1));
+  const supportBefore = JSON.stringify(raw('plan:' + FP.id).audit);
+  for (let i = 0; i < 55; i++) await setFind(FP.id, { on: true }, { 'X-Support-Key': SKF });
+  ok(JSON.stringify(raw('plan:' + FP.id).audit) === supportBefore, 'finder: and 55 no-op calls from that support key leave every earlier entry — support cannot loop its own opens out of the log');
+  const VF = (await fcall('POST', '/admin/venues', { name: 'Κτήμα QR', license: { type: 'seasonal' } }, OWN)).d;
+  const WF = (await fcall('POST', '/venues/' + VF.id + '/weddings', { label: 'Γάμος QR', date: day(4) }, { 'X-Venue-Key': VF.key })).d;
+  patchRaw('plan:' + WF.planId, o => { o.plan = bigPlan(); });
+  r = await setFind(WF.planId, { on: true }, { 'X-Venue-Key': VF.key });
+  const KV = r.d.find.key;
+  ok(r.status === 200 && raw('plan:' + WF.planId).find.by === 'venue' && (await look(KV, 'μαρια')).d.event === 'Γάμος QR', 'finder: a venue switches its own wedding\'s finder on');
+  ok((await setFind(WF.planId, { on: true }, { 'X-Edit-Key': WF.editKey })).status === 200, 'finder: the couple of a venue wedding may too');
+  ok((await look(KV, 'μαρια')).d.matches[0].table === '12' && (await look(KV, 'δοκιμη')).d.count === 300, 'finder: the venue\'s wedding answers exactly like the couple\'s');
+
+  // ---- the key dies with the WINDOW (not with the lock the night before), and with the plan ----
+  patchRaw('plan:' + WF.planId, o => { o.weddingDate = day(-1); o.retention = null; });
+  await mod.sweep(env);
+  ok(raw('plan:' + WF.planId).lockedAt && raw('plan:' + WF.planId).find && m.has('find:' + KV), 'finder: the sweep locks the plan the day after the wedding and leaves the door list standing');
+  ok((await look(KV, 'μαρια')).status === 200, 'finder: … so a guest arriving after midnight is still told their table');
+  patchRaw('plan:' + WF.planId, o => { o.weddingDate = day(-3); });
+  const swept = await mod.sweep(env);
+  ok(swept.findEnded >= 1 && !raw('plan:' + WF.planId).find && !m.has('find:' + KV), 'finder: once the window has closed the sweep drops the key and its row', swept);
+  ok((await look(KV, 'μαρια')).status === 404, 'finder: … and its QR is an unknown token from then on');
+  const K3 = (await setFind(FP.id, { on: true, rotate: true }, HW)).d.find.key;
+  ok((await fcall('DELETE', '/plans/' + FP.id, undefined, HW)).status === 200 && !m.has('find:' + K3), 'finder: erasing the plan takes its finder row with it');
+  ok((await look(K3, 'μαρια')).status === 404, 'finder: … and that QR is unknown too');
+  m.set('find:orphanfindrow000000', JSON.stringify({ id: 'planThatIsLongGone0000', day: day(0), n: 3 }));
+  ok((await mod.sweep(env)).find >= 1 && !m.has('find:orphanfindrow000000'), 'finder: the sweep clears a finder row whose plan is gone');
+
+  // ---- nothing but a name and a table ever left the building ----
+  const secrets = ['gfind_', 'Αλλεργία', 'confirmed', 'Οικογένεια Παππά', 'grp1', 'amelie:zz', '"note"', '"status"', '"party"', '"group"', '"srcId"', '"seats"', '"guests"', '"plan"'];
+  const spill = [], guestSide = bodies.filter(b => b.url.startsWith('/find'));   // what the public endpoint answered
+  guestSide.forEach((b, i) => secrets.forEach(s => { if (b.text.includes(s)) spill.push('answer #' + i + ' — ' + s); }));
+  ok(guestSide.length > 40 && spill.length === 0, 'finder: no note, status, invitation, group, id or seat in any of the ' + guestSide.length + ' public answers', spill);
+  const keyLeak = bodies.filter(b => b.url.startsWith('/find') && [K1, K2, K3, KV].some(k => b.text.includes(k)));
+  ok(keyLeak.length === 0, 'finder: no public answer ever echoes the token back');
+  const heard = [];
+  for (const line of logs) {
+    for (const q of QUERIES) if (q.length >= 3 && line.includes(q)) heard.push('query «' + q + '»');
+    for (const nm of ALL_NAMES) if (line.includes(nm)) heard.push('name «' + nm + '»');
+  }
+  ok(QUERIES.length > 25 && heard.length === 0, 'finder: answering ' + QUERIES.length + ' lookups the worker wrote ' + logs.length + ' log lines — none of them holding a query or any of the 316 names');
+}
 console.log(`\nall ${n} checks passed`);
