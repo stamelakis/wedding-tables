@@ -1,0 +1,13 @@
+# TakeaSeat — https://takeaseat.gr
+# The marketing pages and the free demo are for everyone. The consoles and the seat editor need a private key
+# in the URL fragment; there is nothing there for a crawler, and a plan link must never end up in an index.
+
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /venue.html
+Disallow: /seating-planner.html
+Disallow: /seating-planner-el.html
+Disallow: /seating-planner-de.html
+
+Sitemap: https://takeaseat.gr/sitemap.xml
