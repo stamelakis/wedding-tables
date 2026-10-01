@@ -1407,7 +1407,7 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
   r = await look(K1, 'δημητριου');
   ok(r.d.matches.length === 5 && r.d.matches.every(x => x.name.startsWith('Δημητρίου')) && !r.d.tooMany, 'finder: five matches are still answered in full');
   r = await look(K1, 'νικολαου');
-  ok(r.status === 200 && r.d.tooMany === true && r.d.count === 6 && JSON.stringify(Object.keys(r.d)) === '["ok","tooMany","count"]', 'finder: six → «type more of your name», with the count and NO names', r.d);
+  ok(r.status === 200 && r.d.tooMany === true && r.d.count === 6 && r.d.event === 'Μαρία & Νίκος' && r.d.date === day(3) && JSON.stringify(Object.keys(r.d)) === '["ok","tooMany","count","event","date"]' && !('matches' in r.d), 'finder: six → «type more of your name», with the count, the wedding it belongs to and NO names', r.d);
   r = await look(K1, 'δοκιμη');
   ok(r.d.tooMany === true && r.d.count === 300 && !bodies.at(-1).text.includes('Καλεσμένος'), 'finder: a query that matches 300 guests hands over none of them', r.d);
   ok((await look(K1, 'μα')).d.error === 'too_short' && (await look(K1, '  α  ')).d.error === 'too_short' && (await look(K1, '')).status === 400 && (await look(K1, undefined)).status === 400, 'finder: under three characters after trimming → 400 too_short');

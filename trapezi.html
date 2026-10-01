@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- A finder link reads guest names: it must never be indexed. robots.txt disallows it too, and the server sends
+     X-Robots-Tag: noindex for this path (server.mjs, NOINDEX) for crawlers that ignore robots.txt. -->
+<meta name="robots" content="noindex,nofollow">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#2b2134">
+<title>Βρες το τραπέζι σου — TakeaSeat</title>
+<script>
+/* The token lives in the URL FRAGMENT, so it never reaches a server in a URL, a Referer or anybody's access log.
+   Read it and take it out of the address bar before anything else draws: from here on it exists only in memory —
+   never in a URL, never in storage, never in a log line. The guest's page sends it in the POST body of /find.
+   A reload therefore loses it, which is correct: the page then asks the guest to scan the QR again. */
+var TAS_TOKEN = (function () {
+  var t = "";
+  try {
+    var h = (location.hash || "").slice(1);
+    if (/^[A-Za-z0-9]{22,64}$/.test(h)) t = h;                                  /* same shape the server accepts */
+    if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+  } catch (e) {}
+  return t;
+})();
+</script>
+<style>
+  /* The palette and type of index.html — this should feel like TakeaSeat, discreetly. Nothing external, ever. */
+  :root{
+    --paper:#f7f4f1; --paper-2:#efe9e2; --card:#fffdfb;
+    --ink:#241f1a; --soft:#5f574d; --faint:#93897c;
+    --line:#e7ded4; --accent:#7d5a8c; --accent-ink:#5c3f68; --accent-soft:#efe6f2;
+    --hero-1:#3a2f42; --hero-2:#241b2c;
+    --shadow:0 1px 2px rgba(40,30,20,.05), 0 10px 30px rgba(40,30,20,.07);
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; }
+  body{ background:var(--paper); color:var(--ink); font-family:var(--sans); line-height:1.6;
+        -webkit-font-smoothing:antialiased; -webkit-text-size-adjust:100%; }
+  .wrap{ max-width:560px; margin:0 auto; padding:0 16px; }
+
+  /* ---- top bar: the brand, small, and the language switch ---- */
+  header{ border-bottom:1px solid var(--line); }
+  header .wrap{ display:flex; align-items:center; gap:10px; min-height:56px; }
+  .brand{ font-family:var(--serif); font-weight:700; font-size:19px; letter-spacing:-.01em; }
+  .brand .dot{ color:var(--accent); }
+  .langs{ margin-left:auto; display:flex; gap:4px; }
+  .langs button{ font:inherit; font-size:13px; font-weight:700; color:var(--soft); background:transparent;
+                 border:1px solid var(--line); border-radius:9px; padding:0 9px; min-width:44px; min-height:44px; cursor:pointer; }
+  .langs button[aria-pressed="true"]{ background:var(--accent-soft); border-color:#dcc9e3; color:var(--accent-ink); }
+
+  /* ---- the wedding, so the guest knows they scanned the right thing ---- */
+  .event{ text-align:center; padding:16px 0 0; }
+  .event .nm{ font-family:var(--serif); font-size:20px; font-weight:600; line-height:1.25; overflow-wrap:anywhere; }
+  .event .dt{ color:var(--faint); font-size:14px; }
+
+  /* ---- the one thing on the screen: the name ---- */
+  main{ padding-bottom:26px; }
+  h1{ margin:20px 0 4px; font-family:var(--serif); font-weight:600; letter-spacing:-.01em;
+      font-size:clamp(25px,7.5vw,32px); line-height:1.15; text-wrap:balance; }
+  .hint{ margin:0 0 14px; color:var(--soft); font-size:15px; }
+  #q{ display:block; width:100%; font:inherit; font-size:24px; line-height:1.3; padding:15px 16px; min-height:62px;
+      border:2px solid var(--line); border-radius:14px; background:var(--card); color:var(--ink); }
+  #q:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 4px var(--accent-soft); }
+  #go{ display:block; width:100%; margin-top:12px; min-height:60px; font:inherit; font-size:20px; font-weight:700;
+       color:#fff; background:var(--accent); border:0; border-radius:14px; cursor:pointer; }
+  #go:active{ transform:translateY(1px); }
+  #go[disabled]{ opacity:.6; cursor:default; }
+
+  /* ---- everything we have to say: one calm card, never an alarm ---- */
+  .msg{ margin-top:18px; background:var(--card); border:1px solid var(--line); border-radius:14px;
+        padding:15px 17px; box-shadow:var(--shadow); }
+  .msg h2{ margin:0 0 5px; font-family:var(--serif); font-size:19px; font-weight:600; line-height:1.3; }
+  .msg p{ margin:0; color:var(--soft); font-size:16px; }
+
+  /* ---- the answer: readable at arm's length ---- */
+  .hit{ margin-top:16px; background:var(--card); border:1px solid var(--line); border-radius:18px;
+        box-shadow:var(--shadow); overflow:hidden; }
+  /* Greek surnames run long («Χατζηχρηστοδουλοπούλου») and the type here is deliberately huge, so one word can be wider
+     than the phone. It must WRAP: a name clipped by .hit's overflow:hidden is a name that is not quite the guest's,
+     shown at the moment they are asked to confirm it is. */
+  .hit .who{ padding:18px 18px 15px; text-align:center; font-family:var(--serif); font-weight:600;
+             font-size:clamp(23px,7.5vw,32px); line-height:1.15; letter-spacing:-.01em; overflow-wrap:anywhere; }
+  .tbl{ background:linear-gradient(150deg,var(--hero-1),var(--hero-2)); color:#fff; padding:16px 14px 22px; text-align:center; }
+  .tbl .eyebrow{ display:block; font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:#d9c4e4; font-weight:700; }
+  .tbl .no{ display:block; font-family:var(--serif); font-weight:600; letter-spacing:-.02em;
+            font-size:clamp(66px,27vw,110px); line-height:1.04; word-break:break-word; }
+  .tbl .no.word{ font-size:clamp(30px,9.5vw,46px); line-height:1.15; letter-spacing:-.01em; }
+  .noseat{ background:var(--paper-2); border-top:1px solid var(--line); padding:15px 18px; text-align:center; }
+  .noseat b{ display:block; font-family:var(--serif); font-size:19px; font-weight:600; line-height:1.3; }
+  .noseat span{ color:var(--soft); font-size:15px; }
+
+  /* ---- two to five people share the name: a short list, each row still big enough to read and to hit ---- */
+  h2.pick{ margin:20px 0 10px; font-family:var(--serif); font-size:20px; font-weight:600; }
+  .row{ display:flex; align-items:center; gap:10px; width:100%; margin:0 0 10px; padding:13px 15px; min-height:68px;
+        text-align:left; font:inherit; color:var(--ink); background:var(--card); border:1px solid var(--line);
+        border-radius:14px; box-shadow:var(--shadow); cursor:pointer; }
+  /* Both halves must be able to SHRINK and WRAP. A table label may be 60 characters (the server slices it there) and a
+     name a single long word, and a flex item's min-width:auto floor is its longest word: with `flex:none` on the badge
+     the pill ran off the right edge of a 320 px screen — taking the one thing the guest came for with it — and the
+     whole page gained a sideways scroll. The row grows taller instead; nothing leaves the card. */
+  .row .nm{ flex:1 1 auto; min-width:0; overflow-wrap:anywhere; font-family:var(--serif); font-size:19px; font-weight:600; line-height:1.25; }
+  .row .tb{ flex:0 1 auto; min-width:0; max-width:50%; overflow-wrap:anywhere; font-size:15px; font-weight:700; color:var(--accent-ink);
+            background:var(--accent-soft); border-radius:9px; padding:5px 9px; }   /* half the row at most, so a long label wraps the BADGE and never breaks the name mid-word */
+  .row .ch{ flex:none; color:var(--faint); font-size:22px; line-height:1; }
+  .back{ display:block; width:100%; margin-top:16px; min-height:52px; font:inherit; font-size:17px; font-weight:600;
+         color:var(--ink); background:var(--card); border:1px solid var(--line); border-radius:13px; cursor:pointer; }
+
+  footer{ border-top:1px solid var(--line); padding:16px 0 24px; text-align:center; font-size:13px; color:var(--faint); }
+  footer a{ color:var(--soft); }
+
+  @media (max-width:340px){ .wrap{ padding:0 13px; } .langs button{ min-width:40px; padding:0 6px; } }
+</style>
+</head>
+<body>
+
+<header><div class="wrap">
+  <span class="brand">Take<span class="dot">a</span>Seat</span>
+  <div class="langs" id="langs" role="group" aria-label="Γλώσσα / Language / Sprache">
+    <button type="button" data-l="el" lang="el">ΕΛ</button>
+    <button type="button" data-l="en" lang="en">EN</button>
+    <button type="button" data-l="de" lang="de">DE</button>
+  </div>
+</div></header>
+
+<noscript><div class="wrap"><div class="msg">
+  <h2>Ρωτήστε το προσωπικό στην είσοδο.</h2>
+  <p lang="en">Please ask the staff at the entrance.</p>
+  <p lang="de">Bitte fragen Sie das Personal am Eingang.</p>
+</div></div></noscript>
+
+<main class="wrap" id="main" hidden>
+  <div class="event" id="event" hidden><div class="nm" id="evName"></div><div class="dt" id="evDate"></div></div>
+
+  <form id="form" novalidate>
+    <h1><label for="q" id="ask"></label></h1>
+    <p class="hint" id="hint"></p>
+    <input id="q" name="q" type="text" autocomplete="name" autocapitalize="words" autocorrect="off"
+           spellcheck="false" enterkeyhint="search" maxlength="40">
+    <button id="go" type="submit"></button>
+  </form>
+
+  <div id="out" role="status" aria-live="polite"></div>
+</main>
+
+<footer><div class="wrap"><a id="foot" href="/" target="_blank" rel="noopener"></a></div></footer>
+
+<script>
+(function () {
+  "use strict";
+  var TOK = TAS_TOKEN; try { TAS_TOKEN = ""; } catch (e) {}   /* the only copy left is this closure's */
+
+  /* ---------- the words. Plain enough for a 70-year-old at the door; never a code, never an English word. ---------- */
+  var S = {
+    el: {
+      title: "Βρες το τραπέζι σου — TakeaSeat",
+      ask: "Γράψτε το όνομά σας",
+      /* Both names, from the start: at 300 guests whole families share one surname, so «αρκεί το επώνυμο» sent the
+         guest straight into «βρήκαμε πολλά ονόματα» — and then asked for the surname they had just typed. */
+      hint: "Το μικρό σας όνομα και το επώνυμο — τουλάχιστον τρία γράμματα.",
+      ph: "π.χ. Μαρία Παππά",
+      go: "Δες το τραπέζι μου",
+      going: "Ψάχνω…",
+      table: "ΤΡΑΠΕΖΙ",
+      tableShort: "Τραπέζι",
+      notSet: "δεν ορίστηκε",
+      pick: "Ποιο είναι το όνομά σας;",
+      back: "Άλλο όνομα",
+      backList: "Πίσω στη λίστα",
+      noSeat: "Δεν έχει οριστεί ακόμη τραπέζι για εσάς.",
+      noSeatSub: "Ρωτήστε το προσωπικό στην είσοδο — θα σας βοηθήσουν αμέσως.",
+      /* No number: the panel that switches the finder on promises the guest never sees counts, and a count read off
+         the entrance poster with three-letter queries measures the guest list. The number is not what makes the
+         guest type more letters anyway — saying WHICH half of the name is missing is. */
+      many: "Βρήκαμε πολλά ονόματα με αυτό που γράψατε.",
+      manySub: "Γράψτε και το μικρό σας όνομα — π.χ. «Μαρία Παππά».",
+      none: "Δεν βρήκαμε αυτό το όνομα.",
+      noneSub: "Δοκιμάστε μόνο το επώνυμό σας. Αν πάλι δεν βρεθεί, ρωτήστε το προσωπικό στην είσοδο.",
+      short: "Γράψτε τουλάχιστον τρία γράμματα από το όνομά σας.",
+      gone: "Αυτός ο σύνδεσμος δεν ισχύει πια.",
+      goneSub: "Σκανάρετε ξανά τον κωδικό QR στην είσοδο, ή ρωτήστε το προσωπικό.",
+      noTok: "Σκανάρετε τον κωδικό QR του γάμου.",
+      noTokSub: "Η σελίδα ανοίγει μόνο από τον κωδικό QR που βρίσκεται στην είσοδο. Αν ανανεώσατε τη σελίδα, σκανάρετέ τον ξανά.",
+      closed: "Η αναζήτηση δεν είναι ανοιχτή.",
+      closedSub: "Ανοίγει μία εβδομάδα πριν τον γάμο και κλείνει δύο μέρες μετά. Αν ο γάμος γίνεται σήμερα, ρωτήστε το προσωπικό.",
+      busy: "Πολλές αναζητήσεις αυτή τη στιγμή.",
+      busy1: "Δοκιμάστε ξανά σε ένα λεπτό.",
+      busyFew: "Δοκιμάστε ξανά σε λίγα λεπτά.",
+      busyLater: "Δοκιμάστε ξανά αργότερα, ή ρωτήστε το προσωπικό.",
+      net: "Δεν μπορέσαμε να συνδεθούμε.",
+      netSub: "Ελέγξτε το δίκτυο του κινητού σας και δοκιμάστε ξανά.",
+      oops: "Κάτι δεν πήγε καλά.",
+      oopsSub: "Δοκιμάστε ξανά σε λίγο, ή ρωτήστε το προσωπικό.",
+      foot: "Φτιαγμένο με το TakeaSeat"
+    },
+    en: {
+      title: "Find your table — TakeaSeat",
+      ask: "Type your name",
+      hint: "Your first name and your surname — at least three letters.",
+      ph: "e.g. Maria Pappa",
+      go: "Show my table",
+      going: "Searching…",
+      table: "TABLE",
+      tableShort: "Table",
+      notSet: "not set yet",
+      pick: "Which one is you?",
+      back: "Another name",
+      backList: "Back to the list",
+      noSeat: "No table has been set for you yet.",
+      noSeatSub: "Please ask the staff at the entrance — they will help you right away.",
+      many: "We found several names like that.",
+      manySub: "Add your first name too — e.g. “Maria Pappa”.",
+      none: "We could not find that name.",
+      noneSub: "Try your surname on its own. If it still is not found, ask the staff at the entrance.",
+      short: "Please type at least three letters of your name.",
+      gone: "This link is no longer in use.",
+      goneSub: "Scan the QR code at the entrance again, or ask the staff.",
+      noTok: "Please scan the wedding's QR code.",
+      noTokSub: "This page only opens from the QR code at the entrance. If you reloaded the page, scan it again.",
+      closed: "The search is not open.",
+      closedSub: "It opens one week before the wedding and closes two days after. If the wedding is today, please ask the staff.",
+      busy: "A great many searches right now.",
+      busy1: "Please try again in a minute.",
+      busyFew: "Please try again in a few minutes.",
+      busyLater: "Please try again later, or ask the staff.",
+      net: "We could not connect.",
+      netSub: "Check your phone's connection and try again.",
+      oops: "Something went wrong.",
+      oopsSub: "Please try again shortly, or ask the staff.",
+      foot: "Made with TakeaSeat"
+    },
+    de: {
+      title: "Finden Sie Ihren Tisch — TakeaSeat",
+      ask: "Schreiben Sie Ihren Namen",
+      hint: "Ihr Vorname und Ihr Nachname — mindestens drei Buchstaben.",
+      ph: "z. B. Maria Pappa",
+      go: "Meinen Tisch zeigen",
+      going: "Ich suche…",
+      table: "TISCH",
+      tableShort: "Tisch",
+      notSet: "noch offen",
+      pick: "Welcher Name ist Ihrer?",
+      back: "Anderer Name",
+      backList: "Zurück zur Liste",
+      noSeat: "Für Sie ist noch kein Tisch festgelegt.",
+      noSeatSub: "Fragen Sie bitte das Personal am Eingang — man hilft Ihnen sofort.",
+      many: "Wir haben mehrere Namen dazu gefunden.",
+      manySub: "Schreiben Sie auch Ihren Vornamen — z. B. „Maria Pappa“.",
+      none: "Diesen Namen haben wir nicht gefunden.",
+      noneSub: "Versuchen Sie nur Ihren Nachnamen. Wenn er weiterhin fehlt, fragen Sie das Personal am Eingang.",
+      short: "Bitte schreiben Sie mindestens drei Buchstaben Ihres Namens.",
+      gone: "Dieser Link gilt nicht mehr.",
+      goneSub: "Scannen Sie den QR-Code am Eingang noch einmal, oder fragen Sie das Personal.",
+      noTok: "Bitte scannen Sie den QR-Code der Hochzeit.",
+      noTokSub: "Diese Seite öffnet sich nur über den QR-Code am Eingang. Wenn Sie die Seite neu geladen haben, scannen Sie ihn noch einmal.",
+      closed: "Die Suche ist nicht offen.",
+      closedSub: "Sie öffnet eine Woche vor der Hochzeit und schließt zwei Tage danach. Wenn die Hochzeit heute ist, fragen Sie bitte das Personal.",
+      busy: "Gerade sehr viele Suchanfragen.",
+      busy1: "Bitte versuchen Sie es in einer Minute noch einmal.",
+      busyFew: "Bitte versuchen Sie es in ein paar Minuten noch einmal.",
+      busyLater: "Bitte versuchen Sie es später noch einmal, oder fragen Sie das Personal.",
+      net: "Keine Verbindung.",
+      netSub: "Prüfen Sie die Verbindung Ihres Handys und versuchen Sie es noch einmal.",
+      oops: "Etwas ist schiefgelaufen.",
+      oopsSub: "Bitte versuchen Sie es gleich noch einmal, oder fragen Sie das Personal.",
+      foot: "Erstellt mit TakeaSeat"
+    }
+  };
+  /* Foreign guests at Greek weddings are common, so the phone decides and the switch is one tap away. */
+  var LANG = (function () {
+    var l = "";
+    try { l = String((navigator.languages && navigator.languages[0]) || navigator.language || "").toLowerCase(); } catch (e) {}
+    return /^el/.test(l) ? "el" : /^de/.test(l) ? "de" : /^en/.test(l) ? "en" : "el";
+  })();
+  var T = function () { return S[LANG]; };
+
+  var $ = function (id) { return document.getElementById(id); };
+  var main = $("main"), out = $("out"), form = $("form"), q = $("q"), go = $("go"),
+      ev = $("event"), evName = $("evName"), evDate = $("evDate");
+
+  /* view: "ask" (the input) or "answer"; fatal hides the input, because typing cannot help any more */
+  var V = { view: "ask", fatal: false, msg: null, hits: null, sel: null, event: null, date: null };
+  var pending = false, seq = 0;   /* seq: a reply that a rescan has overtaken is dropped, never drawn */
+
+  var fold = function (s) { try { return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase(); } catch (e) { return s.toLowerCase(); } };
+
+  function fmtDate(s) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ""));
+    if (!m) return String(s || "");
+    try {
+      return new Intl.DateTimeFormat(LANG === "el" ? "el-GR" : LANG === "de" ? "de-DE" : "en-GB",
+        { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date(+m[1], +m[2] - 1, +m[3]));
+    } catch (e) { return m[3] + "/" + m[2] + "/" + m[1]; }
+  }
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;     /* every name comes from the plan: text, never markup */
+    return n;
+  }
+
+  /* ---------- what each reply says ---------- */
+  function words(m) {
+    var t = T();
+    switch (m.key) {
+      case "short":  return [t.short, ""];
+      case "none":   return [t.none, t.noneSub];
+      case "many":   return [t.many, t.manySub];
+      case "gone":   return [t.gone, t.goneSub];
+      case "noTok":  return [t.noTok, t.noTokSub];
+      case "closed": return [t.closed, t.closedSub];
+      /* The server sends exactly two Retry-After values: 600 (400 lookups per 10 minutes — a busy room, really a few
+         minutes) and 3600 (the unknown-token guard, which refuses the whole venue's wifi for an hour). An hour must
+         NOT read as «a few minutes»: at the door the only thing that helps inside it is busyLater's «ask the staff». */
+      case "busy":   return [t.busy, (m.ra && m.ra <= 120) ? t.busy1 : (!m.ra || m.ra <= 900) ? t.busyFew : t.busyLater];
+      case "net":    return [t.net, t.netSub];
+      default:       return [t.oops, t.oopsSub];
+    }
+  }
+
+  function msgCard(m) {
+    var w = words(m), box = el("div", "msg");
+    box.appendChild(el("h2", null, w[0]));
+    if (w[1]) box.appendChild(el("p", null, w[1]));
+    return box;
+  }
+
+  /* The table as the plan labels it: a number gets the word ΤΡΑΠΕΖΙ over it and all the size we have;
+     a label that is already a name («Νυφικό τραπέζι») stands on its own. ONE predicate, used by the card AND by the
+     pick list — they drifted apart once and a row read «Τραπέζι Νυφικό τραπέζι» while the card it opened read right. */
+  function needsWord(label) { return /\d/.test(label) && !/τραπεζ|table|tisch/.test(fold(label)); }
+
+  function tableBlock(label) {
+    var t = T(), b = el("div", "tbl");
+    if (needsWord(label)) b.appendChild(el("span", "eyebrow", t.table));
+    b.appendChild(el("span", "no" + (label.length > 4 ? " word" : ""), label));
+    return b;
+  }
+
+  function hitCard(h) {
+    var t = T(), card = el("div", "hit");
+    card.appendChild(el("div", "who", h.name));
+    if (h.table) card.appendChild(tableBlock(String(h.table)));
+    else {                                       /* no seat yet: a calm line, never an error */
+      var n = el("div", "noseat");
+      n.appendChild(el("b", null, t.noSeat));
+      n.appendChild(el("span", null, t.noSeatSub));
+      card.appendChild(n);
+    }
+    return card;
+  }
+
+  function pickList(hits) {
+    var t = T(), frag = document.createDocumentFragment();
+    frag.appendChild(el("h2", "pick", t.pick));
+    hits.forEach(function (h, i) {
+      var r = el("button", "row"); r.type = "button";
+      r.appendChild(el("span", "nm", h.name));
+      var lab = h.table == null ? "" : String(h.table);
+      r.appendChild(el("span", "tb", lab ? (needsWord(lab) ? t.tableShort + " " + lab : lab) : t.notSet));
+      r.appendChild(el("span", "ch", "›"));
+      r.addEventListener("click", function () { V.sel = i; render(); window.scrollTo(0, 0); });
+      frag.appendChild(r);
+    });
+    return frag;
+  }
+
+  /* Two different moves behind one button. After tapping the wrong «Παπαδόπουλος» out of four, the way out is the LIST,
+     not an empty search — the guest must not have to type the name again to see the other three. */
+  function backButton() {
+    var toList = V.sel != null && V.hits && V.hits.length > 1;
+    var b = el("button", "back", toList ? T().backList : T().back); b.type = "button";
+    b.addEventListener("click", function () {
+      if (toList) { V.sel = null; render(); window.scrollTo(0, 0); return; }
+      V.view = "ask"; V.hits = null; V.sel = null; V.msg = null;
+      render(); q.select(); q.focus();
+    });
+    return b;
+  }
+
+  /* ---------- draw ---------- */
+  function render() {
+    var t = T();
+    document.documentElement.lang = LANG;
+    document.title = t.title;
+    $("ask").textContent = t.ask;
+    $("hint").textContent = t.hint;
+    q.placeholder = t.ph;
+    go.textContent = pending ? t.going : t.go;
+    $("foot").textContent = t.foot;
+    Array.prototype.forEach.call($("langs").children, function (b) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-l") === LANG ? "true" : "false");
+    });
+
+    if (V.event != null) { evName.textContent = V.event; evDate.textContent = fmtDate(V.date); }
+    ev.hidden = V.event == null && !V.date;
+    form.hidden = V.fatal || V.view === "answer";
+
+    out.textContent = "";
+    if (V.msg) out.appendChild(msgCard(V.msg));
+    if (V.view === "answer" && V.hits) {
+      if (V.hits.length === 1 || V.sel != null) out.appendChild(hitCard(V.hits[V.sel == null ? 0 : V.sel]));
+      else out.appendChild(pickList(V.hits));
+      out.appendChild(backButton());
+    }
+    main.hidden = false;
+  }
+
+  function setPending(on) { pending = on; go.disabled = on; go.textContent = T()[on ? "going" : "go"]; go.setAttribute("aria-busy", on ? "true" : "false"); }
+  /* Every message EXCEPT the answer draws below the form — which on a phone is exactly where the on-screen keyboard is.
+     Measured at 375×667 with the keyboard up: the card sat at y=394..531 with nothing to scroll (the document was the
+     height of the screen), so «βρήκαμε πολλά ονόματα» — the commonest first answer at a 300-guest wedding — was simply
+     not on screen while the field kept the focus. So close the keyboard first, the way the answer path already does,
+     and then bring the card into view for the phones whose text size pushes it past the bottom anyway. The guest's
+     text stays in the field: one tap puts the keyboard back. */
+  function show(msg, fatal) {
+    V.view = "ask"; V.hits = null; V.sel = null; V.msg = msg; V.fatal = !!fatal;
+    try { q.blur(); } catch (e) {}
+    render();
+    if (msg) { try { out.scrollIntoView({ block: "nearest" }); } catch (e) { try { out.scrollIntoView(false); } catch (e2) {} } }
+  }
+
+  /* ---------- the lookup ---------- */
+  function lookup(text) {
+    var ctl = null, timer = null;
+    try { ctl = new AbortController(); } catch (e) {}
+    var opts = { method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store",
+                 credentials: "omit", body: JSON.stringify({ token: TOK, q: text }) };
+    if (ctl) { opts.signal = ctl.signal; timer = setTimeout(function () { try { ctl.abort(); } catch (e) {} }, 15000); }
+    return fetch("/find", opts).then(function (r) {                      /* the token travels in the body, never a URL */
+      return r.text().then(function (txt) {
+        var d = null; try { d = JSON.parse(txt); } catch (e) {}
+        return { s: r.status, d: d, ra: Number(r.headers.get("Retry-After") || (d && d.retryAfter) || 0) };
+      });
+    }).then(function (r) { if (timer) clearTimeout(timer); return r; },
+            function (e) { if (timer) clearTimeout(timer); throw e; });
+  }
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (pending) return;
+    if (!TOK) { show({ key: "noTok" }, true); return; }
+    var text = q.value.replace(/\s+/g, " ").trim();
+    if (text.length < 3) { show({ key: "short" }); return; }              /* spare the venue's wifi a pointless call */
+
+    setPending(true);
+    var mine = ++seq;
+    lookup(text).then(function (r) {
+      if (mine !== seq) return;
+      setPending(false);
+      var d = r.d || {};
+      if (r.s === 200 && d.ok) {
+        /* The wedding header, before anything returns: a guest whose FIRST search is «too many» must still be able to
+           see that they scanned the right wedding's QR. Keep what is already known if the answer carries nothing. */
+        if (d.event != null) V.event = String(d.event);
+        if (d.date) V.date = d.date;
+        if (d.tooMany) { show({ key: "many" }); return; }
+        var hits = (d.matches || []).filter(function (h) { return h && h.name; });
+        if (!hits.length) { show({ key: "none" }); return; }
+        V.view = "answer"; V.hits = hits; V.sel = null; V.msg = null; V.fatal = false;
+        q.blur(); render(); window.scrollTo(0, 0);                        /* the answer, not the keyboard */
+        return;
+      }
+      if (r.s === 400 && d.error === "too_short") { show({ key: "short" }); return; }
+      if (r.s === 404) { show({ key: "gone" }, true); return; }
+      if (r.s === 403) { show({ key: "closed" }, true); return; }
+      if (r.s === 429) { show({ key: "busy", ra: r.ra }); return; }
+      show({ key: "oops" });
+    }, function () { if (mine !== seq) return; setPending(false); show({ key: "net" }); });
+  });
+
+  Array.prototype.forEach.call($("langs").children, function (b) {
+    b.addEventListener("click", function () { LANG = b.getAttribute("data-l"); render(); });
+  });
+
+  /* Scanning the QR again while this page is already open is a same-document jump: nothing reloads, so the token
+     in the new fragment would never be read and would sit in the address bar. Catch it, take it back out of the
+     URL, and start the guest over on a clean search. */
+  window.addEventListener("hashchange", function () {
+    var h = (location.hash || "").slice(1), t = /^[A-Za-z0-9]{22,64}$/.test(h) ? h : "";
+    if (location.hash) { try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {} }
+    if (!t) return;
+    TOK = t; seq++;                       /* whatever the old QR had in flight is no longer this guest's answer */
+    V = { view: "ask", fatal: false, msg: null, hits: null, sel: null, event: null, date: null };
+    q.value = ""; setPending(false); render();
+    try { q.focus({ preventScroll: true }); } catch (e) { q.focus(); }
+  });
+
+  if (!TOK) V.msg = { key: "noTok" }, V.fatal = true;   /* opened without the QR, or reloaded: say so, kindly */
+  render();
+  if (TOK) { try { q.focus({ preventScroll: true }); } catch (e) { q.focus(); } }
+})();
+</script>
+
+</body>
+</html>

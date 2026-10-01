@@ -10,6 +10,7 @@
 // PDF: ./pdf.mjs (pdfkit + an embedded font) renders floor plans and keepsakes; without it the PDF routes answer 503.
 
 import http from 'node:http';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -188,7 +189,11 @@ function rateOk(key, limit, windowMs) {
   if (arr.length >= limit) { RL.set(key, arr); return false; }
   arr.push(now); RL.set(key, arr); return true;
 }
-const RL_WINDOW = k => k.endsWith(':mail') || k.endsWith(':findfail') ? 3600000 : k.endsWith(':find') ? 600000 : 60000;   // the housekeeping must never drop a row that is still counting
+const RL_WINDOW = k => k.endsWith(':mail') || k.includes(':findfail') ? 3600000 : k.endsWith(':find') ? 600000 : 60000;   // the housekeeping must never drop a row that is still counting (`:findfail` also carries the per-token rows below)
+// Has this IP already paid a findfail slot for THIS unknown token within the hour? The first sighting pays; every
+// repeat is free. Keyed on a hash, so no token ever becomes a long-lived key in memory, and bounded by the budget
+// itself: once the ten slots are spent the request is refused before it ever gets here.
+const findSeen = (failKey, token) => rateOk(failKey + '!' + crypto.createHash('sha256').update(String(token)).digest('base64url').slice(0, 16), 1, 3600000);
 setInterval(() => { const now = Date.now();
   for (const [k, arr] of RL) { const w = RL_WINDOW(k); const f = arr.filter(t => now - t < w); if (f.length) RL.set(k, f); else RL.delete(k); }
 }, 300000).unref?.();
@@ -232,9 +237,11 @@ http.createServer(async (req, res) => {
   // tighter number locks the room out at guest 41. What actually bounds a valid token is the token's own cap (1,500 a day,
   // kept in the worker so it survives a move back to Cloudflare). The only way to probe for other weddings' finders is an
   // unknown token, and that stays expensive: 10 tries an hour per IP, the slot reserved before the request runs and given
-  // back unless the answer was 404. Nothing about the request is logged — not the query, not the answer.
+  // back unless the answer was 404 — once per DISTINCT token (see the refund rule at the end of the handler, and why a
+  // venue's old printed QR must not be able to spend the room's whole budget). Nothing about the request is logged —
+  // not the query, not the answer, not the token.
   const isFind = req.method === 'POST' && canon === '/find';
-  let findSlot = null, findStatus = 0;
+  let findSlot = null, findStatus = 0, findTok = '';
   if (isFind) {
     const ip = clientIp(req);
     if (!rateOk(ip + ':find', 400, 600000)) { res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '600' }); res.end('{"error":"busy"}'); return; }
@@ -270,6 +277,9 @@ http.createServer(async (req, res) => {
     const chunks = []; let size = 0;
     for await (const c of req) { size += c.length; if (size > MAX_BODY) { failed = false; res.writeHead(413, { 'Content-Type': 'application/json', 'Connection': 'close' }); res.end('{"error":"too_large"}'); req.destroy(); return; } chunks.push(c); }
     const body = chunks.length ? Buffer.concat(chunks) : undefined;
+    // Which token a finder lookup used — read for the refund rule at the end of this handler and for nothing else; it is
+    // hashed there and never stored, never logged. The worker parses the body again; it is a few hundred bytes.
+    if (isFind && body) { try { const fb = JSON.parse(body.toString('utf8')); if (fb && typeof fb.token === 'string') findTok = fb.token.trim().slice(0, 64); } catch (e) {} }
     if (canon === '/pdf') {   // stateless render of the plan the planner sends (local plans, the lab, unsynced edits) — no store access
       failed = false;
       if (req.method !== 'POST') { res.writeHead(405, { 'Content-Type': 'application/json' }); res.end('{"error":"method"}'); return; }
@@ -308,7 +318,13 @@ http.createServer(async (req, res) => {
     res.end('{"error":"server error"}');
   } finally {
     if (!failed) { const a = RL.get(failKey); const i = a ? a.lastIndexOf(slot) : -1; if (i >= 0) a.splice(i, 1); }
-    // only an unknown token (404) keeps its slot; a real lookup, a closed window or a server error gives it back
-    if (findSlot && findStatus !== 404) { const a = RL.get(findSlot.key); const i = a ? a.lastIndexOf(findSlot.t) : -1; if (i >= 0) a.splice(i, 1); }
+    // Only an unknown token (404) keeps its slot — and only the FIRST time this IP meets that particular token. A real
+    // lookup, a closed window or a server error gives it back, and so does every repeat of an unknown token.
+    // Why: «Νέος κωδικός» in the planner makes every printed QR a 404, and one old poster left standing at the door is
+    // scanned by phone after phone on the venue's single wifi address. Charged per attempt, the tenth scan of that one
+    // dead code locked every guest after it — including the ones scanning the CORRECT new code — out for an hour, and
+    // the page could only tell them to try again later. A script hunting for other weddings' finders tries DIFFERENT
+    // tokens, which is what the ten slots are actually for; repeats stay bounded by the 400-per-10-minutes rule above.
+    if (findSlot && (findStatus !== 404 || !findSeen(findSlot.key, findTok))) { const a = RL.get(findSlot.key); const i = a ? a.lastIndexOf(findSlot.t) : -1; if (i >= 0) a.splice(i, 1); }
   }
 }).listen(PORT, process.env.HOST || '0.0.0.0', () => console.log(`TakeaSeat server on ${process.env.HOST || '0.0.0.0'}:${PORT}  (static: ${PUBLIC_DIR})`));

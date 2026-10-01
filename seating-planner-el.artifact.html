@@ -928,7 +928,9 @@
     html, body{ height:auto !important; overflow:visible !important; display:block !important;
       background:#fff !important; }   /* the app's beige paper must not flood every printed sheet ("Background graphics" on) */
     #appbar, #main, #mobilebar, #pickbar, .toast, .popover, .modal-back, #navScrim{ display:none !important; }
-    #printarea{ display:block; position:static; width:100%; padding:0 10px; }
+    /* `relative`, not `static`, for one reason: the printed QR hangs off the top-right corner out of flow (see .pqr).
+       It adds no box to the flow, so it cannot move a page break. */
+    #printarea{ display:block; position:relative; width:100%; padding:0 10px; }
   }
   #printarea h2{ font-size:22px; margin:0 0 2px; font-family:var(--serif); }
   #printarea .pmeta{ color:#555; font-size:12.5px; margin:0 0 4px; }
@@ -1011,6 +1013,47 @@
      `position:fixed` is the one out-of-flow thing that is genuinely free, but Chromium repeats it on EVERY sheet and
      it collides with content at the bottom of a full page, which is worse on a door list than it is worth. */
   #printarea .psub .pbrandline{ margin-left:auto; flex:0 0 auto; white-space:nowrap; font-size:10.5px; color:#8d8d8d; }
+  /* ---- the door list's QR («Βρες το τραπέζι σου»), under the same discipline as the credit above: it must cost the
+     document NO height, in any mode, on any paper, at any margin — a 22 mm block that bought a sheet of its own would
+     be an advert alone on the venue's paper, exactly what the credit comment refuses.
+     The credit could ride on an existing row because it is one line of text. A 22 mm square cannot ride on any row,
+     so it is taken OUT OF FLOW instead (`position:absolute` against #printarea) and anchored to the TOP of the
+     document. That is what makes it free, and it is a different guarantee from the one the credit needed:
+       · out of flow → it contributes no height, so no page break can move;
+       · anchored at the top → it is always on the FIRST sheet. (The attempt recorded above — an absolutely positioned
+         line at the FOOT of the list — failed because Chromium carries out-of-flow content that lands past the bottom
+         of a sheet onto a new one. At `top:0` of the first sheet there is nothing to land past.)
+     What is left is horizontal: the three header rows must not run UNDER the QR. So with the QR on they are narrowed
+     and each is held to exactly one line (`nowrap` + ellipsis), the counts row the way it already was. Therefore the
+     header with the QR on is three lines — never taller than the same header without it, whatever the plan is called.
+     (A plan name long enough to wrap at full width would make the header one line SHORTER with the QR on; it can never
+     be longer. Nothing can ever add a sheet.)
+     How much each row gives up is not the same, and that is deliberate. «Βρες το τραπέζι σου» rides at the TOP of the
+     block, level with the plan's name — so only the <h2> gives up the label AND the square (56 mm, and a couple's name
+     needs 46), while the meta line and the counts line give up the square alone (25 mm) and run on underneath the
+     label. Measured at the narrowest usual print width (A4, 20 mm): the meta line is 126 mm in Greek, 118 in English,
+     112 in German, and 139 mm is what it is left with. Reserving the whole block for all three rows cut «Εκτύπωση:
+     1/10/26, 20:31» off the end — the one line that tells the staff at the door which printout is the newest. */
+  #printarea .pqr{ position:absolute; top:0; right:10px; display:flex; align-items:flex-start; gap:3mm; }
+  #printarea .pqr .pqrt{ flex:0 0 auto; margin-top:5px; white-space:nowrap; font-family:var(--serif); font-size:11px; color:#333; }
+  /* 22 mm, and the size is not a matter of taste: the header is h2 + meta + counts + the counts line's own 14 px
+     margin = 83 px to the first row of the list, and 22 mm IS 83 px. A millimetre more and the code's white quiet
+     zone would paint a notch into the grey ΠΡΟΣΚΛΗΤΗΡΙΟ bar (it did at 23 mm — the out-of-flow box paints above the
+     table). A millimetre less and the code starts giving away scanning margin on a folded printout for nothing. */
+  #printarea .pqr svg{ display:block; width:22mm; height:22mm; }
+  #printarea.haspqr h2{ padding-right:56mm; }
+  #printarea.haspqr .pmeta, #printarea.haspqr .psub{ padding-right:25mm; }
+  #printarea.haspqr h2, #printarea.haspqr .pmeta{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  /* ---- the entrance poster: one A4 page, and nothing on it but the couple, the date, the code and the two lines ---- */
+  #printarea.pposter{ padding:0; }
+  /* 28 mm of air at the top so the block sits near the middle of the sheet. The whole poster is then about 212 mm
+     tall, which still fits the shortest paper anybody prints this on (Letter at 20 mm margins leaves 239 mm). */
+  #printarea.pposter .ppbox{ break-inside:avoid; text-align:center; padding-top:28mm; }
+  #printarea.pposter .ppname{ font-family:var(--serif); font-size:34px; line-height:1.2; margin:0 0 4mm; }
+  #printarea.pposter .ppdate{ font-size:15px; color:#555; margin:0 0 10mm; letter-spacing:.02em; }
+  #printarea.pposter svg{ display:block; width:120mm; height:120mm; margin:0 auto; }
+  #printarea.pposter .ppel{ font-family:var(--serif); font-size:26px; margin:9mm 0 1mm; }
+  #printarea.pposter .ppen{ font-size:15px; color:#666; letter-spacing:.04em; }
   /* "alphainv" — the same A–Z table without the ΟΝΟΜΑ column: one row per invitation (or lone guest).
      ΤΡΑΠΕΖΙ gets the room, a split invitation lists every table it sits at: «8 (2) · 12 (1)». */
   #printarea .palpha.pone .ci{ width:52%; }
@@ -1195,6 +1238,10 @@
       <label class="imode" style="margin-top:6px"><input type="radio" name="pmode" value="parties"><span data-t="pmParties"></span></label>
       <label class="imode" style="margin-top:6px"><input type="radio" name="pmode" value="pdf"><span data-t="pmPdf"></span></label>
       <label class="imode" style="margin-top:6px" id="pmKeepRow" hidden><input type="radio" name="pmode" value="keepsake"><span data-t="pmKeep"></span></label>
+      <label class="imode" style="margin-top:6px" id="pmPosterRow" hidden><input type="radio" name="pmode" value="poster"><span data-t="pmPoster"></span></label>
+      <!-- Which of these sheets actually carries the QR. The two PDFs are rendered on the server and have none, and a
+           venue that prints «Κάτοψη» to stand at the door would otherwise find that out at the door. -->
+      <div class="mhint" style="padding:10px 0 0" id="pmQrHint" hidden data-t="pmQrWhere"></div>
       <label class="delskip" style="margin-top:12px"><input type="checkbox" id="pmBrand" checked><span data-t="pmBrand"></span></label>
       <div class="mrow"><button class="ibtn primary" id="printGo" data-t="mPrint"></button></div>
     </div>
@@ -1279,6 +1326,12 @@
   <div class="modal narrow">
     <div class="modal-head"><strong data-t="ameTitle"></strong><button class="mx" id="ameClose">✕</button></div>
     <div id="amelieBody" class="mbody"></div>
+  </div>
+</div>
+<div id="findModal" class="modal-back">
+  <div class="modal narrow">
+    <div class="modal-head"><strong data-t="mFind"></strong><button class="mx" id="findClose">✕</button></div>
+    <div id="findBody" class="mbody"></div>
   </div>
 </div>
 <div id="cloudModal" class="modal-back">
@@ -1501,6 +1554,19 @@ el:{
   csvDone:"Προστέθηκαν στη λίστα: {n}", csvDoneSeated:" · σε τραπέζια: {s}", csvDoneNoRoom:" · χωρίς θέση: {k} (το τραπέζι τους δεν βρέθηκε ή είναι γεμάτο)",
   rsvpTitle:"Απαντήσεις από την Amelie", rsvpOk:"Εντάξει", rsvpNothing:"Καμία αλλαγή — η λίστα σας έχει ήδη αυτές τις απαντήσεις.", rsvpNew:"Νέοι καλεσμένοι: {n}", rsvpChanged:"Άλλαξαν απάντηση: {n}", rsvpCutSeated:"Έχουν θέση, αλλά τώρα δεν έρχονται — οι θέσεις τους έμειναν όπως ήταν· αποφασίστε εσείς:", rsvpAtTable:"{n} — τραπέζι {t}", rsvpKept:"Η απάντηση στην Amelie άλλαξε, αλλά κρατήθηκε η κατάσταση που βάλατε εσείς:", rsvpAbsent:"Λείπουν από αυτό το αρχείο: {n} — έμειναν όπως ήταν (σβήστηκαν στην Amelie ή είναι από άλλο προσκλητήριο).", rsvpUndo:"Το ↶ αναιρεί όλη την εισαγωγή.", rsvpGoneNote:"Amelie: δεν είναι πια στην απάντηση του νοικοκυριού", tImportTooBig:"Η λίστα είναι πολύ μεγάλη για ένα σχέδιο — δεν εισήχθη τίποτα.",
   mAmelie:"Σύνδεση με Amelie…", ameTitle:"Σύνδεση με Amelie", ameLead:"Οι απαντήσεις (RSVP) από το ψηφιακό σας προσκλητήριο στην Amelie μπαίνουν μόνες τους στη λίστα καλεσμένων — όσο έρχονται.", ameHow:"Στη σελίδα σας στην Amelie αντιγράψτε τον σύνδεσμο για το TakeaSeat (https://amelie.gr/g/#…) και επικολλήστε τον εδώ.", ameConnect:"Σύνδεση", ameBad:"Αυτός δεν είναι σύνδεσμος της Amelie. Αντιγράψτε ολόκληρο τον σύνδεσμο https://amelie.gr/g/#… από τη σελίδα σας.", ameOn:"Συνδεδεμένο με την Amelie από {d}", ameLast:"Τελευταίος έλεγχος: {t}", ameLastNever:"Δεν έχει γίνει ακόμη έλεγχος.", ameAuto:"Όσο είναι ανοιχτό το σχέδιο, οι νέες απαντήσεις έρχονται μόνες τους κάθε λίγα λεπτά. Κανείς δεν σβήνεται και καμία θέση δεν αλλάζει· όσους γράψατε εσείς (π.χ. από τα έντυπα) δεν τους αγγίζει.", ameRefresh:"Ανανέωση από Amelie", ameOffBtn:"Αποσύνδεση", ameOffConfirm:"Να σταματήσει η σύνδεση με την Amelie; Όσοι ήρθαν ήδη μένουν στη λίστα.", ameOffDone:"Η σύνδεση με την Amelie σταμάτησε. Όσοι ήρθαν ήδη μένουν στη λίστα.", ameConnected:"Συνδέθηκε με την Amelie — φέρνω τις απαντήσεις…", ameGone:"Η σύνδεση με την Amelie έληξε — ζητήστε νέο σύνδεσμο από τη σελίδα σας.", ameGoneKept:"Όσοι ήρθαν ήδη μένουν στη λίστα.", amePrivacy:"Ο σύνδεσμος φυλάγεται μόνο στον server του TakeaSeat, όχι στο σχέδιο: όσοι έχουν σύνδεσμο προβολής δεν τον βλέπουν.", ameNothing:"Amelie: τίποτα καινούργιο.", ameDown:"Η Amelie δεν απαντά αυτή τη στιγμή — θα ξαναδοκιμάσω σε λίγο.", ameBusy:"Η Amelie ζήτησε μια μικρή παύση — ξανά μετά τις {t}", ameNoRight:"Αυτή η συσκευή δεν μπορεί να αλλάξει τη σύνδεση με την Amelie.", ameNotConn:"Το σχέδιο δεν είναι πια συνδεδεμένο με την Amelie.", ameToast:"Amelie: {w}", ameNew:"+{n} νέοι", ameNew1:"+{n} νέος", ameChg:"{n} άλλαξαν απάντηση", ameChg1:"{n} άλλαξε απάντηση", rsvpAbsentLive:"Δεν είναι πια στην Amelie: {n} — έμειναν όπως ήταν (σβήστηκαν εκεί).", rsvpUndoLive:"Το ↶ δεν αρκεί εδώ: όσο το σχέδιο είναι συνδεδεμένο, ο επόμενος έλεγχος φέρνει ξανά τις απαντήσεις της Amelie. Για να μείνει κάποιος όπως ήταν, αλλάξτε την κατάστασή του με το χέρι.", rsvpLinked:"Υπήρχαν ήδη στη λίστα (π.χ. από Excel) και συνδέθηκαν με την Amelie — δεν προστέθηκαν δεύτερη φορά: {n}", ameLinked:"{n} υπήρχαν ήδη — συνδέθηκαν", ameLinked1:"{n} υπήρχε ήδη — συνδέθηκε", ameRoNow:"Το σχέδιο είναι αυτή τη στιγμή μόνο για προβολή, οπότε δεν έρχονται νέες απαντήσεις. Τη σύνδεση μπορείτε να τη σταματήσετε οποτεδήποτε.", ameOffKeys:"Σταμάτησε και η σύνδεση με την Amelie (είχε γίνει με τους παλιούς συνδέσμους)· αν ήταν δική σας, συνδέστε την ξανά («Σύνδεση με Amelie…»).", atAmelie:"συνέδεσε την Amelie (απαντήσεις προσκλητηρίου)", atAmelieOff:"αποσύνδεσε την Amelie",
+  mFind:"Βρες το τραπέζι σου (QR)", findSwitch:"Ενεργό", findLink:"Ο σύνδεσμος του καλεσμένου", findCopy:"Αντιγραφή", findRotate:"Νέος κωδικός", findSince:"Ενεργό από {t}",
+  findWhat:"Ένα QR στη λίστα της πόρτας και σε αφίσα στην είσοδο. Ο καλεσμένος το σκανάρει με το κινητό του, γράφει το όνομά του και βλέπει το τραπέζι του — χωρίς να ρωτήσει κανέναν.",
+  findNoDate:"Χρειάζεται πρώτα η ημερομηνία του γάμου: το QR ανοίγει 7 ημέρες πριν από αυτήν και κλείνει 2 ημέρες μετά. Ορίστε την στο ⋯ → «Πρόσβαση & υποστήριξη» και ξαναελάτε εδώ.",
+  findWindow:"Ανοίγει {a} (7 ημέρες πριν τον γάμο) και κλείνει το βράδυ της {b} (2 ημέρες μετά). Έξω από αυτές τις μέρες ο καλεσμένος βλέπει ότι είναι κλειστό.",
+  findSees:"Ο καλεσμένος βλέπει μόνο το δικό του όνομα και το τραπέζι του. Ποτέ τη λίστα, ποτέ άλλα ονόματα. Αν ταιριάζουν πάνω από 5 ονόματα, δεν του δείχνουμε κανένα — του ζητάμε να γράψει και το μικρό του όνομα.",
+  findRotHint:"Ο «νέος κωδικός» αλλάζει τον σύνδεσμο: κάθε QR που έχει ήδη τυπωθεί σταματά να δουλεύει και πρέπει να τυπωθεί ξανά. Χρησιμοποιήστε τον μόνο αν ο σύνδεσμος διέφυγε.",
+  findRotConfirm:"Νέος κωδικός; Κάθε QR που έχετε τυπώσει — λίστα και αφίσα — σταματά να δουλεύει αμέσως και θα πρέπει να το τυπώσετε ξανά.",
+  findPrintHint:"Τυπώστε το: ⋯ → Εκτύπωση. Το μικρό QR μπαίνει πάνω στη λίστα της πόρτας· η «Αφίσα εισόδου» είναι μία σελίδα A4 με μεγάλο QR.",
+  findAfter:"Ο γάμος πέρασε: νέο QR δεν ανοίγει πια, αλλά αυτό που τρέχει μπορείτε να το κλείσετε εδώ.",
+  findLockedMsg:"Ο γάμος πέρασε — νέο QR δεν ανοίγει πια. Το κλείσιμο δουλεύει πάντα.",
+  tFindOn:"Ενεργό — τυπώστε τη λίστα ή την αφίσα με το QR", tFindOff:"Κλειστό — το QR δεν απαντά πια", tFindRotated:"Νέος κωδικός — τυπώστε ξανά λίστα και αφίσα",
+  qrLine:"Βρες το τραπέζι σου", pmPoster:"Αφίσα εισόδου (A4) — μεγάλο QR «Βρες το τραπέζι σου»", posterEl:"Βρες το τραπέζι σου", posterEn:"Find your table",
+  pmQrWhere:"Το QR «Βρες το τραπέζι σου» μπαίνει πάνω στις τέσσερις λίστες και στην αφίσα εισόδου. Τα δύο PDF δεν το έχουν.",
   labBride:"Νύφη", labGroom:"Γαμπρός",
   labNames:["Μαρία Π.","Γιώργος Κ.","Ελένη Α.","Νίκος Δ.","Κατερίνα Μ.","Δημήτρης Σ.","Σοφία Λ.","Κώστας Β.","Άννα Χ.","Παναγιώτης Ρ.","Χριστίνα Τ.","Μιχάλης Γ.","Ειρήνη Ν.","Βασίλης Ζ.","Δέσποινα Φ.","Αλέξανδρος Κ.","Ιωάννα Π.","Θανάσης Μ.","Αγγελική Σ.","Στέλιος Α.","Φωτεινή Δ.","Μανώλης Λ.","Ζωή Β.","Πέτρος Χ.","Ευαγγελία Ρ.","Σπύρος Τ.","Ναταλία Γ.","Χρήστος Ν.","Μαρίνα Ζ.","Λευτέρης Φ.","Αναστασία Κ.","Αντώνης Π.","Ελευθερία Μ.","Σταύρος Σ.","Νεφέλη Α.","Ορέστης Δ.","Δανάη Λ.","Άρης Β.","Ισμήνη Χ.","Φίλιππος Ρ."],
 },
@@ -1651,6 +1717,19 @@ en:{
   csvDone:"Added to the list: {n}", csvDoneSeated:" · at tables: {s}", csvDoneNoRoom:" · unseated: {k} (their table was not found or is full)",
   rsvpTitle:"Answers from Amelie", rsvpOk:"OK", rsvpNothing:"Nothing changed — your list already has these answers.", rsvpNew:"New guests: {n}", rsvpChanged:"Changed their answer: {n}", rsvpCutSeated:"Seated, but no longer coming — their seats were left as they are; your decision:", rsvpAtTable:"{n} — table {t}", rsvpKept:"Their answer in Amelie changed, but the status you set was kept:", rsvpAbsent:"Missing from this file: {n} — left as they were (deleted in Amelie, or from another invitation).", rsvpUndo:"↶ undoes the whole import.", rsvpGoneNote:"Amelie: no longer in the household's answer", tImportTooBig:"This list is too large for one plan — nothing was imported.",
   mAmelie:"Connect to Amelie…", ameTitle:"Connect to Amelie", ameLead:"The answers (RSVPs) to your digital invitation on Amelie join your guest list by themselves — as they come in.", ameHow:"On your Amelie page, copy the link for TakeaSeat (https://amelie.gr/g/#…) and paste it here.", ameConnect:"Connect", ameBad:"This is not an Amelie link. Copy the whole link https://amelie.gr/g/#… from your page.", ameOn:"Connected to Amelie since {d}", ameLast:"Last checked: {t}", ameLastNever:"Not checked yet.", ameAuto:"While the plan is open, new answers come in by themselves every few minutes. Nobody is deleted and no seat changes; the names you typed yourselves (e.g. from paper invitations) are never touched.", ameRefresh:"Refresh from Amelie", ameOffBtn:"Disconnect", ameOffConfirm:"Stop the connection to Amelie? Everyone already imported stays on the list.", ameOffDone:"Disconnected from Amelie. Everyone already imported stays on the list.", ameConnected:"Connected to Amelie — fetching the answers…", ameGone:"The connection to Amelie has expired — ask for a new link on your page.", ameGoneKept:"Everyone already imported stays on the list.", amePrivacy:"The link is kept only on TakeaSeat's server, not in the plan: people with a view link never see it.", ameNothing:"Amelie: nothing new.", ameDown:"Amelie is not answering right now — I will try again shortly.", ameBusy:"Amelie asked for a short pause — again after {t}", ameNoRight:"This device cannot change the Amelie connection.", ameNotConn:"This plan is no longer connected to Amelie.", ameToast:"Amelie: {w}", ameNew:"+{n} new", ameNew1:"+{n} new", ameChg:"{n} changed their answer", ameChg1:"{n} changed their answer", rsvpAbsentLive:"No longer in Amelie: {n} — left as they were (deleted there).", rsvpUndoLive:"↶ is not enough here: while the plan is connected, the next check brings Amelie's answers again. To keep someone as they were, change their status by hand.", rsvpLinked:"Already on the list (e.g. from Excel) and now linked to Amelie — not added a second time: {n}", ameLinked:"{n} already listed — linked", ameLinked1:"{n} already listed — linked", ameRoNow:"The plan is view-only right now, so no new answers come in. You can end the connection at any time.", ameOffKeys:"The Amelie connection was ended too (it was made with the old links); if it was yours, connect it again («Connect to Amelie…»).", atAmelie:"connected Amelie (invitation answers)", atAmelieOff:"disconnected Amelie",
+  mFind:"Find your table (QR)", findSwitch:"On", findLink:"The guest's link", findCopy:"Copy", findRotate:"New code", findSince:"On since {t}",
+  findWhat:"A QR code on the door list and on a poster at the entrance. A guest scans it with their phone, types their name and sees their table — without asking anyone.",
+  findNoDate:"The wedding date comes first: the QR opens 7 days before it and closes 2 days after. Set the date under ⋯ → “Access & support”, then come back here.",
+  findWindow:"Opens {a} (7 days before the wedding) and closes at the end of {b} (2 days after). Outside those days a guest is told it is closed.",
+  findSees:"A guest sees only their own name and their table. Never the list, never other names. If more than 5 names match, they are shown none of them and asked to add their first name.",
+  findRotHint:"“New code” changes the link: every QR already printed stops working and has to be printed again. Use it only if the link got out.",
+  findRotConfirm:"A new code? Every QR you have printed — list and poster — stops working at once and will have to be printed again.",
+  findPrintHint:"Print it: ⋯ → Print. The small QR rides on the door list; “Entrance poster” is one A4 page with a big one.",
+  findAfter:"The wedding is over: no new QR opens now, but the one that is running can be switched off here.",
+  findLockedMsg:"The wedding is over — no new QR opens. Switching it off always works.",
+  tFindOn:"On — print the list or the poster with the QR", tFindOff:"Off — the QR no longer answers", tFindRotated:"New code — print the list and the poster again",
+  qrLine:"Find your table", pmPoster:"Entrance poster (A4) — a big “Find your table” QR", posterEl:"Βρες το τραπέζι σου", posterEn:"Find your table",
+  pmQrWhere:"The “Find your table” QR rides on the four lists and on the entrance poster. The two PDFs do not carry it.",
   labBride:"Bride", labGroom:"Groom",
   labNames:["Maria P.","George K.","Helen A.","Nick D.","Katerina M.","Jim S.","Sophia L.","Kostas V.","Anna C.","Peter R.","Christina T.","Michael G.","Irene N.","Bill Z.","Despina F.","Alex K.","Joanna P.","Thanos M.","Angela S.","Steve A.","Fay D.","Manolis L.","Zoe V.","Petros C.","Eva R.","Spyros T.","Natalie G.","Chris N.","Marina Z.","Lefteris F.","Anastasia K.","Tony P.","Ellie M.","Stavros S.","Nefeli A.","Orestis D.","Danae L.","Aris V.","Ismene C.","Philip R."],
 },
@@ -1801,6 +1880,19 @@ de:{
   csvDone:"Zur Liste hinzugefügt: {n}", csvDoneSeated:" · an Tischen: {s}", csvDoneNoRoom:" · ohne Platz: {k} (ihr Tisch wurde nicht gefunden oder ist voll)",
   rsvpTitle:"Antworten aus Amelie", rsvpOk:"OK", rsvpNothing:"Nichts geändert — Ihre Liste hat diese Antworten schon.", rsvpNew:"Neue Gäste: {n}", rsvpChanged:"Antwort geändert: {n}", rsvpCutSeated:"Haben einen Platz, kommen aber nicht mehr — die Plätze blieben, wie sie waren; Sie entscheiden:", rsvpAtTable:"{n} — Tisch {t}", rsvpKept:"Die Antwort in Amelie hat sich geändert, Ihr eigener Status wurde beibehalten:", rsvpAbsent:"Fehlen in dieser Datei: {n} — unverändert (in Amelie gelöscht oder aus einer anderen Einladung).", rsvpUndo:"↶ macht den ganzen Import rückgängig.", rsvpGoneNote:"Amelie: nicht mehr in der Antwort des Haushalts", tImportTooBig:"Diese Liste ist zu groß für einen Plan — nichts wurde importiert.",
   mAmelie:"Mit Amelie verbinden…", ameTitle:"Mit Amelie verbinden", ameLead:"Die Antworten (RSVPs) auf Ihre digitale Einladung bei Amelie kommen von selbst in Ihre Gästeliste — sobald sie eintreffen.", ameHow:"Kopieren Sie auf Ihrer Amelie-Seite den Link für TakeaSeat (https://amelie.gr/g/#…) und fügen Sie ihn hier ein.", ameConnect:"Verbinden", ameBad:"Das ist kein Amelie-Link. Kopieren Sie den ganzen Link https://amelie.gr/g/#… von Ihrer Seite.", ameOn:"Mit Amelie verbunden seit {d}", ameLast:"Zuletzt geprüft: {t}", ameLastNever:"Noch nicht geprüft.", ameAuto:"Solange der Plan offen ist, kommen neue Antworten alle paar Minuten von selbst. Niemand wird gelöscht und kein Platz ändert sich; selbst eingetragene Namen (z. B. von Papiereinladungen) bleiben unberührt.", ameRefresh:"Aus Amelie aktualisieren", ameOffBtn:"Trennen", ameOffConfirm:"Verbindung zu Amelie beenden? Alle bereits übernommenen Gäste bleiben auf der Liste.", ameOffDone:"Von Amelie getrennt. Alle bereits übernommenen Gäste bleiben auf der Liste.", ameConnected:"Mit Amelie verbunden — die Antworten werden geholt…", ameGone:"Die Verbindung zu Amelie ist abgelaufen — fordern Sie auf Ihrer Seite einen neuen Link an.", ameGoneKept:"Alle bereits übernommenen Gäste bleiben auf der Liste.", amePrivacy:"Der Link wird nur auf dem Server von TakeaSeat aufbewahrt, nicht im Plan: Wer einen Ansichtslink hat, sieht ihn nie.", ameNothing:"Amelie: nichts Neues.", ameDown:"Amelie antwortet gerade nicht — ich versuche es gleich noch einmal.", ameBusy:"Amelie bittet um eine kurze Pause — wieder nach {t}", ameNoRight:"Dieses Gerät kann die Amelie-Verbindung nicht ändern.", ameNotConn:"Dieser Plan ist nicht mehr mit Amelie verbunden.", ameToast:"Amelie: {w}", ameNew:"+{n} neu", ameNew1:"+{n} neu", ameChg:"{n} Antworten geändert", ameChg1:"{n} Antwort geändert", rsvpAbsentLive:"Nicht mehr in Amelie: {n} — unverändert (dort gelöscht).", rsvpUndoLive:"↶ reicht hier nicht: Solange der Plan verbunden ist, bringt die nächste Prüfung die Antworten aus Amelie wieder. Damit jemand so bleibt, wie er war, ändern Sie seinen Status von Hand.", rsvpLinked:"Schon auf der Liste (z. B. aus Excel) und jetzt mit Amelie verknüpft — nicht doppelt hinzugefügt: {n}", ameLinked:"{n} schon auf der Liste — verknüpft", ameLinked1:"{n} schon auf der Liste — verknüpft", ameRoNow:"Der Plan ist gerade nur zur Ansicht, daher kommen keine neuen Antworten. Die Verbindung können Sie jederzeit beenden.", ameOffKeys:"Auch die Verbindung zu Amelie wurde beendet (sie stammte von den alten Links); falls es Ihre war, verbinden Sie sie erneut („Mit Amelie verbinden…“).", atAmelie:"verband Amelie (Antworten der Einladung)", atAmelieOff:"trennte Amelie",
+  mFind:"Finde deinen Tisch (QR)", findSwitch:"Aktiv", findLink:"Der Link für die Gäste", findCopy:"Kopieren", findRotate:"Neuer Code", findSince:"Aktiv seit {t}",
+  findWhat:"Ein QR-Code auf der Türliste und auf einem Plakat am Eingang. Der Gast scannt ihn mit dem Handy, tippt seinen Namen ein und sieht seinen Tisch — ohne jemanden zu fragen.",
+  findNoDate:"Zuerst das Hochzeitsdatum: der QR-Code öffnet 7 Tage davor und schließt 2 Tage danach. Tragen Sie das Datum unter ⋯ → „Zugriff & Support“ ein und kommen Sie dann zurück.",
+  findWindow:"Öffnet {a} (7 Tage vor der Hochzeit) und schließt am Abend des {b} (2 Tage danach). Außerhalb dieser Tage sieht der Gast, dass es geschlossen ist.",
+  findSees:"Ein Gast sieht nur seinen eigenen Namen und seinen Tisch. Nie die Liste, nie andere Namen. Passen mehr als 5 Namen, wird keiner angezeigt — er wird gebeten, auch seinen Vornamen zu schreiben.",
+  findRotHint:"„Neuer Code“ ändert den Link: jeder bereits gedruckte QR-Code funktioniert nicht mehr und muss neu gedruckt werden. Nur verwenden, wenn der Link nach außen gelangt ist.",
+  findRotConfirm:"Neuer Code? Jeder gedruckte QR-Code — Liste und Plakat — funktioniert sofort nicht mehr und muss neu gedruckt werden.",
+  findPrintHint:"Drucken: ⋯ → Drucken. Der kleine QR-Code reitet auf der Türliste; „Eingangsplakat“ ist eine A4-Seite mit einem großen.",
+  findAfter:"Die Hochzeit ist vorbei: ein neuer QR-Code öffnet nicht mehr, der laufende kann hier aber abgeschaltet werden.",
+  findLockedMsg:"Die Hochzeit ist vorbei — ein neuer QR-Code öffnet nicht mehr. Abschalten geht immer.",
+  tFindOn:"Aktiv — drucken Sie die Liste oder das Plakat mit dem QR-Code", tFindOff:"Aus — der QR-Code antwortet nicht mehr", tFindRotated:"Neuer Code — Liste und Plakat neu drucken",
+  qrLine:"Finde deinen Tisch", pmPoster:"Eingangsplakat (A4) — großer „Finde deinen Tisch“-QR-Code", posterEl:"Βρες το τραπέζι σου", posterEn:"Find your table",
+  pmQrWhere:"Der QR-Code „Finde deinen Tisch“ ist auf den vier Listen und auf dem Eingangsplakat. Die beiden PDFs haben ihn nicht.",
   labBride:"Braut", labGroom:"Bräutigam",
   labNames:["Maria P.","Georg K.","Helena A.","Niko D.","Katharina M.","Jan S.","Sophie L.","Konstantin V.","Anna C.","Peter R.","Christina T.","Michael G.","Irene N.","Wilhelm Z.","Despina F.","Alex K.","Johanna P.","Thomas M.","Angelika S.","Stefan A.","Frieda D.","Manuel L.","Zoe V.","Petra C.","Eva R.","Sebastian T.","Natalie G.","Christoph N.","Marina Z.","Leon F.","Anastasia K.","Anton P.","Elli M.","Stefanos S.","Nefeli A.","Oliver D.","Diana L.","Aris V.","Isabel C.","Philipp R."],
 },
@@ -5475,7 +5567,9 @@ $("moreBtn").addEventListener("click",e=>{
   if(ACCESS.locked) primary.push(["keepsake",tr("lifePdf")]);
   if(!ro) primary.push(["groups",tr("mGroups")]);
   primary.push(["inv",tr("mInv")]);   // read only: to look (who is in which invitation, where they sit)
-  primary.push(["print",tr("mPrint")],["tour",tr("mTour")],["help",tr("mHelp")]);
+  primary.push(["print",tr("mPrint")]);
+  if(findMenuOk()) primary.push(["find",tr("mFind")]);   // the door-list QR: writers only, never a viewer, never a local-only plan
+  primary.push(["tour",tr("mTour")],["help",tr("mHelp")]);
   { const cp=currentProfile(); if(!IS_LAB && cp && cp.cloudId) primary.push(["access",tr("mAccess")]); }
   const more=[];
   if(isNarrow()) more.push(["cap",tr("capPlan")],["newplan",tr("newPlan")],["planmore",tr("planMore")],...(ro?[]:[["cap",tr("tools")],...(can("tables")?[["round",tr("mRound")],["rect",tr("mRect")],["head",tr("mHead")]]:[]),["decor",tr("mDecor")],["auto",tr("mAuto")]]));
@@ -5484,7 +5578,7 @@ $("moreBtn").addEventListener("click",e=>{
   if(skipDeleteConfirm() && !ro) more.push(["askdel",tr("mAskDel")]);
   if(!ro) more.push(["reset",tr("mReset")]);
   if(!IS_LAB) more.push(["cap",tr("mLang")],["lang-el","ΕΛ · Ελληνικά"],["lang-en","EN · English"],["lang-de","DE · Deutsch"]);
-  const MI={keepsake:"heart",share:"cloud",groups:"people",inv:"mail",print:"print",tour:"help",help:"chat",askdel:"help",access:"people",newplan:"plus",planmore:"edit",round:"table",rect:"longtable",head:"heart",decor:"decor",auto:"spark",xlsxseat:"up",xlsxall:"up",csvout:"up",csvin:"dl",export:"up",import:"dl",amelie:"mail",history:"clock"};
+  const MI={keepsake:"heart",share:"cloud",groups:"people",inv:"mail",print:"print",find:"search",tour:"help",help:"chat",askdel:"help",access:"people",newplan:"plus",planmore:"edit",round:"table",rect:"longtable",head:"heart",decor:"decor",auto:"spark",xlsxseat:"up",xlsxall:"up",csvout:"up",csvin:"dl",export:"up",import:"dl",amelie:"mail",history:"clock"};
   const row=([a,l])=>a==="cap"?`<div class="gm-cap">${escapeHtml(l)}</div>`:`<div class="gm-item${a==="reset"?" danger":""}${a==="lang-"+LANG?" on":""}" data-act="${a}">${MI[a]?ICON(MI[a]):'<span class="ic"></span>'}${escapeHtml(l)}</div>`;
   m.innerHTML=primary.map(row).join("")+`<div class="gm-sep"></div><div class="gm-item more" data-act="more"><span class="ic"></span>${escapeHtml(tr("mMore"))} ›</div><div class="gm-more">${more.map(row).join("")}</div>`;
   m.querySelectorAll(".gm-item").forEach(it=>it.onclick=ev=>{ ev.stopPropagation(); const a=it.dataset.act;
@@ -5494,7 +5588,7 @@ $("moreBtn").addEventListener("click",e=>{
     else if(a==="newplan") newProfile(); else if(a==="planmore") openProfileMenu(anchorOf($("moreBtn")));
     else if(a==="access") openAccess(); else if(a==="help") openHelp(); else if(a==="keepsake") downloadPdf("keepsake", null);
     else if(a==="round") addRoundTable(); else if(a==="rect") addRectTable(); else if(a==="history") openHistory(); else if(a==="groups") openGroupsModal(); else if(a==="inv") enterInv(null); else if(a==="tour") startTour();
-    else if(a==="auto") autoSeat(); else if(a==="export"){ if((currentProfile()||{}).support){ toast(tr("tNoCopySupport"),4000); return; } openExport(); } else if(a==="import") openImport(); else if(a==="amelie") openAmelie(); else if(a==="print") openPrint(); else if(a==="reset") resetPlan();
+    else if(a==="auto") autoSeat(); else if(a==="export"){ if((currentProfile()||{}).support){ toast(tr("tNoCopySupport"),4000); return; } openExport(); } else if(a==="import") openImport(); else if(a==="amelie") openAmelie(); else if(a==="print") openPrint(); else if(a==="find") openFind(); else if(a==="reset") resetPlan();
     else if(a==="askdel"){ try{ localStorage.removeItem(DEL_SKIP_KEY); localStorage.removeItem(MERGE_SKIP_KEY); }catch(e){} toast(tr("tAskDel"),2500); }
     else if(a.startsWith("lang-")){ const l=a.slice(5); location.href=({el:"seating-planner-el.html",en:"seating-planner.html",de:"seating-planner-de.html"})[l]; } });
   showPopover(m, anchorOf(e.currentTarget));
@@ -5653,6 +5747,14 @@ function adoptAccess(prof, d){
   { const was=String([ameOn(prof), !!(prof.amelie&&prof.amelie.dead)]);
     if(d.amelie && typeof d.amelie==="object") prof.amelie=ameNorm(d.amelie); else if(d.role==="viewer") prof.amelie=null;
     if(was!==String([ameOn(prof), !!(prof.amelie&&prof.amelie.dead)])) setTimeout(ameSync,0); }
+  // The door-list QR (writers only): on / off, the token to print, since when. Kept out of the comparison below — it
+  // is not a right and it never changes what may be edited. Switched on, off or rotated on another device → this one
+  // follows, and an open panel or print dialog is drawn again with what arrived.
+  { const was=JSON.stringify(prof.find||null);
+    if("find" in d) prof.find=(d.find&&typeof d.find==="object")?{...d.find}:null; else if(d.role==="viewer") prof.find=null;
+    if(was!==JSON.stringify(prof.find||null)) setTimeout(()=>{ saveProfilesIdx();
+      if($("findModal").classList.contains("open")) renderFindBody();
+      if($("printModal").classList.contains("open")) printPosterSync(); },0); }
   let back=false; if(prof.gone){ prof.gone=false; prof._goneAt=0; back=true;   // restored from the venue's trash
     if(prof.id===profiles.activeId){ toast(tr("goneBack"),4000); if(prof.goneDirty){ prof.goneDirty=false; setTimeout(scheduleCloudPush,0); } } }   // after the caller's applyAccess: the refused change goes up
   if(prof.phaseDirty && !phaseRo(prof) && prof.id===profiles.activeId){ prof.phaseDirty=false; back=true; if(!(prof.life&&prof.life.locked)){ waitPushFor=prof.id; setTimeout(scheduleCloudPush,0); } }   // the planner opened: the change that waited goes up (on its old base — never over a newer copy)
@@ -6440,6 +6542,233 @@ $("amelieModal").addEventListener("click",e=>{ if(e.target.id==="amelieModal") a
 $("amelieModal")._close=ameClose;   // Escape (the global handler) closes it the same way
 
 // ============================================================
+//  QR — written here, from the spec (ISO/IEC 18004): byte mode, error correction level M
+// ============================================================
+// There is no library and no service, and there cannot be: the CSP allows no external script and no external image,
+// and a QR fetched from a generator means handing a third party the very link that reads our guests' names. So it is
+// encoded here, in about 80 lines.
+//   · byte mode (a URL is ASCII), level M — it recovers ~15 % of the symbol, and a door list gets handled, folded,
+//     photographed in bad light and set down in something wet;
+//   · the smallest version that fits (a 60-character finder link is version 4; versions 1–10 are carried, up to 213
+//     bytes, which is more than any URL this product can make);
+//   · drawn as an inline <svg> — vector, so the SAME code is sharp at 22 mm on the door list and at 120 mm on the
+//     poster, and no canvas is involved (a canvas bitmap at 22 mm would print as a blurred 83-pixel square).
+// This is the one piece that has to be exactly right: a code that scans here and not on a phone at the door is worse
+// than no code at all. So qrEncode returns the MATRIX and window.TAS_QR hands it out, so that a test can render it and
+// read it BACK with an independent decoder (zbar, OpenCV) and compare the text — the only way to know a QR is right.
+// Checked that way before it shipped: every version 1–10, the real 60-character finder link, the longest link the
+// server's token rule allows, and the printed 22 mm square re-read at 150 dpi.
+
+// Level M, per version: [EC codewords per block, [[blocks, data codewords per block], …]]
+const QR_ECM=[null,[10,[[1,16]]],[16,[[1,28]]],[26,[[1,44]]],[18,[[2,32]]],[24,[[2,43]]],[16,[[4,27]]],[18,[[4,31]]],[22,[[2,38],[2,39]]],[22,[[3,36],[2,37]]],[26,[[4,43],[1,44]]]];
+const QR_ALIGN=[null,[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50]];   // alignment-pattern centres
+// The eight data masks. x is the COLUMN, y the ROW, as the spec writes them.
+const QR_MASK=[ (r,c)=>(r+c)%2===0, (r,c)=>r%2===0, (r,c)=>c%3===0, (r,c)=>(r+c)%3===0,
+  (r,c)=>(Math.floor(r/2)+Math.floor(c/3))%2===0, (r,c)=>(r*c)%2+(r*c)%3===0,
+  (r,c)=>((r*c)%2+(r*c)%3)%2===0, (r,c)=>((r+c)%2+(r*c)%3)%2===0 ];
+// GF(256), primitive polynomial x⁸+x⁴+x³+x²+1 (0x11D) — the field Reed–Solomon works in.
+const QR_EXP=new Uint8Array(512), QR_LOG=new Uint8Array(256);
+for(let i=0,x=1;i<255;i++){ QR_EXP[i]=x; QR_LOG[x]=i; x<<=1; if(x&0x100) x^=0x11d; }
+for(let i=255;i<512;i++) QR_EXP[i]=QR_EXP[i-255];
+const qrMul=(a,b)=>(a&&b)?QR_EXP[QR_LOG[a]+QR_LOG[b]]:0;
+function qrGen(n){ let g=[1];   // ∏(x−αⁱ), highest degree first
+  for(let i=0;i<n;i++){ const a=QR_EXP[i], ng=new Array(g.length+1).fill(0);
+    for(let j=0;j<g.length;j++){ ng[j]^=g[j]; ng[j+1]^=qrMul(g[j],a); }
+    g=ng; }
+  return g; }
+function qrEcc(data,n){ const g=qrGen(n), r=new Uint8Array(data.length+n); r.set(data);
+  for(let i=0;i<data.length;i++){ const c=r[i]; if(!c) continue; for(let j=1;j<=n;j++) r[i+j]^=qrMul(g[j],c); }
+  return r.slice(data.length); }
+function qrEncode(text){
+  const bytes=new TextEncoder().encode(String(text));
+  let ver=0, ecw=0, groups=null, dcw=0;
+  for(let v=1;v<QR_ECM.length;v++){ const gs=QR_ECM[v][1], d=gs.reduce((s,g)=>s+g[0]*g[1],0);
+    if(bytes.length<=((d*8-4-(v<10?8:16))>>3)){ ver=v; ecw=QR_ECM[v][0]; groups=gs; dcw=d; break; } }
+  if(!ver) throw new Error("qr_too_long");
+  // the bit stream: mode 0100 (byte) · the length · the bytes · terminator · to a whole byte · 0xEC/0x11 padding
+  const bits=[], put=(v,n)=>{ for(let i=n-1;i>=0;i--) bits.push((v>>>i)&1); };
+  put(4,4); put(bytes.length, ver<10?8:16); bytes.forEach(b=>put(b,8));
+  for(let i=0;i<4&&bits.length<dcw*8;i++) bits.push(0);
+  while(bits.length%8) bits.push(0);
+  const cw=new Uint8Array(dcw);
+  for(let i=0;i<bits.length;i+=8){ let b=0; for(let j=0;j<8;j++) b=(b<<1)|bits[i+j]; cw[i>>3]=b; }
+  for(let i=bits.length>>3,p=0;i<dcw;i++,p++) cw[i]=(p%2)?0x11:0xEC;
+  // the blocks: every data codeword interleaved, then every EC codeword interleaved
+  const blocks=[]; let at=0;
+  groups.forEach(g=>{ for(let i=0;i<g[0];i++){ const d=cw.slice(at,at+g[1]); at+=g[1]; blocks.push({d, e:qrEcc(d,ecw)}); } });
+  const out=[], maxLen=Math.max(...blocks.map(b=>b.d.length));
+  for(let i=0;i<maxLen;i++) blocks.forEach(b=>{ if(i<b.d.length) out.push(b.d[i]); });
+  for(let i=0;i<ecw;i++) blocks.forEach(b=>out.push(b.e[i]));
+  return qrDraw(ver,out);
+}
+// The symbol: the fixed patterns, the codewords laid in two-column strips, then the mask the spec's own penalty picks.
+function qrDraw(ver,cw){
+  const n=17+4*ver, m=[], fn=[];
+  for(let i=0;i<n;i++){ m.push(new Uint8Array(n)); fn.push(new Uint8Array(n)); }
+  const set=(r,c,v)=>{ if(r<0||c<0||r>=n||c>=n) return; m[r][c]=v?1:0; fn[r][c]=1; };
+  [[0,0],[0,n-7],[n-7,0]].forEach(p=>{   // the three finder patterns with their separators
+    for(let dr=-1;dr<=7;dr++) for(let dc=-1;dc<=7;dc++){
+      const d=Math.max(Math.abs(dr-3),Math.abs(dc-3)); set(p[0]+dr,p[1]+dc, d<=3&&d!==2); } });
+  for(let i=8;i<n-8;i++){ set(6,i,i%2===0); set(i,6,i%2===0); }   // the two timing patterns
+  const al=QR_ALIGN[ver], last=al[al.length-1];
+  al.forEach(r0=>al.forEach(c0=>{   // alignment patterns, never on top of a finder
+    if((r0===6&&c0===6)||(r0===6&&c0===last)||(r0===last&&c0===6)) return;
+    for(let dr=-2;dr<=2;dr++) for(let dc=-2;dc<=2;dc++) set(r0+dr,c0+dc, Math.max(Math.abs(dr),Math.abs(dc))!==1); }));
+  // the format and version areas are function modules too — reserved now, written below (row 6 / column 6 are timing)
+  for(let i=0;i<=8;i++) if(i!==6){ set(8,i,0); set(i,8,0); }
+  for(let i=0;i<8;i++){ set(8,n-1-i,0); set(n-1-i,8,0); }
+  if(ver>=7) for(let i=0;i<18;i++){ set(Math.floor(i/3),n-11+i%3,0); set(n-11+i%3,Math.floor(i/3),0); }
+  let bi=0;   // the codewords: upward then downward in two-column strips from the right, skipping the timing column
+  for(let right=n-1;right>=1;right-=2){
+    if(right===6) right=5;
+    for(let v=0;v<n;v++) for(let j=0;j<2;j++){
+      const c=right-j, r=(((right+1)&2)===0)?n-1-v:v;
+      if(fn[r][c]) continue;
+      m[r][c]=(bi<cw.length*8)?((cw[bi>>3]>>>(7-(bi&7)))&1):0;   // past the last codeword: the remainder bits, zero
+      bi++; } }
+  if(ver>=7){ let r=ver; for(let i=0;i<12;i++) r=(r<<1)^((r>>>11)*0x1F25);   // BCH(18,6) version information
+    const b=(ver<<12)|(r&0xFFF);
+    for(let i=0;i<18;i++){ const v=(b>>>i)&1; m[Math.floor(i/3)][n-11+i%3]=v; m[n-11+i%3][Math.floor(i/3)]=v; } }
+  const apply=k=>{ const f=QR_MASK[k]; for(let r=0;r<n;r++) for(let c=0;c<n;c++) if(!fn[r][c]&&f(r,c)) m[r][c]^=1; };
+  const format=k=>{ let r=k; for(let i=0;i<10;i++) r=(r<<1)^((r>>>9)*0x537);   // level M = 00, so the 5 data bits are the mask
+    const b=((k<<10)|(r&0x3FF))^0x5412, bit=i=>(b>>>i)&1;
+    for(let i=0;i<=5;i++) m[i][8]=bit(i);
+    m[7][8]=bit(6); m[8][8]=bit(7); m[8][7]=bit(8);
+    for(let i=9;i<15;i++) m[8][14-i]=bit(i);
+    for(let i=0;i<8;i++) m[8][n-1-i]=bit(i);
+    for(let i=8;i<15;i++) m[n-15+i][8]=bit(i);
+    m[n-8][8]=1; };   // the dark module
+  let mask=0, best=Infinity;
+  for(let k=0;k<8;k++){ apply(k); format(k); const s=qrPenalty(m,n); if(s<best){ best=s; mask=k; } apply(k); }   // apply twice = undo
+  apply(mask); format(mask);
+  return { version:ver, mask, size:n, modules:m };
+}
+// The spec's four penalties — they only choose the mask, but choosing it the way the spec does is what keeps a code
+// readable for a cheap phone camera: 5-in-a-row runs, 2×2 blocks, anything that looks like a finder, and a symbol
+// that is much more black than white.
+function qrPenalty(m,n){
+  let p=0;
+  const runs=get=>{ let run=1, prev=get(0);
+    for(let i=1;i<n;i++){ const v=get(i);
+      if(v===prev){ run++; if(run===5) p+=3; else if(run>5) p+=1; } else { prev=v; run=1; } } };
+  for(let r=0;r<n;r++) runs(i=>m[r][i]);
+  for(let c=0;c<n;c++) runs(i=>m[i][c]);
+  for(let r=0;r<n-1;r++) for(let c=0;c<n-1;c++){ const v=m[r][c]; if(v===m[r][c+1]&&v===m[r+1][c]&&v===m[r+1][c+1]) p+=3; }
+  const P1=[1,0,1,1,1,0,1,0,0,0,0], P2=[0,0,0,0,1,0,1,1,1,0,1];   // 1:1:3:1:1 with four light modules beside it
+  const look=get=>{ const a=[0,0,0,0]; for(let i=0;i<n;i++) a.push(get(i)); a.push(0,0,0,0);   // outside the symbol is light
+    for(let i=0;i+11<=a.length;i++){ let e1=true, e2=true;
+      for(let j=0;j<11;j++){ if(a[i+j]!==P1[j]) e1=false; if(a[i+j]!==P2[j]) e2=false; }
+      if(e1) p+=40; if(e2) p+=40; } };
+  for(let r=0;r<n;r++) look(i=>m[r][i]);
+  for(let c=0;c<n;c++) look(i=>m[i][c]);
+  let dark=0; for(let r=0;r<n;r++) for(let c=0;c<n;c++) dark+=m[r][c];
+  return p+10*Math.floor(Math.abs(dark*20/(n*n)-10));
+}
+// One <svg>, one <path>: every row's dark modules are merged into horizontal runs and all of them go into a single
+// path, wound the same way, so neighbouring modules have no hairline seam between them — a seam is what makes a
+// printed code fail. The white <rect> is CONTENT, not a CSS background: it prints even with "background graphics" off.
+// Four modules of quiet zone, as the spec requires; without it a scanner finds nothing.
+function qrSvg(text, alt){
+  const q=qrEncode(text), n=q.size, QUIET=4, tot=n+2*QUIET;
+  let d="";
+  for(let r=0;r<n;r++){ let c=0;
+    while(c<n){ if(!q.modules[r][c]){ c++; continue; }
+      let k=c; while(k<n&&q.modules[r][k]) k++;
+      d+="M"+(c+QUIET)+" "+(r+QUIET)+"h"+(k-c)+"v1h-"+(k-c)+"z"; c=k; } }
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${tot} ${tot}" role="img" aria-label="${escapeHtml(alt||"")}">`
+    +`<rect width="${tot}" height="${tot}" fill="#fff"/><path d="${d}" fill="#000"/></svg>`;
+}
+// The test hook: the matrix, the SVG and the link this product builds — three pure functions, nothing that can touch
+// or read a plan. It is here so the encoder can be checked against a real decoder instead of against itself.
+window.TAS_QR={ encode:qrEncode, svg:qrSvg, url:findUrl };
+
+// ============================================================
+//  «ΒΡΕΣ ΤΟ ΤΡΑΠΕΖΙ ΣΟΥ» — the guest finder's QR (the panel; the printing is in PRINT below)
+// ============================================================
+// The server owns all of it (PUT /plans/:id/find, POST /find): the window, the limits, and the rule that a guest is
+// told their own line and nothing else. This panel is the switch, the link and the plain sentences that say what it
+// does — off by default, and whoever switches it on is told, in one screen, when it opens, when it closes and what a
+// guest can see. The token is a credential: it comes back only to a role that may write guest names, and it is kept
+// where the edit key already is (this device's profile) because it has to be printed.
+const FIND_BEFORE_DAYS=7, FIND_AFTER_DAYS=2;   // the server's window; these two numbers only write the sentence
+function findUrl(key){ return location.origin+"/trapezi.html#"+key; }
+function findState(){ const p=currentProfile(), f=p&&p.find; return (f&&typeof f==="object")?f:null; }
+function findIsOn(){ const f=findState(); return !!(f&&f.on&&f.key); }
+// Who may switch it on: whoever may write guest names on this ONLINE plan right now — exactly Amelie's rule.
+function findAllowed(prof){ return !IS_LAB && !!prof && !!prof.cloudId && prof.id===profiles.activeId && !ACCESS.ro && !ACCESS.template && canPush(prof); }
+// The plan is view-only but the door list is not: after the wedding it still answers for two days and the venue's only
+// stop button is this one, and during the freeze that follows a date change a leaked link still has to be killable. So
+// whoever may write names keeps the panel while a finder is RUNNING — the server allows the same (it refuses {on:true}
+// on a LOCKED plan only, and always accepts {on:false} and a rotation).
+function findStopOnly(prof){ return !IS_LAB && !!prof && !!prof.cloudId && prof.id===profiles.activeId && !!ACCESS.ro && !ACCESS.template && !ACCESS.gone && ACCESS.role!=="viewer" && !prof.readonly && (!prof.support||prof.supportEdit)
+  && !!(prof.editKey||prof.supportKey||getSyncCode()); }
+function findMenuOk(){ const cur=currentProfile(); return (findAllowed(cur) && !!(cur.find && typeof cur.find==="object")) || (findStopOnly(cur) && findIsOn()); }   // no `find` in the answer: an older server that has never heard of it
+function findWindow(){ const L=(currentProfile()||{}).life||{};
+  return L.weddingDate?{ from:ymdPlus(L.weddingDate,-FIND_BEFORE_DAYS), to:ymdPlus(L.weddingDate,FIND_AFTER_DAYS) }:null; }
+function openFind(){
+  if(IS_LAB){ toast(tr("labHint")); return; }
+  const cur=currentProfile(); if(!cur||!cur.cloudId){ toast(tr("accLocal"),5000); return; }
+  renderFindBody(); $("findModal").classList.add("open");
+  refreshAccess().then(()=>{ if($("findModal").classList.contains("open")) renderFindBody(); });   // another device may have switched it on, off or rotated it
+}
+function findClose(){ $("findModal").classList.remove("open"); }
+$("findClose").addEventListener("click",findClose);
+$("findModal").addEventListener("click",e=>{ if(e.target.id==="findModal") findClose(); });
+$("findModal")._close=findClose;   // Escape (the global handler) closes it the same way
+function renderFindBody(){
+  const cur=currentProfile()||{}, body=$("findBody"); if(!body) return;
+  const f=findState(), on=findIsOn(), w=findWindow();
+  // «The wedding is over» is ACCESS.locked and nothing else. The other view-only states — waiting, and the freeze after
+  // a couple moves its own date — are months BEFORE the wedding: there the sentence was a lie, and because it also hid
+  // «Νέος κωδικός» the one control that kills a leaked link was gone and never mentioned. The server draws the line in
+  // the same place (it refuses {on:true} only on a locked plan), so the panel follows it, not "read-only".
+  const after=!!ACCESS.locked, phase=ACCESS.waitRo?phaseText(cur):"";
+  const hint=(t,pad)=>`<div class="mhint" style="padding:${pad}">${escapeHtml(t)}</div>`;
+  let h=hint(tr("findWhat"),"0 0 10px");
+  if(!w) h+=hint(tr("findNoDate"),"0 0 10px");               // the window hangs off the wedding date: no date, no switch
+  else if(after) h+=`<div class="acc-phase">${escapeHtml(tr("findAfter"))}</div>`;
+  else if(phase) h+=`<div class="acc-phase">${escapeHtml(phase)}</div>`;   // view-only for now (waiting / frozen) — the QR itself still answers to its owner
+  // The switch is refused only where the server refuses it: without a wedding date there is no window to open, and on a
+  // locked plan no new QR opens. Switching OFF is always allowed, so a checked switch is never disabled.
+  if(w||on) h+=`<label class="delskip"><input type="checkbox" id="findSw"${on?" checked":""}${(!on&&(!w||after))?" disabled":""}><span>${escapeHtml(tr("findSwitch"))}</span></label>`;
+  if(on){
+    const linkStyle='style="width:100%;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--paper);color:inherit"';
+    h+=`<div class="mhint" style="padding:12px 0 4px;font-weight:600">${escapeHtml(tr("findLink"))}</div>`
+      +`<input id="findLinkIn" readonly value="${escapeHtml(findUrl(f.key))}" ${linkStyle}>`
+      +`<div class="mrow"><button class="ibtn primary" id="findCopyBtn">${escapeHtml(tr("findCopy"))}</button>`
+      +(after?"":`<button class="ibtn" id="findRotBtn">${escapeHtml(tr("findRotate"))}</button>`)+`</div>`
+      +(f.at?hint(tr("findSince",{t:fmtTime(f.at)}),"6px 0 0"):"")
+      +(after?"":hint(tr("findRotHint"),"8px 0 0"));
+  }
+  if(w) h+=hint(tr("findWindow",{a:fmtDate(w.from), b:fmtDate(w.to)}),"12px 0 0");
+  h+=hint(tr("findSees"),"8px 0 0");
+  if(on) h+=hint(tr("findPrintHint"),"8px 0 0");
+  body.innerHTML=h;
+  const sw=$("findSw"); if(sw) sw.onchange=()=>findPut(sw.checked,false);
+  const cp=$("findCopyBtn"); if(cp) cp.onclick=()=>copyText($("findLinkIn"));
+  const rt=$("findRotBtn"); if(rt) rt.onclick=()=>{ if(confirm(tr("findRotConfirm"))) findPut(true,true); };
+}
+// PUT /plans/:id/find — {on} or {on:true, rotate:true}. `updated` never moves: this is not a change to the plan, so
+// nothing is pushed, nothing is pulled and no undo step is made.
+async function findPut(on, rotate){
+  const cur=currentProfile(); if(!cur||!cur.cloudId) return;
+  const sw=$("findSw"), rt=$("findRotBtn");
+  if(sw) sw.disabled=true; if(rt) rt.disabled=true;
+  let r=null, d={};
+  try{ r=await fetch(planPath(cur.cloudId)+"/find",{method:"PUT",headers:authHeaders(cur),
+    body:JSON.stringify(rotate?{on:true,rotate:true}:{on:!!on})}); d=await r.json().catch(()=>({})); }catch(e){}
+  if(r && r.ok && d && d.find){
+    cur.find={...d.find}; saveProfilesIdx(); renderFindBody();
+    toast(rotate?tr("tFindRotated"):on?tr("tFindOn"):tr("tFindOff"), rotate?9000:5000); return;
+  }
+  const err=(d&&d.error)||"", st=r?r.status:0;
+  if(st===409&&err==="no_date"){ await refreshAccess(); renderFindBody(); toast(tr("findNoDate"),9000); return; }   // the date went away (another device changed it)
+  if(st===403&&err==="locked"){ if(d.life){ cur.life={...(cur.life||{}),...d.life}; saveProfilesIdx(); applyAccess(); } renderFindBody(); toast(tr("findLockedMsg"),8000); return; }
+  if(st===401||st===403){ await refreshAccess(); applyAccess(); renderFindBody(); toast(st===403&&err==="read_only"?tr("rbViewerTip"):tr("accFail"),6000); return; }
+  renderFindBody(); toast(!r?tr("claimFail"):tr("accFail"),6000);
+}
+
+// ============================================================
 //  PRINT
 // ============================================================
 $("printBtn").addEventListener("click",openPrint);
@@ -6454,17 +6783,39 @@ const BRAND_KEY=PBASE+".printBrand";
 function printBrandOn(){ try{ return localStorage.getItem(BRAND_KEY)!=="0"; }catch(e){ return true; } }
 function setPrintBrand(on){ try{ localStorage.setItem(BRAND_KEY, on?"1":"0"); }catch(e){} }
 function openPrint(){
-  const m=$("printModal"), keep=!!ACCESS.locked, mode=(pdfChoice==="keepsake"&&!keep)?"pdf":pdfChoice||printListMode(state.printMode);
+  const m=$("printModal"), keep=!!ACCESS.locked, poster=findIsOn();
+  let mode=pdfChoice||printListMode(state.printMode);
+  if(mode==="keepsake"&&!keep) mode="pdf";
+  if(mode==="poster"&&!poster){ pdfChoice=""; mode=printListMode(state.printMode); }   // the finder was switched off since the last print
   $("pmKeepRow").hidden=!keep;   // the keepsake belongs to a wedding that is over
+  $("pmPosterRow").hidden=!poster;   // the entrance poster is nothing but the QR: without the finder there is no poster
+  $("pmQrHint").hidden=!poster;      // … and which sheets carry the small QR, since the two server-rendered PDFs do not
   $("pmBrand").checked=printBrandOn();
   m.querySelectorAll('input[name="pmode"]').forEach(r=>{ r.checked=r.value===mode; }); printGoLabel(); m.classList.add("open");
+  if(!IS_LAB && (currentProfile()||{}).cloudId) refreshAccess();   // the token may have been rotated elsewhere: adoptAccess draws this dialog again
 }
 function printPick(){ const r=$("printModal").querySelector('input[name="pmode"]:checked'); return r?r.value:"alpha"; }
+// The finder was switched on or off (here or on another device) while this dialog is open: show or hide the poster row
+// without redrawing the dialog under the user's hand, and never leave a poster selected that can no longer be printed.
+function printPosterSync(){
+  const m=$("printModal"), poster=findIsOn();
+  $("pmPosterRow").hidden=!poster;
+  $("pmQrHint").hidden=!poster;
+  if(poster) return;
+  const r=m.querySelector('input[name="pmode"][value="poster"]');
+  if(!r||!r.checked) return;
+  if(pdfChoice==="poster") pdfChoice="";
+  const back=m.querySelector('input[name="pmode"][value="'+printListMode(state.printMode)+'"]');
+  if(back) back.checked=true; printGoLabel();
+}
 function printGoLabel(){ const v=printPick(); $("printGo").textContent=(v==="pdf"||v==="keepsake")?tr("pdfGo"):tr("mPrint"); }
 $("printModal").addEventListener("change",printGoLabel);
 $("pmBrand").addEventListener("change",()=>setPrintBrand($("pmBrand").checked));
 $("printGo").addEventListener("click",()=>{ const v=printPick();
   if(v==="pdf"||v==="keepsake"){ pdfChoice=v; downloadPdf(v==="keepsake"?"keepsake":"floor", $("printGo")); return; }   // the dialog stays open (spinner) until the file is ready
+  // The entrance poster: printed from here like the lists, but it is not one of them — state.printMode must never
+  // remember it (the finder can be switched off, and then there is no poster to fall back to).
+  if(v==="poster"){ if(!findIsOn()){ printPosterSync(); return; } pdfChoice="poster"; $("printModal").classList.remove("open"); buildAndPrint("poster"); return; }
   pdfChoice=""; const mode=printListMode(v); const m=$("printModal");
   if(state.printMode!==mode){ state.printMode=mode; save({noHistory:true}); } m.classList.remove("open"); buildAndPrint(mode); });
 // PDF: the server renders the plan this device shows (local plans, the lab and unsynced edits included) — POST /pdf, stateless.
@@ -6529,7 +6880,25 @@ function buildAndPrint(mode){
   const seated=seatedSet.size, totalSeats=state.tables.reduce((s,t)=>s+t.capacity,0);
   const cur=currentProfile()||{}, wd=cur.life&&cur.life.weddingDate;
   const meta=[tr("printTitle"), wd?tr("printWed",{d:fmtDate(wd)}):"", tr("printAt",{t:new Date().toLocaleString(LANG,{dateStyle:"short",timeStyle:"short"})})].filter(Boolean).join(" · ");
-  const head=`<h2>${escapeHtml(cur.name||tr("printTitle"))}</h2><div class="pmeta">${escapeHtml(meta)}</div>`;
+  // The door list's QR, only while the finder is on: a 22 mm code and the one line «Βρες το τραπέζι σου» beside it,
+  // in the header of every print mode. It is the FIRST thing in #printarea and absolutely positioned, which is what
+  // keeps it off the flow and off the page count — see .pqr in the stylesheet for why that is the only safe shape.
+  const qrOn=findIsOn();
+  area.classList.remove("pposter");
+  area.classList.toggle("haspqr", qrOn);
+  const qrHead=qrOn?`<div class="pqr"><span class="pqrt">${escapeHtml(tr("qrLine"))}</span>${qrSvg(findUrl(findState().key), tr("qrLine"))}</div>`:"";
+  // ---- the entrance poster: one A4 page with the couple, the date, a 120 mm code and the two lines. Nothing else:
+  // no counts line, no credit, no tables — it is read from four metres away by somebody holding a coat.
+  if(mode==="poster"){
+    if(!qrOn){ toast(tr("accFail"),4000); return; }
+    area.classList.remove("haspqr"); area.classList.add("pposter");
+    area.innerHTML=`<div class="ppbox"><div class="ppname">${escapeHtml(cur.name||"")}</div>`
+      +(wd?`<div class="ppdate">${escapeHtml(fmtDate(wd))}</div>`:"")
+      +qrSvg(findUrl(findState().key), tr("posterEl")+" · "+tr("posterEn"))
+      +`<div class="ppel">${escapeHtml(tr("posterEl"))}</div><div class="ppen">${escapeHtml(tr("posterEn"))}</div></div>`;
+    window.print(); return;
+  }
+  const head=qrHead+`<h2>${escapeHtml(cur.name||tr("printTitle"))}</h2><div class="pmeta">${escapeHtml(meta)}</div>`;
   // The plan-wide counts line: the A–Z list has its own counts under its own heading and must not print them twice.
   const subLine=subRow(tr("printSub",{t:state.tables.length, s:seated, c:totalSeats}));
   // A–Z: a real table read at the door, grouped the way the invitations were sent. Two pages, one set of groups:

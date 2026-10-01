@@ -24,7 +24,9 @@ COPY wedding-sync-worker.js ./worker.mjs
 RUN mkdir -p /app/public
 # Every marketing page and asset that the sitemap or a canonical points at MUST be in this list, or it 404s in
 # production while Search Console has already been told it exists.
-COPY index.html plano-trapezion-gamou.html seating-planner.html seating-planner-de.html seating-planner-el.html lab.html admin.html venue.html privacy.html terms.html dpa.html robots.txt sitemap.xml og-takeaseat.png /app/public/
+# trapezi.html is the guest's finder page: it is NOT in the sitemap (noindex, and it is reached only from the QR's
+# fragment), but it still has to ship — a guest at the door scanning the QR is the one request that cannot 404.
+COPY index.html plano-trapezion-gamou.html seating-planner.html seating-planner-de.html seating-planner-el.html lab.html admin.html venue.html privacy.html terms.html dpa.html trapezi.html robots.txt sitemap.xml og-takeaseat.png /app/public/
 
 ENV PORT=8080 \
     DB_PATH=/data/wedding.db \

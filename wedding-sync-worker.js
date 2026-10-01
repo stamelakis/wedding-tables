@@ -1298,8 +1298,12 @@ export default {
         const L = await planLife(env, rec, d.id);
         if (!findOpen(L)) return json({ error: "closed" }, 403);
         const hits = findMatches(rec.plan, q);
-        // Too many: the count and nothing else — the guest types more of their name rather than being handed a list.
-        if (hits.length > FIND_MAX) return json({ ok: true, tooMany: true, count: hits.length });
+        // Too many: a count and no names at all — the guest types more of their name rather than being handed a list.
+        // The wedding's name and date ride along, as they do on every other answer: at 300 guests «too many» is the
+        // commonest FIRST answer a guest gets, and that answer has to be able to show them they scanned the right
+        // wedding's QR before it asks them to type more. It gives nothing away that this token could not already read
+        // — a query matching nobody returns the same two fields.
+        if (hits.length > FIND_MAX) return json({ ok: true, tooMany: true, count: hits.length, event: String(rec.name || ""), date: L.weddingDate });
         return json({ ok: true, event: String(rec.name || ""), date: L.weddingDate, matches: hits.map(h => ({ name: h.name, table: h.table })) });
       }
       // ---------------- claim: a couple opens the link TakeaSeat sent (once; the same device may retry briefly) ----------------
