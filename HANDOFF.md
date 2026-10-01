@@ -62,14 +62,17 @@ is on — §1c; otherwise send the **claim link** yourself, §1b). Never again a
   email (§1c). With mail off, «New link…» gives the admin a claim link he *could* open himself before the couple
   (logged as «άνοιξε τον νέο σύνδεσμο που έδωσε η TakeaSeat», every old link/device stops) — visible, not impossible.
 - **Hermes after a deploy of this change**: the running `takeaseat_control.py` keeps the old code in memory and a new
-  launch exits silently while it runs (single-instance guard). End the running pythonw process, then start it again —
-  **through the Startup shortcut `TakeaSeatHermes.lnk`**, i.e. `C:\Users\andre\hermes\.venv\Scripts\pythonw.exe`, not a
-  bare `python`. Then CHECK `%LOCALAPPDATA%\Hermes\apps\TakeaSeat-τραπεζολόγιο.json`: it must carry the live port and
-  pid and today's `control_version`. On 2026-09-22 a restart left that file advertising a dead port and pid, so Hermes
-  probed the dead port and reported the app "not answering" for nine days while it was healthy all along — the symptom
-  is invisible from the app's own side. Re-copy `C:\Users\andre\hermes\hermes_control.py` over `hermes/hermes_control.py`
-  when it changes; since 2026-10-01 it also publishes a `launch` command, which is what lets Hermes wake the shim when
-  it is closed.
+  launch exits silently while it runs (single-instance guard). End the running pythonw process, start it again through
+  the Startup shortcut `TakeaSeatHermes.lnk`, and then **CHECK `%LOCALAPPDATA%\Hermes\apps\TakeaSeat-τραπεζολόγιο.json`:
+  it must carry the live port and pid and today's `control_version`.** On 2026-09-22 a restart left that file
+  advertising a dead port and pid; Hermes probed the dead port and reported the app "not answering" for nine days while
+  it was healthy and serving all along. The symptom is invisible from the app's own side — the port answers, the actions
+  work, only Hermes is looking in the wrong place. Why that restart failed to rewrite the file was never established.
+  (It was NOT the interpreter: the venv `pythonw.exe` on Windows is a redirector that spawns the base interpreter as a
+  child, so `.venv\Scripts\pythonw.exe` and the system `pythonw.exe` are one logical process either way — verified
+  2026-10-01, pid 3004 → 24844. Hermes's own agent caught me blaming this.)
+  Re-copy `C:\Users\andre\hermes\hermes_control.py` over `hermes/hermes_control.py` when it changes; since 2026-10-01 it
+  also publishes a `launch` command, which is what lets Hermes wake the shim when it is closed.
 - **Honest limit**: this is enforced by the software (API, consoles, planner). Root on the server can still read the
   SQLite file, because the server itself must read plans (wipe guard, history, lock enforcement). End-to-end
   encryption would be a separate project (lost link = lost plan).
