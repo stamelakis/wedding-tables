@@ -1397,7 +1397,7 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
   ok(r.status === 200 && r.d.ok === true && r.d.event === 'Μαρία & Νίκος' && r.d.date === day(3) && r.d.matches.length === 2, 'finder: a guest gets the wedding, its date and their own line', r.d);
   ok(r.d.matches[0].name === 'ΜΑΡΙΑ ΠΑΠΠΑ' && r.d.matches[0].table === '12' && JSON.stringify(Object.keys(r.d.matches[0])) === '["name","table"]', 'finder: the name as displayed and the table label — and those two fields only', r.d.matches[0]);
   ok(r.d.matches[1].name === 'Μαρία Παππαδοπούλου' && r.d.matches[1].table === null, 'finder: a guest with no seat yet gets table:null');
-  ok(JSON.stringify(Object.keys(r.d)) === '["ok","event","date","matches"]', 'finder: the answer carries nothing else at all', Object.keys(r.d));
+  ok(JSON.stringify(Object.keys(r.d)) === '["ok","event","kind","date","matches"]', 'finder: the answer carries nothing else at all — the event, whether it is a wedding or a baptism, the date, the lines', Object.keys(r.d));
   const accent = await look(K1, 'ΠΑΠΠΆΣ'), plain = await look(K1, 'παππας');
   ok(accent.d.matches.length === 1 && accent.d.matches[0].name === 'Ιωάννης Παππάς' && JSON.stringify(accent.d) === JSON.stringify(plain.d), 'finder: accents, case and the final sigma are all the same name (ΠΑΠΠΆΣ = παππας)');
   ok((await look(K1, 'ναιμ')).d.matches[0].name === 'Ναΐμ Χαλίλ', 'finder: the dialytika too (ναιμ → Ναΐμ)');
@@ -1409,7 +1409,7 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
   r = await look(K1, 'δημητριου');
   ok(r.d.matches.length === 5 && r.d.matches.every(x => x.name.startsWith('Δημητρίου')) && !r.d.tooMany, 'finder: five matches are still answered in full');
   r = await look(K1, 'νικολαου');
-  ok(r.status === 200 && r.d.tooMany === true && r.d.count === 6 && r.d.event === 'Μαρία & Νίκος' && r.d.date === day(3) && JSON.stringify(Object.keys(r.d)) === '["ok","tooMany","count","event","date"]' && !('matches' in r.d), 'finder: six → «type more of your name», with the count, the wedding it belongs to and NO names', r.d);
+  ok(r.status === 200 && r.d.tooMany === true && r.d.count === 6 && r.d.event === 'Μαρία & Νίκος' && r.d.date === day(3) && JSON.stringify(Object.keys(r.d)) === '["ok","tooMany","count","event","kind","date"]' && !('matches' in r.d), 'finder: six → «type more of your name», with the count, the event it belongs to and NO names', r.d);
   r = await look(K1, 'δοκιμη');
   ok(r.d.tooMany === true && r.d.count === 300 && !bodies.at(-1).text.includes('Καλεσμένος'), 'finder: a query that matches 300 guests hands over none of them', r.d);
   ok((await look(K1, 'μα')).d.error === 'too_short' && (await look(K1, '  α  ')).d.error === 'too_short' && (await look(K1, '')).status === 400 && (await look(K1, undefined)).status === 400, 'finder: under three characters after trimming → 400 too_short');
@@ -1423,7 +1423,8 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
   for (const t of ['', 'short', K1 + '!', K1.slice(0, 21), 'x'.repeat(65), 12345, null]) ok((await look(t, 'μαρια')).status === 404, 'finder: a token of the wrong shape → 404, like any unknown one (' + JSON.stringify(t) + ')');
 
   // ---- the window: 00:00 Athens seven days before → 23:59 Athens two days after ----
-  const closedAt = async d => { openPlan(d); const x = await look(K1, 'μαρια'); return x.status === 403 && x.d.error === 'closed' && JSON.stringify(Object.keys(x.d)) === '["error"]'; };
+  // «closed» carries the event's kind as well, so the page can say «πριν τον γάμο» or «πριν τη βάπτιση» — and nothing else.
+  const closedAt = async d => { openPlan(d); const x = await look(K1, 'μαρια'); return x.status === 403 && x.d.error === 'closed' && x.d.kind === 'wedding' && JSON.stringify(Object.keys(x.d)) === '["error","kind"]'; };
   const openAt = async d => { openPlan(d); const x = await look(K1, 'μαρια'); return x.status === 200 && x.d.matches.length === 2; };
   ok(await closedAt(day(8)), 'finder: eight days before the wedding → 403 closed');
   ok(await openAt(day(7)), 'finder: seven days before → open');
@@ -1707,6 +1708,35 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     await call('PATCH', '/admin/venues/' + LV.id, { active: true }, OWN);
     ok((await vq(LV.id)).renewsAt === day(301) && (await vq(LV.id)).next.start > day(301), 'lookup: … and with everything in place the date and the next season come back');
     await call('DELETE', '/admin/venues/' + NV.id, undefined, OWN);
+  }
+  // A season is a run of Athens CALENDAR days, like every other date in the lifecycle. It used to be compared against
+  // Date.parse(ymd) — UTC midnight, which is 02:00 or 03:00 in Athens — so for the first hours of an Athens day a
+  // season that ended yesterday still looked current and one starting today had not started. The clock is pinned to
+  // 00:30 Athens here so the check means the same thing at every hour of the real day (it is the window in which the
+  // suite itself used to abort).
+  {
+    const realNow = Date.now;
+    const athensMidnightMs = ymd => { const utc = Date.parse(ymd + 'T00:00:00Z');
+      const q = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Athens', hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+        .formatToParts(new Date(utc)).filter(x => x.type !== 'literal').map(x => [x.type, +x.value]));
+      return utc - (Date.UTC(q.year, q.month - 1, q.day, q.hour, q.minute) - utc); };
+    const justAfterMidnight = athensMidnightMs(day(0)) + 30 * 60000;   // 00:30 Athens today
+    const MV = (await call('POST', '/admin/venues', { name: 'Κτήμα Μεσάνυχτα', email: 'midnight@example.gr',
+      license: { type: 'seasonal', seasonStart: day(-366), seasonEnd: day(-1) } }, OWN)).d;
+    patchRaw('venue:' + MV.id, o => { o.renewReminders = { [day(-1) + ':7']: 1 }; });   // reminded, so it may renew
+    try { Date.now = () => justAfterMidnight; await mod.sweep(env); } finally { Date.now = realNow; }
+    const ML = raw('venue:' + MV.id).license;
+    ok(ML.renewedAt && ML.seasonEnd !== day(-1) && !ML.renewSkipped,
+      'licence: a season is over at 00:00 Athens the day after its last day — at 00:30 it has already renewed, not three hours later', ML);
+    const gate = (await call('POST', '/admin/venues', { name: 'Κτήμα Πρωί',
+      license: { type: 'seasonal', seasonStart: day(0), seasonEnd: day(200) } }, OWN)).d;   // no email: with mail on the API would not hand back the key
+    let made;
+    try { Date.now = () => justAfterMidnight;
+      made = await call('POST', '/venues/' + gate.id + '/weddings', { label: 'Μεσάνυχτα', date: day(30) }, { 'X-Venue-Key': gate.key });
+    } finally { Date.now = realNow; }
+    ok(made.status === 200, 'licence: … and a season that starts today has started at 00:30, not at 03:00', made.d);
+    await call('DELETE', '/admin/venues/' + MV.id, undefined, OWN);
+    await call('DELETE', '/admin/venues/' + gate.id, undefined, OWN);
   }
   r = await call('GET', '/admin/lookup?q=' + LW.planId, undefined, OWN);
   ok(r.d.results.length === 1 && r.d.results[0].kind === 'venue' && r.d.results[0].focus === LW.planId, 'lookup: a plan id lands on the card of whoever owns it');
@@ -2144,6 +2174,341 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
   }
 
   env.MAIL = keepMail;
+}
+
+
+// ================= 20. γάμος ή βάπτιση: one field, and the words that follow it (2026-10-04) =================
+// The lifecycle is NOT forked here on purpose: these checks prove the date still drives everything and that only the
+// language changes. The one thing they guard hardest is the default — every plan that existed before this field is a
+// wedding and must read as one, everywhere, for ever.
+{
+  const KM = [], KR = [];
+  const keepMail = env.MAIL, keepPdf = env.PDF;
+  env.MAIL = { enabled: true, from: 'x', send: msg => { KM.push(msg); return true; } };
+  env.PDF = { render: async (plan, meta) => { KR.push(meta); return new TextEncoder().encode('%PDF-1.4 fake'); } };
+  const kday = n => athensDay(n);
+
+  // ---- a plan written before the field existed ----
+  ok(!('kind' in raw('plan:orphanPlan0000000000')), 'kind: the pre-existing plan record really has no kind stored');
+  {
+    const o = raw('plan:orphanPlan0000000000');
+    const g = await call('GET', '/plans/orphanPlan0000000000', undefined, { 'X-Edit-Key': o.editKey });
+    ok(g.status === 200 && g.d.kind === 'wedding', 'kind: a plan with no kind reads as a wedding', g.d.kind);
+  }
+
+  // ---- a venue holds both kinds at once, from one licence ----
+  const VK = (await call('POST', '/admin/venues', { name: 'Κτήμα Δύο Ειδών', license: { type: 'seasonal', seasonStart: kday(-30), seasonEnd: kday(300) } }, OWN)).d;
+  const HVK = { 'X-Venue-Key': VK.key };
+  const WW = (await call('POST', '/venues/' + VK.id + '/weddings', { label: 'Μαρία & Νίκος', date: kday(40) }, HVK)).d;
+  const BB = (await call('POST', '/venues/' + VK.id + '/weddings', { label: 'Βάπτιση Ελένης', date: kday(45), kind: 'baptism' }, HVK)).d;
+  ok(WW.kind === 'wedding' && BB.kind === 'baptism', 'kind: the venue console creates a wedding and a baptism from the same licence', { w: WW.kind, b: BB.kind });
+  ok(raw('plan:' + WW.planId).kind === 'wedding' && raw('plan:' + BB.planId).kind === 'baptism', 'kind: it is stored on the plan record');
+  {
+    const junk = (await call('POST', '/venues/' + VK.id + '/weddings', { label: 'Σκουπίδι', date: kday(46), kind: 'συναυλία' }, HVK)).d;
+    ok(raw('plan:' + junk.planId).kind === 'wedding', 'kind: anything that is not one of the two kinds is a wedding');
+    await call('DELETE', '/venues/' + VK.id + '/weddings/' + junk.planId, undefined, HVK);
+  }
+  {
+    const con = (await call('GET', '/venues/' + VK.id, undefined, HVK)).d;
+    const rw = con.weddings.find(x => x.planId === WW.planId), rb = con.weddings.find(x => x.planId === BB.planId);
+    ok(rw.kind === 'wedding' && rb.kind === 'baptism', 'kind: the console list says what each row is', { rw: rw.kind, rb: rb.kind });
+  }
+  // ---- the venue's template is a ROOM, shared by both kinds ----
+  // It is drawn once, as a wedding (it has no kind of its own, and it should not have one), and every event the venue
+  // creates starts from it — so the words the PLANNER wrote into it have to follow the new event, or a baptism made by
+  // a venue that has a template (which is every venue the product pushes to make one) opens with «Νυφικό τραπέζι» and
+  // the bride's and the groom's sides, and the planner's own starter never runs to correct it.
+  {
+    const TV = (await call('POST', '/admin/venues', { name: 'Κτήμα Με Πρότυπο', license: { type: 'seasonal', seasonStart: kday(-30), seasonEnd: kday(300) } }, OWN)).d;
+    const HTV = { 'X-Venue-Key': TV.key };
+    const TPL = (await call('POST', '/venues/' + TV.id + '/template', {}, HTV)).d;
+    const room = layout({
+      tables: [{ id: 1, shape: 'round', x: 300, y: 400, label: '1', capacity: 8, seats: Array(8).fill(null) },
+        { id: 2000, shape: 'head', x: 600, y: 200, label: 'Νυφικό τραπέζι', capacity: 6, seats: Array(6).fill(null) },
+        { id: 3, shape: 'round', x: 900, y: 400, label: 'Τραπέζι VIP', capacity: 8, seats: Array(8).fill(null) }],
+      groups: [{ id: 'grp1', name: 'Πλευρά νύφης', color: '#e26d8a' }, { id: 'grp2', name: 'Πλευρά γαμπρού', color: '#4a90d9' },
+        { id: 'grp3', name: 'Φίλοι', color: '#3aa657' }, { id: 'grp4', name: 'Οικογένεια', color: '#e0a030' }],
+      stageMaterial: 'wood',
+    });
+    ok((await call('PUT', '/plans/' + TPL.planId, { plan: room }, { 'X-Edit-Key': TPL.venueKey })).status === 200, 'kind: the venue draws its room once');
+    const from = async (kind) => {
+      const e = (await call('POST', '/venues/' + TV.id + '/weddings', { label: kind === 'baptism' ? 'Θοδωρής' : 'Άννα & Πέτρος', date: kday(40), kind }, HTV)).d;
+      return raw('plan:' + e.planId).plan;
+    };
+    const pw = await from('wedding'), pb = await from('baptism');
+    ok(pw.tables.find(t => t.shape === 'head').label === 'Νυφικό τραπέζι'
+      && pw.groups.map(g => g.name).join('·') === 'Πλευρά νύφης·Πλευρά γαμπρού·Φίλοι·Οικογένεια',
+      'kind: a wedding made from the template is word for word what it always was', pw.groups.map(g => g.name));
+    ok(pb.tables.find(t => t.shape === 'head').label === 'Τραπέζι της οικογένειας'
+      && pb.groups.map(g => g.name).join('·') === 'Πλευρά μητέρας·Πλευρά πατέρα·Νονοί·Φίλοι',
+      'kind: … and a baptism made from the same template gets the family table and the godparents, not the bride\'s side',
+      { head: pb.tables.find(t => t.shape === 'head').label, groups: pb.groups.map(g => g.name) });
+    ok(pb.stageMaterial === 'wood' && pb.tables.find(t => t.label === 'Τραπέζι VIP') && pb.tables.length === 3,
+      'kind: … while the room itself — the floor, the tables, and every name the venue typed — is inherited untouched', pb.tables.map(t => t.label));
+    // a venue that named its own honour table keeps that name, whichever kind is created from the room
+    const room2 = { ...room, tables: room.tables.map(t => t.shape === 'head' ? { ...t, label: 'Τραπέζι τιμής' } : t) };
+    await call('PUT', '/plans/' + TPL.planId, { plan: room2, baseUpdated: raw('plan:' + TPL.planId).updated }, { 'X-Edit-Key': TPL.venueKey });
+    const pb2 = await from('baptism');
+    ok(pb2.tables.find(t => t.shape === 'head').label === 'Τραπέζι τιμής',
+      'kind: only a label the planner wrote itself is re-pointed — one the venue typed is never rewritten', pb2.tables.map(t => t.label));
+    await call('DELETE', '/admin/venues/' + TV.id, undefined, OWN);
+  }
+  ok((await call('GET', '/plans/' + BB.planId, undefined, { 'X-Edit-Key': BB.editKey })).d.kind === 'baptism', 'kind: the plan GET returns it to the people who open the planner');
+  ok((await call('GET', '/plans/' + BB.planId, undefined, { 'X-View-Key': raw('plan:' + BB.planId).readKey })).d.kind === 'baptism', 'kind: a view link is told too — it prints the same lists');
+
+  // ---- the lifecycle is the same shape for both ----
+  {
+    const lw = (await call('GET', '/plans/' + WW.planId, undefined, { 'X-Edit-Key': WW.editKey })).d.life;
+    const lb = (await call('GET', '/plans/' + BB.planId, undefined, { 'X-Edit-Key': BB.editKey })).d.life;
+    ok(lw.lockAt - Date.parse(kday(41) + 'T00:00:00Z') === lb.lockAt - Date.parse(kday(46) + 'T00:00:00Z')
+      && lw.phase === lb.phase && (lw.deleteAt - lw.lockAt) === (lb.deleteAt - lb.lockAt),
+      'kind: a baptism gets the same lock, the same phase and the same retention as a wedding on the same footing', { lw, lb });
+  }
+
+  // ---- correcting it: whoever may rename the event ----
+  {
+    const r1 = await call('PATCH', '/venues/' + VK.id + '/weddings/' + WW.planId, { kind: 'baptism' }, HVK);
+    ok(r1.status === 200 && r1.d.kind === 'baptism' && raw('plan:' + WW.planId).kind === 'baptism'
+      && raw('venue:' + VK.id).weddings.find(x => x.planId === WW.planId).kind === 'baptism',
+      'kind: the venue corrects a wedding entered as the wrong type, in the plan and in its own list', r1.d);
+    await call('PATCH', '/venues/' + VK.id + '/weddings/' + WW.planId, { kind: 'wedding' }, HVK);
+    ok(raw('plan:' + WW.planId).kind === 'wedding', 'kind: … and back again');
+    const dates = raw('plan:' + WW.planId).weddingDate;
+    ok(dates === kday(40) && !raw('plan:' + WW.planId).frozenUntil, 'kind: correcting the type touches no date and freezes nothing');
+  }
+  ok((await call('PUT', '/plans/' + BB.planId, { kind: 'wedding', baseUpdated: raw('plan:' + BB.planId).updated }, { 'X-Venue-Key': VK.key })).status === 200
+    && raw('plan:' + BB.planId).kind === 'wedding', 'kind: the planner can correct it too (the venue link renames, so it may)');
+  await call('PUT', '/plans/' + BB.planId, { kind: 'baptism', baseUpdated: raw('plan:' + BB.planId).updated }, { 'X-Venue-Key': VK.key });
+  ok(raw('plan:' + BB.planId).kind === 'baptism', 'kind: … restored to a baptism');
+  {   // support may not rename, so support may not retype
+    await call('POST', '/plans/' + BB.planId + '/support', { hours: 24 }, { 'X-Venue-Key': VK.key });
+    const sk = (await call('GET', '/admin/support', undefined, OWN)).d.requests.find(x => x.planId === BB.planId).key;
+    await call('PUT', '/plans/' + BB.planId, { kind: 'wedding', baseUpdated: raw('plan:' + BB.planId).updated }, { 'X-Support-Key': sk });
+    ok(raw('plan:' + BB.planId).kind === 'baptism', 'kind: TakeaSeat support cannot change what the event is');
+    await call('DELETE', '/plans/' + BB.planId + '/support', undefined, { 'X-Venue-Key': VK.key });
+  }
+  {   // the direct customer renames their own event, so the direct customer retypes it — with their edit key alone,
+      // carrying no plan, so a correction never uploads a starter layout nobody designed
+    const DC = (await call('POST', '/admin/couples', { name: 'Θεοδώρα', weddingDate: kday(18), startNow: true }, OWN)).d.couple;
+    const dp = raw('couple:' + DC.id).planId, dk = raw('plan:' + dp).editKey, wasPlan = raw('plan:' + dp).plan;
+    const rc = await call('PUT', '/plans/' + dp, { kind: 'baptism' }, { 'X-Edit-Key': dk });
+    ok(rc.status === 200 && raw('plan:' + dp).kind === 'baptism',
+      'kind: a couple who bought their own plan can correct what the event is, from the planner', rc.d);
+    ok(raw('plan:' + dp).plan === wasPlan && raw('plan:' + dp).weddingDate === kday(18) && raw('plan:' + dp).name === 'Θεοδώρα',
+      'kind: … and the correction carries nothing else — not the plan, not the date, not the name');
+    ok((await call('PUT', '/plans/' + dp, { kind: 'wedding' }, { 'X-Edit-Key': dk })).status === 200 && raw('plan:' + dp).kind === 'wedding',
+      'kind: … and back again, as the console does it');
+    await call('DELETE', '/admin/couples/' + DC.id, undefined, OWN);
+  }
+  {   // the planner's own side of that correction: the starter words follow, a word the customer typed does not
+    const fs = await import('node:fs');
+    const psrc = fs.readFileSync(path.join(root, 'planner.src.html'), 'utf8');
+    ok(/function changeEventKind\(/.test(psrc) && /data-act="kind"/.test(psrc),
+      'planner: the planner offers the correction where it offers the rename, so the brief and the product agree');
+    const fn = psrc.slice(psrc.indexOf('function retypeStarterWords('));
+    const body = fn.slice(0, fn.indexOf('\nasync function changeEventKind'));
+    ok(/heads\.indexOf\(t\.label\)>=0/.test(body) && /names\.every\(\(n,i\)=>n===S\[i\]\)/.test(body),
+      'planner: … and it re-points only an untouched starter — both kinds matched exactly before anything is replaced');
+  }
+
+  // ---- the trash keeps it, so a restore comes back as what it was ----
+  {
+    await call('DELETE', '/venues/' + VK.id + '/weddings/' + BB.planId, undefined, HVK);
+    const tr = (await call('GET', '/admin/venues/' + VK.id + '/trash', undefined, OWN)).d.trash.find(t => t.planId === BB.planId);
+    ok(tr && tr.kind === 'baptism', 'kind: the trash row remembers it');
+    await call('POST', '/admin/venues/' + VK.id + '/trash/' + BB.planId + '/restore', {}, OWN);
+    ok(raw('venue:' + VK.id).weddings.find(x => x.planId === BB.planId).kind === 'baptism', 'kind: a restored baptism comes back a baptism');
+  }
+
+  // ---- a direct customer buys for a baptism: the same purchase, the same words everywhere ----
+  const KB = (await call('POST', '/admin/couples', { name: 'Βάπτιση Αλέξανδρου', email: 'goneis@example.gr', lang: 'el', kind: 'baptism', weddingDate: kday(3), startNow: true }, OWN)).d.couple;
+  ok(KB.kind === 'baptism' && raw('plan:' + raw('couple:' + KB.id).planId).kind === 'baptism', 'kind: the admin sells a baptism; the licence and the plan both say so', KB.kind);
+  const BPID = raw('couple:' + KB.id).planId, BEK = raw('plan:' + BPID).editKey;
+  ok((await call('GET', '/admin/couples', undefined, OWN)).d.couples.find(x => x.id === KB.id).kind === 'baptism', 'kind: the admin list shows it');
+  ok((await call('PATCH', '/admin/couples/' + KB.id, { kind: 'wedding' }, OWN)).status === 200 && raw('plan:' + BPID).kind === 'wedding', 'kind: the admin corrects it');
+  await call('PATCH', '/admin/couples/' + KB.id, { kind: 'baptism' }, OWN);
+  ok(raw('plan:' + BPID).kind === 'baptism', 'kind: … and back');
+  // the lookup card the admin reads on the phone
+  {
+    const lk = (await call('GET', '/admin/lookup?q=' + BPID, undefined, OWN)).d.results[0];
+    ok(lk && lk.plan && lk.plan.kind === 'baptism' && lk.couple.kind === 'baptism', 'kind: the support card he reads on the phone says what the event is', lk && lk.plan && lk.plan.kind);
+  }
+  // an extra plan belongs to the same event, so it is the same kind — never a wedding inside a baptism
+  {
+    await call('PUT', '/plans/' + BPID, { plan: layout(), baseUpdated: raw('plan:' + BPID).updated }, { 'X-Edit-Key': BEK });
+    const ex = await call('POST', '/plans', { name: 'Δεύτερο σχέδιο', parentId: BPID, plan: layout(), kind: 'wedding' }, { 'X-Edit-Key': BEK });
+    ok(ex.status === 200 && raw('plan:' + ex.d.id).kind === 'baptism', 'kind: an extra plan follows its event, whatever the body claims', ex.d);
+  }
+
+  // ---- the keepsake: a type-aware mail and a type-aware PDF, in all three languages ----
+  for (const [lang, subj, wish, word] of [['el', 'αναμνηστικό της βάπτισης', 'Να σας ζήσει', 'βάπτισης'],
+                                          ['en', 'keepsake of the christening', 'little one', 'christening'],
+                                          ['de', 'Erinnerung an die Taufe', 'Alles Gute für Ihr Kind', 'Taufe']]) {
+    const before = KM.length, rb = KR.length;
+    const kc = (await call('POST', '/admin/couples', { name: 'Βάπτιση ' + lang, email: 'keep-' + lang + '@example.gr', lang, kind: 'baptism', weddingDate: kday(2), startNow: true }, OWN)).d.couple;
+    const pid = raw('couple:' + kc.id).planId;
+    patchRaw('plan:' + pid, o => { o.weddingDate = kday(-2); o.plan = layout({ guests: { g1: { name: 'Α' } } }); o.plan.tables[0].seats[0] = 'g1'; });
+    await mod.sweep(env);
+    const mail = KM.slice(before).find(x => x.attachments);
+    ok(mail && mail.subject.includes(subj) && mail.text.includes(wish) && mail.text.includes(word) && !/γάμ|wedding|Hochzeit/.test(mail.text),
+      'kind: the ' + lang + ' keepsake mail is the baptism one, and says no «wedding» anywhere', mail && mail.subject);
+    const meta = KR.slice(rb).find(x => x.mode === 'keepsake');
+    ok(meta && meta.kind === 'baptism' && meta.lang === lang, 'kind: … and the keepsake PDF is rendered as a baptism', meta && { k: meta.kind, l: meta.lang });
+  }
+  {   // the same mail for a wedding is untouched
+    const before = KM.length;
+    const kw = (await call('POST', '/admin/couples', { name: 'Γάμος ελέγχου', email: 'keep-w@example.gr', lang: 'el', weddingDate: kday(2), startNow: true }, OWN)).d.couple;
+    const pid = raw('couple:' + kw.id).planId;
+    patchRaw('plan:' + pid, o => { o.weddingDate = kday(-2); o.plan = layout({ guests: { g1: { name: 'Α' } } }); o.plan.tables[0].seats[0] = 'g1'; });
+    await mod.sweep(env);
+    const mail = KM.slice(before).find(x => x.attachments);
+    ok(mail && /του γάμου σας/.test(mail.text) && /κάθε ευτυχία/.test(mail.text) && !/βάπτισ/.test(mail.text),
+      'kind: a wedding keepsake is exactly the mail it always was', mail && mail.subject);
+  }
+  // the floor-plan PDF of a stored plan carries the kind too
+  {
+    const rb = KR.length;
+    const pw = await worker.fetch(new Request('http://t/plans/' + WW.planId + '/pdf?mode=floor&lang=el', { headers: { ...NEW, 'X-Venue-Key': VK.key } }), env);
+    const pb = await worker.fetch(new Request('http://t/plans/' + BB.planId + '/pdf?mode=floor&lang=el', { headers: { ...NEW, 'X-Venue-Key': VK.key } }), env);
+    const got = KR.slice(rb);
+    ok(pw.status === 200 && pb.status === 200 && got.length === 2 && got[0].kind === 'wedding' && got[1].kind === 'baptism',
+      'kind: the floor-plan PDF is rendered as what the event is', { pw: pw.status, pb: pb.status, got: got.map(x => x.kind) });
+  }
+
+  // ---- the door list: the guest at the entrance is told which kind of event this is ----
+  {
+    patchRaw('plan:' + BB.planId, o => { o.weddingDate = kday(3); o.plan = layout({ guests: { gb1: { name: 'Ελένη Παππά' } } }); o.plan.tables[0].seats[0] = 'gb1'; });
+    const on = await call('PUT', '/plans/' + BB.planId + '/find', { on: true }, { 'X-Venue-Key': VK.key });
+    ok(on.status === 200 && on.d.find && on.d.find.key, 'kind: the door list of a baptism switches on like any other', on.d);
+    const tok = on.d.find.key;
+    const hit = await call('POST', '/find', { token: tok, q: 'ελενη' });
+    ok(hit.status === 200 && hit.d.kind === 'baptism' && hit.d.matches.length === 1, 'kind: an open door list says it is a baptism', hit.d);
+    patchRaw('plan:' + BB.planId, o => { o.weddingDate = kday(60); });   // outside the 7-day window
+    const shut = await call('POST', '/find', { token: tok, q: 'ελενη' });
+    ok(shut.status === 403 && shut.d.error === 'closed' && shut.d.kind === 'baptism', 'kind: … and so does the «closed» answer, which has to name the event to say when it opens', shut.d);
+    patchRaw('plan:' + BB.planId, o => { o.weddingDate = kday(3); });
+    const hw = await call('PUT', '/plans/' + WW.planId + '/find', { on: true }, { 'X-Venue-Key': VK.key });
+    patchRaw('plan:' + WW.planId, o => { o.weddingDate = kday(3); o.plan = layout({ guests: { gw1: { name: 'Νίκος Παππάς' } } }); o.plan.tables[0].seats[0] = 'gw1'; });
+    const hitw = await call('POST', '/find', { token: hw.d.find.key, q: 'νικος' });
+    ok(hitw.status === 200 && hitw.d.kind === 'wedding', 'kind: a wedding answers «wedding», as it always did');
+  }
+
+  // ---- the planner's own words: the dictionary twins, and the rule tr() uses to pick one ----
+  {
+    const fs = await import('node:fs');
+    const src = fs.readFileSync(path.join(root, 'planner.src.html'), 'utf8');
+    const a = src.indexOf('const T_ALL='), b = src.indexOf('const T=T_ALL[LANG]');
+    const T_ALL = new Function('return (' + src.slice(a + 'const T_ALL='.length, b).trim().replace(/;$/, '') + ')')();
+    const LANGS = ['el', 'en', 'de'];
+    // tr()'s rule, copied: a baptism reads the twin when there is one, the ordinary key when there is not.
+    const trr = (lang, kind, k) => { const T = T_ALL[lang];
+      let s; if (kind === 'baptism') { s = T['b_' + k]; if (s == null) s = T_ALL.el['b_' + k]; }
+      if (s == null) s = T[k]; if (s == null) s = T_ALL.el[k]; return s; };
+    const twins = Object.keys(T_ALL.el).filter(k => k.startsWith('b_'));
+    ok(twins.length >= 30, 'planner: the baptism dictionary exists', twins.length);
+    ok(twins.every(k => k.slice(2) in T_ALL.el), 'planner: every b_ twin has a real key behind it (no orphan twins)',
+      twins.filter(k => !(k.slice(2) in T_ALL.el)));
+    ok(LANGS.every(l => twins.every(k => k in T_ALL[l])), 'planner: every twin exists in all three languages',
+      LANGS.map(l => twins.filter(k => !(k in T_ALL[l]))).flat());
+    // the printed list header and its date line — the two strings on every sheet of paper
+    ok(trr('el', 'wedding', 'printTitle') === 'Σχέδιο Τραπεζιών Γάμου' && trr('el', 'baptism', 'printTitle') === 'Σχέδιο Τραπεζιών Βάπτισης',
+      'print: the Greek list header follows the event type', [trr('el', 'wedding', 'printTitle'), trr('el', 'baptism', 'printTitle')]);
+    ok(LANGS.every(l => trr(l, 'baptism', 'printTitle') !== trr(l, 'wedding', 'printTitle') && trr(l, 'baptism', 'printWed') !== trr(l, 'wedding', 'printWed')),
+      'print: the header and the date line differ from the wedding ones in el, en and de',
+      LANGS.map(l => [l, trr(l, 'baptism', 'printTitle'), trr(l, 'baptism', 'printWed')]));
+    ok(trr('el', 'baptism', 'printWed') === 'Βάπτιση: {d}' && trr('el', 'wedding', 'printWed') === 'Γάμος: {d}', 'print: «Γάμος: …» becomes «Βάπτιση: …»');
+    // a key with no twin must read identically for both — that is what keeps the twin list small
+    ok(LANGS.every(l => trr(l, 'baptism', 'printColName') === trr(l, 'wedding', 'printColName') && trr(l, 'baptism', 'printAt') === trr(l, 'wedding', 'printAt')),
+      'print: a key that does not name the event reads the same for both kinds');
+    // the Greek cases: a baptism is feminine, and the twins have to agree with it
+    ok(!/\bτου γάμου\b|\bτον γάμο\b|\bο γάμος\b/.test(twins.map(k => T_ALL.el[k]).join(' ')),
+      'planner: no Greek baptism string smuggles a masculine «γάμος» article through');
+    ok(/της βάπτισης/.test(T_ALL.el.b_accDateHint) && /τη βάπτιση/.test(T_ALL.el.b_rbVenueTip),
+      'planner: the Greek twins use the genitive «της βάπτισης» and the accusative «τη βάπτιση» where the sentence needs them');
+    // the customer: a couple at a wedding, the parents at a baptism
+    ok(/οι γονείς/.test(T_ALL.el.b_accCouplePerms + T_ALL.el.b_tPreviewOn) && /γονείς|γονέων/.test(T_ALL.el.b_rbPreview),
+      'planner: a baptism\'s customer is «οι γονείς», not «το ζευγάρι»');
+    ok(/parents/.test(T_ALL.en.b_rbVenueTip) && /Eltern/.test(T_ALL.de.b_rbVenueTip), 'planner: the same in English and German');
+    // the guided tour reads its own nested object, so its twin lives there and has to be complete too
+    ok(LANGS.every(l => T_ALL[l].tour.b_dFloorNames && T_ALL[l].tour.b_dFloorNames.length === 2 && T_ALL[l].tour.b_dFloorNames[1] !== T_ALL[l].tour.dFloorNames[1]),
+      'planner: the tour card that names the event has its twin in all three languages',
+      LANGS.map(l => T_ALL[l].tour.b_dFloorNames && T_ALL[l].tour.b_dFloorNames[1]));
+    ok(/πριν από τη βάπτιση/.test(T_ALL.el.tour.b_dFloorNames[1]), 'planner: … and the Greek one says «πριν από τη βάπτιση»');
+
+    // ---- the twins have to be REACHED, not merely to exist ----
+    // b_groupsDefault was dead code for exactly this reason: defaultState() read `T.groupsDefault` straight from the
+    // dictionary instead of going through tr(), so every baptism opened with the bride's and the groom's sides.
+    // Any key with a twin that is read as `T.<key>` anywhere in the planner is the same bug again.
+    const directReads = [...new Set([...src.matchAll(/(?<![\w.$])T\.([A-Za-z_]\w*)/g)].map(x => x[1]))].filter(k => ('b_' + k) in T_ALL.el);
+    ok(directReads.length === 0,
+      'planner: no key that has a baptism twin is read straight from the dictionary — tr() must resolve it, or the twin is dead code', directReads);
+    // the starter room's own words, resolved the way the planner resolves them
+    ok(trr('el', 'baptism', 'groupsDefault').join('·') === 'Πλευρά μητέρας·Πλευρά πατέρα·Νονοί·Φίλοι'
+      && !/νύφης|γαμπρού/.test(trr('el', 'baptism', 'groupsDefault').join(' ')),
+      "planner: a baptism starts with the mother's side, the father's side and the godparents — never the bride's and the groom's",
+      trr('el', 'baptism', 'groupsDefault'));
+    ok(LANGS.every(l => trr(l, 'baptism', 'groupsDefault').join('·') !== trr(l, 'wedding', 'groupsDefault').join('·')
+      && trr(l, 'baptism', 'headTable') !== trr(l, 'wedding', 'headTable')),
+      'planner: … and the starter differs from the wedding one in all three languages',
+      LANGS.map(l => [l, trr(l, 'baptism', 'groupsDefault')[0], trr(l, 'baptism', 'headTable')]));
+    // The head table and the groups are plan DATA: they are built by defaultState() and uploaded with the first real
+    // edit, so the kind has to be resolved BEFORE the starter room exists. applyAccess() runs after it, which is why
+    // a new plan used to be labelled from whatever plan the device had open before it — in both directions.
+    {
+      const fn = src.slice(src.indexOf('function applyPulledPlan'));
+      const body = fn.slice(0, fn.indexOf('\nfunction '));
+      const setK = body.indexOf('setEventKind('), starter = body.indexOf('state=defaultState()');
+      ok(setK > 0 && starter > 0 && setK < starter,
+        "planner: applyPulledPlan settles the event kind before it builds the starter room, so the head table and the groups belong to the right event",
+        { setEventKind: setK, defaultState: starter });
+    }
+    // ---- no reachable baptism screen calls the customer a couple (b_cVenueLinks was the last one that did) ----
+    // The lab and the local, never-synced plans are weddings on purpose (HANDOFF §1i), so they are named here.
+    const COUPLE_OK = new Set(['labBride', 'labGroom', 'labCap', 'labPlan', 'labNames', 'ourWedding', 'weddingN', 'newPlan', 'switchPlan', 'promptNewProfile']);
+    const saysCouple = Object.keys(T_ALL.el).filter(k => !k.startsWith('b_') && !COUPLE_OK.has(k))
+      .filter(k => typeof trr('el', 'baptism', k) === 'string' && /ζευγάρ|ζευγαρ/i.test(trr('el', 'baptism', k)));
+    ok(saysCouple.length === 0, 'planner: no Greek string a baptism can reach calls its customer «το ζευγάρι»', saysCouple);
+    const saysCoupleEn = Object.keys(T_ALL.en).filter(k => !k.startsWith('b_') && !COUPLE_OK.has(k))
+      .filter(k => typeof trr('en', 'baptism', k) === 'string' && /couple'?s?/i.test(trr('en', 'baptism', k)));
+    const saysCoupleDe = Object.keys(T_ALL.de).filter(k => !k.startsWith('b_') && !COUPLE_OK.has(k))
+      .filter(k => typeof trr('de', 'baptism', k) === 'string' && /Paares?/.test(trr('de', 'baptism', k)));
+    ok(saysCoupleEn.length === 0 && saysCoupleDe.length === 0, 'planner: nor does the English or the German', [saysCoupleEn, saysCoupleDe]);
+    // ---- the ornament: the PDFs draw a flower for a baptism, so the screen must not keep the couple's heart ----
+    ok(/id="i-petals"/.test(src) && /EVMARK\(\)/.test(src) && !/ICON\("heart"\)/.test(src),
+      'planner: the honour-table ornament is picked from the event kind on screen too, not hard-coded to the heart');
+  }
+
+  // ---- the printed floor plan: a label the planner wrote itself is not a name the guest should read ----
+  {
+    const fs = await import('node:fs');
+    const pdfSrc = fs.readFileSync(path.join(root, 'server', 'pdf.mjs'), 'utf8');
+    const line = (pdfSrc.match(/const HEAD_DEFAULTS = \[[^\]]*\]/s) || [''])[0];
+    ok(['νυφικό τραπέζι', 'head table', 'brauttisch', 'τραπέζι της οικογένειας', 'family table', 'familientisch'].every(x => line.includes("'" + x + "'")),
+      "print: the default head-table label of either kind counts as default, so a wedding retyped from a baptism still draws its ♥", line);
+  }
+
+  // ---- the venue console's Greek has to agree with whichever customer it is talking about ----
+  {
+    const fs = await import('node:fs');
+    const vsrc = fs.readFileSync(path.join(root, 'venue.html'), 'utf8');
+    const evw = vsrc.slice(vsrc.indexOf('const EVW = {'), vsrc.indexOf('const evKind ='));
+    ok(/alone:"μόνο του"/.test(evw) && /alone:"μόνοι τους"/.test(evw) && /poss:"του"/.test(evw) && /poss:"της"/.test(evw),
+      'venue: the reflexive and the possessive are in EVW, in both genders and both numbers');
+    const tpl = vsrc.slice(vsrc.indexOf('const evKind ='));   // everything the console renders, past the dictionary
+    // A literal reflexive straight after the templated verb agrees with whichever customer the author happened to be
+    // thinking of: «οι γονείς στήνουν μόνος του» and «το ζευγάρι στήνει μόνος του» agree with neither. (venue.html's
+    // own «ο πελάτης στήνει μόνος του», with a real masculine subject, is correct and is not what this looks for.)
+    ok(!/EV\(w\)\.(sets|changes|sees|writes|puts)\}\s*(μόνος του|μόνο του|μόνοι τους|μόνη της)/.test(tpl),
+      'venue: the reflexive is never stitched on after the templated verb — it comes from EVW, like the verb itself');
+    ok(!/το τραπεζολόγιό της μεταφέρονται/.test(tpl),
+      'venue: the delete confirmation takes its possessive from the event, so «Ο γάμος και το τραπεζολόγιό …» agrees');
+    ok(!/σύνδεσμοι των ζευγαριών/.test(vsrc),
+      "venue: venue-wide copy does not speak of «the couples'» links in a console that also holds baptisms");
+  }
+
+  env.MAIL = keepMail; env.PDF = keepPdf;
+  if (!keepMail) delete env.MAIL;
+  if (!keepPdf) delete env.PDF;
 }
 
 console.log(`\nall ${n} checks passed`);

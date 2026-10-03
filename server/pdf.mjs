@@ -1,7 +1,7 @@
 // TakeaSeat — server-side PDF of a seating plan (pdfkit, embedded TrueType font with Greek glyphs).
 //
 //   import { renderPlanPdf } from './pdf.mjs';
-//   const buf = await renderPlanPdf(plan, { name, weddingDate:'2026-09-19'|null, venueName, mode:'floor'|'keepsake', lang:'el'|'en'|'de' });
+//   const buf = await renderPlanPdf(plan, { name, weddingDate:'2026-09-19'|null, venueName, mode:'floor'|'keepsake', lang:'el'|'en'|'de', kind:'wedding'|'baptism' });
 //
 // mode "floor":    one landscape page with the whole floor (A4, A3 for big plans): tables to scale in their shape and rotation,
 //                  guest names radiating from each seat, decor, title + date. When the names would be too small to read, the
@@ -53,6 +53,7 @@ const L10N = {
     tables: n => n === 1 ? '1 τραπέζι' : `${n} τραπέζια`,
     seatsOf: (s, c) => `${s} από ${c} θέσεις`,
     table: 'Τραπέζι', warm: 'Όλοι όσοι γιόρτασαν μαζί σας.', ourWedding: 'Ο γάμος μας', seatingPlan: 'Σχέδιο τραπεζιών',
+    b_ourWedding: 'Η βάπτισή μας',
     floor: 'Η κάτοψη', whoSat: 'Ποιος κάθισε πού', index: 'Αλφαβητικός κατάλογος', namesByTable: 'Ονόματα ανά τραπέζι',
     unseated: 'Χωρίς θέση', cancelled: 'ακυρώθηκε', cont: 'συνέχεια',
     brand: 'Φτιάχτηκε με TakeaSeat · takeaseat.gr', brandWarm: 'Φτιαγμένο με αγάπη · TakeaSeat · takeaseat.gr',
@@ -67,6 +68,7 @@ const L10N = {
     tables: n => n === 1 ? '1 table' : `${n} tables`,
     seatsOf: (s, c) => `${s} of ${c} seats`,
     table: 'Table', warm: 'Everyone who celebrated with you.', ourWedding: 'Our wedding', seatingPlan: 'Seating plan',
+    b_ourWedding: 'Our christening',
     floor: 'The floor plan', whoSat: 'Who sat where', index: 'Alphabetical index', namesByTable: 'Names by table',
     unseated: 'Without a seat', cancelled: 'cancelled', cont: 'continued',
     brand: 'Made with TakeaSeat · takeaseat.gr', brandWarm: 'Made with love · TakeaSeat · takeaseat.gr',
@@ -81,6 +83,7 @@ const L10N = {
     tables: n => n === 1 ? '1 Tisch' : `${n} Tische`,
     seatsOf: (s, c) => `${s} von ${c} Plätzen`,
     table: 'Tisch', warm: 'Alle, die mit Ihnen gefeiert haben.', ourWedding: 'Unsere Hochzeit', seatingPlan: 'Sitzplan',
+    b_ourWedding: 'Unsere Taufe',
     floor: 'Der Sitzplan', whoSat: 'Wer saß wo', index: 'Alphabetisches Verzeichnis', namesByTable: 'Namen pro Tisch',
     unseated: 'Ohne Platz', cancelled: 'abgesagt', cont: 'Fortsetzung',
     brand: 'Erstellt mit TakeaSeat · takeaseat.gr', brandWarm: 'Mit Liebe erstellt · TakeaSeat · takeaseat.gr',
@@ -295,7 +298,10 @@ export async function renderPlanPdf(plan, meta = {}) {
   meta = meta && typeof meta === 'object' ? meta : {};
   const lang = ['el', 'en', 'de'].includes(meta.lang) ? meta.lang : 'el';
   const mode = meta.mode === 'keepsake' ? 'keepsake' : 'floor';
-  const W = L10N[lang];
+  // The event's own word: a key with a `b_` twin is read through it, every other key is untouched. A plan that
+  // says nothing is a wedding, which is what every plan rendered before this existed.
+  const bap = meta.kind === 'baptism';
+  const W = bap ? new Proxy(L10N[lang], { get: (t, k) => (typeof k === 'string' && t['b_' + k] !== undefined) ? t['b_' + k] : t[k] }) : L10N[lang];
   const P = normalize(plan, lang);
   const date = parseDate(meta.weddingDate);
   const title = cleanText(meta.name, 120) || (mode === 'keepsake' ? W.ourWedding : W.seatingPlan);
@@ -321,7 +327,7 @@ export async function renderPlanPdf(plan, meta = {}) {
     if (fonts.parsed) for (const k of faces) { const f = fonts.parsed[k]; if (f && f._glyphs) f._glyphs = {}; }
     const ctx = makeCtx(doc, fonts.nameScale);
     if (!fonts.parsed) { const parsed = {}; for (const k of faces) { doc.font(k); if (doc._font && doc._font.font && typeof doc._font.font.layout === 'function') parsed[k] = doc._font.font; } if (Object.keys(parsed).length === faces.length) fonts.parsed = parsed; }
-    const K = { doc, ctx, P, W, lang, mode, title, venue, longDate, shortDate, date, brand: meta.brand !== false, budget: makeBudget() };
+    const K = { doc, ctx, P, W, lang, mode, title, venue, longDate, shortDate, date, baptism: bap, brand: meta.brand !== false, budget: makeBudget() };
     if (mode === 'keepsake') renderKeepsake(K); else renderFloor(K);
     footers(K);
   } catch (e) { done.catch(() => {}); try { doc.end(); } catch { /* ignore */ } throw e; }
@@ -392,13 +398,23 @@ function heart(doc, cx, cy, size, color) {
     .path('M0,0.36 C-0.08,0.28 -0.5,0.02 -0.5,-0.24 C-0.5,-0.48 -0.22,-0.58 0,-0.34 C0.22,-0.58 0.5,-0.48 0.5,-0.24 C0.5,0.02 0.08,0.28 0,0.36 Z')
     .fill(color).restore();
 }
-function flourish(doc, cx, cy, halfW, color) {   // ——— ♥ ———  with tapering hairlines
+// A baptism's honour table is the family's, not a couple's: the same ornament slot gets a small four-petal flower
+// instead of the heart. Same size, same colour, same places — only the shape says which event this is.
+function petals(doc, cx, cy, size, color) {
+  doc.save().translate(cx, cy).scale(size)
+    .path('M0,-0.42 C0.2,-0.42 0.2,-0.1 0,-0.1 C-0.2,-0.1 -0.2,-0.42 0,-0.42 Z M0.42,0 C0.42,0.2 0.1,0.2 0.1,0 C0.1,-0.2 0.42,-0.2 0.42,0 Z M0,0.42 C-0.2,0.42 -0.2,0.1 0,0.1 C0.2,0.1 0.2,0.42 0,0.42 Z M-0.42,0 C-0.42,-0.2 -0.1,-0.2 -0.1,0 C-0.1,0.2 -0.42,0.2 -0.42,0 Z')
+    .fill(color).restore();
+  doc.save().translate(cx, cy).scale(size).circle(0, 0, 0.09).fill(color).restore();
+}
+// Every ornament in the document goes through here, so the event's kind decides the shape in one place.
+const mark = (K, doc, cx, cy, size, color) => (K && K.baptism ? petals : heart)(doc, cx, cy, size, color);
+function flourish(doc, cx, cy, halfW, color, K) {   // ——— ♥ ———  with tapering hairlines (a baptism gets the flower)
   doc.save().lineWidth(0.5).strokeColor(color).strokeOpacity(0.85);
   doc.moveTo(cx - halfW, cy).lineTo(cx - 9, cy).stroke();
   doc.moveTo(cx + 9, cy).lineTo(cx + halfW, cy).stroke();
   doc.circle(cx - halfW - 2.5, cy, 0.9).fill(color); doc.circle(cx + halfW + 2.5, cy, 0.9).fill(color);
   doc.restore();
-  heart(doc, cx, cy + 0.3, 8, color);
+  mark(K, doc, cx, cy + 0.3, 8, color);
 }
 
 // ---------------------------------------------------------------- floor plan: layout
@@ -766,7 +782,11 @@ function drawTableBody(K, T) {
   }
 }
 
-const HEAD_DEFAULTS = ['νυφικό τραπέζι', 'head table', 'brauttisch'];   // the planner's default head-table labels
+// The planner's default head-table labels — both kinds, in all three languages. The baptism ones are here because a
+// label is plan DATA: an event created as a baptism and later corrected to a wedding still carries «Τραπέζι της
+// οικογένειας», and a label the planner wrote itself must not print where the couple's ♥ belongs.
+const HEAD_DEFAULTS = ['νυφικό τραπέζι', 'head table', 'brauttisch',
+  'τραπέζι της οικογένειας', 'family table', 'familientisch'];
 function isDefaultHead(label) { const l = label.toLowerCase().replace(/^💑\s*/, ''); return !l || HEAD_DEFAULTS.includes(l); }
 
 function drawTableLabel(K, T, numbers) {
@@ -789,11 +809,11 @@ function drawTableLabel(K, T, numbers) {
   // head / long table: the label runs along the table, kept upright
   let a = ((T.rot % 360) + 540) % 360 - 180; if (a > 90) a -= 180; if (a < -90) a += 180;
   const head = t.shape === 'head';
-  const def = head && isDefaultHead(t.label);
+  const def = head && !K.baptism && isDefaultHead(t.label);   // ♥ belongs to a couple; a baptism's head table shows its label
   doc.save().translate(T.cx, T.cy).rotate(a);
   const maxW = T.w * 0.84, sz0 = clamp(T.h * 0.36, 4.5, 12);
   if (def) {   // the couple's table: a heart
-    heart(doc, 0, 0, Math.min(T.h * 0.55, 14), C.accent);
+    mark(K, doc, 0, 0, Math.min(T.h * 0.55, 14), C.accent);
   } else {
     const [txt, face] = ctx.prep(t.label || (head ? '♥' : String(t.index + 1)), 'RB');
     const hs = Math.min(T.h * 0.4, 8);
@@ -801,7 +821,7 @@ function drawTableLabel(K, T, numbers) {
     const [tt, sz] = ctx.fit(txt, face, sz0, maxW - (withHeart ? hs + 3 : 0), 3.8);
     const tw = ctx.width(tt, face, sz), cap = ctx.metrics[face].cap;
     const x = withHeart ? (hs + 3) / 2 : 0;
-    if (withHeart) heart(doc, x - tw / 2 - 3 - hs / 2, 0, hs, C.accent);
+    if (withHeart) mark(K, doc, x - tw / 2 - 3 - hs / 2, 0, hs, C.accent);
     ctx.draw(tt, x, cap * sz / 2, { face, size: sz, color: C.accentInk, align: 'center' });
   }
   doc.restore();
@@ -1050,7 +1070,7 @@ function drawCard(K, card, x, y, w, h, fs, lh, titleH, style) {
   const [tt, tf] = ctx.prep(card.title, 'RB');
   const tsz = fs * (keep ? 1.4 : 1.2);
   const countW = card.count ? ctx.width(card.count, 'S', fs * 0.85) + 6 : 0;
-  if (card.heart) heart(doc, x + px + tsz * 0.35, y + titleH * 0.55 - tsz * 0.3, tsz * 0.75, C.accent);
+  if (card.heart) mark(K, doc, x + px + tsz * 0.35, y + titleH * 0.55 - tsz * 0.3, tsz * 0.75, C.accent);
   const hx = card.heart ? tsz * 0.9 : 0;
   const [t2, ts] = ctx.fit(tt, tf, tsz, w - 2 * px - countW - hx, fs);
   ctx.draw(t2, x + px + hx, y + titleH * 0.55, { face: tf, size: ts, color: C.accentInk });
@@ -1094,7 +1114,7 @@ function cover(K, seated) {
   doc.save().rect(26, 26, pw - 52, ph - 52).lineWidth(0.7).strokeColor(C.goldSoft).stroke().restore();
   doc.save().rect(31, 31, pw - 62, ph - 62).lineWidth(0.25).strokeColor(C.goldSoft).stroke().restore();
   let y = 150;
-  flourish(doc, pw / 2, y, 70, C.gold);
+  flourish(doc, pw / 2, y, 70, C.gold, K);
   y += 52;
   // the couple
   const [tt, tf] = ctx.prep(K.title, 'R');
@@ -1147,7 +1167,7 @@ function miniature(K, box) {
     } else {
       doc.save().translate(cx, cy).rotate(T.rot).roundedRect(-T.w * k / 2, -T.h * k / 2, T.w * k, T.h * k, Math.min(2.5, T.h * k / 4))
         .lineWidth(0.6).fillColor('#fffdf8').strokeColor(C.goldSoft).fillAndStroke().restore();
-      if (T.t.shape === 'head') heart(doc, cx, cy, Math.min(T.h * k * 0.5, 9), C.accent);
+      if (T.t.shape === 'head') mark(K, doc, cx, cy, Math.min(T.h * k * 0.5, 9), C.accent);
     }
     const dr = clamp(T.spacing * k * 0.2, 0.7, 1.9);
     T.seats.forEach((se, i) => {

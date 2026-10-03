@@ -69,6 +69,16 @@ function normPerms(p, fallback) {
   return o;
 }
 
+// ---- what kind of event a plan is (2026-10-03) ----
+// ONE field on the plan record. A venue's licence and a couple's purchase cover both kinds; the date, the phases, the
+// retention and the door list are identical — only the words follow this. Anything without it is a wedding, which is
+// what every plan made before today is, so no stored plan changes meaning.
+const EVENT_KINDS = ["wedding", "baptism"];
+const normKind = k => (typeof k === "string" && EVENT_KINDS.includes(k)) ? k : "wedding";
+const kindOf = rec => normKind(rec && rec.kind);
+// `undefined` when the body did not mention it (leave it alone), otherwise the normalised kind.
+const kindIn = b => (b && b.kind !== undefined) ? normKind(b.kind) : undefined;
+
 // ---- email ----
 const EMAIL_RE = /^[^\s@<>()",;:\\]+@[^\s@<>()",;:\\]+\.[A-Za-z]{2,}$/;
 const normEmail = x => { x = String(x || "").trim().toLowerCase(); return (x.length <= 200 && EMAIL_RE.test(x)) ? x : ""; };
@@ -130,6 +140,7 @@ const ymdOk = s => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && (d 
 const addDays = (ymd, n) => new Date(Date.parse(ymd + "T00:00:00Z") + n * DAY).toISOString().slice(0, 10);
 const addYears = (ymd, n) => { const [y, m, d] = ymd.split("-").map(Number); const dd = (m === 2 && d === 29) ? 28 : d; return `${y + n}-${String(m).padStart(2, "0")}-${String(dd).padStart(2, "0")}`; };
 const todayAthens = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Athens", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+const seasonOverAt = ymd => athensMidnight(addDays(ymd, 1));   // 00:00 Athens the day AFTER the season's last day
 function athensMidnight(ymd) {   // 00:00 Europe/Athens of that day, in ms (EET/EEST; DST never switches at midnight)
   const utc = Date.parse(ymd + "T00:00:00Z");
   const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Athens", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
@@ -259,11 +270,15 @@ const MAILS = {
     ownerEmailChanged: ["Η διεύθυνση ανάκτησης άλλαξε — TakeaSeat", "Γεια σας,\n\nΗ διεύθυνση ανάκτησης της διαχείρισης άλλαξε σε {email}. Αν δεν το κάνατε εσείς, ελέγξτε αμέσως τον διακομιστή.\n\nTakeaSeat"],
     renewSoon: ["Η συνδρομή σας ανανεώνεται στις {date} — TakeaSeat", "Γεια σας,\n\nΗ συνδρομή του «{name}» στο TakeaSeat ανανεώνεται αυτόματα στις {date} για την επόμενη σεζόν ({from} – {to}).\n\nΑν δεν θέλετε να ανανεωθεί, απενεργοποιήστε την αυτόματη ανανέωση από την κονσόλα σας έως τότε: {link}\n\nΓια οποιαδήποτε ερώτηση: info@takeaseat.gr · 697 735 5378 (10:00–14:00 και 17:00–21:00).\n\nTakeaSeat"],
     keepsakeKeep: ["Το αναμνηστικό του γάμου σας — TakeaSeat", "Συγχαρητήρια!\n\nΣας στέλνουμε, ως μικρό αναμνηστικό, το τραπεζολόγιο του γάμου σας «{name}» ({date}): όλοι όσοι γιόρτασαν μαζί σας και πού κάθισαν. Θα το βρείτε συνημμένο σε PDF.\n\nΣας ευχόμαστε κάθε ευτυχία!\nTakeaSeat"],
+    // The baptism twins of the two keepsake mails. The keepsake belongs to the child's family, so the wish is the one
+    // Greeks actually say at a baptism — «να σας ζήσει» — not the couple's.
+    b_keepsake: ["Το αναμνηστικό της βάπτισης — TakeaSeat", "Συγχαρητήρια!\n\nΣας στέλνουμε, ως μικρό αναμνηστικό, το τραπεζολόγιο της βάπτισης «{name}» ({date}): όλοι όσοι γιόρτασαν μαζί σας και πού κάθισαν. Θα το βρείτε συνημμένο σε PDF.\n\nΤο σχέδιο είναι πλέον μόνο για προβολή και θα διαγραφεί οριστικά στις {until}. Αν θέλετε να το κρατήσετε, αποθηκεύστε το συνημμένο αρχείο.\n\nΝα σας ζήσει!\nTakeaSeat"],
+    b_keepsakeKeep: ["Το αναμνηστικό της βάπτισης — TakeaSeat", "Συγχαρητήρια!\n\nΣας στέλνουμε, ως μικρό αναμνηστικό, το τραπεζολόγιο της βάπτισης «{name}» ({date}): όλοι όσοι γιόρτασαν μαζί σας και πού κάθισαν. Θα το βρείτε συνημμένο σε PDF.\n\nΝα σας ζήσει!\nTakeaSeat"],
     // ---- self-signup. The API answers every signup the same way; what really happened is said HERE, to the address
     // that the business already registered — so a stranger who probes an ΑΦΜ or an email learns nothing.
     afmUsed: ["Ο δωρεάν χρόνος αυτής της επιχείρησης — TakeaSeat", "Γεια σας,\n\nΛάβαμε εγγραφή για δωρεάν πρώτο χρόνο με το ΑΦΜ {afm}. Η επιχείρηση αυτή έχει ήδη πάρει τον δωρεάν της χρόνο — δίνεται μία φορά ανά ΑΦΜ.\n\nΔεν δημιουργήθηκε δεύτερος λογαριασμός και δεν χρεωθήκατε τίποτα. Για να συνεχίσετε με συνδρομή, ή αν νομίζετε ότι έγινε λάθος, γράψτε μας στο info@takeaseat.gr ή τηλεφωνήστε στο 697 735 5378 (10:00–14:00 και 17:00–21:00).\n\nTakeaSeat"],
     haveConsole: ["Έχετε ήδη κονσόλα — TakeaSeat", "Γεια σας,\n\nΛάβαμε εγγραφή κτήματος με αυτό το email. Υπάρχει ήδη κονσόλα σε αυτή τη διεύθυνση, οπότε δεν φτιάξαμε δεύτερη.\n\nΑν ξεχάσατε τον κωδικό, ζητήστε νέο εδώ: {link}\n\nΑν η εγγραφή αφορούσε άλλη επιχείρηση, γράψτε μας στο info@takeaseat.gr.\n\nTakeaSeat"],
-    trialEnds: ["Ο δωρεάν χρόνος σας λήγει στις {date} — TakeaSeat", "Γεια σας,\n\nΟ δωρεάν πρώτος χρόνος του «{name}» λήγει στις {date} — σε {days} ημέρες.\n\nΤι γίνεται τότε: δεν διαγράφεται τίποτα. Η κονσόλα ανοίγει κανονικά και οι γάμοι που έχετε ήδη δημιουργήσει συνεχίζουν ως την ημερομηνία τους. Για να δημιουργείτε νέους γάμους χρειάζεται συνδρομή.\n\nΓια να συνεχίσετε: info@takeaseat.gr · 697 735 5378 (10:00–14:00 και 17:00–21:00). Η κονσόλα σας: {link}\n\nTakeaSeat"],
+    trialEnds: ["Ο δωρεάν χρόνος σας λήγει στις {date} — TakeaSeat", "Γεια σας,\n\nΟ δωρεάν πρώτος χρόνος του «{name}» λήγει στις {date} — σε {days} ημέρες.\n\nΤι γίνεται τότε: δεν διαγράφεται τίποτα. Η κονσόλα ανοίγει κανονικά και οι εκδηλώσεις που έχετε ήδη δημιουργήσει (γάμοι και βαπτίσεις) συνεχίζουν ως την ημερομηνία τους. Για να δημιουργείτε νέες εκδηλώσεις χρειάζεται συνδρομή.\n\nΓια να συνεχίσετε: info@takeaseat.gr · 697 735 5378 (10:00–14:00 και 17:00–21:00). Η κονσόλα σας: {link}\n\nTakeaSeat"],
     ownerSignup: ["Νέα εγγραφή κτήματος: {name}", "Νέα εγγραφή από τη σελίδα.\n\nΌνομα: {name}\nΑΦΜ: {afm}\nEmail: {email}\nΤηλέφωνο: {phone}\n\nΟ σύνδεσμος ρύθμισης στάλθηκε· ο δωρεάν χρόνος μετράει από τη στιγμή που θα τον ανοίξουν, για 365 ημέρες. Στη διαχείριση: {link}\n\nTakeaSeat"],
     // Sent to whoever just filled the form, in the branches where the real answer goes to someone else's mailbox: a
     // business must never be left in silence because another address registered its ΑΦΜ first.
@@ -289,9 +304,11 @@ const MAILS = {
     ownerEmailChanged: ["The admin recovery address changed — TakeaSeat", "Hello,\n\nThe admin recovery address was changed to {email}. If this was not you, check the server right away.\n\nTakeaSeat"],
     renewSoon: ["Your subscription renews on {date} — TakeaSeat", "Hello,\n\nThe TakeaSeat subscription of “{name}” renews automatically on {date} for the next season ({from} – {to}).\n\nIf you do not want it to renew, turn automatic renewal off in your console before then: {link}\n\nAny questions: info@takeaseat.gr · +30 697 735 5378 (10:00–14:00 and 17:00–21:00, Greek time).\n\nTakeaSeat"],
     keepsakeKeep: ["A keepsake of your wedding — TakeaSeat", "Congratulations!\n\nAs a small keepsake, here is the seating plan of your wedding “{name}” ({date}): everyone who celebrated with you and where they sat. You will find it attached as a PDF.\n\nWishing you every happiness!\nTakeaSeat"],
+    b_keepsake: ["A keepsake of the christening — TakeaSeat", "Congratulations!\n\nAs a small keepsake, here is the seating plan of the christening “{name}” ({date}): everyone who celebrated with you and where they sat. You will find it attached as a PDF.\n\nThe plan is now view-only and will be deleted for good on {until}. If you want to keep it, save the attached file.\n\nMay the little one have a long and happy life!\nTakeaSeat"],
+    b_keepsakeKeep: ["A keepsake of the christening — TakeaSeat", "Congratulations!\n\nAs a small keepsake, here is the seating plan of the christening “{name}” ({date}): everyone who celebrated with you and where they sat. You will find it attached as a PDF.\n\nMay the little one have a long and happy life!\nTakeaSeat"],
     afmUsed: ["This business has already had its free year — TakeaSeat", "Hello,\n\nWe received a signup for a free first year with the tax number (ΑΦΜ) {afm}. This business has already had its free year — it is given once per ΑΦΜ.\n\nNo second account was created and you were not charged. To continue with a subscription, or if you think this is a mistake, write to info@takeaseat.gr or call +30 697 735 5378 (10:00–14:00 and 17:00–21:00, Greek time).\n\nTakeaSeat"],
     haveConsole: ["You already have a console — TakeaSeat", "Hello,\n\nWe received a venue signup with this email. There is already a console on this address, so we did not make a second one.\n\nIf you forgot the key, ask for a new one here: {link}\n\nIf the signup was for a different business, write to info@takeaseat.gr.\n\nTakeaSeat"],
-    trialEnds: ["Your free year ends on {date} — TakeaSeat", "Hello,\n\nThe free first year of “{name}” ends on {date} — in {days} days.\n\nWhat happens then: nothing is deleted. The console still opens and the weddings you have already created run to their date. Creating new weddings needs a subscription.\n\nTo continue: info@takeaseat.gr · +30 697 735 5378 (10:00–14:00 and 17:00–21:00, Greek time). Your console: {link}\n\nTakeaSeat"],
+    trialEnds: ["Your free year ends on {date} — TakeaSeat", "Hello,\n\nThe free first year of “{name}” ends on {date} — in {days} days.\n\nWhat happens then: nothing is deleted. The console still opens and the events you have already created — weddings and christenings alike — run to their date. Creating new events needs a subscription.\n\nTo continue: info@takeaseat.gr · +30 697 735 5378 (10:00–14:00 and 17:00–21:00, Greek time). Your console: {link}\n\nTakeaSeat"],
     ownerSignup: ["New venue signup: {name}", "A new signup from the site.\n\nName: {name}\nΑΦΜ: {afm}\nEmail: {email}\nPhone: {phone}\n\nThe setup link has been sent; the free year starts when they open it and runs 365 days. In the admin console: {link}\n\nTakeaSeat"],
     signupAck: ["We received your signup — TakeaSeat", "Hello,\n\nWe received a venue signup from this address.\n\nIf the business or the address is already registered, the answer goes to the address that registered it — not necessarily to this one. No second account is created and you were not charged.\n\nIf you are waiting for a setup link and it has not arrived, or you think someone else registered your ΑΦΜ, write to info@takeaseat.gr or call +30 697 735 5378 (10:00–14:00 and 17:00–21:00, Greek time).\n\nTakeaSeat"],
     ownerFlood: ["The signup queue is filling up — TakeaSeat", "Pending signups in the last 24 hours: {open} of {max}.\n\nWhen it is full the form answers “not available” to everyone until it drains. In the admin console, under Signups, “Clear old pending” removes in one go the pending rows nobody ever opened.\n\n{link}\n\nTakeaSeat"],
@@ -315,9 +332,11 @@ const MAILS = {
     ownerEmailChanged: ["Die Wiederherstellungsadresse wurde geändert — TakeaSeat", "Hallo,\n\nDie Wiederherstellungsadresse der Verwaltung wurde auf {email} geändert. Wenn Sie das nicht waren, prüfen Sie sofort den Server.\n\nTakeaSeat"],
     renewSoon: ["Ihr Abonnement verlängert sich am {date} — TakeaSeat", "Hallo,\n\nDas TakeaSeat-Abonnement von „{name}“ verlängert sich am {date} automatisch für die nächste Saison ({from} – {to}).\n\nWenn Sie keine Verlängerung wünschen, schalten Sie die automatische Verlängerung vorher in Ihrer Konsole aus: {link}\n\nFragen: info@takeaseat.gr · +30 697 735 5378 (10:00–14:00 und 17:00–21:00, griechische Zeit).\n\nTakeaSeat"],
     keepsakeKeep: ["Eine Erinnerung an Ihre Hochzeit — TakeaSeat", "Herzlichen Glückwunsch!\n\nAls kleine Erinnerung senden wir Ihnen den Sitzplan Ihrer Hochzeit „{name}“ ({date}): alle, die mit Ihnen gefeiert haben, und wo sie saßen. Sie finden ihn als PDF im Anhang.\n\nAlles Glück der Welt!\nTakeaSeat"],
+    b_keepsake: ["Eine Erinnerung an die Taufe — TakeaSeat", "Herzlichen Glückwunsch!\n\nAls kleine Erinnerung senden wir Ihnen den Sitzplan der Taufe „{name}“ ({date}): alle, die mit Ihnen gefeiert haben, und wo sie saßen. Sie finden ihn als PDF im Anhang.\n\nDer Plan ist jetzt nur noch lesbar und wird am {until} endgültig gelöscht. Wenn Sie ihn behalten möchten, speichern Sie die angehängte Datei.\n\nAlles Gute für Ihr Kind!\nTakeaSeat"],
+    b_keepsakeKeep: ["Eine Erinnerung an die Taufe — TakeaSeat", "Herzlichen Glückwunsch!\n\nAls kleine Erinnerung senden wir Ihnen den Sitzplan der Taufe „{name}“ ({date}): alle, die mit Ihnen gefeiert haben, und wo sie saßen. Sie finden ihn als PDF im Anhang.\n\nAlles Gute für Ihr Kind!\nTakeaSeat"],
     afmUsed: ["Dieses Unternehmen hatte sein Gratisjahr bereits — TakeaSeat", "Hallo,\n\nwir haben eine Anmeldung für ein kostenloses erstes Jahr mit der Steuernummer (ΑΦΜ) {afm} erhalten. Dieses Unternehmen hat sein Gratisjahr bereits erhalten — es wird einmal pro ΑΦΜ vergeben.\n\nEs wurde kein zweites Konto angelegt und Ihnen nichts berechnet. Für ein Abonnement, oder wenn Sie das für einen Fehler halten, schreiben Sie an info@takeaseat.gr oder rufen Sie +30 697 735 5378 an (10:00–14:00 und 17:00–21:00, griechische Zeit).\n\nTakeaSeat"],
     haveConsole: ["Sie haben bereits eine Konsole — TakeaSeat", "Hallo,\n\nwir haben eine Location-Anmeldung mit dieser E-Mail erhalten. Unter dieser Adresse gibt es bereits eine Konsole, deshalb haben wir keine zweite angelegt.\n\nWenn Sie den Schlüssel vergessen haben, fordern Sie hier einen neuen an: {link}\n\nWenn die Anmeldung ein anderes Unternehmen betraf, schreiben Sie an info@takeaseat.gr.\n\nTakeaSeat"],
-    trialEnds: ["Ihr Gratisjahr endet am {date} — TakeaSeat", "Hallo,\n\ndas kostenlose erste Jahr von „{name}“ endet am {date} — in {days} Tagen.\n\nWas dann passiert: nichts wird gelöscht. Die Konsole öffnet weiterhin und die bereits angelegten Hochzeiten laufen bis zu ihrem Datum. Für neue Hochzeiten brauchen Sie ein Abonnement.\n\nZum Weitermachen: info@takeaseat.gr · +30 697 735 5378 (10:00–14:00 und 17:00–21:00, griechische Zeit). Ihre Konsole: {link}\n\nTakeaSeat"],
+    trialEnds: ["Ihr Gratisjahr endet am {date} — TakeaSeat", "Hallo,\n\ndas kostenlose erste Jahr von „{name}“ endet am {date} — in {days} Tagen.\n\nWas dann passiert: nichts wird gelöscht. Die Konsole öffnet weiterhin und die bereits angelegten Veranstaltungen — Hochzeiten wie Taufen — laufen bis zu ihrem Datum. Für neue Veranstaltungen brauchen Sie ein Abonnement.\n\nZum Weitermachen: info@takeaseat.gr · +30 697 735 5378 (10:00–14:00 und 17:00–21:00, griechische Zeit). Ihre Konsole: {link}\n\nTakeaSeat"],
     ownerSignup: ["Neue Location-Anmeldung: {name}", "Eine neue Anmeldung über die Website.\n\nName: {name}\nΑΦΜ: {afm}\nE-Mail: {email}\nTelefon: {phone}\n\nDer Einrichtungslink wurde gesendet; das Gratisjahr beginnt, sobald er geöffnet wird, und läuft 365 Tage. In der Verwaltung: {link}\n\nTakeaSeat"],
     signupAck: ["Wir haben Ihre Anmeldung erhalten — TakeaSeat", "Hallo,\n\nwir haben von dieser Adresse eine Location-Anmeldung erhalten.\n\nWenn das Unternehmen oder die Adresse bereits registriert ist, geht die Antwort an die Adresse, die sie registriert hat — nicht unbedingt an diese. Es wird kein zweites Konto angelegt und Ihnen nichts berechnet.\n\nWenn Sie auf einen Einrichtungslink warten und keiner angekommen ist, oder wenn Sie glauben, dass jemand anderes Ihre ΑΦΜ angemeldet hat, schreiben Sie an info@takeaseat.gr oder rufen Sie +30 697 735 5378 an (10:00–14:00 und 17:00–21:00, griechische Zeit).\n\nTakeaSeat"],
     ownerFlood: ["Die Anmelde-Warteschlange füllt sich — TakeaSeat", "Offene Anmeldungen in den letzten 24 Stunden: {open} von {max}.\n\nIst sie voll, antwortet das Formular allen „nicht verfügbar“, bis sie sich leert. In der Verwaltung, unter Signups, entfernt „Clear old pending“ in einem Schritt die offenen Zeilen, die nie jemand geöffnet hat.\n\n{link}\n\nTakeaSeat"],
@@ -325,7 +344,9 @@ const MAILS = {
 };
 const fmtDay = (t, lang) => { try { return new Date(t).toLocaleDateString(langOf(lang) === "de" ? "de-DE" : langOf(lang) === "en" ? "en-GB" : "el-GR", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Athens" }); } catch (e) { return new Date(t).toISOString().slice(0, 10); } };
 const fill = (t, v) => String(t).replace(/\{(\w+)\}/g, (m, k) => (v[k] != null ? String(v[k]) : m));
-function mailMsg(lang, kind, v) { const L = MAILS[langOf(lang)]; return { subject: fill(L[kind][0], v), text: fill(L[kind][1], v) }; }
+// `ev` is the event kind: a mail whose words name the event has a `b_` twin for baptisms (see b_keepsake); every other
+// mail has one text and ignores it. One lookup, so a new type-aware mail is a dictionary entry, never a conditional.
+function mailMsg(lang, kind, v, ev) { const L = MAILS[langOf(lang)]; const m = (normKind(ev) === "baptism" && L["b_" + kind]) ? L["b_" + kind] : L[kind]; return { subject: fill(m[0], v), text: fill(m[1], v) }; }
 async function indexEmail(env, email, kind, id, add) {
   if (!email) return;
   await kvUpdate(env, "email:" + email, ix => { ix = ix || {}; ix.couples = ix.couples || []; ix.venues = ix.venues || []; const k = kind === "venue" ? "venues" : "couples";
@@ -468,10 +489,10 @@ async function lifecycleSweep(env, now) {
         && isPlan(rec.plan) && rec.plan.tables.length) {
       let sent = false;
       try {
-        const lang = langOf(c.lang), goneSoon = L.deleteAt && now < L.deleteAt;
-        const pdf = await env.PDF.render(rec.plan, { name: rec.name, weddingDate: L.weddingDate, venueName: "", mode: "keepsake", lang });
+        const lang = langOf(c.lang), goneSoon = L.deleteAt && now < L.deleteAt, ev = kindOf(rec);
+        const pdf = await env.PDF.render(rec.plan, { name: rec.name, weddingDate: L.weddingDate, venueName: "", mode: "keepsake", lang, kind: ev });
         const msg = mailMsg(lang, goneSoon ? "keepsake" : "keepsakeKeep", { name: rec.name, date: L.weddingDate ? fmtDay(Date.parse(L.weddingDate + "T12:00:00Z"), lang) : "",
-          until: goneSoon ? fmtDay(L.deleteAt - 1, lang) : "" });
+          until: goneSoon ? fmtDay(L.deleteAt - 1, lang) : "" }, ev);
         sent = send(env, c.email, { ...msg, attachments: [{ filename: pdfName(rec.name, "keepsake", lang), content: pdf, contentType: "application/pdf" }] });
         if (sent) { await kvUpdate(env, k, cur => { if (!cur) return null; cur.keepsakeSentAt = now; return cur; }); out.keepsakes++; }
       } catch (e) { console.error("keepsake failed for a plan: " + ((e && e.message) || e)); }
@@ -519,7 +540,7 @@ async function renewSweep(env, now) {
     // A free first year never renews itself into a charge nobody agreed to, so it is reminded on its own schedule —
     // 60, 30 and 7 days before it ends — and then simply ends (see canCreateWedding: nothing is deleted).
     if (onTrial(v) && v.trial.verifiedAt && ymdOk(L.seasonEnd) && v.email && mailOn(env) && v.active !== false) {
-      const endAt = Date.parse(L.seasonEnd) + DAY, left = (endAt - now) / DAY;
+      const endAt = seasonOverAt(L.seasonEnd), left = (endAt - now) / DAY;
       for (const d of TRIAL_REMIND) {   // ascending: the nearest pending one only
         if (left > 0 && left <= d && !(v.trialReminders || {})[L.seasonEnd + ":" + d]) {
           const lang = langOf(v.lang);
@@ -536,7 +557,7 @@ async function renewSweep(env, now) {
       }
     }
     if (L && L.type !== "per_wedding" && L.autoRenew !== false && !onTrial(v) && ymdOk(L.seasonEnd) && v.email && mailOn(env) && v.active !== false) {
-      const renewAt = Date.parse(L.seasonEnd) + DAY, left = (renewAt - now) / DAY;
+      const renewAt = seasonOverAt(L.seasonEnd), left = (renewAt - now) / DAY;
       for (const d of [7, 30]) {   // the nearest pending reminder only (a venue created late gets one mail, not two)
         const tag = L.seasonEnd + ":" + d;
         if (left > 0 && left <= d && !(v.renewReminders || {})[tag]) {
@@ -547,7 +568,7 @@ async function renewSweep(env, now) {
         }
       }
     }
-    if (!L || L.type === "per_wedding" || L.autoRenew === false || onTrial(v) || !ymdOk(L.seasonEnd) || now <= Date.parse(L.seasonEnd) + DAY) continue;
+    if (!L || L.type === "per_wedding" || L.autoRenew === false || onTrial(v) || !ymdOk(L.seasonEnd) || now < seasonOverAt(L.seasonEnd)) continue;
     // The terms promise a reminder 30 and 7 days before: no reminder sent (no email, mail off, a season that ended before
     // this feature) or an inactive venue → no automatic renewal; the admin sees the flag and renews by hand if agreed.
     const reminded = !!((v.renewReminders || {})[L.seasonEnd + ":7"] || (v.renewReminders || {})[L.seasonEnd + ":30"]);
@@ -556,7 +577,7 @@ async function renewSweep(env, now) {
         console.log("licence: venue " + v.id + " season ended without automatic renewal (" + (v.active === false ? "inactive" : "no reminder sent") + ")"); }
       continue;
     }
-    const r = await kvUpdate(env, k, cur => { const lic = cur && cur.license; if (!lic || lic.autoRenew === false || !ymdOk(lic.seasonEnd) || now <= Date.parse(lic.seasonEnd) + DAY) return null;
+    const r = await kvUpdate(env, k, cur => { const lic = cur && cur.license; if (!lic || lic.autoRenew === false || !ymdOk(lic.seasonEnd) || now < seasonOverAt(lic.seasonEnd)) return null;
       const { start, end } = nextSeason(lic);
       cur.license = { ...lic, seasonStart: start, seasonEnd: end, renewedAt: now, invoiceDue: true, renewSkipped: null };
       cur.renewals = [...(cur.renewals || []), { at: now, from: start, to: end }].slice(-20);
@@ -867,6 +888,38 @@ function layoutOnly(src, fromWedding) {
   p.features = (Array.isArray(src.features) ? src.features : []).filter(f => f && typeof f === "object" && !(fromWedding && f.by === "couple")).map(f => ({ ...JSON.parse(JSON.stringify(f)), by: "venue" }));
   p.tables = src.tables.filter(t => t && typeof t === "object").map(t => ({ ...JSON.parse(JSON.stringify(t)), seats: (Array.isArray(t.seats) ? t.seats : []).map(() => null) }));
   return p;
+}
+
+// The planner's own starter words (planner.src.html: headTable / b_headTable, groupsDefault / b_groupsDefault), per
+// language. The server needs them for one thing only: a venue's template is a ROOM, shared by both kinds, so it
+// carries whichever words the room was first drawn with — and without this a baptism copied from a template opens
+// with «Νυφικό τραπέζι» and the bride's and the groom's sides, which is the one thing this whole field exists to
+// prevent. Only a label the PLANNER wrote is re-pointed; anything the venue typed itself is left exactly as it is,
+// and a wedding copied from a wedding's template gets back the words it already had.
+const STARTER_WORDS = [
+  { wedding: { head: "Νυφικό τραπέζι", groups: ["Πλευρά νύφης", "Πλευρά γαμπρού", "Φίλοι", "Οικογένεια"] },
+    baptism: { head: "Τραπέζι της οικογένειας", groups: ["Πλευρά μητέρας", "Πλευρά πατέρα", "Νονοί", "Φίλοι"] } },
+  { wedding: { head: "Head table", groups: ["Bride's side", "Groom's side", "Friends", "Family"] },
+    baptism: { head: "Family table", groups: ["Mother's side", "Father's side", "Godparents", "Friends"] } },
+  { wedding: { head: "Brauttisch", groups: ["Seite der Braut", "Seite des Bräutigams", "Freunde", "Familie"] },
+    baptism: { head: "Familientisch", groups: ["Seite der Mutter", "Seite des Vaters", "Paten", "Freunde"] } },
+];
+function retypeStarter(plan, kind) {
+  if (!plan) return plan;
+  const want = normKind(kind);
+  for (const L of STARTER_WORDS) {
+    for (const t of (plan.tables || [])) {
+      if (t && t.shape === "head" && (t.label === L.wedding.head || t.label === L.baptism.head)) t.label = L[want].head;
+    }
+    const names = (plan.groups || []).map(g => g && g.name);
+    for (const from of ["wedding", "baptism"]) {
+      if (names.length === L[from].groups.length && names.every((n, i) => n === L[from].groups[i])) {
+        plan.groups = plan.groups.map((g, i) => ({ ...g, name: L[want].groups[i] }));
+        break;
+      }
+    }
+  }
+  return plan;
 }
 
 // ---- Amelie (amelie.gr digital invitations): the couple's RSVP answers become the plan's guest list ----
@@ -1184,15 +1237,18 @@ async function findLookup(env, token, raw, probe) {
       why: !rec ? "plan_gone" : rec.deletedAt ? "plan_deleted" : !rec.find ? "never_on" : !rec.find.on ? "switched_off" : "rotated" };
   const L = await planLife(env, rec, d.id);
   const win = findWindow(L, rec, d.spent);
-  if (!findOpen(L)) return { status: 403, body: { error: "closed" }, why: Date.now() < (win.opensAt || 0) ? "too_early" : "too_late", window: win, planId: d.id };
+  // The kind rides along with every answer this token gets, «closed» included: the page says «πριν τον γάμο» or
+  // «πριν τη βάπτιση», and it tells the holder of this QR nothing the open answer would not already tell them.
+  const ev = kindOf(rec);
+  if (!findOpen(L)) return { status: 403, body: { error: "closed", kind: ev }, why: Date.now() < (win.opensAt || 0) ? "too_early" : "too_late", window: win, planId: d.id };
   const hits = findMatches(rec.plan, q);
   // Too many: a count and no names at all — the guest types more of their name rather than being handed a list.
   // The wedding's name and date ride along, as they do on every other answer: at 300 guests «too many» is the
   // commonest FIRST answer a guest gets, and that answer has to be able to show them they scanned the right
   // wedding's QR before it asks them to type more. It gives nothing away that this token could not already read
   // — a query matching nobody returns the same two fields.
-  if (hits.length > FIND_MAX) return { status: 200, body: { ok: true, tooMany: true, count: hits.length, event: String(rec.name || ""), date: L.weddingDate }, why: "too_many", window: win, planId: d.id };
-  return { status: 200, body: { ok: true, event: String(rec.name || ""), date: L.weddingDate, matches: hits.map(h => ({ name: h.name, table: h.table })) },
+  if (hits.length > FIND_MAX) return { status: 200, body: { ok: true, tooMany: true, count: hits.length, event: String(rec.name || ""), kind: ev, date: L.weddingDate }, why: "too_many", window: win, planId: d.id };
+  return { status: 200, body: { ok: true, event: String(rec.name || ""), kind: ev, date: L.weddingDate, matches: hits.map(h => ({ name: h.name, table: h.table })) },
     why: hits.length ? "match" : "no_match", window: win, planId: d.id };
 }
 // When the door list answers, and how much of today's budget this token has spent. Never the key itself.
@@ -1241,6 +1297,7 @@ const TEST_SUR = [["Παπαδόπουλος", "Παπαδοπούλου"], ["Γ
   ["Αθανασίου", "Αθανασίου"], ["Λαμπρόπουλος", "Λαμπροπούλου"], ["Χατζής", "Χατζή"], ["Ανδρέου", "Ανδρέου"],
   ["Μιχαηλίδης", "Μιχαηλίδου"], ["Σαμαράς", "Σαμαρά"], ["Βλάχος", "Βλάχου"], ["Ρούσσος", "Ρούσσου"]];
 const TEST_GROUPS = ["Πλευρά νύφης", "Πλευρά γαμπρού", "Φίλοι", "Οικογένεια"];
+const TEST_GROUPS_B = ["Πλευρά μητέρας", "Πλευρά πατέρα", "Νονοί", "Φίλοι"];   // the same four slots, read for a baptism
 const TEST_COLORS = ["#e26d8a", "#4a90d9", "#3aa657", "#e0a030"];
 const TEST_POS = [[450, 250], [750, 250], [1050, 250], [1350, 250], [450, 540], [750, 540], [1050, 540], [1350, 540]];   // the planner's own 4×2 starter
 // Math.random lives here and nowhere else in this file: these pick names for a demo wedding, never a credential (rnd()).
@@ -1249,10 +1306,11 @@ const testGuestName = (k, woman) => (woman ? TEST_WOMEN[k % TEST_WOMEN.length] :
 
 // 60 guests on 8 round tables + the head table: 4 invitations, 54 seated, 4 still without a seat, a few «πιθανόν»
 // and a few notes — the same shape a real plan has, so everything in the planner has something to show.
-function testWeddingPlan(bride, groom) {
+function testWeddingPlan(a1, a2, kind) {   // a wedding: the couple; a baptism: the parents
   const tables = TEST_POS.map((p, i) => ({ id: 1001 + i, label: String(i + 1), shape: "round", x: p[0], y: p[1], capacity: 10, seats: Array(10).fill(null) }));
-  tables.push({ id: 2000, label: "Νυφικό τραπέζι", shape: "head", x: 900, y: 1110, capacity: 10, seats: Array(10).fill(null) });
-  const groups = TEST_GROUPS.map((n, i) => ({ id: "grp" + (i + 1), name: n, color: TEST_COLORS[i] }));
+  const bap = normKind(kind) === "baptism";
+  tables.push({ id: 2000, label: bap ? "Τραπέζι της οικογένειας" : "Νυφικό τραπέζι", shape: "head", x: 900, y: 1110, capacity: 10, seats: Array(10).fill(null) });
+  const groups = (bap ? TEST_GROUPS_B : TEST_GROUPS).map((n, i) => ({ id: "grp" + (i + 1), name: n, color: TEST_COLORS[i] }));
   const features = [
     { id: "f-ent", kind: "label", x: 900, y: 60, w: 190, h: 28, label: "Είσοδος καλεσμένων" },
     { id: "f-kiosk", kind: "prop", x: 1500, y: 66, w: 150, h: 64, label: "Ποτό υποδοχής", icon: "🍹" },
@@ -1260,8 +1318,8 @@ function testWeddingPlan(bride, groom) {
     { id: "f-dj", kind: "marker", x: 1190, y: 860, w: 78, h: 34, label: "DJ" },
   ];
   const gid = n => "tg" + n, guests = {}, parties = [];
-  guests[gid(1)] = { name: bride, groupId: "grp1", status: "confirmed" };
-  guests[gid(2)] = { name: groom, groupId: "grp2", status: "confirmed" };
+  guests[gid(1)] = { name: a1, groupId: "grp1", status: "confirmed" };
+  guests[gid(2)] = { name: a2, groupId: "grp2", status: "confirmed" };
   tables[8].seats[4] = gid(1); tables[8].seats[5] = gid(2);
   for (let k = 0; k < 58; k++) {
     const g = { name: testGuestName(k, k % 2 === 1), groupId: "grp" + ((k % 4) + 1), status: k % 9 === 4 ? "probable" : "confirmed" };
@@ -1303,7 +1361,7 @@ const testLinks = (env, rec, id) => {
 async function testWeddingOut(env, rec, id) {
   const L = await planLife(env, rec, id);
   const st = planStats(rec.plan);
-  return { planId: id, name: rec.name, weddingDate: rec.weddingDate, createdAt: rec.createdAt || null, updated: rec.updated || null,
+  return { planId: id, name: rec.name, kind: kindOf(rec), weddingDate: rec.weddingDate, createdAt: rec.createdAt || null, updated: rec.updated || null,
     phase: L.phase, lockAt: L.lockAt, deleteAt: L.deleteAt, findOn: !!(rec.find && rec.find.on), findOpen: findOpen(L),
     tables: st.tables, guests: st.guests, seated: st.seated, links: testLinks(env, rec, id) };
 }
@@ -1323,7 +1381,7 @@ function planIdOf(s) {
 async function planCard(env, rec, id, ctx) {
   const L = await planLife(env, rec, id, ctx);
   return {
-    planId: id, name: String(rec.name || ""), test: isTest(rec), template: !!rec.template,
+    planId: id, name: String(rec.name || ""), kind: kindOf(rec), test: isTest(rec), template: !!rec.template,
     createdAt: rec.createdAt || null, updated: rec.updated || null,
     weddingDate: L.weddingDate, phase: L.phase, opensAt: L.opensAt || null, fullAt: L.fullAt || null, frozenUntil: L.frozenUntil || null,
     lockAt: L.lockAt, deleteAt: L.deleteAt, locked: !!L.locked, over: !!L.over, keep: !!L.keep, fallback: !!L.fallback, child: !!L.child,
@@ -1368,7 +1426,7 @@ async function venueCard(env, v, focus) {
     licence: { active: canCreateWedding(v).ok, reason: canCreateWedding(v).reason || null, renewsAt, renewWhy,
       next: renewsAt ? nextSeason(lic) : null, invoiceDue: !!lic.invoiceDue, renewSkipped: lic.renewSkipped || null },
     weddings, template,
-    trash: (v.trash || []).map(t => ({ planId: t.planId, label: t.label, deletedAt: t.deletedAt, purgeAt: t.purgeAt, date: t.date || null })) };
+    trash: (v.trash || []).map(t => ({ planId: t.planId, label: t.label, kind: normKind(t.kind), deletedAt: t.deletedAt, purgeAt: t.purgeAt, date: t.date || null })) };
 }
 
 export default {
@@ -1388,20 +1446,20 @@ export default {
           const body = await request.json().catch(() => ({}));
           if (body.plan != null && !isPlan(body.plan)) return json({ error: "bad_plan" }, 422);
           if (tooBig(body.plan)) return json({ error: "plan too large" }, 413);
-          let coupleId = null, rootId = null, ok = await ownerOk(request, env);
+          let coupleId = null, rootId = null, parentKind = null, ok = await ownerOk(request, env);
           if (!ok && body.parentId) {
             const parent = safeParse(await env.PLANS.get("plan:" + String(body.parentId)));
             if (parent && ownerOf(parent).type === "couple" && eq(request.headers.get("X-Edit-Key") || "", parent.editKey)) {
               const PL = await planLife(env, parent, String(body.parentId));
               if (PL.over) return json({ error: "wedding_over" }, 403);   // no new plans after the wedding
               if (PL.phase !== "full") return json({ error: "not_open", life: lifeOut(PL, parent, false) }, 403);   // extra plans only once the room is open
-              ok = true; coupleId = parent.coupleId || null;
+              ok = true; coupleId = parent.coupleId || null; parentKind = kindOf(parent);   // an extra plan is part of the same event
               if (!coupleId) rootId = parent.rootId || String(body.parentId);   // no licence record: the first plan stands for the customer (Amelie's budget)
             }
           }
           if (!ok) return json({ error: "not_allowed" }, 403);
           const id = rnd(22), editKey = rnd(28), readKey = rnd(24);
-          const rec = { name: String(body.name || "Untitled").slice(0, 120), plan: body.plan ?? null, editKey, readKey, owner: { type: "couple" }, coupleId, ...(rootId ? { rootId } : {}), keyGen: 0, createdAt: Date.now(), updated: Date.now() };
+          const rec = { name: String(body.name || "Untitled").slice(0, 120), plan: body.plan ?? null, editKey, readKey, owner: { type: "couple" }, coupleId, ...(rootId ? { rootId } : {}), kind: parentKind || normKind(body.kind), keyGen: 0, createdAt: Date.now(), updated: Date.now() };
           if (coupleId) {   // an extra plan of a couple who bought TakeaSeat: recorded on the licence (erased with it)
             const lic = await kvUpdate(env, "couple:" + coupleId, cp => { if (!cp || cp.deletedAt) return null; cp.plans = [...(cp.plans || []), id]; return cp; });
             if (!lic.obj || lic.obj.deletedAt) return json({ error: "not_allowed" }, 403);
@@ -1427,7 +1485,7 @@ export default {
             const r = await kvUpdate(env, key, cur => { if (!cur) return null; if (!cur.readKey) cur.readKey = rnd(24); return { __obj: cur, __res: cur.readKey }; });
             readKey = r && r.res;
           }
-          const out = { name: rec.name, plan: rec.plan, updated: rec.updated, role: a.role, perms: a.perms, owner: { type: a.owner.type }, template: !!rec.template };
+          const out = { name: rec.name, plan: rec.plan, updated: rec.updated, role: a.role, perms: a.perms, owner: { type: a.owner.type }, template: !!rec.template, kind: kindOf(rec) };
           if (a.owner.type === "venue") {
             const v = safeParse(await env.PLANS.get("venue:" + a.owner.venueId));
             if (v) { out.owner.venueName = v.name; if (a.role === "couple") out.owner.venueContact = v.contact || ""; }
@@ -1490,12 +1548,15 @@ export default {
             }
           }
           const newName = (body.name && !a.restricted && a.role !== "support") ? String(body.name).slice(0, 120) : null;   // support never renames
+          // The type is corrected by exactly whoever may rename the event: the same mistake, the same hand.
+          const newKind = (!a.restricted && a.role !== "support" && !rec.template) ? kindIn(body) : undefined;
           const now = Date.now();
           const r = await kvUpdate(env, key, cur => {
             if (!cur) return { __res: "gone" };
             if (cur.updated !== rec.updated) return { __res: "raced" };
             if (plan !== undefined) { cur.plan = plan; if ((a.role === "venue" || a.role === "support") && !cur.layoutAt && a.owner.type === "venue") cur.layoutAt = now; }
             if (newName) cur.name = newName;
+            if (newKind !== undefined) cur.kind = newKind;
             if (a.role === "support") addAudit(cur, "support", "save", 30 * 60000);
             cur.updated = now;
             return { __obj: cur, __res: "ok" };
@@ -1505,6 +1566,7 @@ export default {
           if (plan !== undefined && rec.plan) await pushHistory(env, id, rec);
           if ((a.role === "venue" || a.role === "support") && a.owner.type === "venue" && plan !== undefined && !rec.layoutAt) await markVenueLayout(env, a.owner.venueId, id);
           if (newName && a.owner.type === "venue" && a.role === "venue") await renameVenueWedding(env, a.owner.venueId, id, newName);
+          if (newKind !== undefined && a.owner.type === "venue") await kvUpdate(env, "venue:" + a.owner.venueId, v => { if (!v) return null; const w = (v.weddings || []).find(x => x.planId === id); if (!w || w.kind === newKind) return null; w.kind = newKind; return v; });
           // An old planner ignores {enforced}; a 409 makes it adopt the whole (enforced) plan.
           if (enforced && !newClient) return json({ error: "conflict", updated: now, name: newName || rec.name, plan }, 409);
           return json({ ok: true, updated: now, ...(enforced ? { enforced: true, plan } : {}) });
@@ -1617,7 +1679,7 @@ export default {
           const L = await planLife(env, rec, id);
           let venueName = "";
           if (a.owner.type === "venue") { const v = safeParse(await env.PLANS.get("venue:" + a.owner.venueId)); venueName = v ? v.name : ""; }
-          const render = env.PDF.render(isPlan(rec.plan) ? rec.plan : { tables: [] }, { name: rec.name, weddingDate: L.weddingDate, venueName, mode, lang });
+          const render = env.PDF.render(isPlan(rec.plan) ? rec.plan : { tables: [] }, { name: rec.name, weddingDate: L.weddingDate, venueName, mode, lang, kind: kindOf(rec) });
           render.catch(() => {});   // failures surface while the body streams (the server answers 500)
           return pdfResponse(render, rec.name, mode, lang);
         }
@@ -2134,7 +2196,7 @@ export default {
           if (parts[3] === "trash" && parts.length >= 4) {   // weddings a venue deleted: 14 days, restored only here
             const v = safeParse(await env.PLANS.get("venue:" + parts[2])); if (!v) return json({ error: "not found" }, 404);
             if (parts.length === 4 && request.method === "GET")
-              return json({ trash: (v.trash || []).map(t => ({ planId: t.planId, label: t.label, deletedAt: t.deletedAt, purgeAt: t.purgeAt, date: t.date || null })) });
+              return json({ trash: (v.trash || []).map(t => ({ planId: t.planId, label: t.label, kind: normKind(t.kind), deletedAt: t.deletedAt, purgeAt: t.purgeAt, date: t.date || null })) });
             const t = (v.trash || []).find(x => x.planId === parts[4]);
             if (parts.length === 6 && parts[5] === "restore" && request.method === "POST") {
               if (!t) return json({ error: "not found" }, 404);
@@ -2145,7 +2207,7 @@ export default {
               if (!r.obj || r.obj.deletedAt || ownerOf(r.obj).venueId !== v.id) return json({ error: "gone" }, 410);
               await kvUpdate(env, "venue:" + v.id, cur => { if (!cur) return null; cur.trash = (cur.trash || []).filter(x => x.planId !== t.planId);
                 cur.weddings = [...(cur.weddings || []), { planId: t.planId, label: r.obj.name || t.label, createdAt: r.obj.createdAt || t.deletedAt, editKey: r.obj.editKey,
-                  venueKey: r.obj.venueKey, perms: normPerms(r.obj.perms, ALL_OPEN), layoutSet: !!r.obj.layoutAt, date: r.obj.weddingDate || null }]; return cur; });
+                  venueKey: r.obj.venueKey, perms: normPerms(r.obj.perms, ALL_OPEN), layoutSet: !!r.obj.layoutAt, date: r.obj.weddingDate || null, kind: kindOf(r.obj) }]; return cur; });
               console.log("admin: restored wedding " + t.planId + " of venue " + v.id);
               return json({ ok: true });
             }
@@ -2251,10 +2313,11 @@ export default {
             const paidAt = Date.now(), opensAt = startNow ? null : athensMidnight(addDays(todayAthens(), OPEN_DELAY_DAYS));
             if (opensAt && opensAt >= athensMidnight(b.weddingDate)) return json({ error: "never_opens" }, 400);   // it would open only after the wedding: "start now" or check the date
             const cid = rnd(10), planId = rnd(22), token = rnd(32);
-            const name = String(b.name || "Wedding").slice(0, 120);
-            await env.PLANS.put("plan:" + planId, JSON.stringify({ name, plan: null, editKey: rnd(28), readKey: rnd(24), owner: { type: "couple" }, coupleId: cid, keyGen: 0,
+            const kind = normKind(b.kind);   // a parent buying for a baptism buys exactly what a couple buys
+            const name = String(b.name || (kind === "baptism" ? "Baptism" : "Wedding")).slice(0, 120);
+            await env.PLANS.put("plan:" + planId, JSON.stringify({ name, plan: null, editKey: rnd(28), readKey: rnd(24), owner: { type: "couple" }, coupleId: cid, kind, keyGen: 0,
               weddingDate: b.weddingDate, opensAt, createdAt: paidAt, updated: paidAt, audit: [] }));
-            const c = { id: cid, name, contact: String(b.contact || "").slice(0, 200), email, lang, createdAt: paidAt, paidAt, startNow, claimAt: paidAt, planId, claimToken: token, claimedAt: null };
+            const c = { id: cid, name, kind, contact: String(b.contact || "").slice(0, 200), email, lang, createdAt: paidAt, paidAt, startNow, claimAt: paidAt, planId, claimToken: token, claimedAt: null };
             const cret = normRetention(b.retention); if (cret) c.retention = cret;
             const mailed = !!(email && mailOn(env)) && mailClaim(c, token);
             c.mailed = mailed; if (mailed) c.mailedTo = email;
@@ -2275,9 +2338,11 @@ export default {
             const email = b.email != null ? normEmail(b.email) : null;
             if (b.email != null && String(b.email).trim() && !email) return json({ error: "bad_email" }, 400);
             if (b.weddingDate !== undefined && b.weddingDate !== null && b.weddingDate !== "" && !ymdOk(b.weddingDate)) return json({ error: "bad_date" }, 400);
-            if (b.weddingDate !== undefined || b.unfreeze === true) {   // the admin may set any date (or clear it) — it never freezes; and may unfreeze
+            const newKind = kindIn(b);
+            if (b.weddingDate !== undefined || b.unfreeze === true || newKind !== undefined) {   // the admin may set any date (or clear it) — it never freezes; and may unfreeze
               const cc = safeParse(await env.PLANS.get("couple:" + parts[2]));
               if (cc) await kvUpdate(env, "plan:" + cc.planId, rec => { if (!rec || rec.coupleId !== cc.id) return null; let dirty = false;
+                if (newKind !== undefined && kindOf(rec) !== newKind) { rec.kind = newKind; dirty = true; }   // the type, corrected
                 if (b.weddingDate !== undefined) { const before = rec.weddingDate || null; applyDate(rec, b.weddingDate || null, null, true);
                   if (before !== rec.weddingDate) { addAudit(rec, "admin", "date", 0, { d: rec.weddingDate }); if (rec.frozenUntil) rec.frozenUntil = null; dirty = true; } }
                 if (b.unfreeze === true && rec.frozenUntil) { rec.frozenUntil = null; addAudit(rec, "admin", "unfreeze"); dirty = true; }
@@ -2285,6 +2350,7 @@ export default {
             }
             const r = await kvUpdate(env, "couple:" + parts[2], c => { if (!c) return null; const old = c.email || "";
               if (b.name != null) c.name = String(b.name).slice(0, 120);
+              if (newKind !== undefined) c.kind = newKind;
               if (b.contact != null) c.contact = String(b.contact).slice(0, 200);
               if (b.lang != null) c.lang = langOf(b.lang);
               if (b.retention !== undefined) { const ret = normRetention(b.retention); if (ret) c.retention = ret; else delete c.retention; }
@@ -2370,10 +2436,11 @@ export default {
           const dRaw = parseInt(b.days, 10);
           const days = Number.isFinite(dRaw) ? Math.max(0, Math.min(FIND_BEFORE_DAYS - 1, dRaw)) : TEST_DAYS_AHEAD;
           const date = addDays(todayAthens(), days);
-          const bride = tpick(TEST_WOMEN), groom = tpick(TEST_MEN);
+          const kind = normKind(b.kind);   // the owner can make a test baptism as easily as a test wedding
+          const bride = tpick(TEST_WOMEN), groom = tpick(TEST_MEN), child = tpick(TEST_WOMEN.concat(TEST_MEN));
           const id = rnd(22), editKey = rnd(28), venueKey = rnd(28), readKey = rnd(24), findKey = rnd(FIND_KEY_LEN), now = Date.now();
-          const rec = { name: TEST_MARK + " — " + bride + " & " + groom, plan: testWeddingPlan(bride, groom),
-            editKey, venueKey, readKey, owner: { type: "venue", venueId: v.id }, venueId: v.id, test: true,
+          const rec = { name: TEST_MARK + " — " + (kind === "baptism" ? "Βάπτιση " + child : bride + " & " + groom), plan: testWeddingPlan(bride, groom, kind),
+            editKey, venueKey, readKey, owner: { type: "venue", venueId: v.id }, venueId: v.id, test: true, kind,
             perms: { ...ALL_OPEN }, layoutAt: now, keyGen: 0, venueGen: 0, weddingDate: date, createdAt: now, updated: now,
             find: { key: findKey, on: true, at: now, by: "admin", rotatedAt: null }, audit: [] };
           addAudit(rec, "admin", "find_on");
@@ -2381,7 +2448,7 @@ export default {
           await env.PLANS.put("find:" + findKey, JSON.stringify({ id, day: todayAthens(), n: 0 }));
           // `used` is deliberately NOT touched and the licence is not consulted: a test wedding costs no quota, no cap.
           await kvUpdate(env, "venue:" + v.id, cur => { if (!isTest(cur)) return null;
-            cur.weddings = [...(cur.weddings || []), { planId: id, label: rec.name, createdAt: now, editKey, venueKey, perms: { ...ALL_OPEN }, layoutSet: true, date, test: true }];
+            cur.weddings = [...(cur.weddings || []), { planId: id, label: rec.name, kind, createdAt: now, editKey, venueKey, perms: { ...ALL_OPEN }, layoutSet: true, date, test: true }];
             return cur; });
           console.log("admin: a test wedding was created (" + days + " days ahead)");
           return json({ wedding: await testWeddingOut(env, rec, id), venueConsole: { url: baseUrl(env) + "/venue.html", key: v.key, name: v.name } });
@@ -2587,14 +2654,14 @@ export default {
           for (const w of (v.weddings || [])) {   // date, progress and lifecycle of each wedding
             const p = await ownPlan(w.planId);
             const L = p ? lifeOf(p, policyOf(settings, v.retention, p.retention), since) : null;
-            rows.push({ planId: w.planId, label: w.label, createdAt: w.createdAt, editKey: w.editKey, venueKey: w.venueKey,
+            rows.push({ planId: w.planId, label: w.label, kind: p ? kindOf(p) : normKind(w.kind), createdAt: w.createdAt, editKey: w.editKey, venueKey: w.venueKey,
               perms: normPerms(w.perms, ALL_OPEN), layoutSet: w.layoutSet !== false, supportExpires: live(w.supportExpires),
               date: p ? (p.weddingDate || null) : (w.date || null), updated: p ? p.updated : null, stats: p ? planStats(p.plan) : null,
               life: L ? { lockAt: L.lockAt, deleteAt: L.deleteAt, over: L.over, locked: L.locked, keep: L.keep, fallback: L.fallback, phase: L.phase, fullAt: L.fullAt } : null,
               dateChangesLeft: p ? Math.max(0, DATE_CHANGES - (p.dateChanges || 0)) : 0 });
           }
           return json({ venue: { ...publicVenue(v), email: v.email || "", emailVerified: !!v.emailVerified, mail: mailOn(env) }, template, defaultPerms: normPerms(v.defaultPerms, ALL_OPEN), canCreate: gate.ok, reason: gate.reason,
-            weddings: rows, trash: (v.trash || []).map(t => ({ label: t.label, deletedAt: t.deletedAt, purgeAt: t.purgeAt, date: t.date || null })) });
+            weddings: rows, trash: (v.trash || []).map(t => ({ label: t.label, kind: normKind(t.kind), deletedAt: t.deletedAt, purgeAt: t.purgeAt, date: t.date || null })) });
         }
         // The venue sets its OWN key: from then on the admin can't read it, and every per-wedding venue link is renewed.
         if (parts.length === 3 && parts[2] === "rotate" && request.method === "POST") {
@@ -2662,23 +2729,25 @@ export default {
           // The date first, then the licence: a trial is gated on the wedding's date, so the gate has to know it.
           const gate = canCreateWedding(v, dated.weddingDate);
           if (!gate.ok) return json({ error: gate.reason, ...(gate.reason === "after_trial" ? { until: (v.license || {}).seasonEnd || null } : {}) }, 403);
+          const kind = normKind(b.kind);   // «νέα εκδήλωση»: the console sends the type, anything else is a wedding
           let plan = null;
-          if (v.templateId) { const t = await ownPlan(v.templateId); if (t) plan = layoutOnly(t.plan); }
+          // the room is the venue's and is shared by both kinds; only the words the planner itself wrote follow this event
+          if (v.templateId) { const t = await ownPlan(v.templateId); if (t) plan = retypeStarter(layoutOnly(t.plan), kind); }
           const id = rnd(22), editKey = rnd(28), venueKey = rnd(28);
           const perms = normPerms(b.perms || v.defaultPerms, ALL_OPEN);
           const now = Date.now();
           // Locks apply once the venue has put its layout in: from the template now, or at the venue's first save.
           // A wedding made from the TEST venue's own console is test data too — the flag comes from the venue record,
           // never from the request body, so only the one venue the admin tools created can pass it on.
-          const label0 = String(b.label || "Wedding").slice(0, 120);
+          const label0 = String(b.label || (kind === "baptism" ? "Baptism" : "Wedding")).slice(0, 120);
           const label = isTest(v) && !label0.includes(TEST_MARK) ? (TEST_MARK + " — " + label0).slice(0, 120) : label0;   // the mark travels with the record, in the test venue too
           const rec = { name: label, plan, editKey, venueKey, readKey: rnd(24),
-            owner: { type: "venue", venueId: v.id }, venueId: v.id, ...(isTest(v) ? { test: true } : {}), perms, layoutAt: plan ? now : null, keyGen: 0, venueGen: 0, weddingDate: dated.weddingDate || null, createdAt: now, updated: now };
+            owner: { type: "venue", venueId: v.id }, venueId: v.id, ...(isTest(v) ? { test: true } : {}), kind, perms, layoutAt: plan ? now : null, keyGen: 0, venueGen: 0, weddingDate: dated.weddingDate || null, createdAt: now, updated: now };
           await env.PLANS.put("plan:" + id, JSON.stringify(rec));
           await kvUpdate(env, vkey, cur => { if (!cur) return null;
-            cur.weddings = cur.weddings || []; cur.weddings.push({ planId: id, label: rec.name, createdAt: now, editKey, venueKey, perms, layoutSet: !!plan, date: rec.weddingDate, ...(isTest(cur) ? { test: true } : {}) });
+            cur.weddings = cur.weddings || []; cur.weddings.push({ planId: id, label: rec.name, kind, createdAt: now, editKey, venueKey, perms, layoutSet: !!plan, date: rec.weddingDate, ...(isTest(cur) ? { test: true } : {}) });
             cur.used = (cur.used || 0) + 1; return cur; });
-          return json({ planId: id, editKey, venueKey, updated: now, fromTemplate: !!plan });
+          return json({ planId: id, editKey, venueKey, kind, updated: now, fromTemplate: !!plan });
         }
         // Rename a wedding and/or change what its couple may change.
         if (parts.length === 4 && parts[2] === "weddings" && (request.method === "PATCH" || request.method === "PUT")) {
@@ -2686,9 +2755,10 @@ export default {
           const w = (v.weddings || []).find(x => x.planId === parts[3]);
           const wp = w ? await ownPlan(parts[3]) : null;
           if (!w || !wp) return json({ error: "not found" }, 404);
-          if ((b.label != null || b.perms) && (await planLife(env, wp, parts[3], { venue: v })).locked) return json({ error: "locked" }, 403);
+          if ((b.label != null || b.perms || b.kind !== undefined) && (await planLife(env, wp, parts[3], { venue: v })).locked) return json({ error: "locked" }, 403);
           const label = b.label != null ? String(b.label).trim().slice(0, 120) : null;
           if (b.label != null && !label) return json({ error: "missing label" }, 400);
+          const kind = kindIn(b);   // a wedding entered as a baptism (or the other way round) is corrected here
           const perms = b.perms ? normPerms(b.perms, normPerms(w.perms, ALL_OPEN)) : null;
           let date = null;
           if (b.date !== undefined) {   // same limits as everywhere: a wedding date is not a way to reuse a paid wedding
@@ -2703,12 +2773,13 @@ export default {
             date = (r.obj && r.obj.weddingDate) || null;
           }
           await kvUpdate(env, vkey, cur => { if (!cur) return null; const cw = (cur.weddings || []).find(x => x.planId === parts[3]); if (!cw) return null;
-            if (label) cw.label = label; if (perms) cw.perms = perms; if (date) cw.date = date; return cur; });
+            if (label) cw.label = label; if (perms) cw.perms = perms; if (date) cw.date = date; if (kind !== undefined) cw.kind = kind; return cur; });
           await kvUpdate(env, "plan:" + parts[3], rec => { if (!rec) return null;
             if (label) rec.name = label;          // metadata: `updated` stays, so nobody's next save conflicts
             if (perms) rec.perms = perms;
+            if (kind !== undefined) rec.kind = kind;
             return rec; });
-          return json({ ok: true, label: label || w.label, perms: perms || normPerms(w.perms, ALL_OPEN), date: date || w.date || null });
+          return json({ ok: true, label: label || w.label, kind: kind !== undefined ? kind : normKind((wp && wp.kind) || w.kind), perms: perms || normPerms(w.perms, ALL_OPEN), date: date || w.date || null });
         }
         if (parts.length === 5 && parts[2] === "weddings" && parts[4] === "couple-link" && request.method === "POST") {   // a leaked couple link: new keys, the old link and its devices stop
           const w = (v.weddings || []).find(x => x.planId === parts[3]);
@@ -2732,7 +2803,7 @@ export default {
             await removeIndex(env, "support:index", parts[3]);
           }
           await kvUpdate(env, vkey, cur => { if (!cur) return null; cur.weddings = (cur.weddings || []).filter(x => x.planId !== parts[3]);
-            if (p) cur.trash = [...(cur.trash || []), { planId: parts[3], label: w.label, deletedAt: now, purgeAt, date: p.weddingDate || null }];
+            if (p) cur.trash = [...(cur.trash || []), { planId: parts[3], label: w.label, kind: kindOf(p), deletedAt: now, purgeAt, date: p.weddingDate || null }];
             return cur; });
           console.log("venue " + v.id + ": wedding " + parts[3] + " moved to the trash");
           return json({ ok: true, purgeAt: p ? purgeAt : null });
@@ -2880,8 +2951,8 @@ function canCreateWedding(v, date) {
     return { ok: true };
   }
   const now = Date.now();
-  if (L.seasonStart && now < Date.parse(L.seasonStart)) return { ok: false, reason: "before_season" };
-  if (L.seasonEnd && now > Date.parse(L.seasonEnd) + 86400000) return { ok: false, reason: "after_season" };
+  if (ymdOk(L.seasonStart) && now < athensMidnight(L.seasonStart)) return { ok: false, reason: "before_season" };
+  if (ymdOk(L.seasonEnd) && now >= seasonOverAt(L.seasonEnd)) return { ok: false, reason: "after_season" };
   if (date && onTrial(v) && ymdOk(L.seasonEnd) && date > L.seasonEnd) return { ok: false, reason: "after_trial" };
   if (L.cap && (v.weddings || []).length >= L.cap) return { ok: false, reason: "cap_reached" };
   return { ok: true };
@@ -2905,7 +2976,7 @@ function adminVenue(v) {     // returned to the owner — counts only: no plan i
 }
 async function adminCouple(env, c) {   // licence metadata only — never the plan id, a key, or anything inside the plan
   const rec = safeParse(await env.PLANS.get("plan:" + c.planId));
-  return { id: c.id, name: c.name, contact: c.contact, email: c.email || "", emailVerified: !!c.emailVerified, lang: c.lang || "el", mailed: !!c.mailed,
+  return { id: c.id, name: c.name, kind: rec ? kindOf(rec) : normKind(c.kind), contact: c.contact, email: c.email || "", emailVerified: !!c.emailVerified, lang: c.lang || "el", mailed: !!c.mailed,
     // `mailed` only ever meant "queued"; these two say what SMTP finally did with it (see mailOutcome).
     mailFailedAt: c.mailFailedAt || null, mailError: c.mailError || null,
     createdAt: c.createdAt, claimedAt: c.claimedAt || null, resetAt: c.resetAt || null,

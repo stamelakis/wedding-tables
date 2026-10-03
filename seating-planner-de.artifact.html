@@ -1085,6 +1085,8 @@
   <symbol id="i-decor" viewBox="0 0 24 24"><path d="M5 11V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"/><path d="M3 13a2 2 0 0 1 4 0v2h10v-2a2 2 0 0 1 4 0v4H3z"/><path d="M5 19v1M19 19v1"/></symbol>
   <symbol id="i-longtable" viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="6" rx="1.5"/><circle cx="7" cy="5.3" r="1.3"/><circle cx="12" cy="5.3" r="1.3"/><circle cx="17" cy="5.3" r="1.3"/><circle cx="7" cy="18.7" r="1.3"/><circle cx="12" cy="18.7" r="1.3"/><circle cx="17" cy="18.7" r="1.3"/></symbol>
   <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></symbol>
+  <!-- a baptism's honour table is the family's, not a couple's: the same slot gets the four-petal flower the PDFs draw -->
+  <symbol id="i-petals" viewBox="0 0 24 24"><path d="M12 12.4C8.4 10.8 8.4 4.6 12 4.6s3.6 6.2 0 7.8Z"/><path d="M11.6 12c1.6-3.6 7.8-3.6 7.8 0s-6.2 3.6-7.8 0Z"/><path d="M12 11.6c3.6 1.6 3.6 7.8 0 7.8s-3.6-6.2 0-7.8Z"/><path d="M12.4 12c-1.6 3.6-7.8 3.6-7.8 0s6.2-3.6 7.8 0Z"/></symbol>
   <symbol id="i-table" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="3.5" r="1.3"/><circle cx="19.4" cy="7.8" r="1.3"/><circle cx="19.4" cy="16.2" r="1.3"/><circle cx="12" cy="20.5" r="1.3"/><circle cx="4.6" cy="16.2" r="1.3"/><circle cx="4.6" cy="7.8" r="1.3"/></symbol>
   <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
   <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.6a2.4 2.4 0 1 1 3.4 2.2c-.7.4-1 .9-1 1.7"/><path d="M12 17h.01"/></symbol>
@@ -1133,7 +1135,7 @@
         <div class="tools">
           <button class="ibtn primary" id="addTableBtn"><svg class="ic" aria-hidden="true"><use href="#i-table"/></svg><span data-t="addRound"></span></button>
           <button class="ibtn" id="addRectBtn"><svg class="ic" aria-hidden="true"><use href="#i-longtable"/></svg><span data-t="addRect"></span></button>
-          <button class="ibtn" id="addHeadBtn"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg><span data-t="addHead"></span></button>
+          <button class="ibtn" id="addHeadBtn"><svg class="ic" aria-hidden="true"><use href="#i-heart" data-ev-mark/></svg><span data-t="addHead"></span></button>
           <button class="ibtn" id="decorBtn"><svg class="ic" aria-hidden="true"><use href="#i-decor"/></svg><span data-t="decor"></span></button>
           <button class="ibtn wide" id="autoSeatBtn"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg><span data-t="autoSeat"></span></button>
         </div>
@@ -1443,7 +1445,7 @@ el:{
   cUploadWait:"Ένα ακόμη σχέδιο μπαίνει online όταν ο σχεδιαστής του γάμου σας είναι σε πλήρη επεξεργασία — από τις {d}.", cUploadWait0:"Ένα ακόμη σχέδιο μπαίνει online όταν ο σχεδιαστής του γάμου σας είναι σε πλήρη επεξεργασία.", cUploadOver:"Ο γάμος έχει γίνει — δεν μπαίνουν νέα σχέδια online.",
   tPhaseEnforced0:"Η διάταξη των τραπεζιών δεν έχει ανοίξει ακόμη — κρατήθηκαν οι αλλαγές σας (ονόματα, θέσεις).", cWaitReplaced:"Η αλλαγή που περίμενε δεν ανέβηκε: στο μεταξύ το σχέδιο άλλαξε αλλού — φορτώθηκε η νεότερη έκδοση.",
   accTitle:"Πρόσβαση & υποστήριξη", mAccess:"Πρόσβαση & υποστήριξη", theVenue:"το κτήμα",
-  rbVenue:"🏛 Κτήμα", rbVenueTip:"Ανοίξατε τον γάμο ως κτήμα: αλλάζετε τα πάντα. Το ζευγάρι αλλάζει μόνο ό,τι του επιτρέπετε.", rbTemplate:"🏛 Πρότυπο χώρου", rbTemplateTip:"Αυτή είναι η διάταξη του χώρου σας: κάθε νέος γάμος ξεκινά από εδώ (χωρίς καλεσμένους). Οι γάμοι που υπάρχουν ήδη δεν αλλάζουν.", rbPreview:"👁 Όπως το βλέπει το ζευγάρι",
+  rbVenue:"🏛 Κτήμα", rbVenueTip:"Ανοίξατε τον γάμο ως κτήμα: αλλάζετε τα πάντα. Το ζευγάρι αλλάζει μόνο ό,τι του επιτρέπετε.", rbTemplate:"🏛 Πρότυπο χώρου", rbTemplateTip:"Αυτή είναι η διάταξη του χώρου σας: κάθε νέα εκδήλωση ξεκινά από εδώ (χωρίς καλεσμένους). Όσες υπάρχουν ήδη δεν αλλάζουν.", rbPreview:"👁 Όπως το βλέπει το ζευγάρι",
   rbSupport:"🛟 Υποστήριξη · έως {t}", rbSupportTip:"Ο ιδιοκτήτης σάς έδωσε προσωρινή πρόσβαση. Τίποτα δεν μένει σε αυτή τη συσκευή.", rbViewer:"👁 Μόνο προβολή", rbViewerTip:"Βλέπετε το σχέδιο· δεν μπορείτε να το αλλάξετε.",
   rbLocked:"🔒 Χώρος: {v}", rbLockedTip:"Το κτήμα έχει στήσει τον χώρο — πατήστε για να δείτε τι μπορείτε να αλλάξετε.", rbSupportOn:"🛟 Η TakeaSeat έχει πρόσβαση", rbSupportOnTip:"Έχετε δώσει πρόσβαση στην υποστήριξη έως {t} — πατήστε για να τη διακόψετε.",
   permFloor:"Δάπεδο & μέγεθος χώρου", permDecor:"Στοιχεία του κτήματος (πίστα, μπαρ, μπουφέδες, WC…)", permLayout:"Θέσεις τραπεζιών στον χώρο", permTables:"Προσθήκη / διαγραφή τραπεζιών", permSeats:"Αριθμός θέσεων ανά τραπέζι", permLabels:"Ονόματα τραπεζιών", permMax:"έως {n} ανά τραπέζι", permAlways:"Καλεσμένοι, θέσεις, ομάδες, προσκλητήρια, εκτύπωση",
@@ -1482,6 +1484,7 @@ el:{
   gripTitle:"Τοποθέτηση σε τραπέζι…", pmFor:"Θέση για: {n}", pmFloor:"Διαλέξτε καρέκλα στην κάτοψη", tPlaced:"{n} → {t}",
   tipGroups:"Δώστε χρώμα στις παρέες: η κουκκίδα δίπλα σε κάθε όνομα αλλάζει ομάδα · το γρανάζι βάζει όλο το τραπέζι σε μία.", tipFull:"Γέμισε; Από τις ρυθμίσεις του τραπεζιού (γρανάζι) αλλάζετε τις θέσεις του.", tipPrint:"Σχεδόν έτοιμο! Στο ⋯ → Εκτύπωση βγαίνει η λίστα ανά τραπέζι.",
   tour:{
+    b_dFloorNames:["Η κάτοψη","Η διάταξη των τραπεζιών ανοίγει 30 ημέρες πριν από τη βάπτιση. <b>Πατήστε</b> ένα τραπέζι για να γράψετε ονόματα. Ctrl+Z για αναίρεση."],
     dGuests:["Καλεσμένοι","Γράψτε ονόματα στο <b>Προσθήκη ονομάτων</b>, ένα ανά γραμμή."],
     dTables:["Ονόματα στα τραπέζια","<b>Πατήστε ένα τραπέζι</b>, γράψτε όνομα, <b>Enter</b>. Η κουκκίδα = ομάδα."],
     dFloor:["Η κάτοψη","<b>Σύρετε</b> τραπέζια και διακόσμηση. Ctrl+Z για αναίρεση."],
@@ -1521,6 +1524,11 @@ el:{
   stageResizeTip:"Σύρετε προς τα έξω για περισσότερο χώρο, προς τα μέσα για λιγότερο", tStageMax:"Ο χώρος έφτασε στο μέγιστο μέγεθός του — δεν μεγαλώνει άλλο.", tableTip:"Πατήστε για ονόματα · σύρετε για μετακίνηση · γρανάζι για ρυθμίσεις · Delete για διαγραφή",
   gmRename:"Μετονομασία «{n}»", gmRecolor:"Αλλαγή χρώματος", gmDelete:"Διαγραφή ομάδας", noGroup:"Χωρίς ομάδα", geName:"Όνομα καλεσμένου", geType:"Ομάδα",
   pRename:"Μετονομασία", pDup:"Αντιγραφή", pDel:"Διαγραφή",
+  // the type is corrected by exactly whoever may rename the event — here, the customer who bought their own plan
+  pKind:"Είδος εκδήλωσης…",
+  askKindB:"Να γίνει βάπτιση αυτή η εκδήλωση; Αλλάζουν μόνο οι λέξεις — η ημερομηνία, το σχέδιο, οι καλεσμένοι και οι σύνδεσμοι μένουν ακριβώς όπως είναι.",
+  askKindW:"Να γίνει γάμος αυτή η εκδήλωση; Αλλάζουν μόνο οι λέξεις — η ημερομηνία, το σχέδιο, οι καλεσμένοι και οι σύνδεσμοι μένουν ακριβώς όπως είναι.",
+  tKindSaved:"Αποθηκεύτηκε — άλλαξαν μόνο οι λέξεις.", tKindFailed:"Το είδος δεν άλλαξε — δοκιμάστε ξανά.",
   promptNewGroup:"Όνομα νέας ομάδας:", groupN:"Ομάδα {n}", promptRenameGroup:"Μετονομασία ομάδας:", confirmDeleteGroup:"Διαγραφή ομάδας «{n}»; Οι καλεσμένοι κρατούν τις θέσεις τους αλλά χάνουν το χρώμα.",
   promptNewProfile:"Νέο σχέδιο — όνομα ζευγαριού / εκδήλωσης:", weddingN:"Γάμος {n}", promptRenameProfile:"Μετονομασία σχεδίου:", copySuffix:" (αντίγραφο)", confirmDeleteProfile:"Διαγραφή του σχεδίου «{n}»; Δεν μπορεί να αναιρεθεί.", keepOne:"Διατηρήστε τουλάχιστον ένα σχέδιο",
   ourWedding:"Ο γάμος μας", sharedPlan:"Κοινόχρηστο σχέδιο", importedPlan:"Εισαγόμενο σχέδιο", pastedPlan:"Επικολλημένο σχέδιο", labPlan:"Δοκιμαστικός γάμος",
@@ -1553,7 +1561,7 @@ el:{
   csvEnc:"Το αρχείο δεν ήταν σε UTF-8 και διαβάστηκε ως {e}. Αν τα ονόματα φαίνονται λάθος, αποθηκεύστε το στο Excel ως «CSV UTF-8» και δοκιμάστε ξανά.", csvBad:"Κάποιοι χαρακτήρες δεν διαβάστηκαν (�). Αποθηκεύστε το αρχείο στο Excel ως «CSV UTF-8» και δοκιμάστε ξανά.", csvXlsx:"Αυτό είναι αρχείο Excel (.xlsx). Στο Excel: Αποθήκευση ως → «CSV UTF-8», και διαλέξτε αυτό το αρχείο.",
   csvDone:"Προστέθηκαν στη λίστα: {n}", csvDoneSeated:" · σε τραπέζια: {s}", csvDoneNoRoom:" · χωρίς θέση: {k} (το τραπέζι τους δεν βρέθηκε ή είναι γεμάτο)",
   rsvpTitle:"Απαντήσεις από την Amelie", rsvpOk:"Εντάξει", rsvpNothing:"Καμία αλλαγή — η λίστα σας έχει ήδη αυτές τις απαντήσεις.", rsvpNew:"Νέοι καλεσμένοι: {n}", rsvpChanged:"Άλλαξαν απάντηση: {n}", rsvpCutSeated:"Έχουν θέση, αλλά τώρα δεν έρχονται — οι θέσεις τους έμειναν όπως ήταν· αποφασίστε εσείς:", rsvpAtTable:"{n} — τραπέζι {t}", rsvpKept:"Η απάντηση στην Amelie άλλαξε, αλλά κρατήθηκε η κατάσταση που βάλατε εσείς:", rsvpAbsent:"Λείπουν από αυτό το αρχείο: {n} — έμειναν όπως ήταν (σβήστηκαν στην Amelie ή είναι από άλλο προσκλητήριο).", rsvpUndo:"Το ↶ αναιρεί όλη την εισαγωγή.", rsvpGoneNote:"Amelie: δεν είναι πια στην απάντηση του νοικοκυριού", tImportTooBig:"Η λίστα είναι πολύ μεγάλη για ένα σχέδιο — δεν εισήχθη τίποτα.",
-  mAmelie:"Σύνδεση με Amelie…", ameTitle:"Σύνδεση με Amelie", ameLead:"Οι απαντήσεις (RSVP) από το ψηφιακό σας προσκλητήριο στην Amelie μπαίνουν μόνες τους στη λίστα καλεσμένων — όσο έρχονται.", ameHow:"Στη σελίδα σας στην Amelie αντιγράψτε τον σύνδεσμο για το TakeaSeat (https://amelie.gr/g/#…) και επικολλήστε τον εδώ.", ameConnect:"Σύνδεση", ameBad:"Αυτός δεν είναι σύνδεσμος της Amelie. Αντιγράψτε ολόκληρο τον σύνδεσμο https://amelie.gr/g/#… από τη σελίδα σας.", ameOn:"Συνδεδεμένο με την Amelie από {d}", ameLast:"Τελευταίος έλεγχος: {t}", ameLastNever:"Δεν έχει γίνει ακόμη έλεγχος.", ameAuto:"Όσο είναι ανοιχτό το σχέδιο, οι νέες απαντήσεις έρχονται μόνες τους κάθε λίγα λεπτά. Κανείς δεν σβήνεται και καμία θέση δεν αλλάζει· όσους γράψατε εσείς (π.χ. από τα έντυπα) δεν τους αγγίζει.", ameRefresh:"Ανανέωση από Amelie", ameOffBtn:"Αποσύνδεση", ameOffConfirm:"Να σταματήσει η σύνδεση με την Amelie; Όσοι ήρθαν ήδη μένουν στη λίστα.", ameOffDone:"Η σύνδεση με την Amelie σταμάτησε. Όσοι ήρθαν ήδη μένουν στη λίστα.", ameConnected:"Συνδέθηκε με την Amelie — φέρνω τις απαντήσεις…", ameGone:"Η σύνδεση με την Amelie έληξε — ζητήστε νέο σύνδεσμο από τη σελίδα σας.", ameGoneKept:"Όσοι ήρθαν ήδη μένουν στη λίστα.", amePrivacy:"Ο σύνδεσμος φυλάγεται μόνο στον server του TakeaSeat, όχι στο σχέδιο: όσοι έχουν σύνδεσμο προβολής δεν τον βλέπουν.", ameNothing:"Amelie: τίποτα καινούργιο.", ameDown:"Η Amelie δεν απαντά αυτή τη στιγμή — θα ξαναδοκιμάσω σε λίγο.", ameBusy:"Η Amelie ζήτησε μια μικρή παύση — ξανά μετά τις {t}", ameNoRight:"Αυτή η συσκευή δεν μπορεί να αλλάξει τη σύνδεση με την Amelie.", ameNotConn:"Το σχέδιο δεν είναι πια συνδεδεμένο με την Amelie.", ameToast:"Amelie: {w}", ameNew:"+{n} νέοι", ameNew1:"+{n} νέος", ameChg:"{n} άλλαξαν απάντηση", ameChg1:"{n} άλλαξε απάντηση", rsvpAbsentLive:"Δεν είναι πια στην Amelie: {n} — έμειναν όπως ήταν (σβήστηκαν εκεί).", rsvpUndoLive:"Το ↶ δεν αρκεί εδώ: όσο το σχέδιο είναι συνδεδεμένο, ο επόμενος έλεγχος φέρνει ξανά τις απαντήσεις της Amelie. Για να μείνει κάποιος όπως ήταν, αλλάξτε την κατάστασή του με το χέρι.", rsvpLinked:"Υπήρχαν ήδη στη λίστα (π.χ. από Excel) και συνδέθηκαν με την Amelie — δεν προστέθηκαν δεύτερη φορά: {n}", ameLinked:"{n} υπήρχαν ήδη — συνδέθηκαν", ameLinked1:"{n} υπήρχε ήδη — συνδέθηκε", ameRoNow:"Το σχέδιο είναι αυτή τη στιγμή μόνο για προβολή, οπότε δεν έρχονται νέες απαντήσεις. Τη σύνδεση μπορείτε να τη σταματήσετε οποτεδήποτε.", ameOffKeys:"Σταμάτησε και η σύνδεση με την Amelie (είχε γίνει με τους παλιούς συνδέσμους)· αν ήταν δική σας, συνδέστε την ξανά («Σύνδεση με Amelie…»).", atAmelie:"συνέδεσε την Amelie (απαντήσεις προσκλητηρίου)", atAmelieOff:"αποσύνδεσε την Amelie",
+  mAmelie:"Σύνδεση με Amelie…", ameTitle:"Σύνδεση με Amelie", ameLead:"Οι απαντήσεις (RSVP) από το ψηφιακό σας προσκλητήριο στην Amelie μπαίνουν μόνες τους στη λίστα καλεσμένων — όσο έρχονται.", ameNoInv:"Δεν έχετε ψηφιακό προσκλητήριο;", ameHow:"Στη σελίδα σας στην Amelie αντιγράψτε τον σύνδεσμο για το TakeaSeat (https://amelie.gr/g/#…) και επικολλήστε τον εδώ.", ameConnect:"Σύνδεση", ameBad:"Αυτός δεν είναι σύνδεσμος της Amelie. Αντιγράψτε ολόκληρο τον σύνδεσμο https://amelie.gr/g/#… από τη σελίδα σας.", ameOn:"Συνδεδεμένο με την Amelie από {d}", ameLast:"Τελευταίος έλεγχος: {t}", ameLastNever:"Δεν έχει γίνει ακόμη έλεγχος.", ameAuto:"Όσο είναι ανοιχτό το σχέδιο, οι νέες απαντήσεις έρχονται μόνες τους κάθε λίγα λεπτά. Κανείς δεν σβήνεται και καμία θέση δεν αλλάζει· όσους γράψατε εσείς (π.χ. από τα έντυπα) δεν τους αγγίζει.", ameRefresh:"Ανανέωση από Amelie", ameOffBtn:"Αποσύνδεση", ameOffConfirm:"Να σταματήσει η σύνδεση με την Amelie; Όσοι ήρθαν ήδη μένουν στη λίστα.", ameOffDone:"Η σύνδεση με την Amelie σταμάτησε. Όσοι ήρθαν ήδη μένουν στη λίστα.", ameConnected:"Συνδέθηκε με την Amelie — φέρνω τις απαντήσεις…", ameGone:"Η σύνδεση με την Amelie έληξε — ζητήστε νέο σύνδεσμο από τη σελίδα σας.", ameGoneKept:"Όσοι ήρθαν ήδη μένουν στη λίστα.", amePrivacy:"Ο σύνδεσμος φυλάγεται μόνο στον server του TakeaSeat, όχι στο σχέδιο: όσοι έχουν σύνδεσμο προβολής δεν τον βλέπουν.", ameNothing:"Amelie: τίποτα καινούργιο.", ameDown:"Η Amelie δεν απαντά αυτή τη στιγμή — θα ξαναδοκιμάσω σε λίγο.", ameBusy:"Η Amelie ζήτησε μια μικρή παύση — ξανά μετά τις {t}", ameNoRight:"Αυτή η συσκευή δεν μπορεί να αλλάξει τη σύνδεση με την Amelie.", ameNotConn:"Το σχέδιο δεν είναι πια συνδεδεμένο με την Amelie.", ameToast:"Amelie: {w}", ameNew:"+{n} νέοι", ameNew1:"+{n} νέος", ameChg:"{n} άλλαξαν απάντηση", ameChg1:"{n} άλλαξε απάντηση", rsvpAbsentLive:"Δεν είναι πια στην Amelie: {n} — έμειναν όπως ήταν (σβήστηκαν εκεί).", rsvpUndoLive:"Το ↶ δεν αρκεί εδώ: όσο το σχέδιο είναι συνδεδεμένο, ο επόμενος έλεγχος φέρνει ξανά τις απαντήσεις της Amelie. Για να μείνει κάποιος όπως ήταν, αλλάξτε την κατάστασή του με το χέρι.", rsvpLinked:"Υπήρχαν ήδη στη λίστα (π.χ. από Excel) και συνδέθηκαν με την Amelie — δεν προστέθηκαν δεύτερη φορά: {n}", ameLinked:"{n} υπήρχαν ήδη — συνδέθηκαν", ameLinked1:"{n} υπήρχε ήδη — συνδέθηκε", ameRoNow:"Το σχέδιο είναι αυτή τη στιγμή μόνο για προβολή, οπότε δεν έρχονται νέες απαντήσεις. Τη σύνδεση μπορείτε να τη σταματήσετε οποτεδήποτε.", ameOffKeys:"Σταμάτησε και η σύνδεση με την Amelie (είχε γίνει με τους παλιούς συνδέσμους)· αν ήταν δική σας, συνδέστε την ξανά («Σύνδεση με Amelie…»).", atAmelie:"συνέδεσε την Amelie (απαντήσεις προσκλητηρίου)", atAmelieOff:"αποσύνδεσε την Amelie",
   mFind:"Βρες το τραπέζι σου (QR)", findSwitch:"Ενεργό", findLink:"Ο σύνδεσμος του καλεσμένου", findCopy:"Αντιγραφή", findRotate:"Νέος κωδικός", findSince:"Ενεργό από {t}",
   findWhat:"Ένα QR στη λίστα της πόρτας και σε αφίσα στην είσοδο. Ο καλεσμένος το σκανάρει με το κινητό του, γράφει το όνομά του και βλέπει το τραπέζι του — χωρίς να ρωτήσει κανέναν.",
   findNoDate:"Χρειάζεται πρώτα η ημερομηνία του γάμου: το QR ανοίγει 7 ημέρες πριν από αυτήν και κλείνει 2 ημέρες μετά. Ορίστε την στο ⋯ → «Πρόσβαση & υποστήριξη» και ξαναελάτε εδώ.",
@@ -1569,6 +1577,41 @@ el:{
   pmQrWhere:"Το QR «Βρες το τραπέζι σου» μπαίνει πάνω στις τέσσερις λίστες και στην αφίσα εισόδου. Τα δύο PDF δεν το έχουν.",
   labBride:"Νύφη", labGroom:"Γαμπρός",
   labNames:["Μαρία Π.","Γιώργος Κ.","Ελένη Α.","Νίκος Δ.","Κατερίνα Μ.","Δημήτρης Σ.","Σοφία Λ.","Κώστας Β.","Άννα Χ.","Παναγιώτης Ρ.","Χριστίνα Τ.","Μιχάλης Γ.","Ειρήνη Ν.","Βασίλης Ζ.","Δέσποινα Φ.","Αλέξανδρος Κ.","Ιωάννα Π.","Θανάσης Μ.","Αγγελική Σ.","Στέλιος Α.","Φωτεινή Δ.","Μανώλης Λ.","Ζωή Β.","Πέτρος Χ.","Ευαγγελία Ρ.","Σπύρος Τ.","Ναταλία Γ.","Χρήστος Ν.","Μαρίνα Ζ.","Λευτέρης Φ.","Αναστασία Κ.","Αντώνης Π.","Ελευθερία Μ.","Σταύρος Σ.","Νεφέλη Α.","Ορέστης Δ.","Δανάη Λ.","Άρης Β.","Ισμήνη Χ.","Φίλιππος Ρ."],
+  // ---- βαπτίσεις: the twins of every key whose text NAMES the event (see tr() / EVK). Nothing else is duplicated;
+  // a key without a twin reads the same for both kinds, which is most of this dictionary.
+  b_title:"Οργάνωση Τραπεζιών Βάπτισης", b_awCouple:"Γονείς",
+  b_tRenameVenue:"Το όνομα της βάπτισης το ορίζει {v}.",
+  b_goneVenue:"Η βάπτιση διαγράφηκε από το κτήμα — αν έγινε κατά λάθος, το κτήμα μπορεί να ζητήσει επαναφορά.",
+  b_lifeWas:"Η βάπτιση του παιδιού σας έγινε στις {d}.", b_lifeWasV:"Η βάπτιση έγινε στις {d}.",
+  b_tLockedWed:"Η βάπτιση έγινε — το σχέδιο είναι μόνο για προβολή.",
+  b_accDate:"Ημερομηνία βάπτισης", b_accDateHint:"Από την επόμενη μέρα της βάπτισης το σχέδιο γίνεται μόνο για προβολή (με αναμνηστικό PDF).",
+  b_accDateConfirm:"Ημερομηνία βάπτισης: {d}. Μετά μπορείτε να την αλλάξετε έως {n} φορές. Συνέχεια;",
+  b_accDateConfirm1:"Ημερομηνία βάπτισης: {d}. Μετά μπορείτε να την αλλάξετε μόνο μία φορά. Συνέχεια;",
+  b_accDateOnce:"Νέα ημερομηνία βάπτισης: {d}.\n\nΜπορείτε να αλλάξετε την ημερομηνία μόνο μία φορά. Μετά την αλλαγή το σχέδιο γίνεται μόνο για προβολή έως 14 ημέρες πριν από τη νέα ημερομηνία ({f}).\n\nΣυνέχεια;",
+  b_accDateOnceNow:"Νέα ημερομηνία βάπτισης: {d}.\n\nΜπορείτε να αλλάξετε την ημερομηνία μόνο μία φορά. Συνέχεια;",
+  b_tDateSet:"Ημερομηνία βάπτισης: {d}", b_dateNudge:"Ορίστε την ημερομηνία της βάπτισης.",
+  b_atDate:"όρισε την ημερομηνία της βάπτισης σε {d}", b_atLocked:"η βάπτιση έγινε — το σχέδιο είναι πλέον μόνο για προβολή",
+  b_phFrozen:"Αλλάξατε την ημερομηνία της βάπτισης — το σχέδιο είναι μόνο για προβολή έως {d}.",
+  b_phLineFrozen:"Φάση: μόνο προβολή έως {d} — αλλάξατε την ημερομηνία της βάπτισης.",
+  b_capLocal:"Ένα σχέδιο μόνο σε αυτή τη συσκευή έχει έως {n} τραπέζια. Για ολόκληρη τη βάπτιση:",
+  b_capLocalOwn:"Ένα σχέδιο μόνο σε αυτή τη συσκευή έχει έως {n} τραπέζια — το online σχέδιο της βάπτισης δεν έχει αυτό το όριο.",
+  b_cUploadWait:"Ένα ακόμη σχέδιο μπαίνει online όταν ο σχεδιαστής της βάπτισης είναι σε πλήρη επεξεργασία — από τις {d}.",
+  b_cUploadWait0:"Ένα ακόμη σχέδιο μπαίνει online όταν ο σχεδιαστής της βάπτισης είναι σε πλήρη επεξεργασία.",
+  b_cUploadOver:"Η βάπτιση έγινε — δεν μπαίνουν νέα σχέδια online.",
+  b_rbVenueTip:"Ανοίξατε τη βάπτιση ως κτήμα: αλλάζετε τα πάντα. Οι γονείς αλλάζουν μόνο ό,τι τους επιτρέπετε.", b_rbPreview:"👁 Όπως το βλέπουν οι γονείς",
+  b_openedAsVenue:"Ανοίξατε ως κτήμα (αυτή η συσκευή έχει τον σύνδεσμο του κτήματος). Για να το δείτε όπως οι γονείς: Πρόσβαση & υποστήριξη.",
+  b_cVenueLinks:"Είστε συνδεδεμένοι ως κτήμα. Τον σύνδεσμο των γονέων τον αντιγράφετε από την κονσόλα του κτήματος.",
+  b_accCouplePerms:"Τι μπορούν να αλλάξουν οι γονείς", b_accPreview:"Δείτε το όπως οι γονείς", b_tPreviewOn:"Βλέπετε όσα βλέπουν οι γονείς.",
+  b_accViewExpired:"Αυτός ο σύνδεσμος δεν ισχύει πια — ζητήστε νέο από τους γονείς ή το κτήμα.",
+  b_accSupportHintVenue:"Η TakeaSeat δεν ανοίγει τις εκδηλώσεις σας χωρίς πρόσκλησή σας — κάθε πρόσβαση καταγράφεται. Για βοήθεια, δώστε μας πρόσβαση σε αυτή τη βάπτιση για λίγο — τη διακόπτετε όποτε θέλετε.",
+  b_printTitle:"Σχέδιο Τραπεζιών Βάπτισης", b_printWed:"Βάπτιση: {d}",
+  b_findNoDate:"Χρειάζεται πρώτα η ημερομηνία της βάπτισης: το QR ανοίγει 7 ημέρες πριν από αυτήν και κλείνει 2 ημέρες μετά. Ορίστε την στο ⋯ → «Πρόσβαση & υποστήριξη» και ξαναελάτε εδώ.",
+  b_findWindow:"Ανοίγει {a} (7 ημέρες πριν τη βάπτιση) και κλείνει το βράδυ της {b} (2 ημέρες μετά). Έξω από αυτές τις μέρες ο καλεσμένος βλέπει ότι είναι κλειστό.",
+  b_findAfter:"Η βάπτιση έγινε: νέο QR δεν ανοίγει πια, αλλά αυτό που τρέχει μπορείτε να το κλείσετε εδώ.",
+  b_findLockedMsg:"Η βάπτιση έγινε — νέο QR δεν ανοίγει πια. Το κλείσιμο δουλεύει πάντα.",
+  b_headTable:"Τραπέζι της οικογένειας", b_addHead:"Οικογενειακό", b_mHead:"Τραπέζι της οικογένειας",
+  b_menuTitleHead:"Ρυθμίσεις τραπεζιού οικογένειας", b_tHeadAdded:"Προστέθηκε τραπέζι της οικογένειας",
+  b_groupsDefault:["Πλευρά μητέρας","Πλευρά πατέρα","Νονοί","Φίλοι"],
 },
 en:{
   title:"Wedding Seating Planner", guestsTools:"Guests & tools",
@@ -1606,7 +1649,7 @@ en:{
   cUploadWait:"Another plan can go online once your wedding's planner is in full editing — from {d}.", cUploadWait0:"Another plan can go online once your wedding's planner is in full editing.", cUploadOver:"The wedding is over — no new plans go online.",
   tPhaseEnforced0:"The table layout is not open yet — your changes (names, seats) were kept.", cWaitReplaced:"The waiting change did not go up: the plan was changed elsewhere meanwhile — the newer copy was loaded.",
   accTitle:"Access & support", mAccess:"Access & support", theVenue:"the venue",
-  rbVenue:"🏛 Venue", rbVenueTip:"You opened this wedding as the venue: you can change everything. The couple changes only what you allow.", rbTemplate:"🏛 Venue template", rbTemplateTip:"This is your venue layout: every new wedding starts from here (without guests). Existing weddings do not change.", rbPreview:"👁 As the couple sees it",
+  rbVenue:"🏛 Venue", rbVenueTip:"You opened this wedding as the venue: you can change everything. The couple changes only what you allow.", rbTemplate:"🏛 Venue template", rbTemplateTip:"This is your venue layout: every new event starts from here (without guests). Existing events do not change.", rbPreview:"👁 As the couple sees it",
   rbSupport:"🛟 Support · until {t}", rbSupportTip:"The owner gave you temporary access. Nothing stays on this device.", rbViewer:"👁 View only", rbViewerTip:"You can see the plan but not change it.",
   rbLocked:"🔒 Space: {v}", rbLockedTip:"The venue has set up the space — tap to see what you can change.", rbSupportOn:"🛟 TakeaSeat has access", rbSupportOnTip:"You gave support access until {t} — tap to end it.",
   permFloor:"Floor & size of the space", permDecor:"The venue's elements (dance floor, bar, buffets, WC…)", permLayout:"Table positions", permTables:"Add / delete tables", permSeats:"Number of seats per table", permLabels:"Table names", permMax:"up to {n} per table", permAlways:"Guests, seats, groups, invitations, printing",
@@ -1645,6 +1688,7 @@ en:{
   gripTitle:"Place at a table…", pmFor:"Seat for: {n}", pmFloor:"Pick a chair on the floor", tPlaced:"{n} → {t}",
   tipGroups:"Colour the groups: the dot next to a name changes its group · the gear puts a whole table in one.", tipFull:"Full? Table settings (the gear) change its number of seats.", tipPrint:"Almost there! ⋯ → Print gives you the list per table.",
   tour:{
+    b_dFloorNames:["The floor","The table layout opens 30 days before the christening. <b>Click</b> a table to write names. Ctrl+Z undoes."],
     dGuests:["Guests","Type names under <b>Add names</b>, one per line."],
     dTables:["Names at the tables","<b>Click a table</b>, type a name, <b>Enter</b>. The dot = group."],
     dFloor:["The floor","<b>Drag</b> tables and decor. Ctrl+Z undoes."],
@@ -1684,6 +1728,10 @@ en:{
   stageResizeTip:"Drag out for more space, in for less", tStageMax:"The space has reached its largest size — it can’t grow any further.", tableTip:"Click for names · drag to move · gear for settings · Delete to remove",
   gmRename:"Rename “{n}”", gmRecolor:"Change colour", gmDelete:"Delete group", noGroup:"No group", geName:"Guest name", geType:"Group",
   pRename:"Rename", pDup:"Duplicate", pDel:"Delete",
+  pKind:"Event type…",
+  askKindB:"Make this event a christening? Only the words change — the date, the plan, the guests and the links stay exactly as they are.",
+  askKindW:"Make this event a wedding? Only the words change — the date, the plan, the guests and the links stay exactly as they are.",
+  tKindSaved:"Saved — only the words changed.", tKindFailed:"The type did not change — please try again.",
   promptNewGroup:"New group name:", groupN:"Group {n}", promptRenameGroup:"Rename group:", confirmDeleteGroup:"Delete group “{n}”? Guests keep their seats but lose the colour.",
   promptNewProfile:"New plan — couple / event name:", weddingN:"Wedding {n}", promptRenameProfile:"Rename plan:", copySuffix:" (copy)", confirmDeleteProfile:"Delete the plan “{n}”? This cannot be undone.", keepOne:"Keep at least one plan",
   ourWedding:"Our wedding", sharedPlan:"Shared plan", importedPlan:"Imported plan", pastedPlan:"Pasted plan", labPlan:"Demo wedding",
@@ -1716,7 +1764,7 @@ en:{
   csvEnc:"The file was not UTF-8 and was read as {e}. If the names look wrong, save it in Excel as “CSV UTF-8” and try again.", csvBad:"Some characters could not be read (�). Save the file in Excel as “CSV UTF-8” and try again.", csvXlsx:"This is an Excel file (.xlsx). In Excel: Save as → “CSV UTF-8”, then choose that file.",
   csvDone:"Added to the list: {n}", csvDoneSeated:" · at tables: {s}", csvDoneNoRoom:" · unseated: {k} (their table was not found or is full)",
   rsvpTitle:"Answers from Amelie", rsvpOk:"OK", rsvpNothing:"Nothing changed — your list already has these answers.", rsvpNew:"New guests: {n}", rsvpChanged:"Changed their answer: {n}", rsvpCutSeated:"Seated, but no longer coming — their seats were left as they are; your decision:", rsvpAtTable:"{n} — table {t}", rsvpKept:"Their answer in Amelie changed, but the status you set was kept:", rsvpAbsent:"Missing from this file: {n} — left as they were (deleted in Amelie, or from another invitation).", rsvpUndo:"↶ undoes the whole import.", rsvpGoneNote:"Amelie: no longer in the household's answer", tImportTooBig:"This list is too large for one plan — nothing was imported.",
-  mAmelie:"Connect to Amelie…", ameTitle:"Connect to Amelie", ameLead:"The answers (RSVPs) to your digital invitation on Amelie join your guest list by themselves — as they come in.", ameHow:"On your Amelie page, copy the link for TakeaSeat (https://amelie.gr/g/#…) and paste it here.", ameConnect:"Connect", ameBad:"This is not an Amelie link. Copy the whole link https://amelie.gr/g/#… from your page.", ameOn:"Connected to Amelie since {d}", ameLast:"Last checked: {t}", ameLastNever:"Not checked yet.", ameAuto:"While the plan is open, new answers come in by themselves every few minutes. Nobody is deleted and no seat changes; the names you typed yourselves (e.g. from paper invitations) are never touched.", ameRefresh:"Refresh from Amelie", ameOffBtn:"Disconnect", ameOffConfirm:"Stop the connection to Amelie? Everyone already imported stays on the list.", ameOffDone:"Disconnected from Amelie. Everyone already imported stays on the list.", ameConnected:"Connected to Amelie — fetching the answers…", ameGone:"The connection to Amelie has expired — ask for a new link on your page.", ameGoneKept:"Everyone already imported stays on the list.", amePrivacy:"The link is kept only on TakeaSeat's server, not in the plan: people with a view link never see it.", ameNothing:"Amelie: nothing new.", ameDown:"Amelie is not answering right now — I will try again shortly.", ameBusy:"Amelie asked for a short pause — again after {t}", ameNoRight:"This device cannot change the Amelie connection.", ameNotConn:"This plan is no longer connected to Amelie.", ameToast:"Amelie: {w}", ameNew:"+{n} new", ameNew1:"+{n} new", ameChg:"{n} changed their answer", ameChg1:"{n} changed their answer", rsvpAbsentLive:"No longer in Amelie: {n} — left as they were (deleted there).", rsvpUndoLive:"↶ is not enough here: while the plan is connected, the next check brings Amelie's answers again. To keep someone as they were, change their status by hand.", rsvpLinked:"Already on the list (e.g. from Excel) and now linked to Amelie — not added a second time: {n}", ameLinked:"{n} already listed — linked", ameLinked1:"{n} already listed — linked", ameRoNow:"The plan is view-only right now, so no new answers come in. You can end the connection at any time.", ameOffKeys:"The Amelie connection was ended too (it was made with the old links); if it was yours, connect it again («Connect to Amelie…»).", atAmelie:"connected Amelie (invitation answers)", atAmelieOff:"disconnected Amelie",
+  mAmelie:"Connect to Amelie…", ameTitle:"Connect to Amelie", ameLead:"The answers (RSVPs) to your digital invitation on Amelie join your guest list by themselves — as they come in.", ameNoInv:"No digital invitation yet?", ameHow:"On your Amelie page, copy the link for TakeaSeat (https://amelie.gr/g/#…) and paste it here.", ameConnect:"Connect", ameBad:"This is not an Amelie link. Copy the whole link https://amelie.gr/g/#… from your page.", ameOn:"Connected to Amelie since {d}", ameLast:"Last checked: {t}", ameLastNever:"Not checked yet.", ameAuto:"While the plan is open, new answers come in by themselves every few minutes. Nobody is deleted and no seat changes; the names you typed yourselves (e.g. from paper invitations) are never touched.", ameRefresh:"Refresh from Amelie", ameOffBtn:"Disconnect", ameOffConfirm:"Stop the connection to Amelie? Everyone already imported stays on the list.", ameOffDone:"Disconnected from Amelie. Everyone already imported stays on the list.", ameConnected:"Connected to Amelie — fetching the answers…", ameGone:"The connection to Amelie has expired — ask for a new link on your page.", ameGoneKept:"Everyone already imported stays on the list.", amePrivacy:"The link is kept only on TakeaSeat's server, not in the plan: people with a view link never see it.", ameNothing:"Amelie: nothing new.", ameDown:"Amelie is not answering right now — I will try again shortly.", ameBusy:"Amelie asked for a short pause — again after {t}", ameNoRight:"This device cannot change the Amelie connection.", ameNotConn:"This plan is no longer connected to Amelie.", ameToast:"Amelie: {w}", ameNew:"+{n} new", ameNew1:"+{n} new", ameChg:"{n} changed their answer", ameChg1:"{n} changed their answer", rsvpAbsentLive:"No longer in Amelie: {n} — left as they were (deleted there).", rsvpUndoLive:"↶ is not enough here: while the plan is connected, the next check brings Amelie's answers again. To keep someone as they were, change their status by hand.", rsvpLinked:"Already on the list (e.g. from Excel) and now linked to Amelie — not added a second time: {n}", ameLinked:"{n} already listed — linked", ameLinked1:"{n} already listed — linked", ameRoNow:"The plan is view-only right now, so no new answers come in. You can end the connection at any time.", ameOffKeys:"The Amelie connection was ended too (it was made with the old links); if it was yours, connect it again («Connect to Amelie…»).", atAmelie:"connected Amelie (invitation answers)", atAmelieOff:"disconnected Amelie",
   mFind:"Find your table (QR)", findSwitch:"On", findLink:"The guest's link", findCopy:"Copy", findRotate:"New code", findSince:"On since {t}",
   findWhat:"A QR code on the door list and on a poster at the entrance. A guest scans it with their phone, types their name and sees their table — without asking anyone.",
   findNoDate:"The wedding date comes first: the QR opens 7 days before it and closes 2 days after. Set the date under ⋯ → “Access & support”, then come back here.",
@@ -1732,6 +1780,40 @@ en:{
   pmQrWhere:"The “Find your table” QR rides on the four lists and on the entrance poster. The two PDFs do not carry it.",
   labBride:"Bride", labGroom:"Groom",
   labNames:["Maria P.","George K.","Helen A.","Nick D.","Katerina M.","Jim S.","Sophia L.","Kostas V.","Anna C.","Peter R.","Christina T.","Michael G.","Irene N.","Bill Z.","Despina F.","Alex K.","Joanna P.","Thanos M.","Angela S.","Steve A.","Fay D.","Manolis L.","Zoe V.","Petros C.","Eva R.","Spyros T.","Natalie G.","Chris N.","Marina Z.","Lefteris F.","Anastasia K.","Tony P.","Ellie M.","Stavros S.","Nefeli A.","Orestis D.","Danae L.","Aris V.","Ismene C.","Philip R."],
+  // ---- christenings: the twins of every key whose text NAMES the event (see tr() / EVK).
+  b_title:"Christening Seating Planner", b_awCouple:"Parents",
+  b_tRenameVenue:"The christening's name is set by {v}.",
+  b_goneVenue:"The venue deleted this christening — if that was a mistake, the venue can ask for it to be restored.",
+  b_lifeWas:"Your child's christening took place on {d}.", b_lifeWasV:"The christening took place on {d}.",
+  b_tLockedWed:"The christening is over — the plan is view-only.",
+  b_accDate:"Christening date", b_accDateHint:"From the day after the christening the plan is view-only (with a keepsake PDF).",
+  b_accDateConfirm:"Christening date: {d}. You can change it up to {n} times afterwards. Continue?",
+  b_accDateConfirm1:"Christening date: {d}. You can change it only once afterwards. Continue?",
+  b_accDateOnce:"New christening date: {d}.\n\nYou can change the date only once. After the change the plan becomes view-only until 14 days before the new date ({f}).\n\nContinue?",
+  b_accDateOnceNow:"New christening date: {d}.\n\nYou can change the date only once. Continue?",
+  b_tDateSet:"Christening date: {d}", b_dateNudge:"Set the christening date.",
+  b_atDate:"set the christening date to {d}", b_atLocked:"the christening is over — the plan is now view-only",
+  b_phFrozen:"You changed the christening date — the plan is view-only until {d}.",
+  b_phLineFrozen:"Phase: view-only until {d} — you changed the christening date.",
+  b_capLocal:"A plan that lives only on this device has up to {n} tables. For the whole christening:",
+  b_capLocalOwn:"A plan that lives only on this device has up to {n} tables — the christening's online plan has no such limit.",
+  b_cUploadWait:"Another plan can go online once the christening's planner is in full editing — from {d}.",
+  b_cUploadWait0:"Another plan can go online once the christening's planner is in full editing.",
+  b_cUploadOver:"The christening is over — no new plans go online.",
+  b_rbVenueTip:"You opened this christening as the venue: you can change everything. The parents change only what you allow.", b_rbPreview:"👁 As the parents see it",
+  b_openedAsVenue:"Opened as the venue (this device has the venue's link). To see it as the parents do: Access & support.",
+  b_cVenueLinks:"You are signed in as the venue. Copy the parents' link from the venue console.",
+  b_accCouplePerms:"What the parents may change", b_accPreview:"See it as the parents do", b_tPreviewOn:"You now see what the parents see.",
+  b_accViewExpired:"This link no longer works — ask the parents or the venue for a new one.",
+  b_accSupportHintVenue:"TakeaSeat never opens your events without your invitation — every access is logged. For help, give us access to this christening for a while — end it whenever you like.",
+  b_printTitle:"Christening Seating Plan", b_printWed:"Christening: {d}",
+  b_findNoDate:"The christening date comes first: the QR opens 7 days before it and closes 2 days after. Set the date under ⋯ → “Access & support”, then come back here.",
+  b_findWindow:"Opens {a} (7 days before the christening) and closes at the end of {b} (2 days after). Outside those days a guest is told it is closed.",
+  b_findAfter:"The christening is over: no new QR opens now, but the one that is running can be switched off here.",
+  b_findLockedMsg:"The christening is over — no new QR opens. Switching it off always works.",
+  b_headTable:"Family table", b_addHead:"Family table", b_mHead:"Family table",
+  b_menuTitleHead:"Family table settings", b_tHeadAdded:"Family table added",
+  b_groupsDefault:["Mother's side","Father's side","Godparents","Friends"],
 },
 de:{
   title:"Hochzeits-Sitzplan", guestsTools:"Gäste & Werkzeuge",
@@ -1769,7 +1851,7 @@ de:{
   cUploadWait:"Ein weiterer Plan kann online gehen, sobald der Planer Ihrer Hochzeit voll bearbeitbar ist — ab {d}.", cUploadWait0:"Ein weiterer Plan kann online gehen, sobald der Planer Ihrer Hochzeit voll bearbeitbar ist.", cUploadOver:"Die Hochzeit ist vorbei — neue Pläne gehen nicht mehr online.",
   tPhaseEnforced0:"Die Tischanordnung ist noch nicht offen — Ihre Änderungen (Namen, Plätze) wurden übernommen.", cWaitReplaced:"Die wartende Änderung wurde nicht hochgeladen: Der Plan wurde inzwischen anderswo geändert — die neuere Fassung wurde geladen.",
   accTitle:"Zugriff & Support", mAccess:"Zugriff & Support", theVenue:"der Veranstaltungsort",
-  rbVenue:"🏛 Location", rbVenueTip:"Sie haben diese Hochzeit als Location geöffnet: Sie können alles ändern. Das Paar ändert nur, was Sie erlauben.", rbTemplate:"🏛 Raumvorlage", rbTemplateTip:"Das ist die Aufstellung Ihrer Location: jede neue Hochzeit beginnt hier (ohne Gäste). Bestehende Hochzeiten ändern sich nicht.", rbPreview:"👁 So sieht es das Paar",
+  rbVenue:"🏛 Location", rbVenueTip:"Sie haben diese Hochzeit als Location geöffnet: Sie können alles ändern. Das Paar ändert nur, was Sie erlauben.", rbTemplate:"🏛 Raumvorlage", rbTemplateTip:"Das ist die Aufstellung Ihrer Location: jede neue Veranstaltung beginnt hier (ohne Gäste). Bestehende Veranstaltungen ändern sich nicht.", rbPreview:"👁 So sieht es das Paar",
   rbSupport:"🛟 Support · bis {t}", rbSupportTip:"Der Eigentümer hat Ihnen vorübergehend Zugriff gegeben. Nichts bleibt auf diesem Gerät.", rbViewer:"👁 Nur ansehen", rbViewerTip:"Sie sehen den Plan, können ihn aber nicht ändern.",
   rbLocked:"🔒 Raum: {v}", rbLockedTip:"Die Location hat den Raum eingerichtet — antippen, um zu sehen, was Sie ändern können.", rbSupportOn:"🛟 TakeaSeat hat Zugriff", rbSupportOnTip:"Sie haben dem Support bis {t} Zugriff gegeben — antippen zum Beenden.",
   permFloor:"Boden & Größe des Raums", permDecor:"Elemente der Location (Tanzfläche, Bar, Buffets, WC…)", permLayout:"Position der Tische", permTables:"Tische hinzufügen / löschen", permSeats:"Anzahl der Plätze pro Tisch", permLabels:"Tischnamen", permMax:"bis {n} pro Tisch", permAlways:"Gäste, Plätze, Gruppen, Einladungen, Druck",
@@ -1808,6 +1890,7 @@ de:{
   gripTitle:"An einen Tisch setzen…", pmFor:"Platz für: {n}", pmFloor:"Stuhl auf der Fläche wählen", tPlaced:"{n} → {t}",
   tipGroups:"Farbe für die Gruppen: der Punkt neben einem Namen ändert seine Gruppe · das Zahnrad legt einen ganzen Tisch in eine.", tipFull:"Voll? In den Tisch-Einstellungen (Zahnrad) ändern Sie die Platzzahl.", tipPrint:"Fast fertig! ⋯ → Drucken gibt die Liste pro Tisch.",
   tour:{
+    b_dFloorNames:["Die Fläche","Die Tischanordnung öffnet 30 Tage vor der Taufe. Einen Tisch <b>anklicken</b>, um Namen einzutragen. Strg+Z macht rückgängig."],
     dGuests:["Gäste","Namen unter <b>Namen hinzufügen</b> eingeben, einen pro Zeile."],
     dTables:["Namen an den Tischen","<b>Tisch anklicken</b>, Namen eingeben, <b>Enter</b>. Der Punkt = Gruppe."],
     dFloor:["Die Fläche","Tische und Deko <b>ziehen</b>. Strg+Z macht rückgängig."],
@@ -1847,6 +1930,10 @@ de:{
   stageResizeTip:"Nach außen ziehen für mehr Fläche, nach innen für weniger", tStageMax:"Die Fläche hat ihre größte Ausdehnung erreicht — sie kann nicht weiter wachsen.", tableTip:"Antippen für Namen · ziehen zum Verschieben · Zahnrad für Einstellungen · Entf zum Löschen",
   gmRename:"„{n}“ umbenennen", gmRecolor:"Farbe ändern", gmDelete:"Gruppe löschen", noGroup:"Keine Gruppe", geName:"Gastname", geType:"Gruppe",
   pRename:"Umbenennen", pDup:"Duplizieren", pDel:"Löschen",
+  pKind:"Veranstaltungsart…",
+  askKindB:"Diese Veranstaltung in eine Taufe ändern? Nur die Wörter ändern sich — Datum, Plan, Gäste und Links bleiben genau wie sie sind.",
+  askKindW:"Diese Veranstaltung in eine Hochzeit ändern? Nur die Wörter ändern sich — Datum, Plan, Gäste und Links bleiben genau wie sie sind.",
+  tKindSaved:"Gespeichert — nur die Wörter haben sich geändert.", tKindFailed:"Die Art wurde nicht geändert — bitte erneut versuchen.",
   promptNewGroup:"Name der neuen Gruppe:", groupN:"Gruppe {n}", promptRenameGroup:"Gruppe umbenennen:", confirmDeleteGroup:"Gruppe „{n}“ löschen? Die Gäste behalten ihre Plätze, verlieren aber die Farbe.",
   promptNewProfile:"Neuer Plan — Name des Paares / der Veranstaltung:", weddingN:"Hochzeit {n}", promptRenameProfile:"Plan umbenennen:", copySuffix:" (Kopie)", confirmDeleteProfile:"Plan „{n}“ löschen? Das kann nicht rückgängig gemacht werden.", keepOne:"Mindestens einen Plan behalten",
   ourWedding:"Unsere Hochzeit", sharedPlan:"Geteilter Plan", importedPlan:"Importierter Plan", pastedPlan:"Eingefügter Plan", labPlan:"Demo-Hochzeit",
@@ -1879,7 +1966,7 @@ de:{
   csvEnc:"Die Datei war nicht UTF-8 und wurde als {e} gelesen. Wenn die Namen falsch aussehen, speichern Sie sie in Excel als „CSV UTF-8“ und versuchen Sie es erneut.", csvBad:"Einige Zeichen konnten nicht gelesen werden (�). Speichern Sie die Datei in Excel als „CSV UTF-8“ und versuchen Sie es erneut.", csvXlsx:"Das ist eine Excel-Datei (.xlsx). In Excel: Speichern unter → „CSV UTF-8“, dann diese Datei wählen.",
   csvDone:"Zur Liste hinzugefügt: {n}", csvDoneSeated:" · an Tischen: {s}", csvDoneNoRoom:" · ohne Platz: {k} (ihr Tisch wurde nicht gefunden oder ist voll)",
   rsvpTitle:"Antworten aus Amelie", rsvpOk:"OK", rsvpNothing:"Nichts geändert — Ihre Liste hat diese Antworten schon.", rsvpNew:"Neue Gäste: {n}", rsvpChanged:"Antwort geändert: {n}", rsvpCutSeated:"Haben einen Platz, kommen aber nicht mehr — die Plätze blieben, wie sie waren; Sie entscheiden:", rsvpAtTable:"{n} — Tisch {t}", rsvpKept:"Die Antwort in Amelie hat sich geändert, Ihr eigener Status wurde beibehalten:", rsvpAbsent:"Fehlen in dieser Datei: {n} — unverändert (in Amelie gelöscht oder aus einer anderen Einladung).", rsvpUndo:"↶ macht den ganzen Import rückgängig.", rsvpGoneNote:"Amelie: nicht mehr in der Antwort des Haushalts", tImportTooBig:"Diese Liste ist zu groß für einen Plan — nichts wurde importiert.",
-  mAmelie:"Mit Amelie verbinden…", ameTitle:"Mit Amelie verbinden", ameLead:"Die Antworten (RSVPs) auf Ihre digitale Einladung bei Amelie kommen von selbst in Ihre Gästeliste — sobald sie eintreffen.", ameHow:"Kopieren Sie auf Ihrer Amelie-Seite den Link für TakeaSeat (https://amelie.gr/g/#…) und fügen Sie ihn hier ein.", ameConnect:"Verbinden", ameBad:"Das ist kein Amelie-Link. Kopieren Sie den ganzen Link https://amelie.gr/g/#… von Ihrer Seite.", ameOn:"Mit Amelie verbunden seit {d}", ameLast:"Zuletzt geprüft: {t}", ameLastNever:"Noch nicht geprüft.", ameAuto:"Solange der Plan offen ist, kommen neue Antworten alle paar Minuten von selbst. Niemand wird gelöscht und kein Platz ändert sich; selbst eingetragene Namen (z. B. von Papiereinladungen) bleiben unberührt.", ameRefresh:"Aus Amelie aktualisieren", ameOffBtn:"Trennen", ameOffConfirm:"Verbindung zu Amelie beenden? Alle bereits übernommenen Gäste bleiben auf der Liste.", ameOffDone:"Von Amelie getrennt. Alle bereits übernommenen Gäste bleiben auf der Liste.", ameConnected:"Mit Amelie verbunden — die Antworten werden geholt…", ameGone:"Die Verbindung zu Amelie ist abgelaufen — fordern Sie auf Ihrer Seite einen neuen Link an.", ameGoneKept:"Alle bereits übernommenen Gäste bleiben auf der Liste.", amePrivacy:"Der Link wird nur auf dem Server von TakeaSeat aufbewahrt, nicht im Plan: Wer einen Ansichtslink hat, sieht ihn nie.", ameNothing:"Amelie: nichts Neues.", ameDown:"Amelie antwortet gerade nicht — ich versuche es gleich noch einmal.", ameBusy:"Amelie bittet um eine kurze Pause — wieder nach {t}", ameNoRight:"Dieses Gerät kann die Amelie-Verbindung nicht ändern.", ameNotConn:"Dieser Plan ist nicht mehr mit Amelie verbunden.", ameToast:"Amelie: {w}", ameNew:"+{n} neu", ameNew1:"+{n} neu", ameChg:"{n} Antworten geändert", ameChg1:"{n} Antwort geändert", rsvpAbsentLive:"Nicht mehr in Amelie: {n} — unverändert (dort gelöscht).", rsvpUndoLive:"↶ reicht hier nicht: Solange der Plan verbunden ist, bringt die nächste Prüfung die Antworten aus Amelie wieder. Damit jemand so bleibt, wie er war, ändern Sie seinen Status von Hand.", rsvpLinked:"Schon auf der Liste (z. B. aus Excel) und jetzt mit Amelie verknüpft — nicht doppelt hinzugefügt: {n}", ameLinked:"{n} schon auf der Liste — verknüpft", ameLinked1:"{n} schon auf der Liste — verknüpft", ameRoNow:"Der Plan ist gerade nur zur Ansicht, daher kommen keine neuen Antworten. Die Verbindung können Sie jederzeit beenden.", ameOffKeys:"Auch die Verbindung zu Amelie wurde beendet (sie stammte von den alten Links); falls es Ihre war, verbinden Sie sie erneut („Mit Amelie verbinden…“).", atAmelie:"verband Amelie (Antworten der Einladung)", atAmelieOff:"trennte Amelie",
+  mAmelie:"Mit Amelie verbinden…", ameTitle:"Mit Amelie verbinden", ameLead:"Die Antworten (RSVPs) auf Ihre digitale Einladung bei Amelie kommen von selbst in Ihre Gästeliste — sobald sie eintreffen.", ameNoInv:"Noch keine digitale Einladung?", ameHow:"Kopieren Sie auf Ihrer Amelie-Seite den Link für TakeaSeat (https://amelie.gr/g/#…) und fügen Sie ihn hier ein.", ameConnect:"Verbinden", ameBad:"Das ist kein Amelie-Link. Kopieren Sie den ganzen Link https://amelie.gr/g/#… von Ihrer Seite.", ameOn:"Mit Amelie verbunden seit {d}", ameLast:"Zuletzt geprüft: {t}", ameLastNever:"Noch nicht geprüft.", ameAuto:"Solange der Plan offen ist, kommen neue Antworten alle paar Minuten von selbst. Niemand wird gelöscht und kein Platz ändert sich; selbst eingetragene Namen (z. B. von Papiereinladungen) bleiben unberührt.", ameRefresh:"Aus Amelie aktualisieren", ameOffBtn:"Trennen", ameOffConfirm:"Verbindung zu Amelie beenden? Alle bereits übernommenen Gäste bleiben auf der Liste.", ameOffDone:"Von Amelie getrennt. Alle bereits übernommenen Gäste bleiben auf der Liste.", ameConnected:"Mit Amelie verbunden — die Antworten werden geholt…", ameGone:"Die Verbindung zu Amelie ist abgelaufen — fordern Sie auf Ihrer Seite einen neuen Link an.", ameGoneKept:"Alle bereits übernommenen Gäste bleiben auf der Liste.", amePrivacy:"Der Link wird nur auf dem Server von TakeaSeat aufbewahrt, nicht im Plan: Wer einen Ansichtslink hat, sieht ihn nie.", ameNothing:"Amelie: nichts Neues.", ameDown:"Amelie antwortet gerade nicht — ich versuche es gleich noch einmal.", ameBusy:"Amelie bittet um eine kurze Pause — wieder nach {t}", ameNoRight:"Dieses Gerät kann die Amelie-Verbindung nicht ändern.", ameNotConn:"Dieser Plan ist nicht mehr mit Amelie verbunden.", ameToast:"Amelie: {w}", ameNew:"+{n} neu", ameNew1:"+{n} neu", ameChg:"{n} Antworten geändert", ameChg1:"{n} Antwort geändert", rsvpAbsentLive:"Nicht mehr in Amelie: {n} — unverändert (dort gelöscht).", rsvpUndoLive:"↶ reicht hier nicht: Solange der Plan verbunden ist, bringt die nächste Prüfung die Antworten aus Amelie wieder. Damit jemand so bleibt, wie er war, ändern Sie seinen Status von Hand.", rsvpLinked:"Schon auf der Liste (z. B. aus Excel) und jetzt mit Amelie verknüpft — nicht doppelt hinzugefügt: {n}", ameLinked:"{n} schon auf der Liste — verknüpft", ameLinked1:"{n} schon auf der Liste — verknüpft", ameRoNow:"Der Plan ist gerade nur zur Ansicht, daher kommen keine neuen Antworten. Die Verbindung können Sie jederzeit beenden.", ameOffKeys:"Auch die Verbindung zu Amelie wurde beendet (sie stammte von den alten Links); falls es Ihre war, verbinden Sie sie erneut („Mit Amelie verbinden…“).", atAmelie:"verband Amelie (Antworten der Einladung)", atAmelieOff:"trennte Amelie",
   mFind:"Finde deinen Tisch (QR)", findSwitch:"Aktiv", findLink:"Der Link für die Gäste", findCopy:"Kopieren", findRotate:"Neuer Code", findSince:"Aktiv seit {t}",
   findWhat:"Ein QR-Code auf der Türliste und auf einem Plakat am Eingang. Der Gast scannt ihn mit dem Handy, tippt seinen Namen ein und sieht seinen Tisch — ohne jemanden zu fragen.",
   findNoDate:"Zuerst das Hochzeitsdatum: der QR-Code öffnet 7 Tage davor und schließt 2 Tage danach. Tragen Sie das Datum unter ⋯ → „Zugriff & Support“ ein und kommen Sie dann zurück.",
@@ -1895,16 +1982,75 @@ de:{
   pmQrWhere:"Der QR-Code „Finde deinen Tisch“ ist auf den vier Listen und auf dem Eingangsplakat. Die beiden PDFs haben ihn nicht.",
   labBride:"Braut", labGroom:"Bräutigam",
   labNames:["Maria P.","Georg K.","Helena A.","Niko D.","Katharina M.","Jan S.","Sophie L.","Konstantin V.","Anna C.","Peter R.","Christina T.","Michael G.","Irene N.","Wilhelm Z.","Despina F.","Alex K.","Johanna P.","Thomas M.","Angelika S.","Stefan A.","Frieda D.","Manuel L.","Zoe V.","Petra C.","Eva R.","Sebastian T.","Natalie G.","Christoph N.","Marina Z.","Leon F.","Anastasia K.","Anton P.","Elli M.","Stefanos S.","Nefeli A.","Oliver D.","Diana L.","Aris V.","Isabel C.","Philipp R."],
+  // ---- Taufen: die Zwillinge jedes Schlüssels, dessen Text die Veranstaltung BENENNT (siehe tr() / EVK).
+  b_title:"Tauf-Sitzplan", b_awCouple:"Eltern",
+  b_tRenameVenue:"Den Namen der Taufe legt {v} fest.",
+  b_goneVenue:"Die Location hat diese Taufe gelöscht — falls das ein Versehen war, kann die Location die Wiederherstellung anfordern.",
+  b_lifeWas:"Die Taufe Ihres Kindes war am {d}.", b_lifeWasV:"Die Taufe war am {d}.",
+  b_tLockedWed:"Die Taufe ist vorbei — der Plan ist nur noch zum Ansehen.",
+  b_accDate:"Taufdatum", b_accDateHint:"Ab dem Tag nach der Taufe ist der Plan nur noch zum Ansehen (mit Erinnerungs-PDF).",
+  b_accDateConfirm:"Taufdatum: {d}. Danach können Sie es bis zu {n}-mal ändern. Fortfahren?",
+  b_accDateConfirm1:"Taufdatum: {d}. Danach können Sie es nur einmal ändern. Fortfahren?",
+  b_accDateOnce:"Neues Taufdatum: {d}.\n\nSie können das Datum nur einmal ändern. Nach der Änderung ist der Plan bis 14 Tage vor dem neuen Datum ({f}) nur zum Ansehen.\n\nFortfahren?",
+  b_accDateOnceNow:"Neues Taufdatum: {d}.\n\nSie können das Datum nur einmal ändern. Fortfahren?",
+  b_tDateSet:"Taufdatum: {d}", b_dateNudge:"Legen Sie das Taufdatum fest.",
+  b_atDate:"legte das Taufdatum auf {d} fest", b_atLocked:"die Taufe ist vorbei — der Plan ist jetzt nur noch zum Ansehen",
+  b_phFrozen:"Sie haben das Taufdatum geändert — der Plan ist bis {d} nur zum Ansehen.",
+  b_phLineFrozen:"Phase: nur ansehen bis {d} — Sie haben das Taufdatum geändert.",
+  b_capLocal:"Ein Plan nur auf diesem Gerät hat bis zu {n} Tische. Für die ganze Taufe:",
+  b_capLocalOwn:"Ein Plan nur auf diesem Gerät hat bis zu {n} Tische — der Online-Plan der Taufe hat diese Grenze nicht.",
+  b_cUploadWait:"Ein weiterer Plan kann online gehen, sobald der Planer der Taufe voll bearbeitbar ist — ab {d}.",
+  b_cUploadWait0:"Ein weiterer Plan kann online gehen, sobald der Planer der Taufe voll bearbeitbar ist.",
+  b_cUploadOver:"Die Taufe ist vorbei — neue Pläne gehen nicht mehr online.",
+  b_rbVenueTip:"Sie haben diese Taufe als Location geöffnet: Sie können alles ändern. Die Eltern ändern nur, was Sie erlauben.", b_rbPreview:"👁 So sehen es die Eltern",
+  b_openedAsVenue:"Als Location geöffnet (dieses Gerät hat den Link der Location). So ansehen wie die Eltern: Zugriff & Support.",
+  b_cVenueLinks:"Sie sind als Location angemeldet. Den Link der Eltern kopieren Sie in der Location-Konsole.",
+  b_accCouplePerms:"Was die Eltern ändern dürfen", b_accPreview:"So ansehen, wie es die Eltern sehen", b_tPreviewOn:"Sie sehen jetzt, was die Eltern sehen.",
+  b_accViewExpired:"Dieser Link gilt nicht mehr — bitten Sie die Eltern oder die Location um einen neuen.",
+  b_accSupportHintVenue:"TakeaSeat öffnet Ihre Veranstaltungen nie ohne Ihre Einladung — jeder Zugriff wird protokolliert. Für Hilfe geben Sie uns kurz Zugriff auf diese Taufe — Sie beenden ihn jederzeit.",
+  b_printTitle:"Tauf-Sitzplan", b_printWed:"Taufe: {d}",
+  b_findNoDate:"Zuerst das Taufdatum: der QR-Code öffnet 7 Tage davor und schließt 2 Tage danach. Tragen Sie das Datum unter ⋯ → „Zugriff & Support“ ein und kommen Sie dann zurück.",
+  b_findWindow:"Öffnet {a} (7 Tage vor der Taufe) und schließt am Abend des {b} (2 Tage danach). Außerhalb dieser Tage sieht der Gast, dass es geschlossen ist.",
+  b_findAfter:"Die Taufe ist vorbei: ein neuer QR-Code öffnet nicht mehr, der laufende kann hier aber abgeschaltet werden.",
+  b_findLockedMsg:"Die Taufe ist vorbei — ein neuer QR-Code öffnet nicht mehr. Abschalten geht immer.",
+  b_headTable:"Familientisch", b_addHead:"Familientisch", b_mHead:"Familientisch",
+  b_menuTitleHead:"Einstellungen Familientisch", b_tHeadAdded:"Familientisch hinzugefügt",
+  b_groupsDefault:["Seite der Mutter","Seite des Vaters","Paten","Freunde"],
 },
 };
 const T=T_ALL[LANG]||T_ALL.el;
-function tr(k,v){ let s=T[k]; if(s==null) s=T_ALL.el[k]; if(s==null) return k; if(typeof s!=="string") return s; if(v) for(const x in v) s=s.split("{"+x+"}").join(v[x]); return s; }
-// Fill static markup: data-t → textContent, data-t-title → title, data-t-ph → placeholder
-document.querySelectorAll("[data-t]").forEach(el=>{ el.textContent=tr(el.dataset.t); });
+// What this event IS (the server's `kind` on the plan record; see §1i). A key whose text NAMES the event has a twin
+// under "b_"+key in all three dictionaries, and tr() reads the twin for a baptism — so the word follows the field
+// from one place instead of a conditional at every call site. A plan that says nothing is a wedding, which is what
+// every plan made before this field existed is, and stays.
+let EVK="wedding";
+function tr(k,v){ let s;
+  if(EVK==="baptism"){ s=T["b_"+k]; if(s==null) s=T_ALL.el["b_"+k]; }
+  if(s==null) s=T[k]; if(s==null) s=T_ALL.el[k]; if(s==null) return k;
+  if(typeof s!=="string") return s; if(v) for(const x in v) s=s.split("{"+x+"}").join(v[x]); return s; }
+// The ornament that stands for the honour table and the keepsake: the couple's ♥, or the four-petal flower of a
+// baptism. server/pdf.mjs decides the same thing in mark(); this is the screen's one place for it.
+const EVMARK=()=>EVK==="baptism"?"petals":"heart";
+// Fill static markup: data-t → textContent, data-t-title → title, data-t-ph → placeholder.
+// Called again whenever the event's kind changes, so the chrome that was painted as a wedding becomes a baptism.
+function applyStaticI18n(){
+  document.querySelectorAll("[data-t]").forEach(el=>{ el.textContent=tr(el.dataset.t); });
+  document.querySelectorAll("[data-t-title]").forEach(el=>{ el.title=tr(el.dataset.tTitle); });
+  document.querySelectorAll("[data-t-ph]").forEach(el=>{ el.placeholder=tr(el.dataset.tPh); });
+  document.querySelectorAll("use[data-ev-mark]").forEach(u=>{ u.setAttribute("href","#i-"+EVMARK()); });
+  if(!IS_LAB) document.title=tr("title")+" — TakeaSeat";
+}
+applyStaticI18n();
 const ICON=n=>`<svg class="ic" aria-hidden="true"><use href="#i-${n}"/></svg>`;   // see the sprite at the top of <body>
-document.querySelectorAll("[data-t-title]").forEach(el=>{ el.title=tr(el.dataset.tTitle); });
-document.querySelectorAll("[data-t-ph]").forEach(el=>{ el.placeholder=tr(el.dataset.tPh); });
 document.querySelectorAll("#langsel a").forEach(a=>a.classList.toggle("on", a.dataset.lang===LANG));
+// The active plan decides the word. Everything that re-reads the dictionary is redrawn; nothing else changes.
+function setEventKind(k){
+  const want=(k==="baptism")?"baptism":"wedding";
+  if(want===EVK) return false;
+  EVK=want; applyStaticI18n();
+  document.body.classList.toggle("ev-baptism", EVK==="baptism");
+  return true;
+}
 
 // ============================================================
 //  Constants · storage keys
@@ -2044,7 +2190,7 @@ function makeHeadTable(id){ return { id, label:tr("headTable"), shape:"head", x:
 function defaultState(){
   const tables = DEFAULT_POSITIONS.map((p,i)=>({ id:1001+i, label:String(i+1), shape:"round", x:p[0], y:p[1], capacity:10, seats:Array(10).fill(null) }));
   tables.push(makeHeadTable(2000));
-  const names=T.groupsDefault||T_ALL.el.groupsDefault;
+  const names=tr("groupsDefault");   // through the resolver, or b_groupsDefault would be dead code and every baptism would open with the bride's and groom's sides
   const groups = names.map((n,i)=>({id:"grp"+(i+1), name:n, color:GROUP_PALETTE[i]}));
   return { _uid:2001, tables, guests:{}, groups, parties:[], activeGroupId:null, features:defaultFeatures(),
            seatFontScale:1, tableFontScale:1, nameMode:"full", stage:{w:1800,h:STARTER.h}, stageMaterial:"grass", layoutVersion:LAYOUT_VERSION };
@@ -2854,7 +3000,7 @@ function renderStrip(seated,total){
   const grid=$("tsGrid"); if(!grid) return;
   $("tsCount").textContent=`${state.tables.length} · ${seated}/${total}`;
   grid.innerHTML=state.tables.map(t=>{ const occ=t.seats.filter(Boolean).length, full=occ>=t.capacity;
-    return `<div class="ts-chip${full?" full":""}" data-id="${t.id}"><div class="lbl">${t.shape==="head"?ICON("heart"):escapeHtml(t.label)}</div><div class="occ">${occ}/${t.capacity}</div><div class="bar"><i style="width:${Math.round(100*occ/Math.max(1,t.capacity))}%"></i></div></div>`; }).join("");
+    return `<div class="ts-chip${full?" full":""}" data-id="${t.id}"><div class="lbl">${t.shape==="head"?ICON(EVMARK()):escapeHtml(t.label)}</div><div class="occ">${occ}/${t.capacity}</div><div class="bar"><i style="width:${Math.round(100*occ/Math.max(1,t.capacity))}%"></i></div></div>`; }).join("");
 }
 function overview(){ unfocusTable(); setPick(null); requestAnimationFrame(()=>{ layoutCanvas(true); fitView(clamp(fitZoom(),0.1,2.5)); }); }
 // Phone overview: make the canvas exactly as tall as the floor fitted to the screen width, so the table list
@@ -3241,6 +3387,43 @@ function newProfile(){
   loadActive(); toast(tr("tProfileCreated"));
 }
 function renameProfile(){ const p=currentProfile(); const nm=prompt(tr("promptRenameProfile"),p.name); if(nm&&nm.trim()){ p.name=nm.trim(); saveProfilesIdx(); renderProfiles(); save(); } }
+// Γάμος ή βάπτιση, corrected after the fact by exactly whoever may rename the event (the server enforces the same
+// rule: not support, not a restricted couple, not a template). Nothing but the word changes — the date, the plan, the
+// guests and every link stay as they are — so this goes on its own, without the plan, and never touches the save path.
+// tr() for a kind other than the one on screen — the same twin rule, asked a question about the other event.
+function wordFor(kind,k){ const T=T_ALL[LANG]||T_ALL.el; let s;
+  if(kind==="baptism"){ s=T["b_"+k]; if(s==null) s=T_ALL.el["b_"+k]; }
+  if(s==null) s=T[k]; if(s==null) s=T_ALL.el[k]; return s; }
+// The head table's label and the group names are plan DATA, so correcting the type has to re-point the ones the
+// PLANNER wrote — otherwise a corrected baptism keeps «Νυφικό τραπέζι» and «Πλευρά νύφης» on the printed list and at
+// the door. A label the customer typed is theirs and is never touched, which is why both kinds' starters are matched
+// exactly before anything is replaced. (The server does the same thing to a template copy; see retypeStarter.)
+function retypeStarterWords(want){
+  const heads=[wordFor("wedding","headTable"), wordFor("baptism","headTable")], toHead=wordFor(want,"headTable");
+  let changed=false;
+  for(const t of state.tables) if(t.shape==="head" && heads.indexOf(t.label)>=0 && t.label!==toHead){ t.label=toHead; changed=true; }
+  const names=state.groups.map(g=>g.name), toG=wordFor(want,"groupsDefault");
+  for(const k of ["wedding","baptism"]){ const S=wordFor(k,"groupsDefault");
+    if(S.length===names.length && names.every((n,i)=>n===S[i])){
+      if(names.some((n,i)=>n!==toG[i])){ state.groups=state.groups.map((g,i)=>({...g, name:toG[i]})); changed=true; }
+      break; } }
+  return changed;
+}
+async function changeEventKind(){
+  const cur=currentProfile(); if(!cur||!cur.cloudId) return;
+  const want=EVK==="baptism"?"wedding":"baptism";
+  if(!confirm(tr(want==="baptism"?"askKindB":"askKindW"))) return;
+  let r; try{ r=await fetch(planPath(cur.cloudId),{method:"PUT",headers:authHeaders(cur),body:JSON.stringify({kind:want})}); }catch(e){ toast(tr("tKindFailed"),4000); return; }
+  if(!r||!r.ok){ toast(tr("tKindFailed"),4000); return; }
+  cur.kind=want; saveProfilesIdx(); setEventKind(want);
+  if(retypeStarterWords(want)){
+    if(cur.cloudUpdated) save();   // already online: this is an ordinary edit of the plan
+    // still only on this device: it goes online with the first real edit, exactly as the starter always did — a push
+    // here would put a layout nobody designed on the server (and, for a venue, lock the room with it)
+    else { lastJSON=JSON.stringify(state); try{ localStorage.setItem(planKey(cur.id), lastJSON); }catch(e){} }
+  }
+  renderAll(); renderProfiles(); toast(tr("tKindSaved"));
+}
 function duplicateProfile(){
   save(); const p=currentProfile(); const id=newProfileId();
   const copy=JSON.parse(JSON.stringify(state)), cut=labTrim(copy,false,tableCapFor({}));   // the copy lives on this device only: 8 guest tables
@@ -3268,10 +3451,13 @@ function importPlanAsProfile(s, suggestedName){
 }
 function openProfileMenu(evt){
   const menu=$("profilemenu");
-  const pl=(currentProfile()||{}).life, pd=pl&&pl.weddingDate;
-  menu.innerHTML=(pd||dateEditable()?`<div class="gm-item" data-act="date">${ICON("clock")}${escapeHtml(pd?fmtDate(pd):tr("accDate")+"…")}</div><div class="gm-sep"></div>`:"")+`<div class="gm-item" data-act="rename">${ICON("edit")}${escapeHtml(tr("pRename"))}</div><div class="gm-item" data-act="dup">${ICON("copy")}${escapeHtml(tr("pDup"))}</div><div class="gm-sep"></div><div class="gm-item danger" data-act="del">${ICON("trash")}${escapeHtml(tr("pDel"))}</div>`;
   const pc=currentProfile()||{};
+  const pl=pc.life, pd=pl&&pl.weddingDate;
+  // the type sits next to the rename because the server lets exactly the same hand change it (see changeEventKind)
+  const canKind=!!pc.cloudId && !pc.support && !pc.template && !ACCESS.ro && !ACCESS.venueCouple;
+  menu.innerHTML=(pd||dateEditable()?`<div class="gm-item" data-act="date">${ICON("clock")}${escapeHtml(pd?fmtDate(pd):tr("accDate")+"…")}</div><div class="gm-sep"></div>`:"")+`<div class="gm-item" data-act="rename">${ICON("edit")}${escapeHtml(tr("pRename"))}</div>`+(canKind?`<div class="gm-item" data-act="kind">${ICON(EVMARK())}${escapeHtml(tr("pKind"))}</div>`:"")+`<div class="gm-item" data-act="dup">${ICON("copy")}${escapeHtml(tr("pDup"))}</div><div class="gm-sep"></div><div class="gm-item danger" data-act="del">${ICON("trash")}${escapeHtml(tr("pDel"))}</div>`;
   const dt=menu.querySelector('[data-act="date"]'); if(dt) dt.onclick=()=>{ closeProfileMenu(); openAccess(); };
+  const kd=menu.querySelector('[data-act="kind"]'); if(kd) kd.onclick=()=>{ closeProfileMenu(); changeEventKind(); };
   menu.querySelector('[data-act="rename"]').onclick=()=>{ closeProfileMenu(); if(ACCESS.ro){ roToast(); return; } if(ACCESS.venueCouple){ toast(tr("tRenameVenue",{v:ACCESS.venueName||tr("theVenue")}),4000); return; } renameProfile(); };
   menu.querySelector('[data-act="dup"]').onclick=()=>{ closeProfileMenu(); if(pc.support){ toast(tr("tNoCopySupport"),4000); return; } duplicateProfile(); };
   menu.querySelector('[data-act="del"]').onclick=()=>{ closeProfileMenu(); deleteProfile(); };
@@ -3546,7 +3732,7 @@ function closePlaceMenu(){ const m=$("placemenu"); m.style.display="none"; }
 function renderPlaceTables(m){
   const guestId=m._guest, from=m._from;
   const mem=m._all?partyMembers(m._party):[];   // the whole invitation: "← 2" marks where some of them already sit
-  const rows=state.tables.map(t=>{ const free=t.seats.filter(x=>!x).length, here=mem.filter(id=>t.seats.includes(id)).length; return `<div class="gm-item${free?"":" dim"}" data-tid="${t.id}">${t.shape==="head"?ICON("heart"):t.shape==="rect"?ICON("longtable"):ICON("table")}<span class="pm-name">${escapeHtml(t.label)}${here?` ← ${here}`:""}</span><span class="n">${free}/${t.capacity}</span></div>`; }).join("");
+  const rows=state.tables.map(t=>{ const free=t.seats.filter(x=>!x).length, here=mem.filter(id=>t.seats.includes(id)).length; return `<div class="gm-item${free?"":" dim"}" data-tid="${t.id}">${t.shape==="head"?ICON(EVMARK()):t.shape==="rect"?ICON("longtable"):ICON("table")}<span class="pm-name">${escapeHtml(t.label)}${here?` ← ${here}`:""}</span><span class="n">${free}/${t.capacity}</span></div>`; }).join("");
   const who=m._party?tr("pbParty",{n:partyName(m._party), c:(m._all?mem:partyUnseated(m._party)).length}):guestName(guestId);
   // «εκεί στα δεξιά δε μου δίνει άλλες επιλογές, είμαι περιορισμένος» — from a seat row he could only create a new
   // invitation. The row's own menu now also opens the one this person is in, and takes them out of it.
@@ -4969,7 +5155,9 @@ function placeTour(){
   if(visible){ spot.style.left=(r.left-6)+"px"; spot.style.top=(r.top-6)+"px"; spot.style.width=(r.width+12)+"px"; spot.style.height=(r.height+12)+"px"; spot.style.outlineWidth="2px"; }
   else { spot.style.left=(vw/2)+"px"; spot.style.top=(vh/2)+"px"; spot.style.width="0px"; spot.style.height="0px"; spot.style.outlineWidth="0"; }
   const tk=(st.key==="dFloor"&&!can("layout"))?((ACCESS.phase==="names"&&!ACCESS.venueCouple)?"dFloorNames":"dFloorLocked"):st.key;
-  const tx=(T.tour&&T.tour[tk])||T_ALL.el.tour[tk];
+  // the same twin rule tr() uses — the tour reads its own nested object, so it has to ask for the twin itself
+  const tb=EVK==="baptism" ? ((T.tour&&T.tour["b_"+tk])||T_ALL.el.tour["b_"+tk]) : null;
+  const tx=tb||(T.tour&&T.tour[tk])||T_ALL.el.tour[tk];
   const last=tour.i===tour.steps.length-1;
   card.innerHTML=`<button class="tour-x" data-a="skip" title="${escapeHtml(tr("tourSkip"))}">✕</button><div class="tour-step">${tour.i+1} / ${tour.steps.length}</div><h3>${escapeHtml(tx[0])}</h3><p>${tx[1]}</p>
     <div class="tour-btns">${last?"":`<button class="ibtn" data-a="skip">${escapeHtml(tr("tourSkip"))}</button>`}<span class="spacer"></span>${tour.i>0?`<button class="ibtn" data-a="back">${escapeHtml(tr("tourBack"))}</button>`:""}<button class="ibtn primary" data-a="next">${escapeHtml(last?tr("tourDone"):tr("tourNext"))}</button></div>`;
@@ -5578,7 +5766,7 @@ $("moreBtn").addEventListener("click",e=>{
   if(skipDeleteConfirm() && !ro) more.push(["askdel",tr("mAskDel")]);
   if(!ro) more.push(["reset",tr("mReset")]);
   if(!IS_LAB) more.push(["cap",tr("mLang")],["lang-el","ΕΛ · Ελληνικά"],["lang-en","EN · English"],["lang-de","DE · Deutsch"]);
-  const MI={keepsake:"heart",share:"cloud",groups:"people",inv:"mail",print:"print",find:"search",tour:"help",help:"chat",askdel:"help",access:"people",newplan:"plus",planmore:"edit",round:"table",rect:"longtable",head:"heart",decor:"decor",auto:"spark",xlsxseat:"up",xlsxall:"up",csvout:"up",csvin:"dl",export:"up",import:"dl",amelie:"mail",history:"clock"};
+  const MI={keepsake:EVMARK(),share:"cloud",groups:"people",inv:"mail",print:"print",find:"search",tour:"help",help:"chat",askdel:"help",access:"people",newplan:"plus",planmore:"edit",round:"table",rect:"longtable",head:EVMARK(),decor:"decor",auto:"spark",xlsxseat:"up",xlsxall:"up",csvout:"up",csvin:"dl",export:"up",import:"dl",amelie:"mail",history:"clock"};
   const row=([a,l])=>a==="cap"?`<div class="gm-cap">${escapeHtml(l)}</div>`:`<div class="gm-item${a==="reset"?" danger":""}${a==="lang-"+LANG?" on":""}" data-act="${a}">${MI[a]?ICON(MI[a]):'<span class="ic"></span>'}${escapeHtml(l)}</div>`;
   m.innerHTML=primary.map(row).join("")+`<div class="gm-sep"></div><div class="gm-item more" data-act="more"><span class="ic"></span>${escapeHtml(tr("mMore"))} ›</div><div class="gm-more">${more.map(row).join("")}</div>`;
   m.querySelectorAll(".gm-item").forEach(it=>it.onclick=ev=>{ ev.stopPropagation(); const a=it.dataset.act;
@@ -5732,7 +5920,7 @@ function phaseClosed(prof, life){
 // What the server says about this device's rights on the plan → remembered on the profile.
 function adoptAccess(prof, d){
   if(!prof||!d||!d.role) return false;
-  const before=JSON.stringify([prof.role,prof.perms,prof.owner,prof.venueName,prof.template,prof.couplePerms,prof.supportInfo&&prof.supportInfo.expires,prof.life]);
+  const before=JSON.stringify([prof.role,prof.perms,prof.owner,prof.venueName,prof.template,prof.couplePerms,prof.supportInfo&&prof.supportInfo.expires,prof.life,prof.kind]);
   prof.role=d.role; prof.perms=d.perms||null; prof.owner=(d.owner&&d.owner.type)||"couple"; prof.venueName=(d.owner&&d.owner.venueName)||"";
   prof.template=!!d.template; prof.couplePerms=d.couplePerms||null; prof.venueContact=(d.owner&&d.owner.venueContact)||""; prof.legacyOpenUntil=d.legacyOpenUntil||0; prof.layoutSet=d.layoutSet!==false;
   if(d.readKey) prof.viewKey=d.readKey;
@@ -5742,6 +5930,7 @@ function adoptAccess(prof, d){
   if(d.supportExpires) prof.supportExpires=d.supportExpires;
   if("email" in d){ prof.hasRecEmail=true; prof.recEmail=d.email||""; prof.mailOn=!!d.mail; }
   if("life" in d) prof.life=d.life||null;   // wedding date, lock / delete times (the server decides; see renderLifeBar)
+  if("kind" in d) prof.kind=(d.kind==="baptism")?"baptism":"wedding";   // what the event IS — the server owns it; kept here so a print is right before the next fetch
   // Amelie (writers only): connected / dead / last pulled — never the key. Kept out of the comparison below (lastPullAt moves on
   // every pull); connected or gone on another device → this one follows (ameSync).
   { const was=String([ameOn(prof), !!(prof.amelie&&prof.amelie.dead)]);
@@ -5758,7 +5947,7 @@ function adoptAccess(prof, d){
   let back=false; if(prof.gone){ prof.gone=false; prof._goneAt=0; back=true;   // restored from the venue's trash
     if(prof.id===profiles.activeId){ toast(tr("goneBack"),4000); if(prof.goneDirty){ prof.goneDirty=false; setTimeout(scheduleCloudPush,0); } } }   // after the caller's applyAccess: the refused change goes up
   if(prof.phaseDirty && !phaseRo(prof) && prof.id===profiles.activeId){ prof.phaseDirty=false; back=true; if(!(prof.life&&prof.life.locked)){ waitPushFor=prof.id; setTimeout(scheduleCloudPush,0); } }   // the planner opened: the change that waited goes up (on its old base — never over a newer copy)
-  return back || before!==JSON.stringify([prof.role,prof.perms,prof.owner,prof.venueName,prof.template,prof.couplePerms,prof.supportInfo&&prof.supportInfo.expires,prof.life]);
+  return back || before!==JSON.stringify([prof.role,prof.perms,prof.owner,prof.venueName,prof.template,prof.couplePerms,prof.supportInfo&&prof.supportInfo.expires,prof.life,prof.kind]);
 }
 async function cloudFetch(id, prof){ if(!PLAN_ID_RE.test(String(id))) throw new Error("bad id");
   const r=await fetch(planPath(id),{headers:authHeaders(prof), cache:"no-store"}); const d=await r.json().catch(()=>({}));   // a 410 is cacheable: a restored wedding must not stay "gone" from the browser cache
@@ -5851,6 +6040,11 @@ function applyPulledPlan(cur, d){
   const keepView=shownProf===cur.id && cur.id===profiles.activeId && !cur.unsynced && !!offApplied, before=keepView?state:null;
   if(cur.phaseDirty){ cur.phaseDirty=false; setTimeout(()=>toast(tr("cWaitReplaced"),7000),60); }   // the server's copy replaces the change that waited
   adoptAccess(cur, d);
+  // The word BEFORE the room is built. defaultState() below names the head table and the groups through tr(), and
+  // those labels are plan DATA — they go to the server with the first real edit and from there to the printed lists,
+  // the keepsake and the guest at the door. applyAccess() also sets the kind, but it runs after the starter is made,
+  // so without this line a new plan is labelled from whatever plan was open before it (either direction).
+  setEventKind((cur&&cur.kind)||"wedding");
   const s=d.plan||{}; delete s._profileName;
   if(!s.tables){   // a new, still empty plan (fresh wedding, template, a couple's claimed plan): start from the starter layout
     cur.cloudUpdated=d.updated; if(d.name) cur.name=d.name;
@@ -6142,6 +6336,9 @@ function dropHistoryForRights(){ if(pointerGesture){ setTimeout(dropHistoryForRi
 function can(k){ return IS_LAB || (!ACCESS.ro && (!ACCESS.perms || ACCESS.perms[k]!==false)); }   // read only: nothing
 function applyAccess(){
   const cur=(profiles&&profiles.profiles)?currentProfile():null;
+  // The word before anything is drawn with it. A plan with no kind — local, the lab, anything made before the field
+  // existed — is a wedding.
+  const kindChanged=setEventKind((cur&&cur.kind)||"wedding");
   const role=(IS_LAB||!cur||!cur.cloudId)?"local":(cur.support?"support":(cur.role||(cur.readonly?"viewer":"couple")));
   const venueCouple=role==="couple" && cur.owner==="venue";
   // the server's perms for a couple are the effective ones (the venue's ∩ the phase): anything closed → the lock mirror
@@ -6165,7 +6362,7 @@ function applyAccess(){
   rightsSig=sig;
   ["venue","support","viewer"].forEach(r=>document.body.classList.toggle("role-"+r, role===r));
   renderRoleBadge(); renderLifeBar(); updateUndoButtons(); schedulePhaseCheck();
-  if(wasRo!==ACCESS.ro){ setPick(null); closeMenu(); renderAll(); }   // chairs, chips and seat rows are built read-only (or not)
+  if(wasRo!==ACCESS.ro || kindChanged){ setPick(null); closeMenu(); renderAll(); }   // chairs, chips and seat rows are built read-only (or not)
   ameSync();   // the Amelie connection follows: another plan, read only now, writable again
 }
 // ---- a couple's phases (the server decides: life.phase) — "waiting" 14 days after a direct purchase, "names" until 30 days
@@ -6206,7 +6403,7 @@ function lifeBarOff(kind){ try{ return (kind==="names"?localStorage:sessionStora
 function renderLifeBar(){ const bar=$("lifebar"); if(!bar) return; const kind=lifeBarKind(), cur=currentProfile();
   bar.hidden=!kind||lifeBarOff(kind); $("lifePdf").hidden=kind!=="locked";
   const at=ACCESS.waitRo?phaseOpensAt((cur&&cur.life)||{}):0, cd=$("lifeCd"); cd.hidden=!at; cd.textContent=at?daysUntil(at):"";
-  bar.querySelector(".ic use").setAttribute("href", kind==="waiting"||kind==="frozen"?"#i-clock":kind==="names"?"#i-people":"#i-heart");
+  bar.querySelector(".ic use").setAttribute("href", kind==="waiting"||kind==="frozen"?"#i-clock":kind==="names"?"#i-people":"#i-"+EVMARK());
   if(!bar.hidden) $("lifeText").textContent=kind==="gone"?tr("goneVenue"):kind==="locked"?lifeText(cur):phaseText(cur); }
 $("lifeX").addEventListener("click",()=>{ const kind=lifeBarKind(); try{ (kind==="names"?localStorage:sessionStorage).setItem(lifeBarKey(kind),"1"); }catch(e){} renderLifeBar(); applyZoom(); });
 $("lifePdf").addEventListener("click",e=>downloadPdf("keepsake", e.currentTarget));
@@ -6498,7 +6695,8 @@ function ameRender(force){
     h+=A.dead?`<div class="acc-live">${e(tr("ameGone"))}<div class="mhint" style="padding:4px 0 0">${e(tr("ameGoneKept"))}</div></div>`:`<p class="claim-lead">${e(tr("ameLead"))}</p>`;
     h+=`<div class="mhint" style="padding:8px 0 0">${e(tr("ameHow"))}</div>
       <div class="acc-row"><input id="ameLink" type="text" inputmode="url" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="200" placeholder="https://amelie.gr/g/#…" style="flex:1;min-width:0;height:36px;border:1px solid var(--line);border-radius:8px;padding:0 10px;background:var(--paper);color:inherit;font-size:14px">
-      <button class="ibtn primary" id="ameGo">${e(tr("ameConnect"))}</button></div><div class="mhint" id="ameErr" style="color:#b3261e;padding:6px 0 0" hidden></div>`;
+      <button class="ibtn primary" id="ameGo">${e(tr("ameConnect"))}</button></div><div class="mhint" id="ameErr" style="color:#b3261e;padding:6px 0 0" hidden></div>
+      <div class="mhint" style="padding:8px 0 0">${e(tr("ameNoInv"))} <a href="https://amelie.gr" target="_blank" rel="noopener noreferrer">amelie.gr</a></div>`;
     if(A.dead) h+=`<div class="acc-row"><button class="ibtn danger" id="ameOff">${e(tr("ameOffBtn"))}</button></div>`;
   }
   h+=`<div class="mhint" style="padding:12px 0 0">${e(tr("amePrivacy"))}</div>`;
@@ -6826,7 +7024,7 @@ async function downloadPdf(mode, btn){
   if(btn){ btn.disabled=true; btn.classList.add("busy"); } toast(tr("pdfMaking"),30000);
   let r=null;
   try{ r=await fetch(SYNC_URL+"/pdf",{method:"POST",headers:{"Content-Type":"application/json","X-Client":"2"},
-    body:JSON.stringify({ plan:state, name:cur.name||"", weddingDate:L.weddingDate||null, venueName:cur.venueName||"", mode, lang:LANG, brand:printBrandOn() })}); }catch(e){}
+    body:JSON.stringify({ plan:state, name:cur.name||"", weddingDate:L.weddingDate||null, venueName:cur.venueName||"", mode, lang:LANG, kind:EVK, brand:printBrandOn() })}); }catch(e){}
   try{
     if(r && r.ok && /pdf/i.test(r.headers.get("Content-Type")||"")){
       const blob=await r.blob(), cd=r.headers.get("Content-Disposition")||"", m=/filename\*=UTF-8''([^;]+)/i.exec(cd);

@@ -3,7 +3,7 @@
 > Read this first. It maps the whole system so a new agent (or developer) can pick it up cold.
 > **This repo is PUBLIC — never commit secrets here.** Real keys live in `ACCESS.local.md`
 > (git-ignored, on Andreas's PC), in the server's env files, and in Andreas's password manager.
-> Last updated: 2026-09-20 (roles & access §1b · email §1c · lifecycle §1d · couple phases & season-only §1e).
+> Last updated: 2026-10-04 (roles & access §1b · email §1c · lifecycle §1d · couple phases & season-only §1e · γάμοι & βαπτίσεις §1i).
 
 ## 1. What this is
 
@@ -295,6 +295,12 @@ email, τηλέφωνο — plus acceptance of the Terms, and nothing else.
   year never auto-renews: `POST /venues/:id/renewal` answers `on_trial`, and the renewal branch skips it.
 - **At the end nothing is deleted**: the console still opens, existing weddings run to their date and stay editable,
   and new ones answer `after_season`.
+- **A season is a run of Athens CALENDAR days** — it starts at 00:00 Athens on `seasonStart` and is over at 00:00
+  Athens the day after `seasonEnd` (`seasonOverAt()`), like `lockAt` and everything else in the lifecycle. Until
+  2026-10-04 `canCreateWedding` and `renewSweep` compared against `Date.parse(ymd)`, i.e. UTC midnight — 02:00 or 03:00
+  in Athens — so between 00:00 and 03:00 Athens a venue that had just signed up was told `before_season` and could
+  create nothing, a season that ended yesterday still looked current, and `node tools/test-api.mjs` failed at check 593
+  and never reached the sections after it. If a suite run ever "passes 592 checks" again, look here first.
 - **The answer is always `{ok:true}`.** Whether an ΑΦΜ or an address is already ours is said ONLY by mail, and only to
   the address that is already ours (`afmUsed`, `haveConsole`) — the same shape as `/recover`. A re-submission re-sends
   the existing link instead of making a second venue. **The address that just wrote to us always gets something**: the
@@ -327,6 +333,80 @@ email, τηλέφωνο — plus acceptance of the Terms, and nothing else.
 - **Terms** (terms.html v. 3/10/2026, el + en): how you sign up, what the ΑΦΜ is used for, that the free year covers
   weddings dated inside it, that it does NOT turn itself into a paid subscription, and that nothing is deleted at the end.
   index.html's offer box and pricing card say the same.
+
+## 1i. Γάμοι ΚΑΙ βαπτίσεις: one field, and the words that follow it (2026-10-04)
+
+Greece has roughly 52–59k baptisms a year against ~37k marriages, in the same venues, with the same staff and about a
+hundred guests each. An event is now a **wedding or a baptism** — `kind: "wedding" | "baptism"` on the plan record —
+and that is the whole of the change: **there is no second lifecycle, no second price and no second planner.**
+
+- **The field.** `rec.kind` in `wedding-sync-worker.js` (`EVENT_KINDS` / `normKind` / `kindOf` / `kindIn`, next to the
+  email helpers). **Absent = wedding**, so every plan made before today is a wedding and stays one; nothing was
+  migrated. It is chosen when the event is created (the venue console's «νέα εκδήλωση», the admin's «Add a customer»,
+  the owner's test tool) and **corrected afterwards by exactly whoever may rename the event** — the venue's
+  `PATCH /venues/:id/weddings/:planId {kind}`, the planner's `PUT /plans/:id {kind}` (not support, not a restricted
+  couple), the admin's `PATCH /admin/couples/:id {kind}`. The planner offers it next to the rename
+  («Είδος εκδήλωσης…» in the ⋯ menu of the plan), so a customer who bought their own plan corrects it themselves; the
+  request carries the kind ALONE — no plan — so a correction never pushes a starter layout nobody designed. It is returned wherever the plan's state is: `GET /plans/:id`,
+  `planCard`, `adminCouple`, the venue console's rows and trash, `testWeddingOut`, and the door list's answers
+  (`/find`, the open ones and «closed» alike). An extra plan inherits its parent's kind, whatever its body claims.
+- **The words follow the field, from one place each.** Every dictionary resolves a key with a `b_` prefix first when the
+  event is a baptism, and falls back to the ordinary key when there is no twin — so only the strings that NAME the
+  event are duplicated, and a new one is a dictionary entry rather than a conditional:
+  - planner (`planner.src.html`): `let EVK`, `tr()`, `setEventKind()` and `applyStaticI18n()`; `prof.kind` comes from the
+    server in `adoptAccess`. ~45 `b_` twins per language (el/en/de), including `b_printTitle` / `b_printWed` (all four
+    printed lists), `b_headTable`, `b_groupsDefault`, `b_cVenueLinks`, `b_awCouple`, and — inside the `tour` object,
+    which reads its own keys — `b_dFloorNames`. **A twin is only alive if the key is read through `tr()`**: a direct
+    `T.<key>` read makes it dead code, which is what `b_groupsDefault` was (`defaultState()` read the dictionary, so
+    every baptism opened with the bride's and the groom's sides). A test now fails on any such read.
+  - **the starter room is DATA, not chrome.** `makeHeadTable()` and `defaultState()` resolve the head-table label and
+    the group names through `tr()`, and whatever they produce is uploaded with the first real edit and then travels to
+    the printed lists, the keepsake and the guest at the door. So `applyPulledPlan` calls `setEventKind()` itself,
+    right after `adoptAccess`, BEFORE `state=defaultState()` — `applyAccess()` runs after the room is built, and
+    relying on it labelled every new plan from whatever plan the device had open before it, in both directions.
+  - mails (`MAILS` in the worker): `mailMsg(lang, kind, v, ev)` takes the event kind; `b_keepsake` / `b_keepsakeKeep`
+    exist in all three languages. The wish is the Greek one — «Να σας ζήσει!». `trialEnds` is neutral now, because one
+    licence covers both kinds.
+  - PDFs (`server/pdf.mjs`): `meta.kind` → `W` is a proxy that prefers `b_*` (`b_ourWedding`), and `mark()` draws the
+    couple's ♥ for a wedding and a small four-petal flower for a baptism (cover flourish, head-table label, the
+    miniature and the «ποιος κάθισε πού» cards).
+  - consoles: `venue.html` has `EVW`/`EV(w)` with the Greek cases it needs (`ο γάμος` / `η βάπτιση`, `του γάμου` /
+    `της βάπτισης`, `τον γάμο` / `τη βάπτιση`) and the customer word («το ζευγάρι» / «οι γονείς», with the verb
+    agreement spelled out); `admin.html` has the English `EVW`. Lists, headings and anything a venue holds of both
+    kinds read «εκδήλωση / εκδηλώσεις».
+  - the door list (`trapezi.html`): `B` holds the twins; `V.kind` comes from the answer. With **no** token at all the
+    page cannot know the kind, so «Σκανάρετε τον κωδικό QR **της εκδήλωσης**» stays neutral on purpose.
+- **The lifecycle is the same shape.** The date still drives everything (§1d/§1e): lock at 00:00 the day after,
+  delete 7 days later, the couple's phases, the 14-day withdrawal wait, the finder's 7-days-before/2-days-after window,
+  the renewals. Nothing branches on the kind except a string.
+- **What is sold.** `terms.html` gained **article 0, «Τι σημαίνει εκδήλωση»** in both languages: one definition that
+  makes every later «γάμος» in the document read as a baptism too, instead of sixty rewritten sentences. The venue's
+  subscription covers both kinds explicitly; the direct package is «Η εκδήλωσή σας» / "Your event" — on index.html too,
+  where the 25 € card and both «start» mailtos are neutral and ask the kind outright («Είδος (γάμος ή βάπτιση)»), since
+  a mailto is how a direct sale reaches us. **privacy.html (v. 4/10/2026) and dpa.html (v. 4/10/2026) carry the same
+  definition** as their own article 0, in both language columns — an interpretation clause in the Terms does not reach
+  another document. The Privacy Policy's «Παιδιά» section now says what is true, that at a baptism the honouree IS a
+  child and their name is the event's name; and the DPA — the contract a venue signs for the guest data it is
+  Controller of — has its subject matter, its categories of data subjects and its documented retention instructions
+  written in terms of «εκδήλωση». Both moved in `sitemap.xml`.
+- **SEO.** New page **`plano-trapezion-vaptisis.html`** (written for baptisms — νονοί, παιδικό τραπέζι, the whole
+  church-then-hall arrival — not the wedding page with the nouns swapped), in `sitemap.xml`, linked from the home page,
+  the wedding page and both footers. `index.html`'s title, description, OG tags and JSON-LD now say both kinds. No
+  prices were touched.
+- **The venue's template is a ROOM, shared by both kinds.** It has no kind of its own and should not get one, but it
+  is drawn once (as a wedding) and every event starts from it — so `retypeStarter()` in the worker re-points the words
+  the PLANNER wrote (the head-table label, the starter group names, all three languages) to the new event's kind as
+  the copy is made. A name the venue typed itself is never rewritten, and a wedding made from a wedding's template is
+  word for word what it always was. The same rule runs in the planner (`retypeStarterWords()`) when the type is
+  corrected after the fact.
+- **Tests.** `node tools/test-api.mjs` — section 20 (`kind: …` / `planner: …` / `print: …` / `venue: …`), 823 checks in all.
+- **Still a wedding on purpose:** the planner's own title for a venue's **template** («Οργάνωση Τραπεζιών Γάμου», with
+  a «Νυφικό τραπέζι» starter). A template has no kind, `tr()` is binary, and a third "template" flavour would buy a
+  word only the venue ever sees at the price of the whole dictionary rule. What mattered — that those words reached
+  every baptism copied from it — is fixed at the copy instead.
+- **Not done on purpose:** Hermes still creates weddings only (`takeaseat_control.py` sends no kind, so its events are
+  weddings — voice baptisms would be a separate pass); `lab.html` is still a wedding demo; the local, never-synced
+  plans in the planner («Ο γάμος μας», «Γάμος {n}») are weddings, because a plan that is not online is not a sale.
 
 ## 2. Architecture
 
@@ -365,6 +445,8 @@ Browser ──HTTPS──> Caddy (edu-admin-caddy-1, owns :80/:443 on the shared
 | `lab.html` | **Generated** sandbox build (Greek, `MODE=lab`: demo data, storage under `weddingSeatingPlanner.lab.*`, no gate). |
 | `admin.html` | Owner console (create/manage venues, licenses). |
 | `venue.html` | Venue console (a κτήμα: log in with venue key → create weddings → copy couple links → 🔑 rotate key). |
+| `plano-trapezion-gamou.html` | Long-form couples page («πλάνο τραπεζιών γάμου»), with its own FAQ JSON-LD. |
+| `plano-trapezion-vaptisis.html` | The same for parents («πλάνο τραπεζιών βάπτισης», §1i) — its own words, not a copy. In `sitemap.xml`. |
 | `privacy.html` / `terms.html` / `dpa.html` | Legal (GR+EN). Privacy+Terms are publishable; DPA has per-signature blanks. |
 | `wedding-sync-worker.js` | **The API logic** (shared by the Cloudflare worker and the self-host server). |
 | `server/server.mjs` | Self-host server: SQLite KV adapter + static server + rate limiting + disk guard. |

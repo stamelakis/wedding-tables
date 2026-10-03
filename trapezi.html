@@ -181,7 +181,7 @@ var TAS_TOKEN = (function () {
       short: "Γράψτε τουλάχιστον τρία γράμματα από το όνομά σας.",
       gone: "Αυτός ο σύνδεσμος δεν ισχύει πια.",
       goneSub: "Σκανάρετε ξανά τον κωδικό QR στην είσοδο, ή ρωτήστε το προσωπικό.",
-      noTok: "Σκανάρετε τον κωδικό QR του γάμου.",
+      noTok: "Σκανάρετε τον κωδικό QR της εκδήλωσης.",
       noTokSub: "Η σελίδα ανοίγει μόνο από τον κωδικό QR που βρίσκεται στην είσοδο. Αν ανανεώσατε τη σελίδα, σκανάρετέ τον ξανά.",
       closed: "Η αναζήτηση δεν είναι ανοιχτή.",
       closedSub: "Ανοίγει μία εβδομάδα πριν τον γάμο και κλείνει δύο μέρες μετά. Αν ο γάμος γίνεται σήμερα, ρωτήστε το προσωπικό.",
@@ -217,7 +217,7 @@ var TAS_TOKEN = (function () {
       short: "Please type at least three letters of your name.",
       gone: "This link is no longer in use.",
       goneSub: "Scan the QR code at the entrance again, or ask the staff.",
-      noTok: "Please scan the wedding's QR code.",
+      noTok: "Please scan the event's QR code.",
       noTokSub: "This page only opens from the QR code at the entrance. If you reloaded the page, scan it again.",
       closed: "The search is not open.",
       closedSub: "It opens one week before the wedding and closes two days after. If the wedding is today, please ask the staff.",
@@ -253,7 +253,7 @@ var TAS_TOKEN = (function () {
       short: "Bitte schreiben Sie mindestens drei Buchstaben Ihres Namens.",
       gone: "Dieser Link gilt nicht mehr.",
       goneSub: "Scannen Sie den QR-Code am Eingang noch einmal, oder fragen Sie das Personal.",
-      noTok: "Bitte scannen Sie den QR-Code der Hochzeit.",
+      noTok: "Bitte scannen Sie den QR-Code der Veranstaltung.",
       noTokSub: "Diese Seite öffnet sich nur über den QR-Code am Eingang. Wenn Sie die Seite neu geladen haben, scannen Sie ihn noch einmal.",
       closed: "Die Suche ist nicht offen.",
       closedSub: "Sie öffnet eine Woche vor der Hochzeit und schließt zwei Tage danach. Wenn die Hochzeit heute ist, fragen Sie bitte das Personal.",
@@ -268,20 +268,34 @@ var TAS_TOKEN = (function () {
       foot: "Erstellt mit TakeaSeat"
     }
   };
+  /* Baptisms: the twin of every line that NAMES the event. The server sends `kind` with each answer this token
+     gets (the open ones and «closed» alike), so by the time any of these is on screen we know which it is. */
+  var B = {
+    el: { closedSub: "Ανοίγει μία εβδομάδα πριν τη βάπτιση και κλείνει δύο μέρες μετά. Αν η βάπτιση γίνεται σήμερα, ρωτήστε το προσωπικό." },
+    en: { closedSub: "It opens one week before the christening and closes two days after. If the christening is today, please ask the staff." },
+    de: { closedSub: "Sie öffnet eine Woche vor der Taufe und schließt zwei Tage danach. Wenn die Taufe heute ist, fragen Sie bitte das Personal." }
+  };
   /* Foreign guests at Greek weddings are common, so the phone decides and the switch is one tap away. */
   var LANG = (function () {
     var l = "";
     try { l = String((navigator.languages && navigator.languages[0]) || navigator.language || "").toLowerCase(); } catch (e) {}
     return /^el/.test(l) ? "el" : /^de/.test(l) ? "de" : /^en/.test(l) ? "en" : "el";
   })();
-  var T = function () { return S[LANG]; };
+  var T = function () {
+    var base = S[LANG];
+    if (V.kind !== "baptism") return base;
+    var o = {}, k, b = B[LANG] || {};
+    for (k in base) o[k] = base[k];
+    for (k in b) o[k] = b[k];
+    return o;
+  };
 
   var $ = function (id) { return document.getElementById(id); };
   var main = $("main"), out = $("out"), form = $("form"), q = $("q"), go = $("go"),
       ev = $("event"), evName = $("evName"), evDate = $("evDate");
 
   /* view: "ask" (the input) or "answer"; fatal hides the input, because typing cannot help any more */
-  var V = { view: "ask", fatal: false, msg: null, hits: null, sel: null, event: null, date: null };
+  var V = { view: "ask", fatal: false, msg: null, hits: null, sel: null, event: null, kind: "wedding", date: null };
   var pending = false, seq = 0;   /* seq: a reply that a rescan has overtaken is dropped, never drawn */
 
   var fold = function (s) { try { return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase(); } catch (e) { return s.toLowerCase(); } };
@@ -456,6 +470,7 @@ var TAS_TOKEN = (function () {
         /* The wedding header, before anything returns: a guest whose FIRST search is «too many» must still be able to
            see that they scanned the right wedding's QR. Keep what is already known if the answer carries nothing. */
         if (d.event != null) V.event = String(d.event);
+        if (d.kind) V.kind = (d.kind === "baptism") ? "baptism" : "wedding";
         if (d.date) V.date = d.date;
         if (d.tooMany) { show({ key: "many" }); return; }
         var hits = (d.matches || []).filter(function (h) { return h && h.name; });
@@ -466,7 +481,7 @@ var TAS_TOKEN = (function () {
       }
       if (r.s === 400 && d.error === "too_short") { show({ key: "short" }); return; }
       if (r.s === 404) { show({ key: "gone" }, true); return; }
-      if (r.s === 403) { show({ key: "closed" }, true); return; }
+      if (r.s === 403) { if (d.kind) V.kind = (d.kind === "baptism") ? "baptism" : "wedding"; show({ key: "closed" }, true); return; }
       if (r.s === 429) { show({ key: "busy", ra: r.ra }); return; }
       show({ key: "oops" });
     }, function () { if (mine !== seq) return; setPending(false); show({ key: "net" }); });
@@ -484,7 +499,7 @@ var TAS_TOKEN = (function () {
     if (location.hash) { try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {} }
     if (!t) return;
     TOK = t; seq++;                       /* whatever the old QR had in flight is no longer this guest's answer */
-    V = { view: "ask", fatal: false, msg: null, hits: null, sel: null, event: null, date: null };
+    V = { view: "ask", fatal: false, msg: null, hits: null, sel: null, event: null, kind: "wedding", date: null };
     q.value = ""; setPending(false); render();
     try { q.focus({ preventScroll: true }); } catch (e) { q.focus(); }
   });

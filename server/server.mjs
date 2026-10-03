@@ -337,7 +337,8 @@ http.createServer(async (req, res) => {
       const mode = b.mode === 'keepsake' ? 'keepsake' : 'floor', lang = PDF_LANG[b.lang] ? b.lang : 'el';
       const name = String(b.name || '').slice(0, 120);
       let pdf;
-      try { pdf = await renderPlanPdf(b.plan, { name, weddingDate: ymd(b.weddingDate), venueName: String(b.venueName || '').slice(0, 120), mode, lang, brand: b.brand !== false }); }
+      const kind = b.kind === 'baptism' ? 'baptism' : 'wedding';   // the planner says what the event is; anything else is a wedding
+      try { pdf = await renderPlanPdf(b.plan, { name, weddingDate: ymd(b.weddingDate), venueName: String(b.venueName || '').slice(0, 120), mode, lang, kind, brand: b.brand !== false }); }
       catch (e) { res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '30' }); res.end(e && e.busy ? '{"error":"pdf_busy"}' : '{"error":"pdf_failed"}'); return; }
       res.writeHead(200, { 'Content-Type': 'application/pdf', 'Cache-Control': 'no-store',
         'Content-Disposition': 'attachment; filename="takeaseat.pdf"; filename*=UTF-8\'\'' + encodeURIComponent(pdfFileName(name, mode, lang)) });
