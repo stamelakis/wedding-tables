@@ -19,7 +19,7 @@ COPY server/package.json server/package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 # App code: the server + its PDF renderer + the worker logic (as an ES module) + the static app files.
-COPY server/server.mjs server/pdf.mjs server/pdf-worker.mjs ./
+COPY server/server.mjs server/rate.mjs server/pdf.mjs server/pdf-worker.mjs ./
 COPY wedding-sync-worker.js ./worker.mjs
 RUN mkdir -p /app/public
 # Every marketing page and asset that the sitemap or a canonical points at MUST be in this list, or it 404s in
@@ -43,6 +43,7 @@ WORKDIR /t
 # package.json only supplies "type": "module"; node_modules is the app's own tree.
 COPY server/package.json ./package.json
 COPY wedding-sync-worker.js ./
+COPY server/rate.mjs ./server/
 COPY tools/test-api.mjs ./tools/
 RUN ln -s /app/node_modules /t/node_modules \
     && { node tools/test-api.mjs > /t/test.log 2>&1 || { cat /t/test.log; echo "API TESTS FAILED — image not built"; exit 1; }; } \
@@ -56,3 +57,7 @@ RUN cp /app/public/seating-planner*.html /app/public/lab.html /chk/ && cd /chk &
 # ---- the runtime image: "app" + proof that the checks ran ----
 FROM app
 COPY --from=check /t/checks-passed /app/.checks-passed
+# Which commit is running — deploy.sh passes it; «Διαγνωστικά» in the admin console shows it, so a question on the
+# phone ("is my fix live?") has an answer. Last in the file on purpose: it busts no earlier build-cache layer.
+ARG GIT_COMMIT=""
+ENV GIT_COMMIT=$GIT_COMMIT

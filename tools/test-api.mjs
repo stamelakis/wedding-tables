@@ -5,6 +5,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const mod = await import(pathToFileURL(path.join(root, 'wedding-sync-worker.js')).href);
 const worker = mod.default, migrate = mod.migrate;
+// The host's rate-limit bookkeeping: the one piece of «Διαγνωστικά» the worker does not compute itself.
+const { ratePressure, rateClient } = await import(pathToFileURL(path.join(root, 'server', 'rate.mjs')).href);
 
 const m = new Map();
 const PLANS = { get: async k => (m.has(k) ? m.get(k) : null), put: async (k, v) => { m.set(k, v); }, delete: async k => { m.delete(k); },
@@ -1526,5 +1528,333 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     for (const nm of ALL_NAMES) if (line.includes(nm)) heard.push('name «' + nm + '»');
   }
   ok(QUERIES.length > 25 && heard.length === 0, 'finder: answering ' + QUERIES.length + ' lookups the worker wrote ' + logs.length + ' log lines — none of them holding a query or any of the 316 names');
+}
+// ---------- 13. Εργαλεία: the owner's test & support tools ----------
+// Four tools behind the owner key: a wedding to play with, one card per customer, the numbers he is asked for on the
+// phone, and the guest finder as a guest at the door sees it. Two promises are checked here as hard as the features:
+// the delete never touches anything that is not flagged as test, and no card ever carries plan contents or a key.
+{
+  const day = athensDay;
+  const TOOLS = ['/admin/test/data', '/admin/diagnostics', '/admin/lookup?q=zz'];
+  const frag = (u, k) => { const m = new RegExp('#' + k + '=([A-Za-z0-9_-]+)').exec(String(u || '')); return m ? m[1] : ''; };
+  const hashOf = u => String(u || '').split('#')[1] || '';
+  const txt = x => JSON.stringify(x);
+  const ids = k => (m.has(k) ? raw(k) : []);
+
+  // ---- nothing in here is reachable without the owner key ----
+  let bad = [];
+  for (const u of TOOLS) { if ((await call('GET', u)).status !== 403) bad.push('GET ' + u); if ((await call('GET', u, undefined, { 'X-Owner-Key': 'nope' })).status !== 403) bad.push('GET(wrong) ' + u); }
+  for (const [mth, u] of [['POST', '/admin/test/wedding'], ['DELETE', '/admin/test/data'], ['POST', '/admin/test/email'], ['POST', '/admin/find-test']]) {
+    if ((await call(mth, u, {})).status !== 403) bad.push(mth + ' ' + u);
+    if ((await call(mth, u, {}, { 'X-Edit-Key': 'anything' })).status !== 403) bad.push(mth + '(other credential) ' + u);
+  }
+  ok(bad.length === 0, 'tools: every one of the ' + (TOOLS.length + 4) + ' routes refuses anyone but the owner key (403)', bad);
+
+  // ---- 1. ΔΟΚΙΜΑΣΤΙΚΟΣ ΓΑΜΟΣ ----
+  let r = await call('POST', '/admin/test/wedding', {}, OWN);
+  const W = r.d && r.d.wedding;
+  ok(r.status === 200 && W && W.planId && W.links, 'test wedding: one POST makes a whole wedding', r.d);
+  ok(W.name.startsWith('ΔΟΚΙΜΗ — ') && raw('plan:' + W.planId).test === true, 'test wedding: «ΔΟΚΙΜΗ» in the name AND test:true on the record');
+  ok(W.weddingDate > day(0) && W.weddingDate < day(7), 'test wedding: the date is a few days away, inside the finder window (' + W.weddingDate + ')');
+  ok(W.guests === 60 && W.tables === 9 && W.seated === 56 && W.phase === 'full', 'test wedding: 60 Greek guests on 8 tables + the head table, 4 still unseated, the room open', W);
+  const TP = raw('plan:' + W.planId).plan;
+  ok(TP.parties.length === 4 && Object.values(TP.guests).filter(g => g.partyId).length === 12 && new Set(Object.values(TP.guests).map(g => g.name)).size === 60,
+    'test wedding: four invitations, and all 60 names distinct', { parties: TP.parties.length });
+  const TV = raw('venue:' + 'tasdokimi0');
+  ok(TV && TV.test === true && TV.name.startsWith('ΔΟΚΙΜΗ') && TV.used === 0 && TV.weddings.length === 1,
+    'test wedding: it lives in its own test venue, and costs that venue no quota (used stays 0)', TV && { used: TV.used, n: TV.weddings.length });
+  ok((await call('GET', '/admin/venues', undefined, OWN)).d.venues.some(v => v.id === 'tasdokimi0'), 'test wedding: the test venue is listed like any other, flag and all');
+
+  // the four links it hands over must each open what they say they open
+  const tEdit = frag(W.links.couple, 'key'), tVenue = frag(W.links.venue, 'vkey'), tView = frag(W.links.view, 'view'), tFind = hashOf(W.links.find);
+  ok(W.links.couple.includes('?plan=' + W.planId) && tEdit && tVenue && tView && tFind, 'test wedding: four links — venue, couple, view, guest finder', W.links);
+  ok(W.links.find.endsWith('/trapezi.html#' + tFind), 'test wedding: the finder link is the guest page with the key in the fragment');
+  ok((await call('GET', '/plans/' + W.planId, undefined, { 'X-Edit-Key': tEdit })).d.role === 'couple', 'test wedding: the couple link opens it as the couple');
+  ok((await call('GET', '/plans/' + W.planId, undefined, { 'X-Edit-Key': tVenue })).d.role === 'venue', 'test wedding: the venue link opens it as the venue');
+  ok((await call('GET', '/plans/' + W.planId, undefined, { 'X-View-Key': tView })).d.role === 'viewer', 'test wedding: the view link opens it read-only');
+  r = await call('POST', '/find', { token: tFind, q: Object.values(TP.guests)[0].name.split(' ')[0].toLowerCase() });
+  ok(r.status === 200 && r.d.ok && r.d.event === W.name, 'test wedding: the guest finder is switched on and answers at the door', r.d);
+
+  // a second one is a second wedding, not a second venue
+  const W2 = (await call('POST', '/admin/test/wedding', { days: 1 }, OWN)).d.wedding;
+  ok(raw('venue:tasdokimi0').weddings.length === 2 && raw('venue:tasdokimi0').used === 0 && W2.weddingDate === day(1), 'test wedding: a second one joins the same test venue and still costs no quota');
+
+  // what exists — so nothing is ever left behind
+  r = await call('GET', '/admin/test/data', undefined, OWN);
+  ok(r.status === 200 && r.d.venue && r.d.venue.key && r.d.weddings.length === 2 && !r.d.strays.length, 'test data: the section lists the test venue, its key and both weddings, with no strays', { n: r.d.weddings.length });
+
+  // ---- the flag itself can never be asked for ----
+  {
+    const FV = (await call('POST', '/admin/venues', { name: 'Κτήμα Ψεύτικο', test: true, license: { type: 'per_wedding', quota: 5 } }, OWN)).d;
+    await call('PATCH', '/admin/venues/' + FV.id, { test: true }, OWN);
+    const FP = (await call('POST', '/venues/' + FV.id + '/weddings', { label: 'ΔΟΚΙΜΗ — όχι όμως', date: day(5) }, { 'X-Venue-Key': raw('venue:' + FV.id).key })).d;
+    ok(raw('venue:' + FV.id).test !== true && raw('plan:' + FP.planId).test !== true,
+      'test flag: no body can ask for it — the only sources are the admin tools and the test venue’s own record');
+    ok((await call('DELETE', '/admin/test/wedding/' + FP.planId, undefined, OWN)).status === 409, 'test flag: … so a customer wedding named «ΔΟΚΙΜΗ» is still refused');
+    await call('DELETE', '/admin/venues/' + FV.id, undefined, OWN);
+  }
+
+  // ---- the delete refuses anything that is not flagged as test ----
+  const VICTIM = (await call('POST', '/plans', { name: 'Πελάτης, όχι δοκιμή', plan: layout() }, OWN)).d;
+  r = await call('DELETE', '/admin/test/wedding/' + VICTIM.id, undefined, OWN);
+  ok(r.status === 409 && r.d.error === 'not_test' && m.has('plan:' + VICTIM.id), 'test delete: a customer plan id is refused (409 not_test) and the plan is still there', r.d);
+  ok(r.status !== 403, 'test delete: … and NOT with a 403 — in the admin block that means «wrong owner key», and the console signs itself out on one');
+  patchRaw('plan:' + VICTIM.id, o => { o.name = 'ΔΟΚΙΜΗ — δεν είμαι δοκιμή'; });   // the NAME is not what the delete trusts
+  ok((await call('DELETE', '/admin/test/wedding/' + VICTIM.id, undefined, OWN)).status === 409 && m.has('plan:' + VICTIM.id), 'test delete: «ΔΟΚΙΜΗ» in the name is not enough — only the flag on the record counts');
+  ok((await call('DELETE', '/admin/test/wedding/neverExistedAtAll00', undefined, OWN)).status === 404, 'test delete: an unknown id is a 404, and writes nothing');
+
+  // ---- deleting one, then everything ----
+  ok((await call('DELETE', '/admin/test/wedding/' + W2.planId, undefined, OWN)).status === 200, 'test delete: a flagged test wedding goes');
+  ok(!m.has('plan:' + W2.planId) && !m.has('find:' + hashOf(W2.links.find)) && raw('venue:tasdokimi0').weddings.length === 1,
+    'test delete: … with its finder row and its row in the test venue');
+  ok((await call('POST', '/find', { token: hashOf(W2.links.find), q: 'μαρια' })).status === 404, 'test delete: … and its QR is an unknown token from then on');
+  r = await call('DELETE', '/admin/test/data', undefined, OWN);
+  ok(r.status === 200 && r.d.plans === 1 && r.d.venue === true, 'test data: «delete everything» erases the remaining wedding and the test venue', r.d);
+  ok(!m.has('plan:' + W.planId) && !m.has('find:' + tFind) && !m.has('venue:tasdokimi0')
+    && !ids('venues:index').includes('tasdokimi0'), 'test data: nothing is left behind — plan, history, finder row, venue, index');
+  ok(m.has('plan:' + VICTIM.id), 'test data: … and the plan that only LOOKED like a test is untouched');
+  r = await call('GET', '/admin/test/data', undefined, OWN);
+  ok(r.status === 200 && !r.d.venue && !r.d.weddings.length && !r.d.strays.length, 'test data: and the list says so');
+  // a test plan left standing outside the venue is reported, then erased
+  m.set('plan:strayTestPlan000000', JSON.stringify({ name: 'ΔΟΚΙΜΗ — ορφανό', test: true, plan: layout(), editKey: 'k', owner: { type: 'couple' }, createdAt: Date.now(), updated: Date.now() }));
+  ok((await call('GET', '/admin/test/data', undefined, OWN)).d.strays.some(s => s.planId === 'strayTestPlan000000'), 'test data: a test plan left outside the test venue is listed as a stray');
+  ok((await call('DELETE', '/admin/test/data', undefined, OWN)).d.plans === 1 && !m.has('plan:strayTestPlan000000'), 'test data: … and «delete everything» takes it too');
+
+  // ---- the test venue's OWN console: the card hands him its key and invites him to use it ----
+  const W3 = (await call('POST', '/admin/test/wedding', {}, OWN)).d.wedding;
+  const TVK = raw('venue:tasdokimi0').key;
+  const CW = (await call('POST', '/venues/tasdokimi0/weddings', { label: 'Δεύτερος δοκιμαστικός', date: day(4) }, { 'X-Venue-Key': TVK })).d;
+  ok(raw('plan:' + CW.planId).test === true && raw('plan:' + CW.planId).name.startsWith('ΔΟΚΙΜΗ — '),
+    'test venue: a wedding made from inside the test venue console is flagged and marked too — the flag comes from the venue record, never from the body');
+  const CW2 = (await call('POST', '/venues/tasdokimi0/weddings', { label: 'ΔΟΚΙΜΗ — ήδη σημειωμένος', date: day(4) }, { 'X-Venue-Key': TVK })).d;
+  ok(raw('plan:' + CW2.planId).name === 'ΔΟΚΙΜΗ — ήδη σημειωμένος', 'test venue: … and the mark is not doubled when he wrote it himself');
+  r = await call('GET', '/admin/test/data', undefined, OWN);
+  ok(r.d.weddings.length === 3 && !r.d.strays.length, 'test venue: … so it is listed with the others instead of as a stray', { n: r.d.weddings.length });
+  ok((await call('DELETE', '/admin/test/wedding/' + CW.planId, undefined, OWN)).status === 200 && !m.has('plan:' + CW.planId),
+    'test venue: … and its «Διαγραφή» works, instead of being refused for something it never was');
+
+  // ---- a record that is NOT flagged, sitting in the test venue ----
+  const NF = 'notFlaggedInTest0000';
+  m.set('plan:' + NF, JSON.stringify({ name: 'Πελάτης κατά λάθος εδώ', plan: layout(), editKey: 'nfEditKeyXXXX', venueKey: 'nfVenueKeyXXXX', readKey: 'nfViewKeyXXXX',
+    owner: { type: 'venue', venueId: 'tasdokimi0' }, venueId: 'tasdokimi0', perms: {}, createdAt: Date.now(), updated: Date.now() }));
+  patchRaw('venue:tasdokimi0', o => { o.weddings.push({ planId: NF, label: 'Πελάτης κατά λάθος εδώ', createdAt: Date.now(), editKey: 'nfEditKeyXXXX', venueKey: 'nfVenueKeyXXXX' }); });
+  r = await call('GET', '/admin/test/data', undefined, OWN);
+  ok(!r.d.weddings.some(w => w.planId === NF), 'test data: sitting in the test venue is NOT what makes a record a test — an unflagged plan stays out of the list the UI badges «ΔΟΚΙΜΗ»');
+  const stray = r.d.strays.find(x => x.planId === NF);
+  ok(stray && stray.what === 'not_flagged' && !txt(r.d).includes('nfEditKeyXXXX') && !txt(r.d).includes('nfViewKeyXXXX'),
+    'test data: … it is reported as a stray instead, with none of its keys and no links', stray);
+  ok((await call('DELETE', '/admin/test/wedding/' + NF, undefined, OWN)).status === 409 && m.has('plan:' + NF),
+    'test data: … its delete is refused, and with the status the console does not read as a wrong owner key');
+  r = await call('DELETE', '/admin/test/data', undefined, OWN);
+  ok(r.status === 200 && r.d.kept === 1 && r.d.keptIds[0] === NF && r.d.venue === false && r.d.venueKept === true,
+    'test data: «delete everything» keeps the test venue when something it refused to delete still lives in it', r.d);
+  ok(m.has('plan:' + NF) && m.has('venue:tasdokimi0') && ids('venues:index').includes('tasdokimi0'),
+    'test data: … so the plan it spared is never stranded with no venue, no console and no way for him to reach it');
+  ok(raw('venue:tasdokimi0').weddings.length === 1 && raw('venue:tasdokimi0').weddings[0].planId === NF,
+    'test data: … and the venue keeps no rows pointing at the plans that did go');
+  r = await call('GET', '/admin/test/data', undefined, OWN);
+  ok(!r.d.weddings.length && r.d.strays.length === 1 && r.d.strays[0].what === 'not_flagged',
+    'test data: the list still reports it — «τίποτα δεν έχει μείνει πίσω» is only ever printed when that is true');
+  patchRaw('plan:' + NF, o => { o.test = true; });
+  r = await call('DELETE', '/admin/test/data', undefined, OWN);
+  ok(r.d.plans === 1 && r.d.venue === true && !m.has('venue:tasdokimi0') && !ids('venues:index').includes('tasdokimi0') && !m.has('plan:' + W3.planId),
+    'test data: once nothing is left standing in it, the test venue goes with everything else', r.d);
+
+  await call('DELETE', '/plans/' + VICTIM.id, undefined, { 'X-Edit-Key': VICTIM.editKey });
+
+  // ---- 2. ΥΠΟΣΤΗΡΙΞΗ ΠΕΛΑΤΗ ----
+  env.MAIL = { enabled: true, from: 'TakeaSeat <hello@takeaseat.gr>', send: () => true, status: () => ({ sent: 7, failed: 1, queued: 0, lastOkAt: Date.now(), lastError: null, mode: 'smtp', smtp: { host: 'smtp.test', port: 587, auth: true, login: 'ok', at: Date.now(), code: '' } }) };
+  const LC = (await call('POST', '/admin/couples', { name: 'Ευανθία & Σωτήρης', email: 'look@up.gr', contact: 'τηλ 69', weddingDate: day(40) }, OWN)).d.couple;
+  const LV = (await call('POST', '/admin/venues', { name: 'Κτήμα Αναζήτηση', email: 'look@up.gr', notes: 'μας βρήκε από τη Λάρισα', license: { type: 'seasonal', seasonStart: day(-10), seasonEnd: day(300) } }, OWN)).d;
+  const LVK = raw('venue:' + LV.id).key;   // with mail on the API never hands the admin a venue key; the test reads the store
+  const LW = (await call('POST', '/venues/' + LV.id + '/weddings', { label: 'Τάκης & Φωφώ', date: day(20) }, { 'X-Venue-Key': LVK })).d;
+  ok((await call('GET', '/admin/lookup?q=z', undefined, OWN)).status === 400, 'lookup: one character is refused (400)');
+  r = await call('GET', '/admin/lookup?q=' + encodeURIComponent('look@up.gr'), undefined, OWN);
+  ok(r.status === 200 && r.d.results.length === 2 && r.d.results.some(x => x.kind === 'couple' && x.id === LC.id) && r.d.results.some(x => x.kind === 'venue' && x.id === LV.id),
+    'lookup: one email finds both the couple and the venue that use it', r.d.results.map(x => x.kind));
+  const cc = (await call('GET', '/admin/lookup?q=' + encodeURIComponent('ευανθια'), undefined, OWN)).d.results[0];
+  ok(cc && cc.kind === 'couple' && cc.couple.name === 'Ευανθία & Σωτήρης', 'lookup: a couple by name, accents and case ignored');
+  ok(cc.plan && cc.plan.phase === 'waiting' && cc.plan.opensAt > Date.now() && cc.plan.lockAt > Date.now() && cc.plan.deleteAt > cc.plan.lockAt,
+    'lookup: the card says what state it is in — phase, when it opens, when it locks, when it is deleted', cc.plan && { p: cc.plan.phase });
+  ok(cc.couple.mailed === true && cc.couple.pendingClaim === true && cc.couple.emailVerified === false && cc.couple.claimedAt === null,
+    'lookup: … whether the link was sent, opened, and the address confirmed', cc.couple);
+  ok(cc.plan.find.on === false && cc.plan.find.opensAt < cc.plan.lockAt && cc.plan.find.open === false && Array.isArray(cc.plan.audit),
+    'lookup: … whether the guest finder is on, when its window is, and the last access-log entries');
+  const vv = (await call('GET', '/admin/lookup?q=' + encodeURIComponent('ΑΝΑΖΗΤΗΣΗ'), undefined, OWN)).d.results[0];
+  ok(vv && vv.kind === 'venue' && vv.licence.active === true && vv.licence.renewsAt === day(301) && vv.weddings.length === 1 && vv.weddings[0].planId === LW.planId,
+    'lookup: a venue by name — subscription active, when it renews, and its weddings', vv && vv.licence);
+  ok((await call('GET', '/admin/lookup?q=' + encodeURIComponent('Λάρισα'), undefined, OWN)).d.results.some(x => x.id === LV.id), 'lookup: … and his own private notes are searched too');
+  // «Πότε ανανεώνεται;» — answered the way renewSweep decides it, never from the dates alone. A season renews only
+  // after a reminder has really gone out, which needs an address, mail on and an active venue.
+  {
+    const vq = async q => (await call('GET', '/admin/lookup?q=' + encodeURIComponent(q), undefined, OWN)).d.results[0].licence;
+    const NV = (await call('POST', '/admin/venues', { name: 'Κτήμα Χωρίς Email', license: { type: 'seasonal', seasonStart: day(-400), seasonEnd: day(-1) } }, OWN)).d;
+    let q = await vq('Χωρίς Email');
+    ok(q.renewsAt === null && q.next === null && q.renewWhy === 'no_email',
+      'lookup: a venue with no email gets the reason it will not renew, not a date for a renewal the server has already ruled out', q);
+    await mod.sweep(env);
+    ok(raw('venue:' + NV.id).license.renewSkipped === raw('venue:' + NV.id).license.seasonEnd, 'lookup: … and the sweep really does skip it');
+    await call('PATCH', '/admin/venues/' + NV.id, { email: 'renew@example.gr' }, OWN);
+    q = await vq('Χωρίς Email');
+    ok(q.renewsAt === null && q.renewWhy === 'skipped', 'lookup: a season that already ended unrenewed says so, even once an address is added', q);
+    ok((await vq(LV.id)).renewsAt === day(301), 'lookup: a venue that will renew still gets its date');
+    const keepMail = env.MAIL; delete env.MAIL;
+    q = await vq(LV.id);
+    ok(q.renewsAt === null && q.next === null && q.renewWhy === 'mail_off', 'lookup: with mail off on the server nothing renews by itself, and the card says that instead of a date', q);
+    env.MAIL = keepMail;
+    await call('PATCH', '/admin/venues/' + LV.id, { active: false }, OWN);
+    ok((await vq(LV.id)).renewWhy === 'inactive', 'lookup: an inactive venue does not renew either');
+    await call('PATCH', '/admin/venues/' + LV.id, { active: true }, OWN);
+    ok((await vq(LV.id)).renewsAt === day(301) && (await vq(LV.id)).next.start > day(301), 'lookup: … and with everything in place the date and the next season come back');
+    await call('DELETE', '/admin/venues/' + NV.id, undefined, OWN);
+  }
+  r = await call('GET', '/admin/lookup?q=' + LW.planId, undefined, OWN);
+  ok(r.d.results.length === 1 && r.d.results[0].kind === 'venue' && r.d.results[0].focus === LW.planId, 'lookup: a plan id lands on the card of whoever owns it');
+  r = await call('GET', '/admin/lookup?q=' + encodeURIComponent('https://takeaseat.gr/seating-planner-el.html?plan=' + LW.planId + '#key=xxx'), undefined, OWN);
+  ok(r.d.results.length === 1 && r.d.results[0].focus === LW.planId, 'lookup: a pasted planner link does too');
+  ok((await call('GET', '/admin/lookup?q=' + encodeURIComponent('δενυπάρχεικανείς'), undefined, OWN)).d.results.length === 0, 'lookup: and nothing matching is an empty answer, not an error');
+
+  // ---- the promise: the admin cannot read a plan, and the cards keep it that way ----
+  patchRaw('plan:' + LW.planId, o => { o.plan = { ...layout(), guests: { gx: { name: 'Περσεφόνη Μυστικού', note: 'Αλλεργία' } } }; });
+  await call('PUT', '/plans/' + LW.planId + '/find', { on: true }, { 'X-Venue-Key': LVK });
+  const FKEY = raw('plan:' + LW.planId).find.key;
+  const LWP = raw('plan:' + LW.planId);
+  const cards = txt((await call('GET', '/admin/lookup?q=' + LW.planId, undefined, OWN)).d);
+  const leaks = ['Περσεφόνη', 'Αλλεργία', FKEY, LWP.editKey, LWP.venueKey, LWP.readKey, LVK, '"guests"', '"tables"', '"seats"'].filter(x => cards.includes(x));
+  ok(leaks.length === 0, 'lookup: the card carries no guest, no table, no count of either — and no key, finder key included', leaks);
+  ok((await call('GET', '/plans/' + LW.planId, undefined, OWN)).status === 401, 'lookup: and the owner key still opens no plan at all (401)');
+
+  // ---- 3. ΔΙΑΓΝΩΣΤΙΚΑ ----
+  env.HOST_INFO = () => ({ version: '1.0.0', commit: 'abc1234def', builtAt: '2026-10-03T00:00:00Z', startedAt: Date.now() - 60000, node: 'v22', kv: 'memory', pdf: false, rss: 1, rate: { rows: 2, live: 2, clients: 1, buckets: [{ kind: 'write', limit: 120, keys: 1, hits: 3, worst: 3, atLimit: 0 }] } });
+  await mod.sweep(env);
+  r = await call('GET', '/admin/diagnostics', undefined, OWN);
+  const D = r.d;
+  ok(r.status === 200 && D.mail.enabled === true && D.mail.smtp.login === 'ok' && D.mail.sent === 7, 'diagnostics: mail is on and the SMTP login state comes through', D.mail);
+  ok(D.host.commit === 'abc1234def' && D.host.version === '1.0.0' && D.host.rate.buckets[0].kind === 'write', 'diagnostics: version, commit and the current rate-limit pressure');
+  ok(D.sweep && D.sweep.at > 0 && D.sweep.out && typeof D.sweep.ms === 'number', 'diagnostics: when the hourly sweep last ran and what it did', D.sweep);
+  ok(D.counts.plans > 0 && D.counts.couples > 0 && D.counts.venues > 0 && D.counts.findersOn >= 1 && D.counts.testPlans === 0,
+    'diagnostics: how many venues, couples, plans and live finders exist', D.counts);
+  ok(typeof D.counts.lockIn7 === 'number' && typeof D.counts.deleteIn7 === 'number' && D.retention.keepDays >= 0,
+    'diagnostics: how many plans lock or are deleted in the next 7 days');
+  {
+    const before = D.counts.lockIn7;
+    const SOON = (await call('POST', '/admin/couples', { name: 'Κλειδώνει', weddingDate: day(2), startNow: true }, OWN)).d.couple;
+    ok((await call('GET', '/admin/diagnostics', undefined, OWN)).d.counts.lockIn7 === before + 1, 'diagnostics: … and a wedding two days away really moves that number');
+    await call('DELETE', '/admin/couples/' + SOON.id, undefined, OWN);
+  }
+  ok((await call('GET', '/admin/diagnostics', undefined, OWN)).d.counts.findersOn >= 1 && !txt(D).includes(FKEY), 'diagnostics: counts the live finders without naming one');
+  {
+    // Every test wedding is born with its finder on and a date three days out, so a few presses of the button would
+    // otherwise make «QR ανοιχτά», «QR που απαντούν» and «κλειδώνουν» read almost entirely as his own playground.
+    const b4 = (await call('GET', '/admin/diagnostics', undefined, OWN)).d.counts;
+    await call('POST', '/admin/test/wedding', {}, OWN);
+    await call('POST', '/admin/test/wedding', {}, OWN);
+    const af = (await call('GET', '/admin/diagnostics', undefined, OWN)).d.counts;
+    const moved = ['venues', 'couples', 'plans', 'findersOn', 'findersOpen', 'locked', 'noDate', 'lockIn7', 'deleteIn7', 'inTrash', 'support'].filter(k => af[k] !== b4[k]);
+    ok(moved.length === 0, 'diagnostics: two test weddings move none of the numbers he is asked for on the phone', { moved, b4, af });
+    ok(af.testPlans === b4.testPlans + 2 && af.testFinders === b4.testFinders + 2 && af.testVenues === 1,
+      'diagnostics: … they move only the test counters, which have tiles of their own', af);
+    await call('DELETE', '/admin/test/data', undefined, OWN);
+    ok((await call('GET', '/admin/diagnostics', undefined, OWN)).d.counts.plans === b4.plans, 'diagnostics: … and clearing them leaves the customers’ numbers exactly where they were');
+  }
+
+  // δοκιμαστικό email
+  const sentMail = [];
+  env.MAIL = { enabled: true, from: 'x', send: msg => { sentMail.push(msg); return true; }, status: () => ({}) };
+  ok((await call('POST', '/admin/test/email', { email: 'not an address' }, OWN)).status === 400, 'test email: a malformed address is refused (400)');
+  r = await call('POST', '/admin/test/email', { email: 'Andreas@Example.GR ', lang: 'el' }, OWN);
+  ok(r.status === 200 && r.d.to === 'an***@example.gr' && sentMail.length === 1 && /takeaseat/i.test(sentMail[0].text), 'test email: one real message goes out, and the answer masks the address', r.d);
+  ok(sentMail[0].to === 'andreas@example.gr' && /Δοκιμαστικό/.test(sentMail[0].subject), 'test email: in the language asked for, to the address he typed', sentMail[0]);
+  await call('POST', '/admin/test/email', { email: 'andreas@example.gr' }, OWN);
+  await call('POST', '/admin/test/email', { email: 'andreas@example.gr' }, OWN);
+  ok((await call('POST', '/admin/test/email', { email: 'andreas@example.gr' }, OWN)).status === 429, 'test email: the fourth one in an hour to the same address is refused — an admin mailbox is not a bullhorn');
+  delete env.MAIL;
+  ok((await call('POST', '/admin/test/email', { email: 'andreas@example.gr' }, OWN)).status === 503, 'test email: with mail off it says so (503) instead of pretending');
+  ok((await call('GET', '/admin/diagnostics', undefined, OWN)).d.mail.enabled === false, 'diagnostics: … and the diagnostics agree');
+
+  // ---- 4. ΔΟΚΙΜΗ «ΒΡΕΣ ΤΟ ΤΡΑΠΕΖΙ ΣΟΥ» ----
+  const probe = (link, q) => call('POST', '/admin/find-test', { link, q }, OWN);
+  patchRaw('plan:' + LW.planId, o => { o.weddingDate = day(1); o.plan = { ...layout(), tables: [{ id: 1, shape: 'round', x: 1, y: 1, label: '7', capacity: 2, seats: ['ga', null] }],
+    guests: { ga: { name: 'Περσεφόνη Μυστικού' }, gb: { name: 'Περικλής Μυστικού' }, gc: { name: 'Πέτρος Νικολάου' } } }; });
+  r = await probe('https://takeaseat.gr/trapezi.html#' + FKEY, 'περσεφ');
+  ok(r.status === 200 && r.d.status === 200 && r.d.guest.matches[0].name === 'Περσεφόνη Μυστικού' && r.d.guest.matches[0].table === '7' && r.d.why === 'match',
+    'finder test: a pasted link and a name give exactly the line the guest at the door gets', r.d.guest);
+  ok((await probe(FKEY, 'περσεφ')).d.guest.matches[0].table === '7', 'finder test: the bare key works as well as the link');
+  ok(raw('find:' + FKEY).n === 0, 'finder test: … and it spends none of the token\'s 1,500 a day — a customer\'s guests keep their budget');
+  ok((await call('POST', '/find', { token: FKEY, q: 'περσεφ' })).d.matches[0].table === '7' && raw('find:' + FKEY).n === 1, 'finder test: a real guest, through the public route, is counted as before');
+  r = await probe(FKEY, 'μυστικου');
+  ok(r.d.status === 200 && r.d.guest.tooMany === undefined && r.d.guest.matches.length === 2 && r.d.why === 'match', 'finder test: two matches are two lines');
+  patchRaw('plan:' + LW.planId, o => { for (let i = 0; i < 9; i++) o.plan.guests['gm' + i] = { name: 'Μυστικού Αριθμός ' + i }; });
+  r = await probe(FKEY, 'μυστικου');
+  ok(r.d.status === 200 && r.d.guest.tooMany === true && r.d.guest.count === 11 && !r.d.guest.matches && r.d.why === 'too_many',
+    'finder test: «too many» shows him the count and no names, exactly as the door page does', r.d.guest);
+  ok((await probe(FKEY, 'μυ')).d.status === 400 && (await probe(FKEY, 'μυ')).d.why === 'too_short', 'finder test: under three letters is the same 400 the page gets');
+  ok((await probe('https://takeaseat.gr/trapezi.html#' + 'z'.repeat(26), 'περσεφ')).d.status === 404, 'finder test: an unknown key is a 404 — the same answer a stranger gets');
+  r = await probe('όχι σύνδεσμος', 'περσεφ');
+  ok(r.d.status === 404 && r.d.why === 'bad_token', 'finder test: something that is not a link at all is told so, without a lookup');
+  // the window: too early, then too late
+  patchRaw('plan:' + LW.planId, o => { o.weddingDate = day(20); });
+  r = await probe(FKEY, 'περσεφ');
+  ok(r.d.status === 403 && r.d.why === 'too_early' && r.d.window.open === false && r.d.window.opensAt > Date.now() && r.d.guest.error === 'closed',
+    'finder test: a wedding 20 days out is «closed», and he is told when it opens', r.d.window);
+  patchRaw('plan:' + LW.planId, o => { o.weddingDate = day(-5); o.retention = { keep: true, lockAfter: false }; });
+  r = await probe(FKEY, 'περσεφ');
+  ok(r.d.status === 403 && r.d.why === 'too_late', 'finder test: five days after the wedding it is closed for good');
+  patchRaw('plan:' + LW.planId, o => { o.weddingDate = day(1); });
+  await call('PUT', '/plans/' + LW.planId + '/find', { on: false }, { 'X-Venue-Key': LVK });
+  r = await probe(FKEY, 'περσεφ');
+  ok(r.d.status === 404 && r.d.why === 'switched_off', 'finder test: switched off → the guest sees a plain 404, and he sees why');
+  await call('PUT', '/plans/' + LW.planId + '/find', { on: true, rotate: true }, { 'X-Venue-Key': LVK });
+  ok((await probe(FKEY, 'περσεφ')).d.why === 'unknown_token', 'finder test: after «νέος κωδικός» the old printed QR is an unknown token — the commonest complaint, answered in one paste');
+  const NK = raw('plan:' + LW.planId).find.key;
+  r = await probe(NK, 'περσεφ');
+  ok(r.d.status === 200 && r.d.planId === LW.planId && r.d.window.spentToday === 0, 'finder test: the new key works, and names the plan so the customer card is one click away');
+  ok(!txt(r.d).includes(NK), 'finder test: the answer never echoes the key back');
+  // ---- «στάλθηκε» has to mean the mail server took it, not «μπήκε στην ουρά» ----
+  {
+    const queued = [];
+    env.MAIL = { enabled: true, from: 'x', send: msg => { queued.push(msg); return true; }, status: () => ({}) };
+    const MC = (await call('POST', '/admin/couples', { name: 'Άννα & Πέτρος', email: 'anna@example.gr', weddingDate: day(60) }, OWN)).d.couple;
+    const tag = (queued.find(x => x.tag && x.tag.k === 'couple' && x.tag.id === MC.id) || {}).tag;
+    ok(MC.mailed === true && tag, 'mail: a claim link is queued carrying the record it belongs to, so its outcome can be written back', queued.map(x => x.tag));
+    const cardOf = async () => (await call('GET', '/admin/lookup?q=anna@example.gr', undefined, OWN)).d.results[0].couple;
+    ok((await cardOf()).mailFailedAt === null, 'mail: with nothing reported back the card says what it always said');
+    ok(await mod.mailOutcome(env, tag, false, 'ESOCKET CONN'), 'mail: a FINAL refusal by the mail server is recorded on the couple (a pending retry is not)');
+    let cd = await cardOf();
+    ok(cd.mailFailedAt > 0 && cd.mailError === 'ESOCKET CONN' && cd.mailed === true,
+      'mail: … so the support card can say «δεν στάλθηκε» instead of contradicting the Διαγνωστικά one card above it', cd);
+    await mod.mailOutcome(env, tag, true);
+    cd = await cardOf();
+    ok(cd.mailFailedAt === null && cd.mailError === null, 'mail: and a later message that does go through clears it again');
+    const bad = [{ k: 'plan', id: MC.id }, { k: 'couple', id: 'has/slash' }, { k: 'couple', id: '' }, null];
+    let wrote = 0; for (const t of bad) if (await mod.mailOutcome(env, t, false, 'x')) wrote++;
+    ok(wrote === 0, 'mail: the write-back only ever touches a couple or a venue, and only by a well-formed id');
+    ok((await call('DELETE', '/admin/couples/' + MC.id, undefined, OWN)).status === 200, 'mail: (tidy up)');
+    delete env.MAIL;
+  }
+
+  // ---- the host's rate-limit pressure: the keys are `<ip>:<bucket>`, and an IPv6 address is full of colons ----
+  {
+    const t0 = Date.now(), RL = new Map([
+      ['2a02:587:1234::5:write', [t0, t0, t0]],
+      ['2a02:587:9999::7:write', [t0]],
+      ['2a02:587:1234::5:findfail', [t0]],
+      ['2a02:587:1234::5:findfail!Zm9vYmFy', [t0]],
+      ['::ffff:203.0.113.9:find', [t0]],
+      ['127.0.0.1:authfail', [t0, t0]],
+    ]);
+    const P = ratePressure(RL, t0), by = Object.fromEntries(P.buckets.map(b => [b.kind, b]));
+    ok(by.write && by.write.limit === 120 && by.write.worst === 3 && by.find && by.find.limit === 400 && by.findfail && by.findfail.limit === 10
+      && by.findtoken && by.findtoken.limit === 1 && by.authfail && by.authfail.limit === 60,
+      'rate pressure: the bucket is read from the END of the key, so an IPv6 client keeps its tile name and its ceiling', P.buckets);
+    ok(!P.buckets.some(b => !b.limit), 'rate pressure: … and no tile is left with «max —», which is the only state the at-80% warning cannot fire in', P.buckets);
+    ok(P.clients === 4 && rateClient('2a02:587:1234::5:write') === '2a02:587:1234::5' && rateClient('2a02:587:1234::5:findfail!Zm9vYmFy') === '2a02:587:1234::5',
+      'rate pressure: three IPv6 addresses and one IPv4 count as four clients, not as one shared first hextet', { clients: P.clients });
+    ok(ratePressure(new Map(), t0).buckets.length === 0, 'rate pressure: nothing counting is no buckets, not a crash');
+  }
+
+  await call('DELETE', '/admin/couples/' + LC.id, undefined, OWN);
+  await call('DELETE', '/admin/venues/' + LV.id, undefined, OWN);
+  delete env.HOST_INFO;
 }
 console.log(`\nall ${n} checks passed`);

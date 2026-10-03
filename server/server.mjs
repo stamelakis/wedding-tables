@@ -14,7 +14,8 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import worker, { migrate, sweep } from './worker.mjs';
+import worker, { migrate, sweep, mailOutcome } from './worker.mjs';
+import { RL_WINDOW, ratePressure } from './rate.mjs';
 import { Worker } from 'node:worker_threads';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -60,6 +61,7 @@ if (process.env.AMELIE_API_URL) { env.AMELIE_API_URL = process.env.AMELIE_API_UR
 // ---- mail: sent after the response, one at a time (the API answers in the same time whether or not a mail goes out) ----
 const MAIL_FROM = process.env.MAIL_FROM || '';
 let transport = null;
+let smtp = null;   // {host, port, auth, login:'checking'|'ok'|'failed', at, code} — shown in «Διαγνωστικά»; never a password, never an address
 if (process.env.SMTP_HOST && MAIL_FROM) {
   try {
     const { default: nodemailer } = await import('nodemailer');
@@ -68,7 +70,11 @@ if (process.env.SMTP_HOST && MAIL_FROM) {
       connectionTimeout: 10000, greetingTimeout: 10000, socketTimeout: 20000,
       auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS || '' } : undefined });
     console.log('mail: SMTP via ' + process.env.SMTP_HOST + ':' + port + ' from ' + MAIL_FROM);
-    transport.verify().then(() => console.log('mail: SMTP login ok'), e => console.error('mail: SMTP check failed: ' + (e.code || '') + ' ' + (e.responseCode || '')));
+    smtp = { host: process.env.SMTP_HOST, port, auth: !!process.env.SMTP_USER, login: 'checking', at: null, code: '' };
+    transport.verify().then(
+      () => { smtp.login = 'ok'; smtp.at = Date.now(); console.log('mail: SMTP login ok'); },
+      e => { smtp.login = 'failed'; smtp.at = Date.now(); smtp.code = [e.code, e.responseCode].filter(Boolean).join(' ') || 'error';   // never e.message: it quotes the address
+             console.error('mail: SMTP check failed: ' + (e.code || '') + ' ' + (e.responseCode || '')); });
   } catch (e) { console.error('mail: SMTP not available', e.message); }
 } else if (process.env.MAIL_LOG === '1') {
   transport = { sendMail: async m => console.log('--- mail to ' + m.to + ' — ' + m.subject + '\n' + m.text + (m.attachments ? '\n[attachments: ' + m.attachments.map(a => a.filename + ' ' + (a.content ? a.content.length : 0) + ' bytes').join(', ') + ']' : '') + '\n---') };
@@ -78,16 +84,21 @@ const mailQueue = [];
 let mailBusy = false;
 const mailStat = { sent: 0, failed: 0, lastOkAt: null, lastError: null };   // shown in admin.html (GET /admin/mail)
 const maskAddr = a => String(a || '').replace(/^(.{0,2})[^@]*@/, '$1***@');
+// Set once the request queue exists (below): a tagged message's final outcome is written back to the couple / venue
+// record through the SAME queue as every request, so it can never interleave with a read-modify-write of its own.
+// Without this, «στάλθηκε» on the support card would mean no more than «μπήκε στην ουρά».
+let noteMail = null;
+const settleMail = (m, ok, code) => { if (m.tag && noteMail) noteMail(m.tag, ok, code); };
 async function drainMail() {
   if (mailBusy) return; mailBusy = true;
   while (mailQueue.length) {
     const m = mailQueue.shift();
-    try { await transport.sendMail({ from: MAIL_FROM || 'TakeaSeat <noreply@localhost>', to: m.to, subject: m.subject, text: m.text, ...(m.attachments ? { attachments: m.attachments } : {}) }); mailStat.sent++; mailStat.lastOkAt = Date.now(); }
+    try { await transport.sendMail({ from: MAIL_FROM || 'TakeaSeat <noreply@localhost>', to: m.to, subject: m.subject, text: m.text, ...(m.attachments ? { attachments: m.attachments } : {}) }); mailStat.sent++; mailStat.lastOkAt = Date.now(); settleMail(m, true); }
     catch (e) {
       const code = [e.code, e.responseCode, e.command].filter(Boolean).join(' ') || 'error';   // never e.message: SMTP errors quote the address
       const transient = !e.responseCode || (e.responseCode >= 400 && e.responseCode < 500);
       if (transient && !m.retried) { m.retried = true; setTimeout(() => { mailQueue.push(m); drainMail(); }, 60000).unref?.(); }
-      else { mailStat.failed++; mailStat.lastError = { at: Date.now(), code, to: maskAddr(m.to) }; }
+      else { mailStat.failed++; mailStat.lastError = { at: Date.now(), code, to: maskAddr(m.to) }; settleMail(m, false, code); }   // only a FINAL refusal is written back, never a pending retry
       console.error('mail failed to ' + maskAddr(m.to) + ': ' + code + (m.retried && transient && mailStat.lastError?.to !== maskAddr(m.to) ? ' (retry in 1 min)' : ''));
     }
   }
@@ -127,7 +138,7 @@ try {
   renderPlanPdf = renderPdf; env.PDF = { render: renderPdf }; console.log('pdf: on (worker thread)');
   setTimeout(() => renderPdf({ tables: [] }, {}).catch(e => console.error('pdf: warm-up failed: ' + e.message)), 3000).unref?.();   // parse the fonts once, not on the first customer's click
 } catch (e) { console.error('pdf: off (' + e.message + ')'); }
-if (transport) env.MAIL = { enabled: true, from: MAIL_FROM || '(log)', status: () => ({ ...mailStat, queued: mailQueue.length }),
+if (transport) env.MAIL = { enabled: true, from: MAIL_FROM || '(log)', status: () => ({ ...mailStat, queued: mailQueue.length, mode: smtp ? 'smtp' : 'log', smtp: smtp ? { ...smtp } : null }),
   send: m => { if (mailQueue.length > 500) return false; mailQueue.push(m); setImmediate(drainMail); return true; } };
 // One-time data migration for roles & access (idempotent; the nightly backup runs before any deploy that needs it).
 try { const r = await migrate(env); console.log('migration: ' + JSON.stringify(r)); }
@@ -135,6 +146,7 @@ catch (e) { console.error('migration failed', e); process.exit(1); }   // never 
 // API requests run one at a time: every read-modify-write in the worker sees a consistent store.
 let chain = Promise.resolve();
 const serial = fn => { const p = chain.then(fn, fn); chain = p.catch(() => {}); return p; };
+noteMail = (tag, ok, code) => serial(() => mailOutcome(env, tag, ok, code)).catch(e => console.error('mail outcome not recorded', e));
 // Hourly housekeeping: expired one-time links and rate-limit rows (through the same queue as requests).
 const runSweep = () => serial(() => sweep(env)).then(r => { if (r.tok || r.rlmail || r.claim || r.find || r.findEnded) console.log('sweep: ' + JSON.stringify(r)); }, e => console.error('sweep failed', e));
 setTimeout(runSweep, 60000).unref?.(); setInterval(runSweep, 3600000).unref?.();
@@ -189,7 +201,6 @@ function rateOk(key, limit, windowMs) {
   if (arr.length >= limit) { RL.set(key, arr); return false; }
   arr.push(now); RL.set(key, arr); return true;
 }
-const RL_WINDOW = k => k.endsWith(':mail') || k.includes(':findfail') ? 3600000 : k.endsWith(':find') ? 600000 : 60000;   // the housekeeping must never drop a row that is still counting (`:findfail` also carries the per-token rows below)
 // Has this IP already paid a findfail slot for THIS unknown token within the hour? The first sighting pays; every
 // repeat is free. Keyed on a hash, so no token ever becomes a long-lived key in memory, and bounded by the budget
 // itself: once the ten slots are spent the request is refused before it ever gets here.
@@ -197,6 +208,19 @@ const findSeen = (failKey, token) => rateOk(failKey + '!' + crypto.createHash('s
 setInterval(() => { const now = Date.now();
   for (const [k, arr] of RL) { const w = RL_WINDOW(k); const f = arr.filter(t => now - t < w); if (f.length) RL.set(k, f); else RL.delete(k); }
 }, 300000).unref?.();
+const STARTED_AT = Date.now();
+let PKG_VERSION = '';
+try { PKG_VERSION = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8')).version || ''; } catch (e) {}
+let BUILT_AT = null;   // written by the Docker "check" stage once the API tests and the planner check have passed
+try { BUILT_AT = fs.readFileSync(path.join(__dirname, '.checks-passed'), 'utf8').trim() || null; } catch (e) {}
+// What the admin console's «Διαγνωστικά» asks the host (the worker itself knows nothing about processes or sockets).
+env.HOST_INFO = () => ({
+  version: PKG_VERSION, commit: (process.env.GIT_COMMIT || '').trim().slice(0, 40) || null, builtAt: BUILT_AT,
+  startedAt: STARTED_AT, uptimeMs: Date.now() - STARTED_AT, node: process.version,
+  kv: process.env.KV_BACKEND === 'memory' ? 'memory' : 'sqlite', publicUrl: env.PUBLIC_URL,
+  pdf: !!renderPlanPdf, pdfQueue: pdfWaiting, trustProxy: TRUST_ALL ? 'all' : 'private-hop',
+  rss: process.memoryUsage().rss, rate: ratePressure(RL),
+});
 async function diskLow() {
   try { const s = await fs.promises.statfs(path.dirname(DB_PATH)); return (s.bavail * s.bsize) < 300 * 1024 * 1024; }
   catch (e) { return false; }   // fail-open if statfs is unavailable
@@ -259,7 +283,7 @@ http.createServer(async (req, res) => {
       res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '60' }); res.end('{"error":"rate_limited"}'); return;
     }
     // e-mail requests: 20 an hour per IP (each address is also limited to 3 an hour by the worker)
-    if ((req.method === 'POST' || req.method === 'PUT') && (canon === '/recover' || canon === '/admin/recover' || canon === '/admin/owner' || /^\/(plans|venues)\/[^/]+\/email$/.test(canon)) && !rateOk(ip + ':mail', 20, 3600000)) {
+    if ((req.method === 'POST' || req.method === 'PUT') && (canon === '/recover' || canon === '/admin/recover' || canon === '/admin/owner' || canon === '/admin/test/email' || /^\/(plans|venues)\/[^/]+\/email$/.test(canon)) && !rateOk(ip + ':mail', 20, 3600000)) {
       res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '3600' }); res.end('{"error":"rate_limited"}'); return;
     }
     if (isCreate && await diskLow()) {

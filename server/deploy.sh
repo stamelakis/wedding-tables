@@ -146,6 +146,7 @@ main() {
 
   # 5. build (runs the API tests + the stale-planner check)
   say "build"
+  export GIT_COMMIT="$new_rev"   # baked into the image; «Διαγνωστικά» in the admin console shows which commit is live
   if ! "${COMPOSE[@]}" build; then
     git reset -q --hard "$old_rev"
     echo

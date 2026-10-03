@@ -38,6 +38,8 @@
 // admin API never returns one; people recover on their own. Without mail, links are shown to the admin as before.
 //   GET/POST/DELETE /codes/:code  (device linking; the code is a shared secret)
 //   /admin/venues[/:id[/reset-key]] · /admin/couples[/:id[/reset]] · GET /admin/support          (X-Owner-Key)
+//   Εργαλεία (X-Owner-Key, see "Εργαλεία" below): POST /admin/test/wedding · DELETE /admin/test/wedding/:planId · GET/DELETE /admin/test/data
+//          · GET /admin/lookup?q= · GET /admin/diagnostics · POST /admin/test/email {email} · POST /admin/find-test {link|token, q}
 //   POST /admin/recover {email} · POST /admin/recover/claim {token, nonce}   (public: the owner forgot the admin key)
 //   /venues/:id · /rotate · /defaults · /template · /weddings[/:planId]                           (X-Venue-Key)
 
@@ -189,7 +191,22 @@ function pdfResponse(render, name, mode, lang) {   // render: a Promise of the b
   return new Response(body, { status: 200, headers: { ...CORS, "Content-Type": "application/pdf", "Cache-Control": "no-store",
     "Content-Disposition": "attachment; filename=\"takeaseat.pdf\"; filename*=UTF-8''" + encodeURIComponent(pdfName(name, mode, lang)) } });
 }
-function send(env, to, msg) { if (!mailOn(env) || !to) return false; try { return env.MAIL.send({ to, subject: msg.subject, text: msg.text, ...(msg.attachments ? { attachments: msg.attachments } : {}) }) !== false; } catch (e) { return false; } }
+// `tag` ({k:"couple"|"venue", id}) is how the host tells us afterwards whether SMTP really took the message: send()
+// itself only ever means "queued". Untagged messages (reminders, keepsakes) are fire-and-forget as before.
+function send(env, to, msg, tag) { if (!mailOn(env) || !to) return false; try { return env.MAIL.send({ to, subject: msg.subject, text: msg.text, ...(msg.attachments ? { attachments: msg.attachments } : {}), ...(tag ? { tag } : {}) }) !== false; } catch (e) { return false; } }
+// Called by the host once a tagged message has finally been accepted or finally refused — never on a retry that is
+// still pending. Without it the support card would keep saying «στάλθηκε» for a link that never left the building.
+export async function mailOutcome(env, tag, ok, code) {
+  const id = tag && typeof tag.id === "string" ? tag.id : "";
+  const pfx = tag && tag.k === "couple" ? "couple:" : tag && tag.k === "venue" ? "venue:" : "";
+  if (!pfx || !/^[A-Za-z0-9_-]{1,64}$/.test(id)) return false;
+  const r = await kvUpdate(env, pfx + id, cur => {
+    if (!cur) return null;
+    if (ok) { if (!cur.mailFailedAt && !cur.mailError) return null; cur.mailFailedAt = null; cur.mailError = null; return cur; }
+    cur.mailFailedAt = Date.now(); cur.mailError = String(code || "error").slice(0, 40); return cur;
+  });
+  return !!r.obj;
+}
 // Plain-text emails (names are user text: never HTML). {x} placeholders.
 const MAILS = {
   el: {
@@ -207,6 +224,7 @@ const MAILS = {
     ownerRecover: ["Πρόσβαση στη διαχείριση TakeaSeat", "Γεια σας,\n\nΖητήθηκε νέο κλειδί διαχείρισης για το TakeaSeat. Ανοίξτε τον σύνδεσμο και πατήστε το κουμπί για να δημιουργηθεί:\n\n{link}\n\nΟ σύνδεσμος ισχύει μία ώρα και ανοίγει μία φορά. Αν δεν το ζητήσατε εσείς, αγνοήστε αυτό το μήνυμα — δεν αλλάζει τίποτα.\n\nTakeaSeat"],
     ownerNewKey: ["Νέο κλειδί διαχείρισης — TakeaSeat", "Γεια σας,\n\nΔημιουργήθηκε νέο κλειδί διαχείρισης στις {at} μέσω του συνδέσμου ανάκτησης. Το προηγούμενο κλειδί ανάκτησης έπαψε να ισχύει.\n\nΑν δεν το κάνατε εσείς, μπείτε αμέσως στη διαχείριση και ακυρώστε το ή αλλάξτε το κλειδί στον διακομιστή.\n\nTakeaSeat"],
     ownerEmailSet: ["Διεύθυνση ανάκτησης διαχείρισης — TakeaSeat", "Γεια σας,\n\nΑυτή η διεύθυνση ορίστηκε ως διεύθυνση ανάκτησης για τη διαχείριση του TakeaSeat. Από εδώ θα μπορείτε να ζητήσετε νέο κλειδί αν το ξεχάσετε.\n\nTakeaSeat"],
+    selftest: ["Δοκιμαστικό μήνυμα — TakeaSeat", "Γεια σας,\n\nΔοκιμαστικό μήνυμα από τα «Εργαλεία» της διαχείρισης ({host}), {at}.\n\nΑν το λάβατε, η αποστολή email δουλεύει.\n\nTakeaSeat"],
     ownerEmailChanged: ["Η διεύθυνση ανάκτησης άλλαξε — TakeaSeat", "Γεια σας,\n\nΗ διεύθυνση ανάκτησης της διαχείρισης άλλαξε σε {email}. Αν δεν το κάνατε εσείς, ελέγξτε αμέσως τον διακομιστή.\n\nTakeaSeat"],
     renewSoon: ["Η συνδρομή σας ανανεώνεται στις {date} — TakeaSeat", "Γεια σας,\n\nΗ συνδρομή του «{name}» στο TakeaSeat ανανεώνεται αυτόματα στις {date} για την επόμενη σεζόν ({from} – {to}).\n\nΑν δεν θέλετε να ανανεωθεί, απενεργοποιήστε την αυτόματη ανανέωση από την κονσόλα σας έως τότε: {link}\n\nΓια οποιαδήποτε ερώτηση: info@takeaseat.gr · 697 735 5378 (10:00–14:00 και 17:00–21:00).\n\nTakeaSeat"],
     keepsakeKeep: ["Το αναμνηστικό του γάμου σας — TakeaSeat", "Συγχαρητήρια!\n\nΣας στέλνουμε, ως μικρό αναμνηστικό, το τραπεζολόγιο του γάμου σας «{name}» ({date}): όλοι όσοι γιόρτασαν μαζί σας και πού κάθισαν. Θα το βρείτε συνημμένο σε PDF.\n\nΣας ευχόμαστε κάθε ευτυχία!\nTakeaSeat"],
@@ -226,6 +244,7 @@ const MAILS = {
     ownerRecover: ["TakeaSeat admin access", "Hello,\n\nA new admin key was requested for TakeaSeat. Open the link and press the button to create it:\n\n{link}\n\nThe link is valid for one hour and opens once. If this was not you, ignore this message — nothing changes.\n\nTakeaSeat"],
     ownerNewKey: ["New admin key — TakeaSeat", "Hello,\n\nA new admin key was created on {at} through the recovery link. The previous recovery key stopped working.\n\nIf this was not you, open the admin console at once and revoke it, or change the key on the server.\n\nTakeaSeat"],
     ownerEmailSet: ["Admin recovery address — TakeaSeat", "Hello,\n\nThis address is now the recovery address for the TakeaSeat admin console. From here you can ask for a new key if you forget it.\n\nTakeaSeat"],
+    selftest: ["Test message — TakeaSeat", "Hello,\n\nA test message from the admin console tools ({host}), {at}.\n\nIf it reached you, mail delivery works.\n\nTakeaSeat"],
     ownerEmailChanged: ["The admin recovery address changed — TakeaSeat", "Hello,\n\nThe admin recovery address was changed to {email}. If this was not you, check the server right away.\n\nTakeaSeat"],
     renewSoon: ["Your subscription renews on {date} — TakeaSeat", "Hello,\n\nThe TakeaSeat subscription of “{name}” renews automatically on {date} for the next season ({from} – {to}).\n\nIf you do not want it to renew, turn automatic renewal off in your console before then: {link}\n\nAny questions: info@takeaseat.gr · +30 697 735 5378 (10:00–14:00 and 17:00–21:00, Greek time).\n\nTakeaSeat"],
     keepsakeKeep: ["A keepsake of your wedding — TakeaSeat", "Congratulations!\n\nAs a small keepsake, here is the seating plan of your wedding “{name}” ({date}): everyone who celebrated with you and where they sat. You will find it attached as a PDF.\n\nWishing you every happiness!\nTakeaSeat"],
@@ -245,6 +264,7 @@ const MAILS = {
     ownerRecover: ["TakeaSeat-Verwaltungszugang", "Hallo,\n\nFür TakeaSeat wurde ein neuer Verwaltungsschlüssel angefordert. Öffnen Sie den Link und drücken Sie die Schaltfläche, um ihn zu erstellen:\n\n{link}\n\nDer Link gilt eine Stunde und öffnet einmal. Wenn Sie das nicht waren, ignorieren Sie diese Nachricht — es ändert sich nichts.\n\nTakeaSeat"],
     ownerNewKey: ["Neuer Verwaltungsschlüssel — TakeaSeat", "Hallo,\n\nAm {at} wurde über den Wiederherstellungslink ein neuer Verwaltungsschlüssel erstellt. Der vorherige Wiederherstellungsschlüssel gilt nicht mehr.\n\nWenn Sie das nicht waren, öffnen Sie sofort die Verwaltung und widerrufen Sie ihn, oder ändern Sie den Schlüssel auf dem Server.\n\nTakeaSeat"],
     ownerEmailSet: ["Wiederherstellungsadresse der Verwaltung — TakeaSeat", "Hallo,\n\nDiese Adresse ist jetzt die Wiederherstellungsadresse für die TakeaSeat-Verwaltung. Von hier aus können Sie einen neuen Schlüssel anfordern, wenn Sie ihn vergessen.\n\nTakeaSeat"],
+    selftest: ["Testnachricht — TakeaSeat", "Hallo,\n\neine Testnachricht aus den Werkzeugen der Verwaltung ({host}), {at}.\n\nWenn sie angekommen ist, funktioniert der E-Mail-Versand.\n\nTakeaSeat"],
     ownerEmailChanged: ["Die Wiederherstellungsadresse wurde geändert — TakeaSeat", "Hallo,\n\nDie Wiederherstellungsadresse der Verwaltung wurde auf {email} geändert. Wenn Sie das nicht waren, prüfen Sie sofort den Server.\n\nTakeaSeat"],
     renewSoon: ["Ihr Abonnement verlängert sich am {date} — TakeaSeat", "Hallo,\n\nDas TakeaSeat-Abonnement von „{name}“ verlängert sich am {date} automatisch für die nächste Saison ({from} – {to}).\n\nWenn Sie keine Verlängerung wünschen, schalten Sie die automatische Verlängerung vorher in Ihrer Konsole aus: {link}\n\nFragen: info@takeaseat.gr · +30 697 735 5378 (10:00–14:00 und 17:00–21:00, griechische Zeit).\n\nTakeaSeat"],
     keepsakeKeep: ["Eine Erinnerung an Ihre Hochzeit — TakeaSeat", "Herzlichen Glückwunsch!\n\nAls kleine Erinnerung senden wir Ihnen den Sitzplan Ihrer Hochzeit „{name}“ ({date}): alle, die mit Ihnen gefeiert haben, und wo sie saßen. Sie finden ihn als PDF im Anhang.\n\nAlles Glück der Welt!\nTakeaSeat"],
@@ -313,8 +333,11 @@ async function ownerOk(request, env) {
 async function markMailed(env, cid, email) { await kvUpdate(env, "couple:" + cid, cp => { if (!cp) return null; cp.mailed = true; cp.mailedTo = email; return cp; }); }
 // Housekeeping (the server runs it hourly): expired one-time links, old rate-limit rows, old claim rows.
 export async function sweep(env) {
+  const started = Date.now();
   const out = { tok: 0, rlmail: 0, claim: 0, find: 0 };
-  if (typeof env.PLANS.list !== "function") return out;
+  // «Διαγνωστικά» answers "when did the hourly sweep last run and what did it do" from this one row.
+  const record = async o => { try { await env.PLANS.put("meta:sweep", JSON.stringify({ at: started, ms: Date.now() - started, ...o })); } catch (e) {} };
+  if (typeof env.PLANS.list !== "function") { await record({ skipped: "no list()", out }); return out; }
   const now = Date.now();
   for (const k of (await env.PLANS.list("find:")) || []) {   // a finder row outlives its plan only until the next sweep
     const f = safeParse(await env.PLANS.get(k));
@@ -335,6 +358,7 @@ export async function sweep(env) {
     if (!c || now - (c.createdAt || 0) > CLAIM_TTL + 86400000) { await env.PLANS.delete(k); out.claim++; }
   }
   Object.assign(out, await lifecycleSweep(env, now), await renewSweep(env, now));
+  await record({ out });
   return out;
 }
 // After the wedding: view only (+ a keepsake PDF by mail to couples who bought directly), deleted keepDays later.
@@ -395,7 +419,7 @@ async function lifecycleSweep(env, now) {
         for (const pid of (c.plans || [])) { const pr = safeParse(await env.PLANS.get("plan:" + pid)); if (pr && pr.coupleId === c.id) { await purgePlan(env, pid); out.purged++; } }
         if (c.claimToken) await env.PLANS.delete("claim:" + c.claimToken);
         await kvUpdate(env, "couple:" + c.id, cp => { if (!cp) return null;
-          Object.assign(cp, { purgedAt: now, plans: [], email: "", contact: "", pendingVerify: null, claimToken: null, mailed: false, mailedTo: null, emailVerified: false }); return cp; });
+          Object.assign(cp, { purgedAt: now, plans: [], email: "", contact: "", pendingVerify: null, claimToken: null, mailed: false, mailedTo: null, emailVerified: false, mailFailedAt: null, mailError: null }); return cp; });
         couples.delete("couple:" + c.id);
         if (c.email) { await indexEmail(env, c.email, "couple", c.id, false); await forgetEmail(env, c.email); }
       } else if (c) await kvUpdate(env, "couple:" + c.id, cp => { if (!cp) return null; cp.plans = (cp.plans || []).filter(x => x !== id); return cp; });
@@ -948,6 +972,227 @@ function findMatches(plan, q) {
   return out;
 }
 
+// One lookup, for the guest at the door and for the owner's finder tester. `probe` (the tester) resolves the token and
+// answers exactly the same way, but spends none of the token's 1,500 a day — testing a customer's QR must not eat the
+// budget their guests will need that evening. `why` and `window` are for the tester only; the guest is handed `body`
+// and nothing else, so no public answer ever says which of the three reasons made it a 404.
+async function findLookup(env, token, raw, probe) {
+  const q = findFold((typeof raw === "string" ? raw : "").slice(0, FIND_Q_MAX));   // only a typed string is a query
+  if (q.length < FIND_Q_MIN) return { status: 400, body: { error: "too_short" }, why: "too_short" };
+  token = typeof token === "string" ? token.trim() : "";
+  if (!FIND_TOKEN.test(token)) return { status: 404, body: { error: "not_found" }, why: "bad_token" };   // unknown, rotated, switched off: one answer for all three
+  const day = todayAthens();
+  let d;
+  if (probe) {
+    const cur = safeParse(await env.PLANS.get("find:" + token));
+    const n = (cur && cur.day === day) ? (cur.n || 0) : 0;
+    d = (!cur || !cur.id) ? { miss: true } : (n >= FIND_PER_TOKEN_DAY ? { over: true } : { id: String(cur.id), spent: n });
+  } else {
+    // Resolve the token and spend one of its 1,500 lookups a day in a single atomic step. An unknown token writes nothing.
+    const idx = await kvUpdate(env, "find:" + token, cur => {
+      if (!cur || typeof cur !== "object" || !cur.id) return { __res: { miss: true } };
+      const n = (cur.day === day ? (cur.n || 0) : 0) + 1;
+      if (n > FIND_PER_TOKEN_DAY) return { __res: { over: true } };
+      cur.day = day; cur.n = n;
+      return { __obj: cur, __res: { id: String(cur.id), spent: n } };
+    });
+    d = (idx && idx.res) || { miss: true };
+  }
+  if (d.miss) return { status: 404, body: { error: "not_found" }, why: "unknown_token" };
+  if (d.over) { const s = findResetSecs(); return { status: 429, body: { error: "busy", retryAfter: s }, headers: { "Retry-After": String(s) }, why: "token_cap" }; }
+  const rec = safeParse(await env.PLANS.get("plan:" + d.id));
+  if (!rec || rec.deletedAt || !rec.find || !rec.find.on || !eq(rec.find.key, token))
+    return { status: 404, body: { error: "not_found" },
+      why: !rec ? "plan_gone" : rec.deletedAt ? "plan_deleted" : !rec.find ? "never_on" : !rec.find.on ? "switched_off" : "rotated" };
+  const L = await planLife(env, rec, d.id);
+  const win = findWindow(L, rec, d.spent);
+  if (!findOpen(L)) return { status: 403, body: { error: "closed" }, why: Date.now() < (win.opensAt || 0) ? "too_early" : "too_late", window: win, planId: d.id };
+  const hits = findMatches(rec.plan, q);
+  // Too many: a count and no names at all — the guest types more of their name rather than being handed a list.
+  // The wedding's name and date ride along, as they do on every other answer: at 300 guests «too many» is the
+  // commonest FIRST answer a guest gets, and that answer has to be able to show them they scanned the right
+  // wedding's QR before it asks them to type more. It gives nothing away that this token could not already read
+  // — a query matching nobody returns the same two fields.
+  if (hits.length > FIND_MAX) return { status: 200, body: { ok: true, tooMany: true, count: hits.length, event: String(rec.name || ""), date: L.weddingDate }, why: "too_many", window: win, planId: d.id };
+  return { status: 200, body: { ok: true, event: String(rec.name || ""), date: L.weddingDate, matches: hits.map(h => ({ name: h.name, table: h.table })) },
+    why: hits.length ? "match" : "no_match", window: win, planId: d.id };
+}
+// When the door list answers, and how much of today's budget this token has spent. Never the key itself.
+const findWindow = (L, rec, spent) => ({
+  weddingDate: L ? L.weddingDate : null,
+  opensAt: (L && L.weddingDate) ? athensMidnight(addDays(L.weddingDate, -FIND_BEFORE_DAYS)) : null,
+  closesAt: findEndsAt(L) || null,
+  open: findOpen(L),
+  on: !!(rec && rec.find && rec.find.on),
+  since: (rec && rec.find && rec.find.at) || null,
+  rotatedAt: (rec && rec.find && rec.find.rotatedAt) || null,
+  spentToday: spent == null ? null : spent, perDay: FIND_PER_TOKEN_DAY,
+});
+// A pasted «βρες το τραπέζι σου» link (the token lives in the fragment) or the bare key → the key, or "".
+function findTokenOf(s) {
+  let t = String(s == null ? "" : s).trim();
+  const h = t.lastIndexOf("#"); if (h >= 0) t = t.slice(h + 1);
+  t = t.trim();
+  return FIND_TOKEN.test(t) ? t : "";
+}
+
+// ======================= Εργαλεία (admin console) =======================
+// Three things the owner used to need a shell for: a wedding to play with, one card per customer, and the numbers he is
+// asked for on the phone. All of it sits behind the owner key (the admin block checks it before any of this runs).
+//
+// The line none of it crosses: the admin never sees INSIDE a couple's plan. The cards below carry state and metadata —
+// dates, phases, who was mailed, the access log's role codes — and never a guest name, a table or a count of either.
+// They also never carry the finder's key: handing the owner that key would turn the finder tester into a way to read a
+// couple's guest list, which is the one thing this product promises he cannot do.
+
+const TEST_VENUE_ID = "tasdokimi0";          // one test venue, at a constant id in the shape of a real one
+const TEST_MARK = "ΔΟΚΙΜΗ";
+const TEST_VENUE_NAME = TEST_MARK + " — δοκιμαστικός χώρος";
+const TEST_DAYS_AHEAD = 3;                   // inside every window: the room is open, the door list answers, the lock is still ahead
+const isTest = x => !!(x && x.test === true);
+// Test data is marked on the RECORD (test: true) and in the name. `test` is never read from a request body anywhere in
+// this file — the only two sources are the admin tools below and the TEST VENUE'S OWN record (a wedding or template
+// made from its console inherits the flag). So no customer record can ever acquire it, the delete refuses anything
+// without it, and the listing of test data believes the flag rather than which venue a record happens to sit in.
+
+const TEST_MEN = ["Γιώργος", "Νίκος", "Δημήτρης", "Κώστας", "Γιάννης", "Βασίλης", "Παναγιώτης", "Θανάσης", "Στέλιος", "Αντώνης", "Μιχάλης", "Σπύρος", "Λευτέρης", "Χρήστος", "Αλέξανδρος"];
+const TEST_WOMEN = ["Μαρία", "Ελένη", "Κατερίνα", "Σοφία", "Δήμητρα", "Αγγελική", "Ιωάννα", "Βασιλική", "Χριστίνα", "Ευαγγελία", "Αναστασία", "Παρασκευή", "Ζωή", "Ειρήνη", "Αθηνά"];
+const TEST_SUR = [["Παπαδόπουλος", "Παπαδοπούλου"], ["Γεωργίου", "Γεωργίου"], ["Νικολάου", "Νικολάου"], ["Δημητρίου", "Δημητρίου"],
+  ["Αντωνίου", "Αντωνίου"], ["Βασιλείου", "Βασιλείου"], ["Ιωάννου", "Ιωάννου"], ["Οικονόμου", "Οικονόμου"],
+  ["Παπαγεωργίου", "Παπαγεωργίου"], ["Μακρής", "Μακρή"], ["Καραγιάννης", "Καραγιάννη"], ["Σταματίου", "Σταματίου"],
+  ["Αθανασίου", "Αθανασίου"], ["Λαμπρόπουλος", "Λαμπροπούλου"], ["Χατζής", "Χατζή"], ["Ανδρέου", "Ανδρέου"],
+  ["Μιχαηλίδης", "Μιχαηλίδου"], ["Σαμαράς", "Σαμαρά"], ["Βλάχος", "Βλάχου"], ["Ρούσσος", "Ρούσσου"]];
+const TEST_GROUPS = ["Πλευρά νύφης", "Πλευρά γαμπρού", "Φίλοι", "Οικογένεια"];
+const TEST_COLORS = ["#e26d8a", "#4a90d9", "#3aa657", "#e0a030"];
+const TEST_POS = [[450, 250], [750, 250], [1050, 250], [1350, 250], [450, 540], [750, 540], [1050, 540], [1350, 540]];   // the planner's own 4×2 starter
+// Math.random lives here and nowhere else in this file: these pick names for a demo wedding, never a credential (rnd()).
+const tpick = a => a[Math.floor(Math.random() * a.length)];
+const testGuestName = (k, woman) => (woman ? TEST_WOMEN[k % TEST_WOMEN.length] : TEST_MEN[k % TEST_MEN.length]) + " " + TEST_SUR[k % TEST_SUR.length][woman ? 1 : 0];
+
+// 60 guests on 8 round tables + the head table: 4 invitations, 54 seated, 4 still without a seat, a few «πιθανόν»
+// and a few notes — the same shape a real plan has, so everything in the planner has something to show.
+function testWeddingPlan(bride, groom) {
+  const tables = TEST_POS.map((p, i) => ({ id: 1001 + i, label: String(i + 1), shape: "round", x: p[0], y: p[1], capacity: 10, seats: Array(10).fill(null) }));
+  tables.push({ id: 2000, label: "Νυφικό τραπέζι", shape: "head", x: 900, y: 1110, capacity: 10, seats: Array(10).fill(null) });
+  const groups = TEST_GROUPS.map((n, i) => ({ id: "grp" + (i + 1), name: n, color: TEST_COLORS[i] }));
+  const features = [
+    { id: "f-ent", kind: "label", x: 900, y: 60, w: 190, h: 28, label: "Είσοδος καλεσμένων" },
+    { id: "f-kiosk", kind: "prop", x: 1500, y: 66, w: 150, h: 64, label: "Ποτό υποδοχής", icon: "🍹" },
+    { id: "f-floor", kind: "zone", x: 900, y: 860, w: 460, h: 340, label: "Πίστα χορού", material: "parquet" },
+    { id: "f-dj", kind: "marker", x: 1190, y: 860, w: 78, h: 34, label: "DJ" },
+  ];
+  const gid = n => "tg" + n, guests = {}, parties = [];
+  guests[gid(1)] = { name: bride, groupId: "grp1", status: "confirmed" };
+  guests[gid(2)] = { name: groom, groupId: "grp2", status: "confirmed" };
+  tables[8].seats[4] = gid(1); tables[8].seats[5] = gid(2);
+  for (let k = 0; k < 58; k++) {
+    const g = { name: testGuestName(k, k % 2 === 1), groupId: "grp" + ((k % 4) + 1), status: k % 9 === 4 ? "probable" : "confirmed" };
+    if (k === 6) g.note = "Χορτοφάγος";
+    if (k === 17) g.note = "Αλλεργία στα θαλασσινά";
+    if (k === 31) g.note = "Παιδικό μενού";
+    guests[gid(k + 3)] = g;
+  }
+  for (let p = 0; p < 4; p++) {   // four invitations of three, so the invitations panel is not empty
+    const first = 3 + p * 3, party = { id: "pty" + (p + 1), name: "Οικογένεια " + guests[gid(first)].name.split(" ").pop() };
+    parties.push(party);
+    for (let j = 0; j < 3; j++) guests[gid(first + j)].partyId = party.id;
+  }
+  let n = 3;
+  for (const t of tables.slice(0, 8)) for (let s = 0; s < 7 && n <= 56; s++, n++) t.seats[s] = gid(n);   // 54 seated; tg57…tg60 wait
+  return { _uid: 2100, tables, guests, groups, parties, activeGroupId: null, features,
+    seatFontScale: 1, tableFontScale: 1, nameMode: "full", stage: { w: 1800, h: 1220 }, stageMaterial: "grass", layoutVersion: 5 };
+}
+// The one test venue. A record already sitting at that id that is NOT flagged is never touched or overwritten.
+async function ensureTestVenue(env) {
+  const cur = safeParse(await env.PLANS.get("venue:" + TEST_VENUE_ID));
+  if (cur) return isTest(cur) ? cur : null;
+  const v = { id: TEST_VENUE_ID, name: TEST_VENUE_NAME, contact: "", notes: "Φτιάχνεται από τα «Εργαλεία» του admin. Ό,τι υπάρχει εδώ είναι δοκιμαστικό.",
+    email: "", lang: "el", key: TEST_VENUE_ID + "." + rnd(28), keyRotated: false,
+    license: normLicense({ type: "seasonal", quota: 0, cap: 0, autoRenew: false }), used: 0, weddings: [], trash: [],
+    active: true, test: true, createdAt: Date.now(), defaultPerms: { ...ALL_OPEN } };
+  await env.PLANS.put("venue:" + TEST_VENUE_ID, JSON.stringify(v));
+  await addIndex(env, "venues:index", TEST_VENUE_ID);
+  console.log("admin: the test venue was created");
+  return v;
+}
+const testLinks = (env, rec, id) => {
+  const p = plannerUrl(env, "el") + "?plan=" + id;
+  return { venue: p + "#vkey=" + rec.venueKey, couple: p + "#key=" + rec.editKey, view: p + "#view=" + rec.readKey,
+    find: (rec.find && rec.find.key) ? baseUrl(env) + "/trapezi.html#" + rec.find.key : null };
+};
+// A test wedding, with its four links and its counts. It is the owner's own data, so counts are fine here —
+// a customer's card (planCard) never carries them.
+async function testWeddingOut(env, rec, id) {
+  const L = await planLife(env, rec, id);
+  const st = planStats(rec.plan);
+  return { planId: id, name: rec.name, weddingDate: rec.weddingDate, createdAt: rec.createdAt || null, updated: rec.updated || null,
+    phase: L.phase, lockAt: L.lockAt, deleteAt: L.deleteAt, findOn: !!(rec.find && rec.find.on), findOpen: findOpen(L),
+    tables: st.tables, guests: st.guests, seated: st.seated, links: testLinks(env, rec, id) };
+}
+
+// ---- υποστήριξη πελάτη: one card per customer ----
+const LOOKUP_MAX = 12;
+// A pasted planner link (…?plan=<id>#…) or a bare id.
+function planIdOf(s) {
+  const t = String(s == null ? "" : s).trim();
+  const m = /[?&]plan=([A-Za-z0-9_-]{8,64})/.exec(t);
+  if (m) return m[1];
+  return /^[A-Za-z0-9_-]{8,64}$/.test(t) ? t : "";
+}
+// State and metadata of ONE plan. Never a guest, a table, a count of either, or the finder's key — those belong to the
+// people who own the plan. The plan id is here on purpose: the retention exception and the access log are keyed on it,
+// and the owner can already act on any id he types (it opens nothing without a key).
+async function planCard(env, rec, id, ctx) {
+  const L = await planLife(env, rec, id, ctx);
+  return {
+    planId: id, name: String(rec.name || ""), test: isTest(rec), template: !!rec.template,
+    createdAt: rec.createdAt || null, updated: rec.updated || null,
+    weddingDate: L.weddingDate, phase: L.phase, opensAt: L.opensAt || null, fullAt: L.fullAt || null, frozenUntil: L.frozenUntil || null,
+    lockAt: L.lockAt, deleteAt: L.deleteAt, locked: !!L.locked, over: !!L.over, keep: !!L.keep, fallback: !!L.fallback, child: !!L.child,
+    retention: rec.retention || null,
+    find: findWindow(L, rec, null),
+    support: supportActive(rec) ? { expires: rec.support.expires, createdAt: rec.support.createdAt || null, message: String(rec.support.message || "") } : null,
+    amelie: amelieOut(rec.amelie),
+    deletedAt: rec.deletedAt || null, purgeAt: rec.purgeAt || null,
+    dateChanges: rec.dateChanges || 0, resetAt: rec.resetAt || null,
+    // the access log the plan's own people see: role codes and times, never what was changed
+    audit: (Array.isArray(rec.audit) ? rec.audit : []).slice(-8).reverse()
+      .map(a => ({ t: a.t || null, who: a.who || "", what: a.what || "", n: a.n || 1, last: a.last || null, dev: a.dev || null })),
+  };
+}
+async function coupleCard(env, c, focus) {
+  const rec = safeParse(await env.PLANS.get("plan:" + c.planId));
+  const extra = [];
+  for (const pid of (c.plans || [])) { const p = safeParse(await env.PLANS.get("plan:" + pid)); if (p) extra.push(await planCard(env, p, pid, { couple: c })); }
+  return { kind: "couple", id: c.id, focus: focus || null, couple: await adminCouple(env, c),
+    plan: rec ? await planCard(env, rec, c.planId, { couple: c }) : null, extraPlans: extra };
+}
+async function venueCard(env, v, focus) {
+  const weddings = [];
+  for (const w of (v.weddings || [])) { const p = safeParse(await env.PLANS.get("plan:" + w.planId)); if (p) weddings.push(await planCard(env, p, w.planId, { venue: v })); }
+  let template = null;
+  if (v.templateId) { const t = safeParse(await env.PLANS.get("plan:" + v.templateId)); if (t) template = { planId: v.templateId, updated: t.updated || null }; }
+  const lic = v.license || {};
+  // «Πότε ανανεώνεται;» answered the way renewSweep really decides it, not from the dates alone: it renews only after
+  // a renewal reminder has actually gone out, which needs an address, mail on and an active venue. When one of those
+  // is missing the card gives the reason instead of a date the server has already decided will never come.
+  const seasonal = lic.type !== "per_wedding" && ymdOk(lic.seasonEnd);
+  const renewWhy = !seasonal ? null
+    : lic.autoRenew === false ? "off"
+    : v.active === false ? "inactive"
+    : !v.email ? "no_email"
+    : !mailOn(env) ? "mail_off"
+    : lic.renewSkipped === lic.seasonEnd ? "skipped" : null;
+  const renewsAt = (seasonal && !renewWhy) ? addDays(lic.seasonEnd, 1) : null;
+  return { kind: "venue", id: v.id, focus: focus || null, test: isTest(v), venue: adminVenue(v),
+    // "has their link been sent": with mail on, a venue that never used its setup link still has keyPrivate set
+    setup: { mailed: !!v.keyPrivate, keySet: !!v.keyRotated, resetAt: v.keyResetAt || null, failedAt: v.mailFailedAt || null, error: v.mailError || null },
+    licence: { active: canCreateWedding(v).ok, reason: canCreateWedding(v).reason || null, renewsAt, renewWhy,
+      next: renewsAt ? nextSeason(lic) : null, invoiceDue: !!lic.invoiceDue, renewSkipped: lic.renewSkipped || null },
+    weddings, template,
+    trash: (v.trash || []).map(t => ({ planId: t.planId, label: t.label, deletedAt: t.deletedAt, purgeAt: t.purgeAt, date: t.date || null })) };
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") return new Response(null, { headers: CORS });
@@ -1277,34 +1522,8 @@ export default {
         // that it is never in a URL we are sent, in a Referer, or in anybody's access log.
         if ([...new URL(request.url).searchParams.keys()].length) return json({ error: "bad_request" }, 400);
         const b = await readBody(request);
-        const q = findFold((typeof b.q === "string" ? b.q : "").slice(0, FIND_Q_MAX));   // only a typed string is a query
-        if (q.length < FIND_Q_MIN) return json({ error: "too_short" }, 400);
-        const token = typeof b.token === "string" ? b.token.trim() : "";
-        if (!FIND_TOKEN.test(token)) return json({ error: "not_found" }, 404);   // unknown, rotated, switched off: one answer for all three
-        const day = todayAthens();
-        // Resolve the token and spend one of its 1,500 lookups a day in a single atomic step. An unknown token writes nothing.
-        const idx = await kvUpdate(env, "find:" + token, cur => {
-          if (!cur || typeof cur !== "object" || !cur.id) return { __res: { miss: true } };
-          const n = (cur.day === day ? (cur.n || 0) : 0) + 1;
-          if (n > FIND_PER_TOKEN_DAY) return { __res: { over: true } };
-          cur.day = day; cur.n = n;
-          return { __obj: cur, __res: { id: String(cur.id) } };
-        });
-        const d = (idx && idx.res) || { miss: true };
-        if (d.miss) return json({ error: "not_found" }, 404);
-        if (d.over) { const s = findResetSecs(); return json({ error: "busy", retryAfter: s }, 429, { "Retry-After": String(s) }); }
-        const rec = safeParse(await env.PLANS.get("plan:" + d.id));
-        if (!rec || rec.deletedAt || !rec.find || !rec.find.on || !eq(rec.find.key, token)) return json({ error: "not_found" }, 404);
-        const L = await planLife(env, rec, d.id);
-        if (!findOpen(L)) return json({ error: "closed" }, 403);
-        const hits = findMatches(rec.plan, q);
-        // Too many: a count and no names at all — the guest types more of their name rather than being handed a list.
-        // The wedding's name and date ride along, as they do on every other answer: at 300 guests «too many» is the
-        // commonest FIRST answer a guest gets, and that answer has to be able to show them they scanned the right
-        // wedding's QR before it asks them to type more. It gives nothing away that this token could not already read
-        // — a query matching nobody returns the same two fields.
-        if (hits.length > FIND_MAX) return json({ ok: true, tooMany: true, count: hits.length, event: String(rec.name || ""), date: L.weddingDate });
-        return json({ ok: true, event: String(rec.name || ""), date: L.weddingDate, matches: hits.map(h => ({ name: h.name, table: h.table })) });
+        const a = await findLookup(env, b.token, b.q, false);   // the one lookup; the owner's tester calls it with probe = true
+        return json(a.body, a.status, a.headers);               // the guest is told the answer and never the reason behind it
       }
       // ---------------- claim: a couple opens the link TakeaSeat sent (once; the same device may retry briefly) ----------------
       if (parts[0] === "claim" && parts.length === 1 && request.method === "POST") {
@@ -1582,7 +1801,7 @@ export default {
             if (email && mailOn(env)) {
               v.keyPrivate = true;
               const t = await mintToken(env, { kind: "venue-setup", vid: id, lg: 0, email }, SETUP_TTL);
-              mailed = send(env, email, mailMsg(lang, "setup", { name: v.name, link: baseUrl(env) + "/venue.html#recover=" + t }));
+              mailed = send(env, email, mailMsg(lang, "setup", { name: v.name, link: baseUrl(env) + "/venue.html#recover=" + t }), { k: "venue", id });
               if (!mailed) v.keyPrivate = false;
             }
             await env.PLANS.put("venue:" + id, JSON.stringify(v));
@@ -1607,7 +1826,7 @@ export default {
             if (v.email && mailOn(env)) {   // the venue gets a link to set a new key; its current key keeps working until then
               const g = await kvUpdate(env, "venue:" + v.id, cur => { if (!cur) return null; return { __obj: cur, __res: nextGen(cur) }; });   // older mailed links retire
               const t = await mintToken(env, { kind: "venue-recover", vid: v.id, lg: g.res, email: v.email }, SETUP_TTL);
-              if (!send(env, v.email, mailMsg(v.lang, "venueReset", { name: v.name, link: baseUrl(env) + "/venue.html#recover=" + t }))) return json({ error: "mail_failed" }, 503);
+              if (!send(env, v.email, mailMsg(v.lang, "venueReset", { name: v.name, link: baseUrl(env) + "/venue.html#recover=" + t }), { k: "venue", id: v.id })) return json({ error: "mail_failed" }, 503);
               return json({ ok: true, mailed: true, to: maskEmail(v.email) });
             }
             const newKey = v.id + "." + rnd(28);
@@ -1682,7 +1901,7 @@ export default {
         }
         if (parts[1] === "couples") {
           // With mail and an address the claim link goes straight to the couple: the admin never sees it.
-          const mailClaim = (c, token) => send(env, c.email, mailMsg(c.lang, "claim", { name: c.name, link: plannerUrl(env, c.lang) + "#claim=" + token, recover: plannerUrl(env, c.lang) + "#recover" }));
+          const mailClaim = (c, token) => send(env, c.email, mailMsg(c.lang, "claim", { name: c.name, link: plannerUrl(env, c.lang) + "#claim=" + token, recover: plannerUrl(env, c.lang) + "#recover" }), { k: "couple", id: c.id });
           if (parts.length === 2 && request.method === "POST") {   // a couple bought TakeaSeat: a plan only they can open
             const b = await readBody(request);
             const email = normEmail(b.email), lang = langOf(b.lang);
@@ -1806,6 +2025,194 @@ export default {
           if (dead.length) await kvUpdate(env, "support:index", cur => Array.isArray(cur) ? cur.filter(x => !dead.includes(x)) : null);
           return json({ requests: out });
         }
+        // ================= Εργαλεία: test and support tools (owner key, checked above) =================
+        // 1. ΔΟΚΙΜΑΣΤΙΚΟΣ ΓΑΜΟΣ — a whole wedding to play with, in its own test venue, counting against nobody's licence.
+        if (parts[1] === "test" && parts[2] === "wedding" && parts.length === 3 && request.method === "POST") {
+          const b = await readBody(request);
+          const v = await ensureTestVenue(env);
+          if (!v) return json({ error: "not_test" }, 409);   // something else already sits at the test venue's id: never touched
+          const dRaw = parseInt(b.days, 10);
+          const days = Number.isFinite(dRaw) ? Math.max(0, Math.min(FIND_BEFORE_DAYS - 1, dRaw)) : TEST_DAYS_AHEAD;
+          const date = addDays(todayAthens(), days);
+          const bride = tpick(TEST_WOMEN), groom = tpick(TEST_MEN);
+          const id = rnd(22), editKey = rnd(28), venueKey = rnd(28), readKey = rnd(24), findKey = rnd(FIND_KEY_LEN), now = Date.now();
+          const rec = { name: TEST_MARK + " — " + bride + " & " + groom, plan: testWeddingPlan(bride, groom),
+            editKey, venueKey, readKey, owner: { type: "venue", venueId: v.id }, venueId: v.id, test: true,
+            perms: { ...ALL_OPEN }, layoutAt: now, keyGen: 0, venueGen: 0, weddingDate: date, createdAt: now, updated: now,
+            find: { key: findKey, on: true, at: now, by: "admin", rotatedAt: null }, audit: [] };
+          addAudit(rec, "admin", "find_on");
+          await env.PLANS.put("plan:" + id, JSON.stringify(rec));
+          await env.PLANS.put("find:" + findKey, JSON.stringify({ id, day: todayAthens(), n: 0 }));
+          // `used` is deliberately NOT touched and the licence is not consulted: a test wedding costs no quota, no cap.
+          await kvUpdate(env, "venue:" + v.id, cur => { if (!isTest(cur)) return null;
+            cur.weddings = [...(cur.weddings || []), { planId: id, label: rec.name, createdAt: now, editKey, venueKey, perms: { ...ALL_OPEN }, layoutSet: true, date, test: true }];
+            return cur; });
+          console.log("admin: a test wedding was created (" + days + " days ahead)");
+          return json({ wedding: await testWeddingOut(env, rec, id), venueConsole: { url: baseUrl(env) + "/venue.html", key: v.key, name: v.name } });
+        }
+        // What test data exists right now — so nothing is ever left behind.
+        if (parts[1] === "test" && parts[2] === "data" && parts.length === 3 && request.method === "GET") {
+          const v = safeParse(await env.PLANS.get("venue:" + TEST_VENUE_ID));
+          const weddings = [], strays = [];
+          const inVenue = new Set();
+          // Sitting in the test venue is NOT what makes a record a test: only the flag on the record is. Anything else
+          // in there is reported as a stray — without the ΔΟΚΙΜΗ badge, without its keys, and without a delete button
+          // that would only be refused. (The same flag the delete below keys on, so the two ends can never disagree.)
+          if (isTest(v)) for (const w of (v.weddings || [])) {
+            inVenue.add(w.planId);
+            const p = safeParse(await env.PLANS.get("plan:" + w.planId));
+            if (!p) strays.push({ planId: w.planId, what: "dangling_row", name: String(w.label || "") });   // a row in the venue whose plan is gone
+            else if (isTest(p)) weddings.push(await testWeddingOut(env, p, w.planId));
+            else strays.push({ planId: w.planId, what: "not_flagged", name: String(p.name || "") });
+          }
+          // Anything else flagged as test, wherever it ended up.
+          if (typeof env.PLANS.list === "function") for (const k of (await env.PLANS.list("plan:")) || []) {
+            const pid = k.slice(5); if (inVenue.has(pid)) continue;
+            const p = safeParse(await env.PLANS.get(k));
+            if (isTest(p)) strays.push({ planId: pid, what: "orphan_plan", name: String(p.name || "") });
+          }
+          return json({ venue: isTest(v) ? { id: v.id, name: v.name, key: v.key, createdAt: v.createdAt, url: baseUrl(env) + "/venue.html" } : null,
+            weddings, strays, mark: TEST_MARK });
+        }
+        // Delete one test wedding. It refuses anything that is not flagged as test, whatever id is typed.
+        if (parts[1] === "test" && parts[2] === "wedding" && parts.length === 4 && request.method === "DELETE") {
+          const pid = parts[3];
+          const rec = safeParse(await env.PLANS.get("plan:" + pid));
+          // 409, never 403: in the admin block a 403 means "wrong owner key" and the console signs itself out on one.
+          if (rec && !isTest(rec)) return json({ error: "not_test" }, 409);
+          const row = await kvUpdate(env, "venue:" + TEST_VENUE_ID, cur => { if (!isTest(cur)) return null;
+            const had = (cur.weddings || []).some(w => w.planId === pid) || (cur.trash || []).some(t => t.planId === pid);
+            if (!had) return { __res: false };
+            cur.weddings = (cur.weddings || []).filter(w => w.planId !== pid);
+            cur.trash = (cur.trash || []).filter(t => t.planId !== pid);
+            return { __obj: cur, __res: true }; });
+          if (!rec && !row.res) return json({ error: "not found" }, 404);
+          if (rec) await purgePlan(env, pid, rec);
+          console.log("admin: a test wedding was deleted");
+          return json({ ok: true, purged: !!rec });
+        }
+        // Delete everything the test button ever made, the test venue included. Never a record without the flag.
+        if (parts[1] === "test" && parts[2] === "data" && parts.length === 3 && request.method === "DELETE") {
+          const v = safeParse(await env.PLANS.get("venue:" + TEST_VENUE_ID));
+          if (v && !isTest(v)) return json({ error: "not_test" }, 409);
+          const ids = new Set();
+          if (v) { for (const w of (v.weddings || [])) ids.add(w.planId); for (const t of (v.trash || [])) ids.add(t.planId); if (v.templateId) ids.add(v.templateId); }
+          if (typeof env.PLANS.list === "function") for (const k of (await env.PLANS.list("plan:")) || []) { if (isTest(safeParse(await env.PLANS.get(k)))) ids.add(k.slice(5)); }
+          let plans = 0; const keptIds = [], gone = new Set();
+          for (const pid of ids) { const p = safeParse(await env.PLANS.get("plan:" + pid));
+            if (!p) continue;
+            if (!isTest(p)) { keptIds.push(pid); continue; }   // a plan without the flag is left exactly where it is
+            await purgePlan(env, pid, p); plans++; gone.add(pid); }
+          // A plan we refused to purge keeps its venue: deleting the test venue under it would strand it with no
+          // console, no owner and no way back. The venue goes only when nothing is left standing in it.
+          const keepVenue = !!v && keptIds.length > 0;
+          if (v && !keepVenue) { await env.PLANS.delete("venue:" + TEST_VENUE_ID); await removeIndex(env, "venues:index", TEST_VENUE_ID); }
+          else if (keepVenue) await kvUpdate(env, "venue:" + TEST_VENUE_ID, cur => { if (!isTest(cur)) return null;   // …but its rows for the plans that did go are cleared
+            cur.weddings = (cur.weddings || []).filter(w => !gone.has(w.planId));
+            cur.trash = (cur.trash || []).filter(t => !gone.has(t.planId));
+            if (cur.templateId && gone.has(cur.templateId)) cur.templateId = null;
+            return cur; });
+          console.log("admin: test data erased (" + plans + " plans" + (v ? (keepVenue ? ", the test venue kept for " + keptIds.length + " record(s) that are not test data" : " + the test venue") : "") + ")");
+          return json({ ok: true, plans, venue: !!v && !keepVenue, kept: keptIds.length, keptIds, venueKept: keepVenue });
+        }
+
+        // 2. ΥΠΟΣΤΗΡΙΞΗ ΠΕΛΑΤΗ — one box: an email, a venue name, a couple's name, an id or a pasted link.
+        // State and metadata only: no route below ever reaches inside a plan.
+        if (parts[1] === "lookup" && parts.length === 2 && request.method === "GET") {
+          const qRaw = (new URL(request.url).searchParams.get("q") || "").trim().slice(0, 200);
+          if (qRaw.length < 2) return json({ error: "too_short" }, 400);
+          const fold = findFold(qRaw);   // the same accent/case folding the planner's own search uses
+          const results = [], seen = new Set();
+          const refocus = (kind, id, focus) => { const e = results.find(x => x.kind === kind && x.id === id); if (e && focus) e.focus = focus; };
+          const addCouple = async (c, focus) => { if (!c) return; if (seen.has("c:" + c.id)) return refocus("couple", c.id, focus);
+            seen.add("c:" + c.id); results.push(await coupleCard(env, c, focus)); };
+          const addVenue = async (v, focus) => { if (!v) return; if (seen.has("v:" + v.id)) return refocus("venue", v.id, focus);
+            seen.add("v:" + v.id); results.push(await venueCard(env, v, focus)); };
+          const em = normEmail(qRaw);
+          if (em) {
+            const ix = safeParse(await env.PLANS.get("email:" + em)) || {};
+            for (const cid of (ix.couples || [])) await addCouple(safeParse(await env.PLANS.get("couple:" + cid)));
+            for (const vid of (ix.venues || [])) await addVenue(safeParse(await env.PLANS.get("venue:" + vid)));
+          }
+          const pid = planIdOf(qRaw);
+          if (pid) {
+            const rec = safeParse(await env.PLANS.get("plan:" + pid));
+            if (rec) {
+              const own = ownerOf(rec);
+              const key = own.type === "venue" ? "v:" + own.venueId : (rec.coupleId ? "c:" + rec.coupleId : "");
+              if (own.type === "venue") await addVenue(safeParse(await env.PLANS.get("venue:" + own.venueId)), pid);
+              else if (rec.coupleId) await addCouple(safeParse(await env.PLANS.get("couple:" + rec.coupleId)), pid);
+              if (!key || !seen.has(key)) { seen.add("p:" + pid); results.push({ kind: "plan", id: pid, focus: pid, plan: await planCard(env, rec, pid) }); }   // a plan with no licence record behind it
+            }
+          }
+          const hit = (...xs) => xs.some(x => x && findFold(x).includes(fold));
+          for (const cid of (safeParse(await env.PLANS.get("couples:index")) || [])) {
+            if (results.length >= LOOKUP_MAX) break;
+            const c = safeParse(await env.PLANS.get("couple:" + cid));
+            if (c && (cid === qRaw || hit(c.name, c.email, c.contact))) await addCouple(c);
+          }
+          for (const vid of (safeParse(await env.PLANS.get("venues:index")) || [])) {
+            if (results.length >= LOOKUP_MAX) break;
+            const v = safeParse(await env.PLANS.get("venue:" + vid));
+            if (v && (vid === qRaw || hit(v.name, v.email, v.contact, v.notes))) await addVenue(v);
+          }
+          return json({ q: qRaw, results: results.slice(0, LOOKUP_MAX), capped: results.length >= LOOKUP_MAX });
+        }
+
+        // 3. ΔΙΑΓΝΩΣΤΙΚΑ — the numbers he is asked for on the phone.
+        if (parts[1] === "diagnostics" && parts.length === 2 && request.method === "GET") {
+          const now = Date.now(), soon = now + 7 * DAY;
+          const listed = typeof env.PLANS.list === "function";
+          // Test data is counted apart from customers' everywhere, not only for venues: these are the numbers he
+          // quotes on the phone, and a few presses of «δοκιμαστικός γάμος» must not move any of them.
+          const c = { venues: 0, testVenues: 0, couples: 0, plans: 0, testPlans: 0, testFinders: 0, templates: 0, inTrash: 0,
+            findersOn: 0, findersOpen: 0, support: 0, locked: 0, noDate: 0, lockIn7: 0, deleteIn7: 0 };
+          if (listed) {
+            const settings = await getSettings(env), since = await lifecycleSince(env);
+            for (const k of (await env.PLANS.list("venue:")) || []) { const v = safeParse(await env.PLANS.get(k)); if (!v) continue; isTest(v) ? c.testVenues++ : c.venues++; }
+            for (const k of (await env.PLANS.list("couple:")) || []) { if (safeParse(await env.PLANS.get(k))) c.couples++; }
+            for (const k of (await env.PLANS.list("plan:")) || []) {
+              const p = safeParse(await env.PLANS.get(k)); if (!p) continue;
+              if (isTest(p)) { c.testPlans++; if (p.find && p.find.on) c.testFinders++; continue; }   // his own playground, in its own two tiles and nowhere else
+              c.plans++; if (p.template) c.templates++; if (p.deletedAt) c.inTrash++;
+              if (supportActive(p)) c.support++;
+              const L = await planLife(env, p, k.slice(5), { settings, since });
+              if (p.find && p.find.on) { c.findersOn++; if (findOpen(L)) c.findersOpen++; }
+              if (L.locked) c.locked++;
+              if (!L.weddingDate) c.noDate++;
+              if (L.lockAt && L.lockAt > now && L.lockAt <= soon) c.lockIn7++;
+              if (L.deleteAt && L.deleteAt > now && L.deleteAt <= soon) c.deleteIn7++;
+            }
+          }
+          const st = (mailOn(env) && typeof env.MAIL.status === "function") ? env.MAIL.status() : {};
+          let host = null; try { if (typeof env.HOST_INFO === "function") host = env.HOST_INFO(); } catch (e) { host = null; }
+          return json({ at: now, today: todayAthens(), listed, counts: c,
+            mail: { enabled: mailOn(env), from: mailOn(env) ? String(env.MAIL.from || "") : "", ...st },
+            sweep: safeParse(await env.PLANS.get("meta:sweep")) || null,
+            retention: policyOf(await getSettings(env)), host });
+        }
+        // One real message, to an address he types: delivery proved in ten seconds.
+        if (parts[1] === "test" && parts[2] === "email" && parts.length === 3 && request.method === "POST") {
+          if (!mailOn(env)) return json({ error: "mail_off" }, 503);
+          const b = await readBody(request);
+          const email = normEmail(b.email); if (!email) return json({ error: "bad_email" }, 400);
+          if (!(await mailAllowed(env, email, "selftest", OWNER_MAILS_PER_DAY))) return json({ error: "rate_limited" }, 429);
+          const o = await ownerRec(env), lang = langOf(b.lang || o.lang), at = Date.now();
+          if (!send(env, email, mailMsg(lang, "selftest", { at: fmtDay(at, lang), host: baseUrl(env) }))) return json({ error: "mail_failed" }, 503);
+          console.log("admin: a test email was sent");
+          return json({ ok: true, to: maskEmail(email), at });
+        }
+
+        // 4. ΔΟΚΙΜΗ «ΒΡΕΣ ΤΟ ΤΡΑΠΕΖΙ ΣΟΥ» — what the guest at the door sees, plus why.
+        // The key must be PASTED: no admin route hands one out, so this can only ever test a door list he was given.
+        if (parts[1] === "find-test" && parts.length === 2 && request.method === "POST") {
+          const b = await readBody(request);
+          const token = findTokenOf(b.link != null ? b.link : b.token);
+          if (!token) return json({ ok: true, status: 404, why: "bad_token", guest: { error: "not_found" } });   // what the page shows for a mistyped link
+          const a = await findLookup(env, token, b.q, true);
+          return json({ ok: true, status: a.status, why: a.why || null, guest: a.body, window: a.window || null, planId: a.planId || null });
+        }
+
         return json({ error: "not found" }, 404);
       }
       // ---------------- venue console (venue key) ----------------
@@ -1901,7 +2308,7 @@ export default {
           }
           const id = rnd(22);
           const rec = { name: String(b.name || v.name).slice(0, 120), plan, editKey: rnd(28), venueKey: rnd(28), readKey: rnd(24),
-            owner: { type: "venue", venueId: v.id }, venueId: v.id, template: true, perms: { ...ALL_OPEN }, keyGen: 0, venueGen: 0, createdAt: Date.now(), updated: Date.now() };
+            owner: { type: "venue", venueId: v.id }, venueId: v.id, ...(isTest(v) ? { test: true } : {}), template: true, perms: { ...ALL_OPEN }, keyGen: 0, venueGen: 0, createdAt: Date.now(), updated: Date.now() };
           await env.PLANS.put("plan:" + id, JSON.stringify(rec));
           await kvUpdate(env, vkey, cur => { if (!cur) return null; cur.templateId = id; return cur; });
           return json({ planId: id, venueKey: rec.venueKey, updated: rec.updated });
@@ -1919,11 +2326,15 @@ export default {
           const perms = normPerms(b.perms || v.defaultPerms, ALL_OPEN);
           const now = Date.now();
           // Locks apply once the venue has put its layout in: from the template now, or at the venue's first save.
-          const rec = { name: String(b.label || "Wedding").slice(0, 120), plan, editKey, venueKey, readKey: rnd(24),
-            owner: { type: "venue", venueId: v.id }, venueId: v.id, perms, layoutAt: plan ? now : null, keyGen: 0, venueGen: 0, weddingDate: dated.weddingDate || null, createdAt: now, updated: now };
+          // A wedding made from the TEST venue's own console is test data too — the flag comes from the venue record,
+          // never from the request body, so only the one venue the admin tools created can pass it on.
+          const label0 = String(b.label || "Wedding").slice(0, 120);
+          const label = isTest(v) && !label0.includes(TEST_MARK) ? (TEST_MARK + " — " + label0).slice(0, 120) : label0;   // the mark travels with the record, in the test venue too
+          const rec = { name: label, plan, editKey, venueKey, readKey: rnd(24),
+            owner: { type: "venue", venueId: v.id }, venueId: v.id, ...(isTest(v) ? { test: true } : {}), perms, layoutAt: plan ? now : null, keyGen: 0, venueGen: 0, weddingDate: dated.weddingDate || null, createdAt: now, updated: now };
           await env.PLANS.put("plan:" + id, JSON.stringify(rec));
           await kvUpdate(env, vkey, cur => { if (!cur) return null;
-            cur.weddings = cur.weddings || []; cur.weddings.push({ planId: id, label: rec.name, createdAt: now, editKey, venueKey, perms, layoutSet: !!plan, date: rec.weddingDate });
+            cur.weddings = cur.weddings || []; cur.weddings.push({ planId: id, label: rec.name, createdAt: now, editKey, venueKey, perms, layoutSet: !!plan, date: rec.weddingDate, ...(isTest(cur) ? { test: true } : {}) });
             cur.used = (cur.used || 0) + 1; return cur; });
           return json({ planId: id, editKey, venueKey, updated: now, fromTemplate: !!plan });
         }
@@ -2137,6 +2548,8 @@ function adminVenue(v) {     // returned to the owner — counts only: no plan i
 async function adminCouple(env, c) {   // licence metadata only — never the plan id, a key, or anything inside the plan
   const rec = safeParse(await env.PLANS.get("plan:" + c.planId));
   return { id: c.id, name: c.name, contact: c.contact, email: c.email || "", emailVerified: !!c.emailVerified, lang: c.lang || "el", mailed: !!c.mailed,
+    // `mailed` only ever meant "queued"; these two say what SMTP finally did with it (see mailOutcome).
+    mailFailedAt: c.mailFailedAt || null, mailError: c.mailError || null,
     createdAt: c.createdAt, claimedAt: c.claimedAt || null, resetAt: c.resetAt || null,
     exists: !!rec, deletedAt: c.deletedAt || null, lastEdit: rec ? rec.updated : null, pendingClaim: !!c.claimToken,
     claimToken: (c.claimToken && !c.mailed) ? c.claimToken : null,   // a link that went by mail is never shown to the admin

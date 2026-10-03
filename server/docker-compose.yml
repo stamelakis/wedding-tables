@@ -7,6 +7,9 @@ services:
     build:
       context: ..
       dockerfile: server/Dockerfile
+      args:
+        # deploy.sh exports it from the checkout; empty when somebody builds by hand (the console then says «άγνωστο»)
+        GIT_COMMIT: "${GIT_COMMIT:-}"
     image: takeaseat-api
     container_name: takeaseat-api
     restart: unless-stopped
