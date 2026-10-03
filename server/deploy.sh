@@ -1,7 +1,10 @@
 #!/bin/bash
 # TakeaSeat deploy — run ON the box, as root:   /opt/takeaseat/server/deploy.sh [--force]
 #
-#  1. refuses Friday–Sunday (Athens time) during the wedding season unless --force
+#  1. refuses while an event is close: any plan whose date is between yesterday and the day after
+#     tomorrow (Athens) — templates, test data and plans in a venue's trash excluded. An
+#     unreadable database falls back to the old calendar rule — Friday to Sunday in the season.
+#     Both are overridden by --force.
 #  2. takes an encrypted backup (/opt/takeaseat-backup.sh) — no backup, no deploy
 #  3. tags the image the live container runs as takeaseat-api:prev
 #  4. git pull --ff-only
@@ -12,7 +15,9 @@
 #  7. never healthy -> puts :prev back (image + checkout), brings it up, mails an alert, exit 1
 #  8. prints the startup log lines (migration / mail / pdf) and host scripts that differ from the repo
 #
-# Env: SEASON_START=4 SEASON_END=10 (months, inclusive; start > end wraps over New Year),
+# Env: DB=/var/lib/docker/.../wedding.db (read-only, same default as the backup script),
+#      GUARD_BEFORE=2 GUARD_AFTER=1 (days around an event that count as close),
+#      SEASON_START=4 SEASON_END=10 (fallback only; months inclusive, start > end wraps over New Year),
 #      DEPLOY_TZ=Europe/Athens, HEALTH_WAIT=60 (seconds), REPO_DIR (default: the checkout this file is in).
 # The uptime cron skips its checks while this runs (shared lock), so it will not restart the
 # container in the middle of a deploy.
@@ -20,6 +25,9 @@ set -uo pipefail
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export GIT_TERMINAL_PROMPT=0
 
+DB=${DB:-/var/lib/docker/volumes/takeaseat_tas_data/_data/wedding.db}
+GUARD_BEFORE=${GUARD_BEFORE:-2}
+GUARD_AFTER=${GUARD_AFTER:-1}
 SEASON_START=${SEASON_START:-4}
 SEASON_END=${SEASON_END:-10}
 DEPLOY_TZ=${DEPLOY_TZ:-Europe/Athens}
@@ -61,6 +69,26 @@ in_season() {   # month $1 inside SEASON_START..SEASON_END (inclusive, may wrap)
   else [ "$1" -ge "$SEASON_START" ] || [ "$1" -le "$SEASON_END" ]; fi
 }
 
+events_near() {   # lists events close enough that somebody may be using the plan right now,
+                  # one "date  name" per line. Returns 1 when the question cannot be answered at all,
+                  # which is NOT the same as "no events" — the caller falls back to the calendar.
+  local from to
+  command -v sqlite3 >/dev/null 2>&1 || return 1
+  [ -r "$DB" ] || return 1
+  from=$(TZ=$DEPLOY_TZ date -d "-$GUARD_AFTER days" +%F) || return 1
+  to=$(TZ=$DEPLOY_TZ date -d "+$GUARD_BEFORE days" +%F) || return 1
+  # read-only, and the database is in WAL, so this never blocks the live container
+  sqlite3 -readonly -cmd ".timeout 5000" "$DB"     "select json_extract(value,'\$.weddingDate') || '  ' || replace(coalesce(json_extract(value,'\$.name'),'?'),char(10),' ')
+       from kv
+      where key like 'plan:%'
+        and json_valid(value)
+        and not coalesce(json_extract(value,'\$.template'),0)
+        and not coalesce(json_extract(value,'\$.test'),0)
+        and json_extract(value,'\$.deletedAt') is null
+        and json_extract(value,'\$.weddingDate') between '$from' and '$to'
+      order by 1;" || return 1
+}
+
 startup_log() {
   say "startup log of the running container"
   docker logs "$CONTAINER" 2>&1 | head -n 15
@@ -87,7 +115,7 @@ main() {
   for a in "$@"; do
     case "$a" in
       --force) force=1 ;;
-      -h|--help) sed -n '2,20p' "$0"; return 0 ;;
+      -h|--help) awk 'NR>1 { if (!/^#/) exit; print }' "$0"; return 0 ;;   # the whole header, however long it grows
       *) echo "unknown argument: $a (use --force or --help)"; return 2 ;;
     esac
   done
@@ -100,16 +128,38 @@ main() {
   exec 9>"$LOCK"
   flock -n 9 || { echo "another deploy is running (lock $LOCK)"; return 1; }
 
-  # 1. weekend guard
-  local dow mon
-  dow=$(TZ=$DEPLOY_TZ date +%u); mon=$(TZ=$DEPLOY_TZ date +%-m)
-  if [ "$dow" -ge 5 ] && in_season "$mon"; then
-    if [ "$force" = 1 ]; then
-      echo "WARNING: $(TZ=$DEPLOY_TZ date '+%A %H:%M') in Athens, in the season — deploying anyway (--force)"
+  # 1. guard: a deploy replaces the container, so for a few seconds nothing answers. That matters
+  #    only if somebody is using a plan — a couple printing, a guest at the door scanning the QR.
+  #    So ask the data, not the calendar; the calendar is only the answer when the data cannot be read.
+  local near dow mon
+  if near=$(events_near); then
+    if [ -n "$near" ]; then
+      if [ "$force" = 1 ]; then
+        echo "WARNING: an event is within $GUARD_AFTER day(s) back / $GUARD_BEFORE ahead — deploying anyway (--force):"
+        printf '  %s
+' "$near"
+      else
+        echo "Refusing: somebody may be using this right now. Events close to $(TZ=$DEPLOY_TZ date '+%a %d %b %H:%M') in Athens:"
+        printf '  %s
+' "$near"
+        echo "Deploy when none is within $GUARD_AFTER day(s) back / $GUARD_BEFORE ahead, or pass --force for an urgent fix."
+        return 2
+      fi
     else
-      echo "Refusing: it is $(TZ=$DEPLOY_TZ date '+%A %d %b %H:%M') in Athens. Weddings run Friday–Sunday in the season"
-      echo "(months $SEASON_START–$SEASON_END). Deploy Monday–Thursday, or pass --force for an urgent fix."
-      return 2
+      echo "guard: no event between $(TZ=$DEPLOY_TZ date -d "-$GUARD_AFTER days" +%F) and $(TZ=$DEPLOY_TZ date -d "+$GUARD_BEFORE days" +%F) — nobody to disturb"
+    fi
+  else
+    # the database could not be read. We do not know, so we go back to assuming the worst day.
+    dow=$(TZ=$DEPLOY_TZ date +%u); mon=$(TZ=$DEPLOY_TZ date +%-m)
+    echo "WARNING: could not read $DB — falling back to the calendar"
+    if [ "$dow" -ge 5 ] && in_season "$mon"; then
+      if [ "$force" = 1 ]; then
+        echo "WARNING: $(TZ=$DEPLOY_TZ date '+%A %H:%M') in Athens, in the season — deploying anyway (--force)"
+      else
+        echo "Refusing: it is $(TZ=$DEPLOY_TZ date '+%A %d %b %H:%M') in Athens. Weddings run Friday–Sunday in the season"
+        echo "(months $SEASON_START–$SEASON_END). Deploy Monday–Thursday, or pass --force for an urgent fix."
+        return 2
+      fi
     fi
   fi
 
