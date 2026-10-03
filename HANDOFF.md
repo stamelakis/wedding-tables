@@ -264,6 +264,70 @@ answers and merges them with `mergeGuestList` (step 1, commit 5de45a8). Contract
 - **Before going live**: check the container reaches `https://amelie.gr` (outbound HTTPS; if Amelie is on the same
   box this goes out and back through Caddy) — e.g. connect a real test invitation on a test plan and pull once.
 
+## 1h. Venue self-signup and the free first year (2026-10-03)
+
+A venue no longer has to be typed into admin.html by hand: it signs itself up at **`/venue.html#signup`** (the venue
+CTAs on index.html point there). The form asks for the four things an account and an invoice need — επωνυμία, ΑΦΜ,
+email, τηλέφωνο — plus acceptance of the Terms, and nothing else.
+
+- **The ΑΦΜ is the fence.** Nine digits with the official check digit (Σ dᵢ·2⁹⁻ⁱ over the first eight, mod 11, mod 10),
+  validated in the form (`AFM_OK`, venue.html) and again in the worker (`validAfm`). One free year per ΑΦΜ, ever.
+- **Rows**: `signup:<id>` (what «Εγγραφές» in admin.html shows), `signups:index`, and `afm:<ΑΦΜ>` — the single claim per
+  business, `status:"pending"` while the setup link is unopened and `"trial"` once it has been used, which is for ever.
+  The venue record itself is created at signup in the NORMAL shape (`afm`, `phone`, `selfSignup`, `signupId`,
+  `trial:{startedAt, endsAt, seasonEnd, verifiedAt, signupId}`), so nothing else in the system needs to know.
+- **Verification = the setup link.** The signup mails the same `venue-setup` token the admin flow has always mailed
+  (`MAILS[*].setup`, 7 days). Until it is opened the venue's key is random and shown to nobody, so there is no usable
+  console; opening it sets the venue's own key, confirms the address, flips the signup to `verified` and only THEN
+  spends the free year for that ΑΦΜ. An unopened signup expires with its link (`signupSweep`): the venue record is
+  deleted and the ΑΦΜ is free again — a mistyped address must never cost a business its free year.
+- **The licence** is an ordinary seasonal one, `seasonStart` = today (Athens), `seasonEnd` = +364 days,
+  `autoRenew:false`. `onTrial(v)` is true only while `license.seasonEnd === trial.seasonEnd`, i.e. while the licence
+  is still the one the signup created. **The 365 days are re-stamped from the day the setup link is opened**
+  (`/recover/venue`, only while the licence is still the signup's own): the dates written at signup are provisional,
+  because a link that lives 7 days would otherwise cost a venue up to 6 days of the year the Terms promise.
+- **The free year is judged on the WEDDING DATE**, not on the day the file was opened: `canCreateWedding(v, date)`
+  refuses `after_trial` for a wedding dated past `seasonEnd`, so nobody opens next season's forty weddings on day 360.
+  The same gate (`afterTrialDate`) runs on BOTH routes that move an existing date — `PATCH /venues/:id/weddings/:planId`
+  and `POST /plans/:id/date` — or the fence would be one drag away from nothing (create inside, move out; 3 changes per
+  wedding, a fresh budget per wedding). venue.html also clamps the date picker to `seasonEnd` while the year is on.
+- **Reminders** 60 / 30 / 7 days before the end, through `renewSweep` (`trialReminders`, `MAILS[*].trialEnds`). A free
+  year never auto-renews: `POST /venues/:id/renewal` answers `on_trial`, and the renewal branch skips it.
+- **At the end nothing is deleted**: the console still opens, existing weddings run to their date and stay editable,
+  and new ones answer `after_season`.
+- **The answer is always `{ok:true}`.** Whether an ΑΦΜ or an address is already ours is said ONLY by mail, and only to
+  the address that is already ours (`afmUsed`, `haveConsole`) — the same shape as `/recover`. A re-submission re-sends
+  the existing link instead of making a second venue. **The address that just wrote to us always gets something**: the
+  setup link where there is one, otherwise a bare acknowledgement (`MAILS[*].signupAck` — no link, no ΑΦΜ, no venue
+  name, just info@takeaseat.gr), because silence left a real business whose ΑΦΜ someone else had registered with
+  nothing at all to act on. **An unauthenticated request never rewrites an existing record**: the «waiting» branch
+  re-sends the pending link and leaves `afm`, `name` and `phone` exactly as they are — knowing a venue's public email
+  address must not be enough to choose its tax number. A mistype has two cures: the signup expires in 7 days and the
+  claim goes back, or Andreas deletes the row.
+- **ΑΦΜ squatting** (a public number + a throwaway mailbox spends a business's one free year) is NOT auto-released:
+  releasing a claim automatically would hand a second free year to a slow but real venue. Instead «Εγγραφές» flags a
+  verified signup with no wedding after 45 days (`SIGNUP_IDLE_DAYS`), terms.html promises a disputed ΑΦΜ is released on
+  request, and Delete is the release.
+- **Limits**: 3 signups a day per client address, counted in the store (`rl:signup:<ip>`, so a restart is not a fresh
+  budget) · 5 an hour per address in `server.mjs` (`:signup`) and the shared `:mail` bucket · 3 mails an hour per
+  address (`mailAllowed(…, "signup")`) · `SIGNUPS_PENDING_MAX` = 300 on the pending signups **of the last 24 hours**
+  (`pendingToday`) → `busy`, so a flood shuts the funnel for hours, not for the 7 days a pending row lives. At 80% of
+  that ceiling the owner gets one mail in its own bucket (`ownerFlood`, not the `ownersignup` 8-a-day budget the flood
+  itself would spend), «Διαγνωστικά» shows the queue depth, and `POST /admin/signups/prune {hours}` («Clear old pending»)
+  drops every untouched pending row older than N hours and hands each ΑΦΜ back. The worker
+  reads the client address from `CF-Connecting-IP` / `X-Real-IP`; `server.mjs` OVERWRITES `x-real-ip` with the address
+  it measured and drops any `cf-connecting-ip`, so neither can be forged. The IP is a bucket only — never stored.
+  `POST /signup/venue` also REQUIRES `Content-Type: application/json` (415) and refuses a foreign `Origin` (403) in
+  server.mjs: with `text/plain` it was a CORS simple request, so any page could spend a visitor's IP from the
+  visitor's own browser, no preflight to stop it.
+- **Andreas**: «Εγγραφές» in admin.html (pending / verified / free year / first wedding, Disable, Delete) plus one
+  short mail per new signup to the owner's confirmed recovery address (`MAILS[*].ownerSignup`). Deleting a signup
+  erases its venue and gives the ΑΦΜ its free year back — his decision, not bookkeeping. In «Edit venue», changing the
+  season dates MOVES a free year; the tick «This is a paid subscription now» (`{trial:false}`) is how it stops being one.
+- **Terms** (terms.html v. 3/10/2026, el + en): how you sign up, what the ΑΦΜ is used for, that the free year covers
+  weddings dated inside it, that it does NOT turn itself into a paid subscription, and that nothing is deleted at the end.
+  index.html's offer box and pricing card say the same.
+
 ## 2. Architecture
 
 ```

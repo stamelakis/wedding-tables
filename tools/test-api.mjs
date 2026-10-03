@@ -1857,4 +1857,293 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
   await call('DELETE', '/admin/venues/' + LV.id, undefined, OWN);
   delete env.HOST_INFO;
 }
+
+// ---------- 20. the public venue signup: the ΑΦΜ fence, the free year, the limits ----------
+{
+  const mails = [];
+  const keepMail = env.MAIL;
+  env.MAIL = { enabled: true, from: 'TakeaSeat <hello@takeaseat.gr>', send: msg => { mails.push(msg); return true; } };
+  const got = k => { const v = m.get(k); return v ? JSON.parse(v) : null; };
+  const nVenues = () => (got('venues:index') || []).length;
+  const last = to => [...mails].reverse().find(x => x.to === to) || null;
+  const linkOf = x => (String((x && x.text) || '').match(/#recover=([A-Za-z0-9]+)/) || [])[1] || '';
+  const spanDays = (a, b) => Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 86400000);
+  // An address is allowed three signup mails an hour, like every other address; dropping the row is "an hour later".
+  const anHourLater = e => m.delete('rlmail:signup:' + e);
+  // Each signup arrives from its own address, or the previous one's three-a-day bucket answers for it.
+  let ipN = 0;
+  const from = ip => ({ 'X-Real-IP': ip || ('198.51.100.' + (++ipN)) });
+  const signup = (body, ip) => call('POST', '/signup/venue', body, from(ip));
+  const GOOD = { name: 'Κτήμα Ηλιοβασίλεμα', afm: '094019245', email: 'ilio@example.gr', phone: '2109876543', terms: true, lang: 'el' };
+
+  // -- the ΑΦΜ check digit, before a single row is written -------------------
+  for (const bad of ['12345678', '1234567890', '000000000', '094019246', '123456789', '09401924x', 'abcdefghi', ''])
+    ok((await signup({ ...GOOD, afm: bad })).d.error === 'bad_afm', 'signup: «' + bad + '» is refused as an ΑΦΜ, in the form and again here');
+  ok(nVenues() === (got('venues:index') || []).length && !got('afm:094019246'), 'signup: a malformed ΑΦΜ writes nothing at all');
+  const r1 = await signup({ ...GOOD, afm: ' 094-019.245 ' });
+  ok(r1.status === 200, 'signup: an ΑΦΜ typed with spaces, dots and dashes is the same ΑΦΜ');
+  ok(got('afm:094019245').status === 'pending', 'signup: … and it is only CLAIMED — the free year is not spent yet');
+  const sid1 = got('afm:094019245').signupId, vid1 = got('afm:094019245').venueId;
+  const first = last('ilio@example.gr');
+  ok(first && /#recover=/.test(first.text) && first.subject.includes('κονσόλα'), 'signup: the venue is mailed the SAME setup link the admin flow sends', first && first.subject);
+  const V1 = () => got('venue:' + vid1);
+  ok(V1().keyPrivate === true && V1().trial.verifiedAt === null && V1().selfSignup === true && V1().afm === '094019245' && V1().phone === '2109876543',
+    'signup: the venue exists in the normal shape, as a trial nobody has opened yet');
+  ok(V1().license.seasonStart === athensDay(0) && spanDays(V1().license.seasonStart, V1().license.seasonEnd) === 364 && V1().license.autoRenew === false,
+    'signup: a 365-day season that never renews itself into a second free year', V1().license);
+  ok(JSON.stringify(r1.d) === '{"ok":true}' && !JSON.stringify(r1.d).includes(V1().key), 'signup: the answer is one word and never the key', r1.d);
+
+  // -- the rest of the shape --------------------------------------------------
+  ok((await signup({ ...GOOD, afm: '100000003', name: '  ' })).d.error === 'bad_name', 'signup: a venue without a name is refused');
+  ok((await signup({ ...GOOD, afm: '100000003', email: 'not-an-email' })).d.error === 'bad_email', 'signup: a malformed email is refused');
+  for (const bad of ['', '21098', 'τηλέφωνο', '+30 69 77 35 53 78 12 34'])
+    ok((await signup({ ...GOOD, afm: '100000003', phone: bad })).d.error === 'bad_phone', 'signup: «' + bad + '» is refused as a phone');
+  ok((await signup({ ...GOOD, afm: '100000003', email: 'x2@example.gr', terms: false })).d.error === 'terms_required', 'signup: the terms have to be accepted');
+  ok(!got('afm:100000003'), 'signup: … and none of those refusals claimed the ΑΦΜ either');
+
+  // -- one pending signup per ΑΦΜ: the link is re-sent, no second venue -------
+  const venuesBefore = nVenues();
+  let before = mails.length;
+  ok((await signup({ ...GOOD, email: 'someone-else@example.gr' })).status === 200, 'signup: the same ΑΦΜ again answers exactly the same ok');
+  ok(nVenues() === venuesBefore, 'signup: … and makes no second venue');
+  ok(mails.length === before + 2 && mails[mails.length - 2].to === 'ilio@example.gr' && /#recover=/.test(mails[mails.length - 2].text),
+    'signup: … the link is re-sent to the address that registered, never to the one just typed in', mails[mails.length - 2] && mails[mails.length - 2].to);
+  { const a = last('someone-else@example.gr');   // silence was the old answer, and it left a real business with nothing to act on
+    ok(a && !/#recover=/.test(a.text) && !/094019245/.test(a.text) && !/Ηλιοβασίλεμα/.test(a.text),
+      'signup: … the address that asked gets a bare acknowledgement: no link, no ΑΦΜ, no venue name', a && a.subject); }
+  ok(got('signup:' + sid1).resent >= 1 && got('signup:' + sid1).resentAt > 0, 'signup: the re-send is counted, so the admin list shows it');
+
+  // -- opening the link: the key is set, the address is proved, the year spent -
+  const tok = linkOf(last('ilio@example.gr'));
+  const opened = await call('POST', '/recover/venue', { token: tok, secret: 'iliovasilema2026' });
+  ok(opened.status === 200 && opened.d.key && opened.d.venueId === vid1, 'signup: the setup link is where the venue sets its own key', opened.d);
+  const VK1 = { 'X-Venue-Key': opened.d.key };
+  ok(got('afm:094019245').status === 'trial' && got('signup:' + sid1).status === 'verified' && !!V1().trial.verifiedAt && V1().emailVerified === true,
+    'signup: opening the link IS the email verification — and only now is the free year spent for that ΑΦΜ');
+  const con = await call('GET', '/venues/' + vid1, undefined, VK1);
+  ok(con.status === 200 && con.d.canCreate === true && con.d.venue.trial.inForce === true, 'signup: the console opens and knows it is on its free year', con.d && con.d.venue && con.d.venue.trial);
+
+  // -- one free year per ΑΦΜ, ever -------------------------------------------
+  before = mails.length;
+  const r2 = await signup({ ...GOOD, name: 'Κτήμα Ηλιοβασίλεμα Β', email: 'another@example.gr' });
+  ok(r2.status === 200 && JSON.stringify(r2.d) === JSON.stringify(r1.d), 'signup: a second signup on a spent ΑΦΜ answers byte for byte what a brand-new one does', r2.d);
+  ok(nVenues() === venuesBefore, 'signup: … and never silently starts a second trial');
+  ok(mails.length === before + 2 && mails[mails.length - 2].to === 'ilio@example.gr' && /094019245/.test(mails[mails.length - 2].text),
+    'signup: … the business is told in plain Greek, at its own address, that it has already had its free year', mails[mails.length - 2] && mails[mails.length - 2].subject);
+  { const a = last('another@example.gr');
+    ok(a && a.to === 'another@example.gr' && !/#recover=/.test(a.text) && !/094019245/.test(a.text) && /info@takeaseat\.gr/.test(a.text),
+      'signup: … and the address that asked is answered too, with nothing in it but how to reach us', a && a.subject); }
+
+  // -- one signup per address, and the three-mails-an-hour rule still holds ---
+  before = mails.length;
+  ok((await signup({ ...GOOD, afm: '100000003', email: 'ilio@example.gr' })).status === 200, 'signup: a fresh ΑΦΜ on an address that already runs a console answers the same ok');
+  ok(!got('afm:100000003') && nVenues() === venuesBefore, 'signup: … no second console, and no claim on the new ΑΦΜ');
+  ok(mails.length === before, 'signup: … and that address has had its three mails this hour, so nothing more goes out');
+  anHourLater('ilio@example.gr');
+  ok((await signup({ ...GOOD, afm: '100000003', email: 'ilio@example.gr' })).status === 200 && mails.length === before + 1 && /#recover/.test(mails[mails.length - 1].text),
+    'signup: an hour later the address is reminded how to get back into the console it already has');
+
+  // -- a second submit on a pending address rewrites nothing -------------------
+  // Knowing a venue's email address (it is on the venue's own website) must not be enough to choose that venue's tax
+  // number and business name for it, nor to release the ΑΦΜ it really claimed. The branch re-sends the link, period.
+  ok((await signup({ name: 'Κτήμα Δρυάδες', afm: '100000003', email: 'dryades@example.gr', phone: '+30 2310 123456', terms: true })).status === 200
+    && got('afm:100000003').status === 'pending', 'signup: a second venue, on its own ΑΦΜ and its own address');
+  const sid2 = got('afm:100000003').signupId, vid2 = got('afm:100000003').venueId;
+  const beforeDr = mails.length;
+  ok((await signup({ name: 'ΧΑΚΑΡΙΣΜΕΝΟ', afm: '111111114', email: 'dryades@example.gr', phone: '2100000000', terms: true })).status === 200,
+    'signup: a stranger who knows that address submits another ΑΦΜ under it — the same ok as everything else');
+  ok(got('afm:100000003') && got('afm:100000003').signupId === sid2 && !got('afm:111111114'),
+    'signup: … the pending claim does not move, and the ΑΦΜ he typed is not claimed for him');
+  ok(got('venue:' + vid2).afm === '100000003' && got('venue:' + vid2).name === 'Κτήμα Δρυάδες'
+    && got('signup:' + sid2).afm === '100000003' && got('signup:' + sid2).name === 'Κτήμα Δρυάδες' && got('venue:' + vid2).phone === '+30 2310 123456',
+    'signup: … and nothing on the pending record is rewritten by an unauthenticated request', got('venue:' + vid2).afm + ' / ' + got('venue:' + vid2).name);
+  ok(mails.length === beforeDr + 1 && last('dryades@example.gr') && /#recover=/.test(last('dryades@example.gr').text),
+    'signup: … what it does do is send the same setup link to the address on file, again');
+
+  // -- the free year is judged on the WEDDING DATE ---------------------------
+  const inside = await call('POST', '/venues/' + vid1 + '/weddings', { label: 'Μέσα στη χρονιά', date: athensDay(200) }, VK1);
+  ok(inside.status === 200, 'trial: a wedding dated inside the free year is created', inside.d);
+  const outside = await call('POST', '/venues/' + vid1 + '/weddings', { label: 'Του χρόνου', date: athensDay(400) }, VK1);
+  ok(outside.status === 403 && outside.d.error === 'after_trial' && outside.d.until === V1().license.seasonEnd,
+    'trial: one dated after it is refused — the year covers weddings that HAPPEN in it, not files opened in it', outside.d);
+  ok(V1().weddings.length === 1 && V1().used === 1, 'trial: … and the refused one was never counted');
+  // …and the same gate on every route that MOVES a date. Creating inside the year and dragging the wedding out of it
+  // was the same bypass in two steps, with a fresh three-change budget per wedding.
+  {
+    const w1 = V1().weddings[0].planId;
+    const out1 = await call('PATCH', '/venues/' + vid1 + '/weddings/' + w1, { date: athensDay(400) }, VK1);
+    ok(out1.status === 403 && out1.d.error === 'after_trial' && out1.d.until === V1().license.seasonEnd,
+      'trial: a wedding already created cannot be MOVED past the end of the free year', out1.d);
+    ok(got('plan:' + w1).weddingDate === athensDay(200) && V1().weddings[0].date === athensDay(200) && (got('plan:' + w1).dateChanges || 0) === 0,
+      'trial: … nothing moved, and the refusal did not spend one of the three changes');
+    const out2 = await call('POST', '/plans/' + w1 + '/date', { date: athensDay(400) }, VK1);
+    ok(out2.status === 403 && out2.d.error === 'after_trial', 'trial: … the plan’s own date route is gated too, not only the console’s', out2.d);
+    const in1 = await call('PATCH', '/venues/' + vid1 + '/weddings/' + w1, { date: athensDay(210) }, VK1);
+    ok(in1.status === 200 && in1.d.date === athensDay(210), 'trial: … while a move that stays inside the year goes through', in1.d);
+    ok((await call('POST', '/plans/' + w1 + '/date', { date: athensDay(220) }, VK1)).d.life.weddingDate === athensDay(220),
+      'trial: … on both routes');
+    patchRaw('plan:' + w1, p => { p.weddingDate = athensDay(200); p.dateChanges = 0; });
+    patchRaw('venue:' + vid1, v => { v.weddings[0].date = athensDay(200); });
+  }
+  ok((await call('POST', '/venues/' + vid1 + '/renewal', { autoRenew: true }, VK1)).d.error === 'on_trial',
+    'trial: the venue cannot switch its free year into renewing itself');
+
+  // -- the reminders, 60 / 30 / 7 days out, through the renewal sweep ---------
+  const endsIn = d => { patchRaw('venue:' + vid1, v => { v.license.seasonEnd = athensDay(d); v.trial.seasonEnd = athensDay(d); }); return mod.sweep(env); };
+  ok((await endsIn(70)).trialReminded === 0, 'trial: 70 days out, nothing is sent');
+  ok((await endsIn(55)).trialReminded === 1 && /λήγει στις/.test(last('ilio@example.gr').subject), 'trial: the 60-day reminder goes out', last('ilio@example.gr').subject);
+  ok(/δεν διαγράφεται τίποτα/.test(last('ilio@example.gr').text), 'trial: … and it says what the end actually does, which is nothing');
+  ok((await mod.sweep(env)).trialReminded === 0, 'trial: … once, not on every hourly sweep');
+  ok((await endsIn(25)).trialReminded === 1, 'trial: the 30-day reminder follows');
+  ok((await endsIn(5)).trialReminded === 1, 'trial: and the 7-day one');
+  ok((await endsIn(-1)).renewed === 0 && !!got('venue:' + vid1), 'trial: the end of a free year renews nothing and deletes nothing');
+
+  // -- the end of the free year -----------------------------------------------
+  patchRaw('venue:' + vid1, v => { v.license.seasonEnd = athensDay(-2); v.trial.seasonEnd = athensDay(-2); });
+  const planId = V1().weddings[0].planId;
+  const after = await call('GET', '/venues/' + vid1, undefined, VK1);
+  ok(after.status === 200 && after.d.canCreate === false && after.d.reason === 'after_season', 'trial ends: the console still opens, and says why no new weddings', after.d && after.d.reason);
+  ok(after.d.weddings.length === 1 && after.d.weddings[0].label === 'Μέσα στη χρονιά', 'trial ends: the wedding already created is untouched');
+  ok((await call('POST', '/venues/' + vid1 + '/weddings', { label: 'Μετά', date: athensDay(30) }, VK1)).d.error === 'after_season', 'trial ends: a new wedding needs a subscription');
+  ok((await call('PATCH', '/venues/' + vid1 + '/weddings/' + planId, { date: athensDay(30) }, VK1)).d.error === 'after_trial',
+    'trial ends: … and an existing one cannot be re-dated forward into the year nobody paid for either');
+  ok((await call('PUT', '/plans/' + planId, { plan: layout(), baseUpdated: got('plan:' + planId).updated }, VK1)).status === 200,
+    'trial ends: and the wedding that is already running is still edited as before');
+
+  // -- a signup nobody ever opened expires, and hands the ΑΦΜ back ------------
+  patchRaw('signup:' + sid2, s => { s.expiresAt = Date.now() - 1000; });
+  ok((await mod.sweep(env)).signupsExpired === 1 && got('signup:' + sid2).status === 'expired', 'signup: one that was never opened expires with its link');
+  ok(!got('venue:' + vid2) && !got('afm:100000003'), 'signup: … its venue goes and the ΑΦΜ is free again — a mistyped address costs nobody their free year');
+  ok((await signup({ name: 'Κτήμα Δρυάδες', afm: '100000003', email: 'dryades@example.gr', phone: '2310123456', terms: true })).status === 200
+    && got('afm:100000003').status === 'pending', 'signup: … so that business can sign itself up again');
+  const sid3 = got('afm:100000003').signupId;
+
+  // -- the limits --------------------------------------------------------------
+  {
+    const ip = '203.0.113.77', tries = [];
+    for (let i = 0; i < 4; i++) tries.push(await call('POST', '/signup/venue', { name: 'Σπαμ ' + i, afm: '094019245', email: 'spam' + i + '@example.gr', phone: '2101234567', terms: true }, { 'X-Real-IP': ip }));
+    ok(tries.slice(0, 3).every(r => r.status === 200) && tries[3].status === 429 && tries[3].d.error === 'rate_limited',
+      'signup: three a day from one address, then 429 — and the counter is in the store, so a restart is not a fresh budget', tries.map(r => r.status));
+    ok((await signup({ name: 'Άλλος', afm: '123456783', email: 'other@example.gr', phone: '2101234567', terms: true }, '203.0.113.78')).status === 200,
+      'signup: … while the next address still gets through');
+    const forged = await call('POST', '/signup/venue', { name: 'Πλαστό', afm: '200000018', email: 'forged@example.gr', phone: '2101234567', terms: true },
+      { 'X-Real-IP': '203.0.113.79', 'X-Forwarded-For': '203.0.113.77' });
+    ok(forged.status === 200, 'signup: the bucket is the address the host measured, not one the caller wrote into X-Forwarded-For');
+  }
+  {   // the whole pending queue has a ceiling, so a flood cannot fill the database
+    const ids = got('signups:index') || [], pad = [];
+    for (let i = 0; i < 300; i++) { const k = 'padsignup' + i; m.set('signup:' + k, JSON.stringify({ id: k, status: 'pending', createdAt: Date.now(), expiresAt: Date.now() + 86400000 })); pad.push(k); }
+    m.set('signups:index', JSON.stringify([...ids, ...pad]));
+    const r = await call('POST', '/signup/venue', { name: 'Ουρά', afm: '300000022', email: 'queue@example.gr', phone: '2101234567', terms: true }, from('203.0.113.91'));
+    ok(r.status === 503 && r.d.error === 'busy' && !got('afm:300000022'), 'signup: a full pending queue refuses the next one instead of growing', r.d);
+    // …but only for the day. A flood used to shut the route for the seven days a pending row lives; the ceiling now
+    // counts the last 24 hours, so tomorrow the funnel is open again whatever happened today.
+    for (const k of pad) patchRaw('signup:' + k, s => { s.createdAt = Date.now() - 25 * 3600000; });
+    const r2b = await call('POST', '/signup/venue', { name: 'Ουρά Β', afm: '300000022', email: 'queue2@example.gr', phone: '2101234567', terms: true }, from('203.0.113.94'));
+    ok(r2b.status === 200 && got('afm:300000022'), 'signup: … yesterday’s flood does not close the route today', r2b.d);
+    // And he can empty it in one press instead of 300 — only the rows nobody opened, each ΑΦΜ handed back.
+    const pruned = await call('POST', '/admin/signups/prune', { hours: 24 }, OWN);
+    ok(pruned.status === 200 && pruned.d.dropped === 300, 'signups: «Clear old pending» drops the whole stale queue at once', pruned.d);
+    ok(got('signup:' + pad[0]).status === 'expired' && got('afm:300000022') && got('afm:300000022').status === 'pending',
+      'signups: … and leaves today’s real signup alone');
+    ok((await call('POST', '/admin/signups/prune', { hours: 24 })).status === 403, 'signups: clearing the queue is the owner’s alone');
+    m.set('signups:index', JSON.stringify([...ids, ...(got('afm:300000022') ? [got('afm:300000022').signupId] : [])]));
+    for (const k of pad) m.delete('signup:' + k);
+    await call('DELETE', '/admin/signups/' + got('afm:300000022').signupId, undefined, OWN);
+  }
+  {
+    const keepOff = env.MAIL; delete env.MAIL;
+    ok((await signup({ ...GOOD, afm: '300000022', email: 'nomail@example.gr' })).d.error === 'mail_off', 'signup: without mail there is no signup — the link is the whole of it');
+    env.MAIL = keepOff;
+  }
+
+  // -- what Andreas sees -------------------------------------------------------
+  ok((await call('GET', '/admin/signups')).status === 403, 'signups: the list is the owner’s alone');
+  const list = (await call('GET', '/admin/signups', undefined, OWN)).d.signups;
+  const row1 = list.find(x => x.id === sid1), row3 = list.find(x => x.id === sid3);
+  ok(row1 && row1.status === 'verified' && row1.afm === '094019245' && row1.weddingCount === 1 && row1.firstWeddingAt > 0 && row1.trialEndsAt > 0,
+    'signups: pending, verified, the free year and the first wedding — what says whether a signup became a customer', row1);
+  ok(row3 && row3.status === 'pending' && row3.expiresAt > Date.now(), 'signups: … and a pending one shows how long its link still has');
+  ok(list.some(x => x.status === 'expired'), 'signups: an expired one stays in the list for a month, so he can see what happened');
+  ok(!JSON.stringify(list).includes('203.0.113') && !JSON.stringify(list).includes('198.51.100'), 'signups: the address a venue signed up from is a rate-limit bucket, never a stored row');
+  ok((await call('POST', '/admin/signups/' + sid1 + '/active', { active: false }, OWN)).status === 200 && V1().active === false, 'signups: the owner can switch a console off');
+  ok((await call('POST', '/admin/signups/' + sid1 + '/active', { active: true }, OWN)).status === 200 && V1().active === true, 'signups: … and on again');
+  ok((await call('POST', '/admin/signups/' + sid1 + '/active', { active: 'yes' }, OWN)).d.error === 'bad_request', 'signups: «active» is a boolean or nothing');
+  ok((await call('DELETE', '/admin/signups/' + sid1, undefined, OWN)).status === 200, 'signups: the owner can delete one');
+  ok(!got('signup:' + sid1) && !got('venue:' + vid1) && !got('plan:' + planId), 'signups: … the venue and everything in it go with it');
+  ok(!got('afm:094019245'), 'signups: … and the ΑΦΜ gets its free year back — deleting is his decision, not bookkeeping');
+  ok((await call('DELETE', '/admin/signups/' + sid1, undefined, OWN)).status === 404, 'signups: deleting it twice is a 404, not a crash');
+
+  // -- the one short line to the only person who runs this ---------------------
+  m.set('meta:owner', JSON.stringify({ email: 'andreas@example.gr', emailVerified: true, lang: 'el' }));
+  before = mails.length;
+  ok((await signup({ name: 'Κτήμα Ανεμώνη', afm: '400000037', email: 'anemoni@example.gr', phone: '2117778899', terms: true }, '203.0.113.92')).status === 200, 'signup: one more, this time with the owner reachable');
+  const note = last('andreas@example.gr');
+  ok(note && note.subject.includes('Κτήμα Ανεμώνη') && /400000037/.test(note.text) && /anemoni@example.gr/.test(note.text) && /2117778899/.test(note.text),
+    'signup: Andreas learns about a new venue from one short email, not by noticing a row', note && note.subject);
+  ok(mails.length === before + 2, 'signup: … and exactly two messages leave — the venue’s link and his line');
+  m.delete('meta:owner');
+
+  // -- the free year starts when the link is opened, not when the form was sent -
+  {
+    ok((await signup({ name: 'Κτήμα Αργυρό', afm: '600000056', email: 'argyro@example.gr', phone: '2105556677', terms: true }, '203.0.113.95')).status === 200,
+      'trial: a signup that will sit unopened for six days');
+    const sv = got('afm:600000056').venueId, sid = got('afm:600000056').signupId;
+    patchRaw('venue:' + sv, v => { v.license.seasonStart = athensDay(-6); v.license.seasonEnd = athensDay(358);
+      v.trial.seasonEnd = athensDay(358); v.trial.startedAt = Date.now() - 6 * 86400000; });   // as if the form had been filled in six days ago
+    const k = (await call('POST', '/recover/venue', { token: linkOf(last('argyro@example.gr')), secret: 'argyroargyro26' })).d.key;
+    ok(!!k && got('venue:' + sv).license.seasonStart === athensDay(0) && spanDays(got('venue:' + sv).license.seasonStart, got('venue:' + sv).license.seasonEnd) === 364,
+      'trial: the 365 days run from the day the link is opened — not from the form, when nothing worked yet', got('venue:' + sv).license);
+    ok(got('venue:' + sv).trial.seasonEnd === got('venue:' + sv).license.seasonEnd && got('signup:' + sid).trialEndsAt === got('venue:' + sv).trial.endsAt,
+      'trial: … and the licence, the trial marker and the signup row all say the same date', got('venue:' + sv).trial);
+    await call('DELETE', '/admin/signups/' + sid, undefined, OWN);
+  }
+
+  // -- the queue filling up is the one thing he has to hear about while it happens -
+  {
+    m.set('meta:owner', JSON.stringify({ email: 'andreas@example.gr', emailVerified: true, lang: 'el' }));
+    const ids = got('signups:index') || [], pad = [];
+    for (let i = 0; i < 239; i++) { const k = 'floodsignup' + i; m.set('signup:' + k, JSON.stringify({ id: k, status: 'pending', createdAt: Date.now(), expiresAt: Date.now() + 86400000 })); pad.push(k); }
+    m.set('signups:index', JSON.stringify([...ids, ...pad]));
+    m.delete('rlmailday:ownersignup:andreas@example.gr'); m.delete('rlmail:ownersignup:andreas@example.gr');
+    before = mails.length;
+    ok((await signup({ name: 'Κτήμα Πλημμύρα', afm: '700000060', email: 'flood@example.gr', phone: '2104445566', terms: true }, '203.0.113.96')).status === 200,
+      'signup: the 240th of the day still gets through');
+    const warn = [...mails].reverse().find(x => x.to === 'andreas@example.gr' && /ουρά εγγραφών/.test(x.subject));
+    ok(warn && /\b2[4-9]\d\b/.test(warn.text) && / 300\b/.test(warn.text),
+      'signup: … and at 80% of the ceiling Andreas is told, before the funnel closes', warn && warn.subject);
+    ok(mails.length === before + 3, 'signup: … on top of the venue’s link and his usual one-liner, not instead of them', mails.length - before);
+    m.set('signups:index', JSON.stringify(ids));
+    for (const k of pad) m.delete('signup:' + k);
+    await call('DELETE', '/admin/signups/' + got('afm:700000060').signupId, undefined, OWN);
+    m.delete('meta:owner');
+  }
+
+  // -- the owner moves, and then ends, a free year ----------------------------
+  {
+    ok((await signup({ name: 'Κτήμα Ροδιά', afm: '500000041', email: 'rodia@example.gr', phone: '2102223344', terms: true }, '203.0.113.93')).status === 200, 'trial: one more free year, to move around');
+    const sv = got('afm:500000041').venueId;
+    const k = (await call('POST', '/recover/venue', { token: linkOf(last('rodia@example.gr')), secret: 'rodiarodia2026' })).d.key;
+    const RK = { 'X-Venue-Key': k }, moved = athensDay(430);
+    const L0 = got('venue:' + sv).license;
+    ok((await call('PATCH', '/admin/venues/' + sv, { license: { type: 'seasonal', seasonStart: L0.seasonStart, seasonEnd: moved, autoRenew: false } }, OWN)).status === 200
+      && got('venue:' + sv).trial.seasonEnd === moved,
+      'trial: «Edit…» moves the free year with its dates — two more months stay two more FREE months');
+    ok((await call('GET', '/venues/' + sv, undefined, RK)).d.venue.trial.inForce === true, 'trial: … the console still says free year, with no renewal switch');
+    {
+      const row = (await call('GET', '/admin/signups', undefined, OWN)).d.signups.find(x => x.venueId === sv);
+      ok(row && row.trialEndsAt === got('venue:' + sv).trial.endsAt && row.season.end === moved,
+        'signups: the list reads the free year off the venue, so a date he moved is the date he sees', row && { t: row.trialEndsAt, s: row.season });
+    }
+    ok((await call('POST', '/venues/' + sv + '/weddings', { label: 'Παράταση', date: athensDay(400) }, RK)).status === 200, 'trial: … and the extra months really do cover a later wedding');
+    ok((await call('PATCH', '/admin/venues/' + sv, { trial: false }, OWN)).status === 200 && got('venue:' + sv).trial.seasonEnd === null && !!got('venue:' + sv).trial.verifiedAt,
+      'trial: «it is a paid subscription now» drops the marker and keeps when they signed up');
+    const nt = await call('GET', '/venues/' + sv, undefined, RK);
+    ok(nt.d.venue.trial.inForce === false && nt.d.canCreate === true, 'trial: … after which it is an ordinary season');
+    ok((await call('POST', '/venues/' + sv + '/renewal', { autoRenew: true }, RK)).status === 200, 'trial: … and the venue may switch automatic renewal on, like any other subscriber');
+  }
+
+  env.MAIL = keepMail;
+}
+
 console.log(`\nall ${n} checks passed`);

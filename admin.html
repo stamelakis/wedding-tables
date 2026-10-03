@@ -247,6 +247,7 @@ function licenseText(L){ L=L||{};
 // whose renewal reminder e-mail actually went out; otherwise the server skips it and sets license.renewSkipped = that seasonEnd.
 function renewalHtml(v){ const L=(v&&v.license)||{};
   if(L.type==="per_wedding") return "";
+  if(v&&v.trial&&v.trial.inForce) return "";   // a free year never renews itself; its own line says what happens instead
   if(L.renewSkipped) return `<div style="margin-top:4px"><span class="badge warn long">Season ended ${esc(fmtYmd(L.renewSkipped))} — not renewed automatically (no reminder could be sent). Renew by editing the licence.</span></div>`;
   if(!isYmd(L.seasonEnd)) return "";
   if(L.autoRenew===false) return `<div class="muted">renewal off</div>`;
@@ -662,6 +663,14 @@ function renderDashboard(venues){
       </div>
     </div>
 
+    <div class="section" id="signupsSection">
+      <div class="sechead"><h2>Signups <span class="muted" id="sucount"></span></h2>
+        <button class="btn sm" id="suPrune">Clear old pending</button>
+        <button class="btn sm" id="suRefresh">Refresh</button></div>
+      <p class="lead" style="margin:0 0 10px">Venues that signed themselves up at <span class="mono">/venue.html#signup</span>. Pending means the setup link has not been opened yet — the free year is only spent for that ΑΦΜ once it is, and an unopened signup expires in 7 days and gives the ΑΦΜ back. You also get one short email per new signup.</p>
+      <div class="card tablewrap" id="sutable"><div class="empty">Loading…</div></div>
+    </div>
+
     <div class="section" id="venuesSection">
       <h2>Venues <span class="muted" id="vcount">(${venues.length})</span></h2>
       <div class="stack">
@@ -724,11 +733,107 @@ function renderDashboard(venues){
   document.getElementById("supRefresh").onclick=async e=>{ const b=e.currentTarget; b.disabled=true;
     await Promise.all([refreshSupport(), refreshCouples()]); b.disabled=false; };
   document.getElementById("vtable").addEventListener("click", onRowAction());
+  document.getElementById("sutable").addEventListener("click", onSignupAction);
+  document.getElementById("suRefresh").onclick=async e=>{ const b=e.currentTarget; b.disabled=true; await refreshSignups(); b.disabled=false; };
+  // One press for the whole queue: the answer to a flood, which is the only way 300 pending rows ever appear.
+  document.getElementById("suPrune").onclick=async e=>{
+    const b=e.currentTarget, open=signupsCache.filter(x=>x.status==="pending").length;
+    if(!confirm(`Clear the pending signups older than 24 hours that nobody opened?\n\n`
+      +`${open} pending right now. A row that has a key set, a wedding or a floor plan is left alone.\n`
+      +`Each ΑΦΜ gets its free year back, so those businesses can sign up again.`)) return;
+    b.disabled=true;
+    const res=await req("/admin/signups/prune",{ method:"POST", body:JSON.stringify({ hours:24 }) });
+    b.disabled=false;
+    if(!res.ok){ failToast(res,"Could not clear them"); return; }
+    toast(res.d&&res.d.dropped?`Cleared ${res.d.dropped}`:"Nothing old enough to clear"); refreshSignups(); refreshVenues();
+  };
   document.getElementById("ctable").addEventListener("click", onCoupleAction);
   wireExceptionForm();
   document.getElementById("xlist").addEventListener("click", onExceptionAction);
   wireTools();
-  refreshSupport(); refreshCouples(); refreshSettings(); refreshOwner();
+  refreshSupport(); refreshCouples(); refreshSignups(); refreshSettings(); refreshOwner();
+}
+
+// ---------------------------------------------------------------- signups (self-service venues)
+// Everything here is read from the signup row plus its venue: whether the setup link has been opened, when the free
+// year ends, and whether a first wedding exists yet — the four things that say if a signup turned into a customer.
+let signupsCache=[];
+// An ΑΦΜ is public — it is on every receipt — so a stranger with a throwaway mailbox can spend a business's one free
+// year before that business has heard of us. Nothing is released automatically (that would be a second free year for
+// a slow but real venue); this is what the squat looks like, so it can be seen and deleted by hand.
+const SIGNUP_IDLE_DAYS=45;
+const idleSignup=su=>su.status==="verified" && !su.weddingCount && su.verifiedAt && Date.now()-su.verifiedAt > SIGNUP_IDLE_DAYS*86400000;
+function signupStatusHtml(su){
+  if(su.status==="pending"){
+    const exp=su.expiresAt||0, over=Date.now()>exp;
+    return `<span class="badge wait">Waiting for the setup link</span>`
+      +(su.mailFailedAt?`<div class="muted" style="color:var(--danger)">⚠ The email failed (${esc(su.mailError||"error")}) — call them</div>`:"")
+      +`<div class="muted"${over?' style="color:var(--danger)"':""}>${over?"Link expired — the sweep will free the ΑΦΜ":`Link valid until ${esc(fmtDate(exp))}`}</div>`
+      +(su.resent?`<div class="muted">Re-sent ${esc(String(su.resent))}×, last ${esc(fmtDate(su.resentAt))}</div>`:"");
+  }
+  if(su.status==="verified") return `<span class="badge per">Opened ${esc(fmtDate(su.verifiedAt))}</span>`
+    +(su.keySet?"":`<div class="muted">No key set yet</div>`)
+    +(idleSignup(su)?`<div class="muted" style="color:var(--danger)">Nothing created in ${SIGNUP_IDLE_DAYS} days — check it is really that business, or delete it to give the ΑΦΜ back</div>`:"")
+    +(su.venueActive===false?`<div><span class="badge off">Disabled</span></div>`:"");
+  if(su.status==="expired") return `<span class="badge off">Expired unopened</span><div class="muted">${esc(fmtDate(su.expiredAt))} · ΑΦΜ free again</div>`;
+  if(su.status==="deleted") return `<span class="badge off">Venue deleted</span><div class="muted">${esc(fmtDate(su.expiredAt))}</div>`;
+  return `<span class="badge off">${esc(su.status||"—")}</span>`;
+}
+function signupRowHtml(su){
+  const live=!su.venueGone;
+  return `<tr data-sid="${esc(su.id)}">
+    <td><strong>${esc(su.name)}</strong>
+      <div class="muted">ΑΦΜ ${esc(su.afm)}</div>
+      <div class="muted">✉ ${esc(su.email)}</div>
+      <div class="muted">☎ ${esc(su.phone)}</div>
+      <div class="muted">Signed up ${esc(fmtDate(su.createdAt))}</div></td>
+    <td data-l="Status">${signupStatusHtml(su)}</td>
+    <td data-l="Free year">${su.season&&su.season.end?`<div>${esc(fmtYmd(su.season.start))} – ${esc(fmtYmd(su.season.end))}</div>`:`<div class="muted">—</div>`}
+      ${su.trialEndsAt?`<div class="muted">${esc(relTime(su.trialEndsAt))}</div>`:""}</td>
+    <td data-l="Weddings">${su.firstWeddingAt?`<div>${esc(String(su.weddingCount))}</div><div class="muted">first ${esc(fmtDate(su.firstWeddingAt))}</div>`:`<div class="muted">none yet</div>`}</td>
+    <td class="acts-cell"><div class="row acts">
+      ${live?`<button class="btn sm" data-a="venue">Venue ↓</button>`:""}
+      ${live?`<button class="btn sm" data-a="toggle">${su.venueActive===false?"Enable":"Disable"}</button>`:""}
+      <button class="btn sm danger" data-a="del">Delete</button>
+    </div></td></tr>`;
+}
+function signupsTableHtml(list){
+  return `<table class="cards"><thead><tr><th>Venue</th><th>Status</th><th>Free year</th><th>Weddings</th><th></th></tr></thead>
+      <tbody>${list.length? list.map(signupRowHtml).join("") : `<tr><td colspan="5" class="empty">No signups yet.</td></tr>`}</tbody></table>`;
+}
+async function refreshSignups(){
+  const res=await req("/admin/signups"); if(!res.ok || !res.d) return;
+  signupsCache=(res.d.signups||[]).slice().sort(byNewest);
+  const t=document.getElementById("sutable"); if(t) t.innerHTML=signupsTableHtml(signupsCache);
+  const n=document.getElementById("sucount"); if(n){ const open=signupsCache.filter(x=>x.status==="pending").length;
+    n.textContent=`(${signupsCache.length}${open?`, ${open} pending`:""})`; }
+}
+async function onSignupAction(e){
+  const btn=e.target.closest("button[data-a]"); if(!btn) return;
+  const sid=btn.closest("tr").dataset.sid, su=signupsCache.find(x=>x.id===sid); if(!su) return;
+  const a=btn.dataset.a;
+  if(a==="venue"){
+    const v=venuesCache.find(x=>x.id===su.venueId);
+    const row=document.querySelector(`#vtable tr[data-id="${CSS.escape(su.venueId||"")}"]`);
+    if(row) row.scrollIntoView({ behavior:"smooth", block:"center" });
+    else if(v) document.getElementById("venuesSection").scrollIntoView({ behavior:"smooth", block:"start" });
+    else toast("That venue is no longer in the list — use Refresh");
+    return;
+  }
+  if(a==="toggle"){
+    const on=su.venueActive===false;
+    const res=await req("/admin/signups/"+encodeURIComponent(sid)+"/active",{ method:"POST", body:JSON.stringify({ active:on }) });
+    if(!res.ok){ failToast(res, res.status===410?"That venue is gone — refreshing":"Could not change it"); refreshSignups(); return; }
+    toast(on?"Console enabled":"Console disabled"); refreshSignups(); refreshVenues(); return;
+  }
+  if(a==="del"){
+    if(!confirm(`Delete the signup of "${su.name}" (ΑΦΜ ${su.afm})?\n\n`
+      +(su.venueGone?"":"Its venue, every wedding in it and its floor plan are erased for good.\n")
+      +"The ΑΦΜ gets its free year back, so this business can sign up again.")) return;
+    const res=await req("/admin/signups/"+encodeURIComponent(sid),{ method:"DELETE" });
+    if(!res.ok){ failToast(res, "Delete failed"); return; }
+    toast("Signup deleted"); refreshSignups(); refreshVenues();
+  }
 }
 
 // ---------------------------------------------------------------- support requests
@@ -1073,15 +1178,19 @@ function rowHtml(v){
   const L=v.license||{};
   const usage = L.type==="per_wedding" ? `${v.used||0}/${L.quota||"∞"}` : `${v.weddingCount||0}${L.cap?`/${L.cap}`:""}`;
   const notes=String(v.notes||""), rt=retentionText(v.retention);
+  // A free first year is not a season that renews: it is marked as what it is, with the date it stops covering weddings.
+  const trial=(v.trial&&v.trial.inForce)?`<div class="muted">★ Free first year${isYmd(L.seasonEnd)?` — covers weddings up to ${esc(fmtYmd(L.seasonEnd))}`:""}${v.trial.verifiedAt?"":" (link not opened yet)"}</div>`:"";
   return `<tr data-id="${esc(v.id)}">
     <td><strong>${esc(v.name)}</strong>${v.keyRotated?` <span class="mark" title="Only the venue knows its key">🔒</span>`:""}${v.hasTemplate?` <span class="badge tpl" title="The venue has saved a default space">template ✓</span>`:""}${emailHtml(v)}
       ${v.contact?`<div class="muted" title="Public contact — shown to this venue's couples">☎ ${esc(v.contact)}</div>`:""}
       ${notes?`<div class="muted" title="${esc(notes)}">📝 ${esc(notes.length>90?notes.slice(0,90)+"…":notes)}</div>`:""}</td>
     <td data-l="License"><div><span class="badge ${L.type==='per_wedding'?'per':'season'}">${L.type==='per_wedding'?'Per-wedding':'Seasonal'}</span><div class="muted">${esc(licenseText(L))}</div>${renewalHtml(v)}
       ${L.invoiceDue?`<div class="row fw" style="gap:6px;margin-top:4px"><span class="badge warn long">Renewed ${esc(fmtDate(L.renewedAt))} — invoice due</span><button class="btn sm" data-a="invoiced" title="The renewal invoice has been sent">Invoiced ✓</button></div>`:""}
-      ${rt?`<div class="muted" title="This venue's own after-the-wedding setting">⚙ After the wedding: ${esc(rt)}</div>`:""}</div></td>
+      ${trial}${rt?`<div class="muted" title="This venue's own after-the-wedding setting">⚙ After the wedding: ${esc(rt)}</div>`:""}</div></td>
     <td data-l="Weddings"><div>${esc(usage)}${v.trashCount>0?`<div><button class="linkbtn" data-a="trash">Deleted weddings (${esc(v.trashCount)})</button></div>`:""}</div></td>
-    <td data-l="Status">${v.active?`<span class="badge season">Active</span>`:`<span class="badge off">Off</span>`}</td>
+    <td data-l="Status">${v.active?`<span class="badge season">Active</span>`:`<span class="badge off">Off</span>`}
+      ${v.selfSignup?`<div><span class="badge tpl" title="This venue signed itself up at /venue.html#signup">signed up</span></div>`:""}
+      ${v.afm?`<div class="muted">ΑΦΜ ${esc(v.afm)}</div>`:""}${v.phone?`<div class="muted">☎ ${esc(v.phone)}</div>`:""}</td>
     <td class="acts-cell"><div class="row acts">
       <button class="btn sm" data-a="key">Key</button>
       <button class="btn sm" data-a="edit">Edit…</button>
@@ -1201,6 +1310,11 @@ async function openVenueEdit(v){
         <div class="full"><label class="chk"><input type="checkbox" id="ve_active"${fv.active?" checked":""}> <span>Active <span class="muted">— when off, the venue can't create new weddings</span></span></label></div>
       </div>
       <div class="subh">License</div>
+      ${(fv.trial&&fv.trial.inForce)?`<div class="keybox note" style="margin:0 0 10px">
+        <div style="font-weight:700">★ On its free first year${isYmd(fv.license&&fv.license.seasonEnd)?` — to ${esc(fmtYmd(fv.license.seasonEnd))}`:""}</div>
+        <div class="muted" style="margin-top:4px">Changing the season dates below moves the free year; it does not renew itself, and it only covers weddings dated inside it. Tick this once they are paying:</div>
+        <label class="chk" style="margin-top:6px"><input type="checkbox" id="ve_endtrial"> <span>This is a paid subscription now — drop the free-year marker (the dates below then behave like any other season)</span></label>
+      </div>`:""}
       ${renewalHtml(fv)}
       <div id="ve_lic" style="margin-top:8px">${licenseFields("ve_", fv.license||{ type:"seasonal", autoRenew:true })}</div>
       ${renewalsHtml(fv)}
@@ -1224,6 +1338,7 @@ async function saveVenueEdit(v, d, initial){
   const sel=q("#ve_lang").value, lang=PLANNER_FILE[sel]?sel:"el"; if(lang!==(PLANNER_FILE[v.lang]?v.lang:"el")) body.lang=lang;
   const active=q("#ve_active").checked; if(active!==!!v.active) body.active=active;
   if(formState(q("#ve_lic"))!==initial.lic){ const lic=readLicense("ve_", d); if(lic.error){ invalid(lic.el, lic.error); return; } body.license=lic.license; }
+  if(q("#ve_endtrial") && q("#ve_endtrial").checked) body.trial=false;
   if(formState(q("#vr_box"))!==initial.ret){ const r=readRetention("vr_", d); if(r.error){ invalid(r.el, r.error); return; } body.retention=r.ret; }
   const email=q("#ve_email").value.trim(), emailChanged=email.toLowerCase()!==(v.email||"").toLowerCase();
   if(emailChanged){
@@ -1813,13 +1928,14 @@ async function savePlanRetention(pid, name, d){
 function tile(label, n, hot){ return `<div${hot?' class="hot"':''}><b>${esc(String(n))}</b><span>${esc(label)}</span></div>`; }
 // What the hourly sweep actually did, in words, with the zeros left out.
 const GR_SWEEP={ tok:"σύνδεσμοι", rlmail:"όρια email", claim:"προσκλήσεις", find:"ορφανά QR", locked:"κλείδωσαν",
-  keepsakes:"αναμνηστικά", purged:"σβήστηκαν", trash:"κάδος", findEnded:"QR που έκλεισαν", renewed:"ανανεώσεις", reminded:"υπενθυμίσεις" };
+  keepsakes:"αναμνηστικά", purged:"σβήστηκαν", trash:"κάδος", findEnded:"QR που έκλεισαν", renewed:"ανανεώσεις", reminded:"υπενθυμίσεις",
+  rl:"όρια αιτημάτων", trialReminded:"υπενθυμίσεις δωρεάν χρόνου", signupsExpired:"εγγραφές που έληξαν", signupsDropped:"εγγραφές που σβήστηκαν" };
 function sweepWords(o){ const xs=Object.entries(o||{}).filter(([k,v])=>v).map(([k,v])=>`${v} ${GR_SWEEP[k]||k}`);
   return xs.length?xs.join(" · "):"δεν χρειάστηκε να κάνει τίποτα"; }
 // The per-IP buckets server.mjs counts. «findtoken» is one slot per unknown QR per address, so it always sits at its
 // own ceiling of 1 — that is not pressure, and it is not coloured as such.
 const GR_BUCKET={ write:"γραψίματα", create:"νέα σχέδια", find:"αναζητήσεις QR", findfail:"άγνωστα QR",
-  findtoken:"ανά άγνωστο QR", mail:"αιτήματα email", pdf:"PDF", amelie:"Amelie", authfail:"λάθος κλειδιά" };
+  findtoken:"ανά άγνωστο QR", mail:"αιτήματα email", pdf:"PDF", amelie:"Amelie", authfail:"λάθος κλειδιά", signup:"εγγραφές κτημάτων" };
 function diagHtml(d){
   const c=d.counts||{}, m=d.mail||{}, h=d.host||null, sw=d.sweep||null, sm=m.smtp||null;
   const le=m.lastError, failing=!!(le && le.at && (!m.lastOkAt || le.at>m.lastOkAt));
@@ -1838,6 +1954,9 @@ function diagHtml(d){
     <div class="kv">${tile("κτήματα",c.venues)}${tile("ζευγάρια",c.couples)}${tile("σχέδια",c.plans)}${tile("QR ανοιχτά",c.findersOn)}${tile("QR που απαντούν",c.findersOpen)}${tile("ανοιχτές υποστηρίξεις",c.support)}${tile("χωρίς ημερομηνία",c.noDate,c.noDate>0)}${tile("κλειδωμένα",c.locked)}</div>
     ${(c.testPlans||c.testVenues)?`<div class="subh">Δικά σου δοκιμαστικά <span class="muted">— δεν μετρούν πουθενά παραπάνω</span></div>
     <div class="kv">${tile("δοκιμαστικοί γάμοι",c.testPlans,true)}${tile("δοκιμαστικός χώρος",c.testVenues,true)}${tile("QR δοκιμής",c.testFinders||0,true)}</div>`:""}
+    <div class="subh">Εγγραφές κτημάτων <span class="muted">— η ουρά της δημόσιας φόρμας</span></div>
+    <div class="kv">${tile("εκκρεμείς το 24ωρο (max "+(c.signupsMax||"—")+")", c.signupsToday||0, c.signupsMax&&(c.signupsToday||0)>=c.signupsMax*0.8)}</div>
+    ${(c.signupsMax&&(c.signupsToday||0)>=c.signupsMax*0.8)?`<div class="muted" style="margin-top:6px;color:var(--danger)">Κοντά στο όριο — όταν γεμίσει, η φόρμα απαντά «δεν είναι διαθέσιμη». Καθαρίστε τις εκκρεμείς στις «Εγγραφές».</div>`:""}
     <div class="subh">Τις επόμενες 7 μέρες</div>
     <div class="kv">${tile("κλειδώνουν",c.lockIn7)}${tile("σβήνονται",c.deleteIn7,c.deleteIn7>0)}${tile("στον κάδο",c.inTrash)}</div>
     <div class="subh">Πίεση στα όρια <span class="muted">— τώρα, χωρίς διευθύνσεις</span></div>

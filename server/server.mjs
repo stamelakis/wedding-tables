@@ -55,6 +55,13 @@ if (process.env.KV_BACKEND === 'memory') {
   console.log('KV backend: sqlite at ' + DB_PATH);
 }
 const env = { OWNER_KEY: (process.env.OWNER_KEY || '').trim(), PLANS, PUBLIC_URL: process.env.PUBLIC_URL || 'https://takeaseat.gr' };   // a stray space in server.env would silently make the admin key unusable
+// Our own pages (and a developer's localhost). Used only to refuse a cross-site POST to the public signup; everything
+// else is already behind a key. www counts as ours, and the site's own origin comes from PUBLIC_URL, never from Host.
+const OWN_ORIGIN = (() => { try { const u = new URL(env.PUBLIC_URL); return u.origin.toLowerCase(); } catch (e) { return 'https://takeaseat.gr'; } })();
+const originOk = o => { let u; try { u = new URL(o); } catch (e) { return false; }
+  const h = u.hostname.toLowerCase(), own = new URL(OWN_ORIGIN).hostname.toLowerCase();
+  if (h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '::1') return true;
+  return u.origin.toLowerCase() === OWN_ORIGIN || h === own || h === 'www.' + own || 'www.' + h === own; };
 // Amelie (amelie.gr): the worker calls only https://amelie.gr/api/guests. AMELIE_API_URL is for tests / local dev ONLY — a
 // mock on this machine (http://127.0.0.1:<port>/api/guests); any other host is refused by the worker. Production sets none.
 if (process.env.AMELIE_API_URL) { env.AMELIE_API_URL = process.env.AMELIE_API_URL.trim(); console.log('amelie: AMELIE_API_URL is set — Amelie calls go to a local mock (dev/test only, never in production)'); }
@@ -155,7 +162,7 @@ setTimeout(runSweep, 60000).unref?.(); setInterval(runSweep, 3600000).unref?.();
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png',
   '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.ico': 'image/x-icon', '.webp': 'image/webp', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml; charset=utf-8' };
-const API_PREFIXES = ['/plans', '/codes', '/venues', '/admin', '/claim', '/health', '/recover', '/verify', '/pdf', '/find'];
+const API_PREFIXES = ['/plans', '/codes', '/venues', '/admin', '/claim', '/health', '/recover', '/verify', '/pdf', '/find', '/signup'];
 // The guest finder's page: never indexed. robots.txt disallows it too; this header is what a crawler that ignores robots.txt
 // still gets. Renaming the page means changing this one line and the Disallow in robots.txt.
 const NOINDEX = new Set(['/trapezi.html']);
@@ -283,8 +290,23 @@ http.createServer(async (req, res) => {
       res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '60' }); res.end('{"error":"rate_limited"}'); return;
     }
     // e-mail requests: 20 an hour per IP (each address is also limited to 3 an hour by the worker)
-    if ((req.method === 'POST' || req.method === 'PUT') && (canon === '/recover' || canon === '/admin/recover' || canon === '/admin/owner' || canon === '/admin/test/email' || /^\/(plans|venues)\/[^/]+\/email$/.test(canon)) && !rateOk(ip + ':mail', 20, 3600000)) {
+    if ((req.method === 'POST' || req.method === 'PUT') && (canon === '/recover' || canon === '/admin/recover' || canon === '/admin/owner' || canon === '/admin/test/email' || canon === '/signup/venue' || /^\/(plans|venues)\/[^/]+\/email$/.test(canon)) && !rateOk(ip + ':mail', 20, 3600000)) {
       res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '3600' }); res.end('{"error":"rate_limited"}'); return;
+    }
+    // The venue signup is the one unauthenticated write that creates an account: a burst is stopped here, and the
+    // worker keeps the real fence (3 a day per address, in the store, so a restart does not hand out a fresh budget).
+    if (canon === '/signup/venue' && !rateOk(ip + ':signup', 5, 3600000)) {
+      res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '3600' }); res.end('{"error":"rate_limited"}'); return;
+    }
+    // …and it is the one unauthenticated write a FOREIGN page could make a visitor's browser send. A POST with
+    // text/plain is a CORS "simple request": no preflight, so the per-IP fence above would be spending the visitor's
+    // address instead of the attacker's. Demanding JSON forces a preflight, and the preflight answers with our one
+    // fixed Access-Control-Allow-Origin, which no other page passes. A stated foreign Origin is refused outright.
+    if (canon === '/signup/venue') {
+      const ct = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+      if (ct !== 'application/json') { res.writeHead(415, { 'Content-Type': 'application/json' }); res.end('{"error":"bad_content_type"}'); return; }
+      const org = String(req.headers.origin || '').trim();
+      if (org && !originOk(org)) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end('{"error":"bad_origin"}'); return; }
     }
     if (isCreate && await diskLow()) {
       res.writeHead(507, { 'Content-Type': 'application/json' }); res.end('{"error":"storage_full"}'); return;
@@ -321,8 +343,13 @@ http.createServer(async (req, res) => {
         'Content-Disposition': 'attachment; filename="takeaseat.pdf"; filename*=UTF-8\'\'' + encodeURIComponent(pdfFileName(name, mode, lang)) });
       res.end(pdf); return;
     }
+    // The worker rate-limits the public signup per address, so the address it reads must be the one WE measured, not
+    // one the caller wrote: x-real-ip is overwritten here and cf-connecting-ip (which the worker prefers when it runs
+    // on Cloudflare) is dropped, so neither can be forged by anything talking to this server.
+    const fwd = { ...req.headers, 'x-real-ip': clientIp(req) };
+    delete fwd['cf-connecting-ip'];
     const request = new Request('http://internal' + req.url, {
-      method: req.method, headers: req.headers,
+      method: req.method, headers: fwd,
       body: ['GET', 'HEAD', 'OPTIONS'].includes(req.method) ? undefined : body,
     });
     // An Amelie pull may wait up to 8 s on amelie.gr, so it runs BESIDE the queue — nobody's save waits on Amelie. That is

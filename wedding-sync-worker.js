@@ -80,6 +80,37 @@ const baseUrl = env => String(env.PUBLIC_URL || "https://takeaseat.gr").replace(
 const plannerUrl = (env, lang) => baseUrl(env) + "/" + PLANNER_FILE[langOf(lang)];
 const RECOVER_TTL = 3600000, SETUP_TTL = 7 * 86400000, VERIFY_TTL = 86400000, TOKEN_RETRY = 15 * 60000;
 const MAILS_PER_HOUR = 3, OWNER_MAILS_PER_DAY = 8;   // an admin mailbox should never be usable as a bullhorn
+// ---- venue self-signup (the public write) ----
+// A signup is PENDING until its setup link is opened: that is the email verification, and only then is the free year
+// spent for this ΑΦΜ. A link that is never opened expires with itself and gives the business its chance back.
+const TRIAL_DAYS = 365, TRIAL_REMIND = [7, 30, 60];   // ascending: the sweep takes the nearest pending mark
+const SIGNUP_TTL = SETUP_TTL;                 // pending for exactly as long as the setup link lives
+const SIGNUP_KEEP_DAYS = 30;                  // an expired row stays in the admin list this long, then goes
+const SIGNUPS_PER_IP_DAY = 3;                 // one person signing up their venue does it once, maybe twice
+const SIGNUPS_PENDING_MAX = 300;              // the whole pending queue — a flood cannot fill the database
+// The free year is in force only while the licence is still the one the signup created. The moment Andreas sells that
+// venue a real season («Edit…», new dates), the trial stops governing and the venue is an ordinary subscriber again:
+// it renews, it is reminded like one, and its weddings are no longer judged on their date.
+const onTrial = v => !!(v && v.trial && v.trial.seasonEnd && v.license && v.license.seasonEnd === v.trial.seasonEnd);
+// The caller's address, as the ONE hop in front of us states it. server.mjs overwrites X-Real-IP with the address it
+// measured and drops any CF-Connecting-IP the client invented, so neither header can be forged from outside; without a
+// hop (tests, a direct call) everyone shares the bucket named "unknown", which is the strict side to fail on.
+const clientIp = request => String(request.headers.get("CF-Connecting-IP") || request.headers.get("X-Real-IP") || "").trim().slice(0, 45) || "unknown";
+// Greek ΑΦΜ: nine digits whose last one is a check digit — Σ dᵢ·2⁹⁻ⁱ over the first eight, mod 11, mod 10.
+// → the normalised ΑΦΜ, or "" if it is not one. "000000000" passes the arithmetic and is not a tax id.
+function validAfm(x) {
+  const s = String(x == null ? "" : x).replace(/[\s.\-]/g, "");
+  if (!/^\d{9}$/.test(s) || s === "000000000") return "";
+  let sum = 0;
+  for (let i = 0; i < 8; i++) sum += Number(s[i]) * (1 << (8 - i));
+  return (sum % 11) % 10 === Number(s[8]) ? s : "";
+}
+// A phone we can actually ring: 10–15 digits, written however the venue writes it.
+function normPhone(x) {
+  const s = String(x == null ? "" : x).trim();
+  const d = s.replace(/\D/g, "");
+  return (s.length <= 30 && /^[+(\d][\d\s()./+-]*$/.test(s) && d.length >= 10 && d.length <= 15) ? s : "";
+}
 // A JSON object body, or {} (never null / an array / a string).
 async function readBody(request) { const b = await request.json().catch(() => null); return (b && typeof b === "object" && !Array.isArray(b)) ? b : {}; }
 // Links sent by mail carry the record's link generation (lgen): a new email address, a new key or a newer mailed link
@@ -228,6 +259,16 @@ const MAILS = {
     ownerEmailChanged: ["Η διεύθυνση ανάκτησης άλλαξε — TakeaSeat", "Γεια σας,\n\nΗ διεύθυνση ανάκτησης της διαχείρισης άλλαξε σε {email}. Αν δεν το κάνατε εσείς, ελέγξτε αμέσως τον διακομιστή.\n\nTakeaSeat"],
     renewSoon: ["Η συνδρομή σας ανανεώνεται στις {date} — TakeaSeat", "Γεια σας,\n\nΗ συνδρομή του «{name}» στο TakeaSeat ανανεώνεται αυτόματα στις {date} για την επόμενη σεζόν ({from} – {to}).\n\nΑν δεν θέλετε να ανανεωθεί, απενεργοποιήστε την αυτόματη ανανέωση από την κονσόλα σας έως τότε: {link}\n\nΓια οποιαδήποτε ερώτηση: info@takeaseat.gr · 697 735 5378 (10:00–14:00 και 17:00–21:00).\n\nTakeaSeat"],
     keepsakeKeep: ["Το αναμνηστικό του γάμου σας — TakeaSeat", "Συγχαρητήρια!\n\nΣας στέλνουμε, ως μικρό αναμνηστικό, το τραπεζολόγιο του γάμου σας «{name}» ({date}): όλοι όσοι γιόρτασαν μαζί σας και πού κάθισαν. Θα το βρείτε συνημμένο σε PDF.\n\nΣας ευχόμαστε κάθε ευτυχία!\nTakeaSeat"],
+    // ---- self-signup. The API answers every signup the same way; what really happened is said HERE, to the address
+    // that the business already registered — so a stranger who probes an ΑΦΜ or an email learns nothing.
+    afmUsed: ["Ο δωρεάν χρόνος αυτής της επιχείρησης — TakeaSeat", "Γεια σας,\n\nΛάβαμε εγγραφή για δωρεάν πρώτο χρόνο με το ΑΦΜ {afm}. Η επιχείρηση αυτή έχει ήδη πάρει τον δωρεάν της χρόνο — δίνεται μία φορά ανά ΑΦΜ.\n\nΔεν δημιουργήθηκε δεύτερος λογαριασμός και δεν χρεωθήκατε τίποτα. Για να συνεχίσετε με συνδρομή, ή αν νομίζετε ότι έγινε λάθος, γράψτε μας στο info@takeaseat.gr ή τηλεφωνήστε στο 697 735 5378 (10:00–14:00 και 17:00–21:00).\n\nTakeaSeat"],
+    haveConsole: ["Έχετε ήδη κονσόλα — TakeaSeat", "Γεια σας,\n\nΛάβαμε εγγραφή κτήματος με αυτό το email. Υπάρχει ήδη κονσόλα σε αυτή τη διεύθυνση, οπότε δεν φτιάξαμε δεύτερη.\n\nΑν ξεχάσατε τον κωδικό, ζητήστε νέο εδώ: {link}\n\nΑν η εγγραφή αφορούσε άλλη επιχείρηση, γράψτε μας στο info@takeaseat.gr.\n\nTakeaSeat"],
+    trialEnds: ["Ο δωρεάν χρόνος σας λήγει στις {date} — TakeaSeat", "Γεια σας,\n\nΟ δωρεάν πρώτος χρόνος του «{name}» λήγει στις {date} — σε {days} ημέρες.\n\nΤι γίνεται τότε: δεν διαγράφεται τίποτα. Η κονσόλα ανοίγει κανονικά και οι γάμοι που έχετε ήδη δημιουργήσει συνεχίζουν ως την ημερομηνία τους. Για να δημιουργείτε νέους γάμους χρειάζεται συνδρομή.\n\nΓια να συνεχίσετε: info@takeaseat.gr · 697 735 5378 (10:00–14:00 και 17:00–21:00). Η κονσόλα σας: {link}\n\nTakeaSeat"],
+    ownerSignup: ["Νέα εγγραφή κτήματος: {name}", "Νέα εγγραφή από τη σελίδα.\n\nΌνομα: {name}\nΑΦΜ: {afm}\nEmail: {email}\nΤηλέφωνο: {phone}\n\nΟ σύνδεσμος ρύθμισης στάλθηκε· ο δωρεάν χρόνος μετράει από τη στιγμή που θα τον ανοίξουν, για 365 ημέρες. Στη διαχείριση: {link}\n\nTakeaSeat"],
+    // Sent to whoever just filled the form, in the branches where the real answer goes to someone else's mailbox: a
+    // business must never be left in silence because another address registered its ΑΦΜ first.
+    signupAck: ["Λάβαμε την εγγραφή σας — TakeaSeat", "Γεια σας,\n\nΛάβαμε εγγραφή κτήματος από αυτή τη διεύθυνση.\n\nΑν η επιχείρηση ή η διεύθυνση είναι ήδη καταχωρημένη, η απάντηση πηγαίνει στη διεύθυνση που την καταχώρησε — όχι απαραίτητα σε αυτή. Δεύτερος λογαριασμός δεν δημιουργείται και δεν χρεωθήκατε τίποτα.\n\nΑν περιμένετε σύνδεσμο ρύθμισης και δεν ήρθε, ή αν νομίζετε ότι το ΑΦΜ σας το δήλωσε κάποιος άλλος, γράψτε μας στο info@takeaseat.gr ή τηλεφωνήστε στο 697 735 5378 (10:00–14:00 και 17:00–21:00).\n\nTakeaSeat"],
+    ownerFlood: ["Η ουρά εγγραφών γεμίζει — TakeaSeat", "Εκκρεμείς εγγραφές το τελευταίο 24ωρο: {open} από {max}.\n\nΌταν γεμίσει, η φόρμα απαντά «δεν είναι διαθέσιμη» σε όλους μέχρι να αδειάσει. Στη διαχείριση, στις εγγραφές (Signups), το «Clear old pending» σβήνει μαζικά όσες εκκρεμούν και δεν τις άνοιξε ποτέ κανείς.\n\n{link}\n\nTakeaSeat"],
   },
   en: {
     claim: ["Your seating plan — TakeaSeat", "Hello!\n\nYour seating plan “{name}” is ready. Open the link in Chrome or Safari and press “Open my plan”:\n\n{link}\n\nThe link opens once and is valid for 30 days. TakeaSeat never opens your plan without your invitation — every access is logged.\nIf you lose the link, ask for a new one with this email: {recover}\n\nTakeaSeat"],
@@ -248,6 +289,12 @@ const MAILS = {
     ownerEmailChanged: ["The admin recovery address changed — TakeaSeat", "Hello,\n\nThe admin recovery address was changed to {email}. If this was not you, check the server right away.\n\nTakeaSeat"],
     renewSoon: ["Your subscription renews on {date} — TakeaSeat", "Hello,\n\nThe TakeaSeat subscription of “{name}” renews automatically on {date} for the next season ({from} – {to}).\n\nIf you do not want it to renew, turn automatic renewal off in your console before then: {link}\n\nAny questions: info@takeaseat.gr · +30 697 735 5378 (10:00–14:00 and 17:00–21:00, Greek time).\n\nTakeaSeat"],
     keepsakeKeep: ["A keepsake of your wedding — TakeaSeat", "Congratulations!\n\nAs a small keepsake, here is the seating plan of your wedding “{name}” ({date}): everyone who celebrated with you and where they sat. You will find it attached as a PDF.\n\nWishing you every happiness!\nTakeaSeat"],
+    afmUsed: ["This business has already had its free year — TakeaSeat", "Hello,\n\nWe received a signup for a free first year with the tax number (ΑΦΜ) {afm}. This business has already had its free year — it is given once per ΑΦΜ.\n\nNo second account was created and you were not charged. To continue with a subscription, or if you think this is a mistake, write to info@takeaseat.gr or call +30 697 735 5378 (10:00–14:00 and 17:00–21:00, Greek time).\n\nTakeaSeat"],
+    haveConsole: ["You already have a console — TakeaSeat", "Hello,\n\nWe received a venue signup with this email. There is already a console on this address, so we did not make a second one.\n\nIf you forgot the key, ask for a new one here: {link}\n\nIf the signup was for a different business, write to info@takeaseat.gr.\n\nTakeaSeat"],
+    trialEnds: ["Your free year ends on {date} — TakeaSeat", "Hello,\n\nThe free first year of “{name}” ends on {date} — in {days} days.\n\nWhat happens then: nothing is deleted. The console still opens and the weddings you have already created run to their date. Creating new weddings needs a subscription.\n\nTo continue: info@takeaseat.gr · +30 697 735 5378 (10:00–14:00 and 17:00–21:00, Greek time). Your console: {link}\n\nTakeaSeat"],
+    ownerSignup: ["New venue signup: {name}", "A new signup from the site.\n\nName: {name}\nΑΦΜ: {afm}\nEmail: {email}\nPhone: {phone}\n\nThe setup link has been sent; the free year starts when they open it and runs 365 days. In the admin console: {link}\n\nTakeaSeat"],
+    signupAck: ["We received your signup — TakeaSeat", "Hello,\n\nWe received a venue signup from this address.\n\nIf the business or the address is already registered, the answer goes to the address that registered it — not necessarily to this one. No second account is created and you were not charged.\n\nIf you are waiting for a setup link and it has not arrived, or you think someone else registered your ΑΦΜ, write to info@takeaseat.gr or call +30 697 735 5378 (10:00–14:00 and 17:00–21:00, Greek time).\n\nTakeaSeat"],
+    ownerFlood: ["The signup queue is filling up — TakeaSeat", "Pending signups in the last 24 hours: {open} of {max}.\n\nWhen it is full the form answers “not available” to everyone until it drains. In the admin console, under Signups, “Clear old pending” removes in one go the pending rows nobody ever opened.\n\n{link}\n\nTakeaSeat"],
   },
   de: {
     claim: ["Ihr Sitzplan — TakeaSeat", "Hallo!\n\nIhr Sitzplan „{name}“ ist bereit. Öffnen Sie den Link in Chrome oder Safari und tippen Sie auf „Meinen Plan öffnen“:\n\n{link}\n\nDer Link öffnet einmal und gilt 30 Tage. TakeaSeat öffnet Ihren Plan nie ohne Ihre Einladung — jeder Zugriff wird protokolliert.\nWenn Sie den Link verlieren, fordern Sie mit dieser E-Mail einen neuen an: {recover}\n\nTakeaSeat"],
@@ -268,6 +315,12 @@ const MAILS = {
     ownerEmailChanged: ["Die Wiederherstellungsadresse wurde geändert — TakeaSeat", "Hallo,\n\nDie Wiederherstellungsadresse der Verwaltung wurde auf {email} geändert. Wenn Sie das nicht waren, prüfen Sie sofort den Server.\n\nTakeaSeat"],
     renewSoon: ["Ihr Abonnement verlängert sich am {date} — TakeaSeat", "Hallo,\n\nDas TakeaSeat-Abonnement von „{name}“ verlängert sich am {date} automatisch für die nächste Saison ({from} – {to}).\n\nWenn Sie keine Verlängerung wünschen, schalten Sie die automatische Verlängerung vorher in Ihrer Konsole aus: {link}\n\nFragen: info@takeaseat.gr · +30 697 735 5378 (10:00–14:00 und 17:00–21:00, griechische Zeit).\n\nTakeaSeat"],
     keepsakeKeep: ["Eine Erinnerung an Ihre Hochzeit — TakeaSeat", "Herzlichen Glückwunsch!\n\nAls kleine Erinnerung senden wir Ihnen den Sitzplan Ihrer Hochzeit „{name}“ ({date}): alle, die mit Ihnen gefeiert haben, und wo sie saßen. Sie finden ihn als PDF im Anhang.\n\nAlles Glück der Welt!\nTakeaSeat"],
+    afmUsed: ["Dieses Unternehmen hatte sein Gratisjahr bereits — TakeaSeat", "Hallo,\n\nwir haben eine Anmeldung für ein kostenloses erstes Jahr mit der Steuernummer (ΑΦΜ) {afm} erhalten. Dieses Unternehmen hat sein Gratisjahr bereits erhalten — es wird einmal pro ΑΦΜ vergeben.\n\nEs wurde kein zweites Konto angelegt und Ihnen nichts berechnet. Für ein Abonnement, oder wenn Sie das für einen Fehler halten, schreiben Sie an info@takeaseat.gr oder rufen Sie +30 697 735 5378 an (10:00–14:00 und 17:00–21:00, griechische Zeit).\n\nTakeaSeat"],
+    haveConsole: ["Sie haben bereits eine Konsole — TakeaSeat", "Hallo,\n\nwir haben eine Location-Anmeldung mit dieser E-Mail erhalten. Unter dieser Adresse gibt es bereits eine Konsole, deshalb haben wir keine zweite angelegt.\n\nWenn Sie den Schlüssel vergessen haben, fordern Sie hier einen neuen an: {link}\n\nWenn die Anmeldung ein anderes Unternehmen betraf, schreiben Sie an info@takeaseat.gr.\n\nTakeaSeat"],
+    trialEnds: ["Ihr Gratisjahr endet am {date} — TakeaSeat", "Hallo,\n\ndas kostenlose erste Jahr von „{name}“ endet am {date} — in {days} Tagen.\n\nWas dann passiert: nichts wird gelöscht. Die Konsole öffnet weiterhin und die bereits angelegten Hochzeiten laufen bis zu ihrem Datum. Für neue Hochzeiten brauchen Sie ein Abonnement.\n\nZum Weitermachen: info@takeaseat.gr · +30 697 735 5378 (10:00–14:00 und 17:00–21:00, griechische Zeit). Ihre Konsole: {link}\n\nTakeaSeat"],
+    ownerSignup: ["Neue Location-Anmeldung: {name}", "Eine neue Anmeldung über die Website.\n\nName: {name}\nΑΦΜ: {afm}\nE-Mail: {email}\nTelefon: {phone}\n\nDer Einrichtungslink wurde gesendet; das Gratisjahr beginnt, sobald er geöffnet wird, und läuft 365 Tage. In der Verwaltung: {link}\n\nTakeaSeat"],
+    signupAck: ["Wir haben Ihre Anmeldung erhalten — TakeaSeat", "Hallo,\n\nwir haben von dieser Adresse eine Location-Anmeldung erhalten.\n\nWenn das Unternehmen oder die Adresse bereits registriert ist, geht die Antwort an die Adresse, die sie registriert hat — nicht unbedingt an diese. Es wird kein zweites Konto angelegt und Ihnen nichts berechnet.\n\nWenn Sie auf einen Einrichtungslink warten und keiner angekommen ist, oder wenn Sie glauben, dass jemand anderes Ihre ΑΦΜ angemeldet hat, schreiben Sie an info@takeaseat.gr oder rufen Sie +30 697 735 5378 an (10:00–14:00 und 17:00–21:00, griechische Zeit).\n\nTakeaSeat"],
+    ownerFlood: ["Die Anmelde-Warteschlange füllt sich — TakeaSeat", "Offene Anmeldungen in den letzten 24 Stunden: {open} von {max}.\n\nIst sie voll, antwortet das Formular allen „nicht verfügbar“, bis sie sich leert. In der Verwaltung, unter Signups, entfernt „Clear old pending“ in einem Schritt die offenen Zeilen, die nie jemand geöffnet hat.\n\n{link}\n\nTakeaSeat"],
   },
 };
 const fmtDay = (t, lang) => { try { return new Date(t).toLocaleDateString(langOf(lang) === "de" ? "de-DE" : langOf(lang) === "en" ? "en-GB" : "el-GR", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Athens" }); } catch (e) { return new Date(t).toISOString().slice(0, 10); } };
@@ -316,6 +369,13 @@ async function mailAllowed(env, email, bucket, perDay) {   // at most MAILS_PER_
     if (a.length >= perDay) return { __res: false }; a.push(Date.now()); return { __obj: a, __res: true }; });
   return !!d.res;
 }
+// A counter in the store, for the few limits that must survive a restart (a signup is rare and costly; the host's
+// in-memory limiter in server.mjs forgets everything on deploy). Takes a slot, or returns false. Swept with `rl:`.
+async function rateTake(env, bucket, who, limit, windowMs) {
+  const r = await kvUpdate(env, "rl:" + bucket + ":" + who, a => { a = (Array.isArray(a) ? a : []).filter(t => Date.now() - t < windowMs);
+    if (a.length >= limit) return { __res: false }; a.push(Date.now()); return { __obj: a, __res: true }; });
+  return !!r.res;
+}
 // The admin key: the one in server.env, or a recovery key the owner issued by mail. Only its SHA-256 is stored, so a
 // copy of the database never hands anyone the admin console.
 async function sha256hex(x) {
@@ -334,7 +394,7 @@ async function markMailed(env, cid, email) { await kvUpdate(env, "couple:" + cid
 // Housekeeping (the server runs it hourly): expired one-time links, old rate-limit rows, old claim rows.
 export async function sweep(env) {
   const started = Date.now();
-  const out = { tok: 0, rlmail: 0, claim: 0, find: 0 };
+  const out = { tok: 0, rlmail: 0, rl: 0, claim: 0, find: 0 };
   // «Διαγνωστικά» answers "when did the hourly sweep last run and what did it do" from this one row.
   const record = async o => { try { await env.PLANS.put("meta:sweep", JSON.stringify({ at: started, ms: Date.now() - started, ...o })); } catch (e) {} };
   if (typeof env.PLANS.list !== "function") { await record({ skipped: "no list()", out }); return out; }
@@ -353,11 +413,16 @@ export async function sweep(env) {
     const a = safeParse(await env.PLANS.get(k));
     if (!Array.isArray(a) || a.every(x => now - x > 3600000)) { await env.PLANS.delete(k); out.rlmail++; }
   }
+  // `rl:` — the counters that must outlive a restart (signups). The longest window here is a day.
+  for (const k of (await env.PLANS.list("rl:")) || []) {
+    const a = safeParse(await env.PLANS.get(k));
+    if (!Array.isArray(a) || a.every(x => now - x > 86400000)) { await env.PLANS.delete(k); out.rl++; }
+  }
   for (const k of (await env.PLANS.list("claim:")) || []) {
     const c = safeParse(await env.PLANS.get(k));
     if (!c || now - (c.createdAt || 0) > CLAIM_TTL + 86400000) { await env.PLANS.delete(k); out.claim++; }
   }
-  Object.assign(out, await lifecycleSweep(env, now), await renewSweep(env, now));
+  Object.assign(out, await lifecycleSweep(env, now), await renewSweep(env, now), await signupSweep(env, now));
   await record({ out });
   return out;
 }
@@ -444,14 +509,33 @@ function nextSeason(lic) {
   return { start: ymdOk(lic.seasonStart) ? addYears(lic.seasonStart, years) : addDays(lic.seasonEnd, 1), end: addYears(lic.seasonEnd, years) };
 }
 async function renewSweep(env, now) {
-  const out = { renewed: 0, reminded: 0 };
+  const out = { renewed: 0, reminded: 0, trialReminded: 0 };
   for (const k of (await env.PLANS.list("venue:")) || []) {
     let v = safeParse(await env.PLANS.get(k)), L = v && v.license;
     if (L && ((L.seasonEnd && !ymdOk(L.seasonEnd)) || (L.seasonStart && !ymdOk(L.seasonStart)))) {   // older records: one date format everywhere
       const r0 = await kvUpdate(env, k, cur => { if (!cur || !cur.license) return null; cur.license = { ...cur.license, seasonStart: normYmd(cur.license.seasonStart), seasonEnd: normYmd(cur.license.seasonEnd) }; return cur; });
       v = r0.obj; L = v && v.license;
     }
-    if (L && L.type !== "per_wedding" && L.autoRenew !== false && ymdOk(L.seasonEnd) && v.email && mailOn(env) && v.active !== false) {
+    // A free first year never renews itself into a charge nobody agreed to, so it is reminded on its own schedule —
+    // 60, 30 and 7 days before it ends — and then simply ends (see canCreateWedding: nothing is deleted).
+    if (onTrial(v) && v.trial.verifiedAt && ymdOk(L.seasonEnd) && v.email && mailOn(env) && v.active !== false) {
+      const endAt = Date.parse(L.seasonEnd) + DAY, left = (endAt - now) / DAY;
+      for (const d of TRIAL_REMIND) {   // ascending: the nearest pending one only
+        if (left > 0 && left <= d && !(v.trialReminders || {})[L.seasonEnd + ":" + d]) {
+          const lang = langOf(v.lang);
+          const sent = send(env, v.email, mailMsg(lang, "trialEnds", { name: v.name, date: fmtDay(Date.parse(L.seasonEnd + "T12:00:00Z"), lang),
+            days: Math.max(1, Math.ceil(left)), link: baseUrl(env) + "/venue.html" }));
+          if (sent) {   // a venue that signed up late gets one mail, not three: every farther mark counts as done too
+            await kvUpdate(env, k, cur => { if (!cur) return null; const m = { ...(cur.trialReminders || {}) };
+              for (const dd of TRIAL_REMIND) if (dd >= d) m[L.seasonEnd + ":" + dd] = m[L.seasonEnd + ":" + dd] || now;
+              cur.trialReminders = m; return cur; });
+            out.trialReminded++;
+          }
+          break;
+        }
+      }
+    }
+    if (L && L.type !== "per_wedding" && L.autoRenew !== false && !onTrial(v) && ymdOk(L.seasonEnd) && v.email && mailOn(env) && v.active !== false) {
       const renewAt = Date.parse(L.seasonEnd) + DAY, left = (renewAt - now) / DAY;
       for (const d of [7, 30]) {   // the nearest pending reminder only (a venue created late gets one mail, not two)
         const tag = L.seasonEnd + ":" + d;
@@ -463,7 +547,7 @@ async function renewSweep(env, now) {
         }
       }
     }
-    if (!L || L.type === "per_wedding" || L.autoRenew === false || !ymdOk(L.seasonEnd) || now <= Date.parse(L.seasonEnd) + DAY) continue;
+    if (!L || L.type === "per_wedding" || L.autoRenew === false || onTrial(v) || !ymdOk(L.seasonEnd) || now <= Date.parse(L.seasonEnd) + DAY) continue;
     // The terms promise a reminder 30 and 7 days before: no reminder sent (no email, mail off, a season that ended before
     // this feature) or an inactive venue → no automatic renewal; the admin sees the flag and renews by hand if agreed.
     const reminded = !!((v.renewReminders || {})[L.seasonEnd + ":7"] || (v.renewReminders || {})[L.seasonEnd + ":30"]);
@@ -482,6 +566,100 @@ async function renewSweep(env, now) {
   return out;
 }
 async function forgetEmail(env, email) { if (email) { await env.PLANS.delete("rlmail:recover:" + email); await env.PLANS.delete("rlmail:verify:" + email); } }
+// ---- venue self-signup ----
+// Three rows per signup: `signup:<id>` (what Andreas sees), `afm:<ΑΦΜ>` (the one claim per business — "pending" while
+// the setup link is unopened, "trial" once it has been used, and that is for ever) and the venue itself, created at
+// once in the normal shape so nothing else in the system needs to know a signup happened. Nobody can open that venue:
+// its key is random and is shown to no one, so the e-mailed setup link is the only way in — opening it IS the email
+// verification. The IP is never stored; it is only ever a rate-limit bucket.
+const signupOut = s => ({ id: s.id, name: s.name, afm: s.afm, email: s.email, phone: s.phone, lang: langOf(s.lang),
+  status: s.status, createdAt: s.createdAt, expiresAt: s.expiresAt || null, expiredAt: s.expiredAt || null,
+  verifiedAt: s.verifiedAt || null, trialEndsAt: s.trialEndsAt || null, venueId: s.venueId || null,
+  resent: s.resent || 0, resentAt: s.resentAt || null });
+async function signupCard(env, s) {
+  const v = s.venueId ? safeParse(await env.PLANS.get("venue:" + s.venueId)) : null;
+  const ws = (v && v.weddings) || [];
+  const first = ws.reduce((a, w) => (w && w.createdAt && (!a || w.createdAt < a)) ? w.createdAt : a, 0);
+  // The free year is read from the venue, not from the signup's snapshot of it: the owner may have moved it since.
+  return { ...signupOut(s), trialEndsAt: (v && v.trial && v.trial.endsAt) || s.trialEndsAt || null,
+    venueGone: !v, venueActive: v ? v.active !== false : null, keySet: !!(v && v.keyRotated),
+    weddingCount: ws.length, firstWeddingAt: first || null, mailFailedAt: (v && v.mailFailedAt) || null, mailError: (v && v.mailError) || null,
+    season: (v && v.license) ? { start: v.license.seasonStart || null, end: v.license.seasonEnd || null } : null };
+}
+// The setup link: a fresh one-use token, 7 days. nextGen retires every link mailed before it, so a re-send always wins.
+async function mailSetupLink(env, v, email) {
+  const g = await kvUpdate(env, "venue:" + v.id, cur => { if (!cur) return null; return { __obj: cur, __res: nextGen(cur) }; });
+  if (!g.obj) return false;
+  const t = await mintToken(env, { kind: "venue-setup", vid: v.id, lg: g.res, email }, SETUP_TTL);
+  return send(env, email, mailMsg(v.lang, "setup", { name: v.name, link: baseUrl(env) + "/venue.html#recover=" + t }), { k: "venue", id: v.id });
+}
+// How full the signup queue is right now: pending rows from the last 24 hours only. Both the public route's ceiling
+// and «Διαγνωστικά» read this one number.
+async function pendingToday(env, now) {
+  let open = 0;
+  for (const sid of (safeParse(await env.PLANS.get("signups:index")) || [])) {
+    const s = safeParse(await env.PLANS.get("signup:" + sid));
+    if (s && s.status === "pending" && (now - (s.createdAt || 0)) < DAY) open++;
+  }
+  return open;
+}
+// The queue filling up is the one thing Andreas has to hear about while it happens — and the one thing his per-signup
+// mail budget (8 a day) is spent on by the flood itself. Its own bucket, so it still gets through.
+async function floodAlert(env, open) {
+  const o = await ownerRec(env);
+  if (!o.email || !o.emailVerified || !mailOn(env)) return;
+  if (!(await mailAllowed(env, o.email, "ownerflood", 3))) return;
+  send(env, o.email, mailMsg(o.lang, "ownerFlood", { open: String(open), max: String(SIGNUPS_PENDING_MAX), link: baseUrl(env) + "/admin.html" }));
+  console.log("signup: the pending queue is at " + open + " of " + SIGNUPS_PENDING_MAX + " — the owner was told");
+}
+// Undo what a pending signup reserved: the venue nobody ever opened, its address index and the pending ΑΦΜ claim.
+// A mistyped address must never cost a business its free year, so the claim really does go back.
+async function dropSignupVenue(env, s) {
+  const v = s.venueId ? safeParse(await env.PLANS.get("venue:" + s.venueId)) : null;
+  if (v && !(v.weddings || []).length && !v.templateId && !(v.trial && v.trial.verifiedAt)) {
+    await env.PLANS.delete("venue:" + v.id);
+    await removeIndex(env, "venues:index", v.id);
+    await indexEmail(env, v.email, "venue", v.id, false);
+    await forgetEmail(env, v.email);
+  }
+  if (s.afm) await kvUpdate(env, "afm:" + s.afm, c => (c && c.signupId === s.id && c.status === "pending") ? { __del: true } : null);
+}
+async function signupSweep(env, now) {
+  const out = { signupsExpired: 0, signupsDropped: 0 };
+  for (const sid of (safeParse(await env.PLANS.get("signups:index")) || [])) {
+    const s = safeParse(await env.PLANS.get("signup:" + sid));
+    if (!s) { await removeIndex(env, "signups:index", sid); continue; }
+    if (s.status === "pending" && now > (s.expiresAt || 0)) {
+      await dropSignupVenue(env, s);
+      await kvUpdate(env, "signup:" + sid, cur => { if (!cur || cur.status !== "pending") return null; cur.status = "expired"; cur.expiredAt = now; cur.venueId = null; return cur; });
+      out.signupsExpired++;
+      console.log("signup: a pending signup expired unopened — that ΑΦΜ is free again");
+      continue;
+    }
+    // The row itself stays a month, so «Εγγραφές» can still show what happened, and then it goes.
+    if ((s.status === "expired" || s.status === "deleted") && now - (s.expiredAt || s.createdAt || 0) > SIGNUP_KEEP_DAYS * DAY) {
+      await env.PLANS.delete("signup:" + sid); await removeIndex(env, "signups:index", sid); out.signupsDropped++;
+    }
+  }
+  return out;
+}
+// Erase a venue and everything that only exists because of it. Used by the admin's «Delete» on a venue and on a signup.
+async function eraseVenue(env, id) {
+  const dv = safeParse(await env.PLANS.get("venue:" + id));
+  if (dv) {
+    for (const w of (dv.weddings || [])) if (w && w.planId) await purgeVenuePlan(env, dv.id, w.planId);
+    if (dv.templateId) await purgeVenuePlan(env, dv.id, dv.templateId);
+    for (const t of (dv.trash || [])) if (t && t.planId) await purgeVenuePlan(env, dv.id, t.planId);
+    console.log("admin: erased venue " + dv.id);
+    await indexEmail(env, dv.email, "venue", dv.id, false); await forgetEmail(env, dv.email);
+    // The owner deleting a venue gives its business the free year back — his call, not an accident of bookkeeping.
+    if (dv.afm) await kvUpdate(env, "afm:" + dv.afm, c => (c && c.venueId === dv.id) ? { __del: true } : null);
+    if (dv.signupId) await kvUpdate(env, "signup:" + dv.signupId, s => { if (!s) return null; s.status = "deleted"; s.expiredAt = Date.now(); s.venueId = null; return s; });
+  }
+  await env.PLANS.delete("venue:" + id);
+  await removeIndex(env, "venues:index", id);
+  return !!dv;
+}
 function json(obj, status = 200, extra) {
   return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...CORS, ...(extra || {}) } });   // never cached: a 410 must not outlive a restore
 }
@@ -1417,6 +1595,10 @@ export default {
           if (L.child) return json({ error: "unauthorized" }, 403);   // an extra plan follows the main plan's date
           const direct = a.role === "couple";   // a couple who bought directly: one change, then view-only until 14 days before
           if (direct && (L.phase === "waiting" || L.phase === "frozen")) return json({ error: "not_open", life: lifeOut(L, rec, false) }, 403);
+          if (a.role === "venue" && a.owner.type === "venue") {   // the free year is judged on the date here too (see afterTrialDate)
+            const ov = safeParse(await env.PLANS.get("venue:" + a.owner.venueId));
+            if (afterTrialDate(ov, normYmd(b.date))) return trialDenied(ov);
+          }
           let err = null;
           const r = await kvUpdate(env, key, cur => { if (!cur) return null; const before = cur.weddingDate || null; err = applyDate(cur, b.date, L, false, direct ? COUPLE_DATE_CHANGES : DATE_CHANGES, direct);
             if (err) return { __res: null };
@@ -1613,7 +1795,118 @@ export default {
         const newKey = v.id + "." + secret;
         await rotateVenueCredentials(env, v.id, newKey, true);
         await kvUpdate(env, "venue:" + v.id, cur => { if (!cur) return null; if (t.data.email && t.data.email === cur.email) cur.emailVerified = true; cur.keyPrivate = true; cur.keyTok = mark; return cur; });
+        // A self-signup becomes real here: opening the link proves the address, and only now is the free year spent
+        // for that ΑΦΜ. Until this moment the claim is "pending" and expires with the link.
+        if (v.trial && v.signupId && !v.trial.verifiedAt) {
+          const at = Date.now();
+          // The 365 days start HERE, not when the form was filled in: the link lives a week and until it is opened
+          // there is no usable console, so a venue that opens it on the sixth day would get 359 days of the year the
+          // terms promise. The dates written at signup were only a provisional label on an account nobody could use.
+          const startYmd = todayAthens(), endYmd = addDays(startYmd, TRIAL_DAYS - 1), endsAt = athensMidnight(addDays(endYmd, 1));
+          const rv = await kvUpdate(env, "venue:" + v.id, cur => { if (!cur || !cur.trial || cur.trial.verifiedAt) return null;
+            const fresh = onTrial(cur);   // untouched since the signup — if Andreas has already sold them a season, his dates stand
+            if (fresh) { cur.license = { ...cur.license, seasonStart: startYmd, seasonEnd: endYmd };
+              cur.trial = { ...cur.trial, startedAt: at, endsAt, seasonEnd: endYmd, verifiedAt: at }; }
+            else cur.trial = { ...cur.trial, verifiedAt: at };
+            cur.emailVerified = true; return { __obj: cur, __res: fresh }; });
+          const fresh = !!(rv && rv.res);
+          await kvUpdate(env, "signup:" + v.signupId, s => { if (!s || s.status !== "pending") return null; s.status = "verified"; s.verifiedAt = at; if (fresh) s.trialEndsAt = endsAt; return s; });
+          if (v.afm) await kvUpdate(env, "afm:" + v.afm, c => { if (!c || c.status === "trial") return null; c.status = "trial"; c.at = at; return c; });
+          console.log("signup: a venue opened its setup link — the free year is now spent for that ΑΦΜ");
+        }
         return json({ ok: true, key: newKey, venueId: v.id });
+      }
+      // ---------------- the public signup: a venue gives itself a console ----------------
+      // The ONLY unauthenticated write that creates an account, so it is written to tell a stranger nothing. Every
+      // outcome below answers {ok:true}; what actually happened is said by mail, and only to an address that is
+      // already ours — exactly as /recover does. The guards are, in order: a shape the form already checked, three
+      // signups a day per address (the ip bucket), the mail limits per address, and a ceiling on the pending queue.
+      if (parts[0] === "signup" && parts[1] === "venue" && parts.length === 2 && request.method === "POST") {
+        if (!mailOn(env)) return json({ error: "mail_off" }, 503);   // the setup link IS the signup — there is no other way in
+        const b = await readBody(request);
+        const name = String(b.name == null ? "" : b.name).trim().slice(0, 120);
+        const afm = validAfm(b.afm), email = normEmail(b.email), phone = normPhone(b.phone), lang = langOf(b.lang);
+        if (!name) return json({ error: "bad_name" }, 400);
+        if (!afm) return json({ error: "bad_afm" }, 400);
+        if (!email) return json({ error: "bad_email" }, 400);
+        if (!phone) return json({ error: "bad_phone" }, 400);
+        if (b.terms !== true) return json({ error: "terms_required" }, 400);
+        if (!(await rateTake(env, "signup", clientIp(request), SIGNUPS_PER_IP_DAY, 86400000))) return json({ error: "rate_limited" }, 429, { "Retry-After": "3600" });
+        const now = Date.now();
+        const claim = safeParse(await env.PLANS.get("afm:" + afm));
+        // Every branch below answers the same thing and ends by leaving SOMETHING in the mailbox that just wrote to
+        // us: the setup link if there is one to send, otherwise a line that says nothing about this ΑΦΜ or that
+        // address. Silence was the worst answer we had — a real business whose number someone else had already used
+        // was told nothing at all, on screen or by mail, and had nothing to act on.
+        const ack = async to => { if (to && await mailAllowed(env, to, "signup")) send(env, to, mailMsg(lang, "signupAck", {})); };
+        // 1. This business has already had its free year. Said in plain Greek — by mail, to the address it registered.
+        if (claim && claim.status === "trial") {
+          if (claim.email && await mailAllowed(env, claim.email, "signup")) send(env, claim.email, mailMsg(claim.lang || lang, "afmUsed", { afm }));
+          if (email !== claim.email) await ack(email);
+          console.log("signup: refused — that ΑΦΜ has already had its free year");
+          return json({ ok: true });
+        }
+        // 2. A signup for this business is already waiting: re-send ITS link to ITS address. Never a second venue,
+        //    and never to an address someone else has just typed in.
+        if (claim && claim.status === "pending") {
+          const s = safeParse(await env.PLANS.get("signup:" + claim.signupId));
+          const sv = (s && s.venueId) ? safeParse(await env.PLANS.get("venue:" + s.venueId)) : null;
+          if (s && sv && await mailAllowed(env, s.email, "signup") && await mailSetupLink(env, sv, s.email))
+            await kvUpdate(env, "signup:" + s.id, cur => { if (!cur) return null; cur.resentAt = now; cur.resent = (cur.resent || 0) + 1; return cur; });
+          if (!s || email !== s.email) await ack(email);
+          console.log("signup: a pending signup for that ΑΦΜ was asked for again");
+          return json({ ok: true });
+        }
+        // 3. This address is already ours. One pending signup per address: the link is sent again, and NOTHING on the
+        //    pending record moves. This request proves only that someone knows the address — a venue's address is on
+        //    its own website — so it may not rewrite that venue's ΑΦΜ or its name. A real mistype has two honest
+        //    cures: the signup expires in 7 days and the claim goes back, or Andreas deletes the row.
+        const ix = safeParse(await env.PLANS.get("email:" + email));
+        const mine = (ix && Array.isArray(ix.venues)) ? ix.venues : [];
+        let waiting = null;
+        for (const vid of mine) { const vv = safeParse(await env.PLANS.get("venue:" + vid)); if (vv && vv.signupId && vv.trial && !vv.trial.verifiedAt) { waiting = vv; break; } }
+        if (waiting) {
+          console.log("signup: a pending signup on that address was asked for again");
+          if (await mailAllowed(env, email, "signup") && await mailSetupLink(env, waiting, email))
+            await kvUpdate(env, "signup:" + waiting.signupId, cur => { if (!cur) return null; cur.resentAt = now; cur.resent = (cur.resent || 0) + 1; return cur; });
+          return json({ ok: true });
+        }
+        if (mine.length) {
+          if (await mailAllowed(env, email, "signup")) send(env, email, mailMsg(lang, "haveConsole", { link: baseUrl(env) + "/venue.html#recover" }));
+          console.log("signup: refused — that address already runs a console");
+          return json({ ok: true });
+        }
+        // 4. A new business.
+        // The ceiling counts only the signups of the last DAY. Counting every pending row meant a flood could close
+        // the route for the whole seven days a row lives — the funnel shut by strangers, with nothing in the console
+        // saying so. Windowed, the door opens again by itself tomorrow, and Andreas is told while it is closing.
+        const open = await pendingToday(env, now);
+        if (open >= SIGNUPS_PENDING_MAX) { console.log("signup: the pending queue is full — refused"); await floodAlert(env, open); return json({ error: "busy" }, 503, { "Retry-After": "3600" }); }
+        if (open + 1 >= Math.floor(SIGNUPS_PENDING_MAX * 0.8)) await floodAlert(env, open + 1);
+        const id = rnd(10), sid = rnd(16);
+        const startYmd = todayAthens(), endYmd = addDays(startYmd, TRIAL_DAYS - 1), trialEndsAt = athensMidnight(addDays(endYmd, 1));
+        const v = { id, name, contact: "", notes: "", email, lang,
+          key: id + "." + rnd(28), keyRotated: false, keyPrivate: true,   // random and shown to nobody: the mailed link is the only door
+          license: normLicense({ type: "seasonal", seasonStart: startYmd, seasonEnd: endYmd, autoRenew: false }),
+          used: 0, weddings: [], active: true, createdAt: now, defaultPerms: { ...VENUE_DEFAULT },
+          afm, phone, selfSignup: true, signupId: sid, termsAt: now,
+          trial: { startedAt: now, endsAt: trialEndsAt, seasonEnd: endYmd, verifiedAt: null, signupId: sid } };
+        await env.PLANS.put("venue:" + id, JSON.stringify(v));
+        await addIndex(env, "venues:index", id);
+        await indexEmail(env, email, "venue", id, true);
+        const s = { id: sid, venueId: id, name, afm, email, phone, lang, status: "pending", termsAt: now,
+          createdAt: now, expiresAt: now + SIGNUP_TTL, verifiedAt: null, trialEndsAt };
+        await env.PLANS.put("signup:" + sid, JSON.stringify(s));
+        await addIndex(env, "signups:index", sid);
+        await env.PLANS.put("afm:" + afm, JSON.stringify({ afm, status: "pending", signupId: sid, venueId: id, email, lang, at: now }));
+        // If the mail cannot leave, nothing above is usable — the signup simply stays pending, a second try re-sends
+        // it (case 2), and the sweep gives the ΑΦΜ back in 7 days. The admin console shows the failure meanwhile.
+        if (await mailAllowed(env, email, "signup")) await mailSetupLink(env, v, email);
+        const o = await ownerRec(env);   // Andreas is the only person who runs this: one short line, not a database row
+        if (o.email && o.emailVerified && await mailAllowed(env, o.email, "ownersignup", OWNER_MAILS_PER_DAY))
+          send(env, o.email, mailMsg(o.lang, "ownerSignup", { name, afm, email, phone, until: fmtDay(trialEndsAt - 1, o.lang), link: baseUrl(env) + "/admin.html" }));
+        console.log("signup: a new venue signed itself up (free year to " + endYmd + ")");
+        return json({ ok: true });
       }
       if (parts[0] === "verify" && parts.length === 1 && request.method === "POST") {
         const b = await readBody(request);
@@ -1874,7 +2167,13 @@ export default {
               if (b.notes != null) v.notes = String(b.notes).slice(0, 1000);        // private: admin only
               if (b.retention !== undefined) { const ret = normRetention(b.retention); if (ret) v.retention = ret; else delete v.retention; }
               if (b.active != null) v.active = !!b.active;
-              if (b.license) v.license = normLicense(b.license, v.license);
+              // Editing the dates of a venue that is on its free year MOVES the free year ("two more months"); it does
+              // not quietly turn it into a paid season that renews itself. `trial:false` is how the owner says
+              // "this is a subscription now" — the record keeps when it signed up, for the signups list.
+              if (b.license) { const was = onTrial(v); v.license = normLicense(b.license, v.license);
+                if (was && v.trial) v.trial = { ...v.trial, seasonEnd: v.license.seasonEnd,
+                  endsAt: ymdOk(v.license.seasonEnd) ? athensMidnight(addDays(v.license.seasonEnd, 1)) : v.trial.endsAt }; }
+              if (b.trial === false && v.trial) v.trial = { ...v.trial, seasonEnd: null, endedAt: Date.now() };
               if (b.lang != null) v.lang = langOf(b.lang);
               if (email != null && email !== old) { v.email = email; v.emailVerified = false; v.pendingVerify = null; nextGen(v); }   // links sent to the old address retire
               return { __obj: v, __res: old }; });
@@ -1886,18 +2185,55 @@ export default {
             return json({ venue: adminVenue(r.obj) });
           }
           if (parts.length === 3 && request.method === "DELETE") {   // erasure: the venue, its weddings and its template
-            const dv = safeParse(await env.PLANS.get("venue:" + parts[2]));
-            if (dv) {
-              for (const w of (dv.weddings || [])) if (w && w.planId) await purgeVenuePlan(env, dv.id, w.planId);
-              if (dv.templateId) await purgeVenuePlan(env, dv.id, dv.templateId);
-              for (const t of (dv.trash || [])) if (t && t.planId) await purgeVenuePlan(env, dv.id, t.planId);
-              console.log("admin: erased venue " + dv.id);
-              await indexEmail(env, dv.email, "venue", dv.id, false); await forgetEmail(env, dv.email);
-            }
-            await env.PLANS.delete("venue:" + parts[2]);
-            await removeIndex(env, "venues:index", parts[2]);
+            await eraseVenue(env, parts[2]);
             return json({ ok: true });
           }
+        }
+        // ---------------- the signups Andreas watches ----------------
+        if (parts[1] === "signups") {
+          if (parts.length === 2 && request.method === "GET") {
+            const ids = safeParse(await env.PLANS.get("signups:index")) || [];
+            const out = [];
+            for (const sid of ids) { const s = safeParse(await env.PLANS.get("signup:" + sid)); if (s) out.push(await signupCard(env, s)); }
+            return json({ signups: out });
+          }
+          // «Καθάρισμα»: every pending row older than `hours` that nobody ever opened goes, in one press, and each
+          // ΑΦΜ goes back with it. One at a time was no answer to three hundred rows left by a flood.
+          if (parts.length === 3 && parts[2] === "prune" && request.method === "POST") {
+            const b = await readBody(request);
+            const hours = Math.max(1, Math.min(24 * 30, Math.round(+b.hours || 24))), now = Date.now();
+            let dropped = 0;
+            for (const sid of (safeParse(await env.PLANS.get("signups:index")) || [])) {
+              const s0 = safeParse(await env.PLANS.get("signup:" + sid));
+              if (!s0 || s0.status !== "pending" || now - (s0.createdAt || 0) < hours * 3600000) continue;
+              const v0 = s0.venueId ? safeParse(await env.PLANS.get("venue:" + s0.venueId)) : null;
+              if (v0 && (v0.keyRotated || (v0.weddings || []).length || v0.templateId || (v0.trial && v0.trial.verifiedAt))) continue;   // somebody is using it: not ours to drop
+              await dropSignupVenue(env, s0);
+              await kvUpdate(env, "signup:" + sid, cur => { if (!cur || cur.status !== "pending") return null; cur.status = "expired"; cur.expiredAt = now; cur.venueId = null; return cur; });
+              dropped++;
+            }
+            console.log("admin: cleared " + dropped + " pending signups older than " + hours + "h — their ΑΦΜ are free again");
+            return json({ ok: true, dropped, pendingToday: await pendingToday(env, now) });
+          }
+          const s = parts[2] ? safeParse(await env.PLANS.get("signup:" + parts[2])) : null;
+          if (!s) return json({ error: "not found" }, 404);
+          if (parts.length === 4 && parts[3] === "active" && request.method === "POST") {   // switch the console off without touching anything in it
+            const b = await readBody(request);
+            if (typeof b.active !== "boolean") return json({ error: "bad_request" }, 400);
+            const r = s.venueId ? await kvUpdate(env, "venue:" + s.venueId, v => { if (!v) return null; v.active = b.active; return v; }) : { obj: null };
+            if (!r.obj) return json({ error: "gone" }, 410);
+            console.log("admin: signup " + s.id + " — its venue is now " + (b.active ? "active" : "off"));
+            return json({ signup: await signupCard(env, s) });
+          }
+          if (parts.length === 3 && request.method === "DELETE") {   // the venue, everything in it, and the free year goes back
+            if (s.venueId) await eraseVenue(env, s.venueId);
+            if (s.afm) await kvUpdate(env, "afm:" + s.afm, c => (c && c.signupId === s.id) ? { __del: true } : null);
+            await env.PLANS.delete("signup:" + s.id);
+            await removeIndex(env, "signups:index", s.id);
+            console.log("admin: deleted a signup and gave its ΑΦΜ back");
+            return json({ ok: true });
+          }
+          return json({ error: "not found" }, 404);
         }
         if (parts[1] === "couples") {
           // With mail and an address the claim link goes straight to the couple: the admin never sees it.
@@ -2184,6 +2520,10 @@ export default {
               if (L.deleteAt && L.deleteAt > now && L.deleteAt <= soon) c.deleteIn7++;
             }
           }
+          // The signup queue: how full the public route's own ceiling is. Nothing else in the console showed it, and
+          // it is the number that decides whether a venue can sign up at all right now.
+          c.signupsToday = await pendingToday(env, now);
+          c.signupsMax = SIGNUPS_PENDING_MAX;
           const st = (mailOn(env) && typeof env.MAIL.status === "function") ? env.MAIL.status() : {};
           let host = null; try { if (typeof env.HOST_INFO === "function") host = env.HOST_INFO(); } catch (e) { host = null; }
           return json({ at: now, today: todayAthens(), listed, counts: c,
@@ -2280,6 +2620,7 @@ export default {
         if (parts.length === 3 && parts[2] === "renewal" && request.method === "POST") {   // the venue stops (or restarts) the automatic renewal
           const b = await readBody(request);
           if (typeof b.autoRenew !== "boolean") return json({ error: "bad_request" }, 400);
+          if (onTrial(v)) return json({ error: "on_trial" }, 403);   // a free year never renews itself into a second free year
           const r = await kvUpdate(env, vkey, cur => { if (!cur) return null; cur.license = { ...normLicense(cur.license, cur.license), autoRenew: b.autoRenew }; return cur; });
           console.log("venue " + v.id + ": auto-renewal " + (b.autoRenew ? "on" : "off"));
           return json({ ok: true, license: publicLicense(r.obj.license) });
@@ -2314,12 +2655,13 @@ export default {
           return json({ planId: id, venueKey: rec.venueKey, updated: rec.updated });
         }
         if (parts.length === 3 && parts[2] === "weddings" && request.method === "POST") {
-          const gate = canCreateWedding(v);
-          if (!gate.ok) return json({ error: gate.reason }, 403);
           const b = await readBody(request);
           const dated = {};
           if (b.date == null || b.date === "") return json({ error: "missing_date" }, 400);   // the date drives the couple's phases and the lifecycle
           { const e = applyDate(dated, b.date, null, false); if (e) return json({ error: e }, 400); }   // checked before a wedding is counted
+          // The date first, then the licence: a trial is gated on the wedding's date, so the gate has to know it.
+          const gate = canCreateWedding(v, dated.weddingDate);
+          if (!gate.ok) return json({ error: gate.reason, ...(gate.reason === "after_trial" ? { until: (v.license || {}).seasonEnd || null } : {}) }, 403);
           let plan = null;
           if (v.templateId) { const t = await ownPlan(v.templateId); if (t) plan = layoutOnly(t.plan); }
           const id = rnd(22), editKey = rnd(28), venueKey = rnd(28);
@@ -2350,6 +2692,9 @@ export default {
           const perms = b.perms ? normPerms(b.perms, normPerms(w.perms, ALL_OPEN)) : null;
           let date = null;
           if (b.date !== undefined) {   // same limits as everywhere: a wedding date is not a way to reuse a paid wedding
+            // …and on the free year, the same date gate the create route uses: a wedding opened inside the year
+            // cannot be moved past its end. Otherwise the fence is one step of work away from being no fence.
+            if (afterTrialDate(v, normYmd(b.date))) return trialDenied(v);
             const p = await ownPlan(parts[3]), L = await planLife(env, p, parts[3], { venue: v });
             let err = null;
             const r = await kvUpdate(env, "plan:" + parts[3], rec => { if (!rec) return null; const before = rec.weddingDate || null; err = applyDate(rec, b.date, L, false);
@@ -2524,7 +2869,10 @@ function normLicense(l, prev) {   // renewal bookkeeping (renewedAt, invoiceDue,
   };
 }
 const publicLicense = l => { if (!l) return l; const { invoiceDue, ...rest } = l; return { autoRenew: true, ...rest, seasonStart: normYmd(l.seasonStart), seasonEnd: normYmd(l.seasonEnd) }; };
-function canCreateWedding(v) {
+// `date` — the wedding's own date (YYYY-MM-DD), when there is one yet. The free first year is the one licence that is
+// judged on it: it covers the weddings that HAPPEN inside the year, not the files opened inside it, or a venue would
+// spend day 360 opening next season's forty weddings. A paid season is unchanged (it renews, so the question is moot).
+function canCreateWedding(v, date) {
   if (!v.active) return { ok: false, reason: "inactive" };
   const L = v.license || {};
   if (L.type === "per_wedding") {
@@ -2534,15 +2882,25 @@ function canCreateWedding(v) {
   const now = Date.now();
   if (L.seasonStart && now < Date.parse(L.seasonStart)) return { ok: false, reason: "before_season" };
   if (L.seasonEnd && now > Date.parse(L.seasonEnd) + 86400000) return { ok: false, reason: "after_season" };
+  if (date && onTrial(v) && ymdOk(L.seasonEnd) && date > L.seasonEnd) return { ok: false, reason: "after_trial" };
   if (L.cap && (v.weddings || []).length >= L.cap) return { ok: false, reason: "cap_reached" };
   return { ok: true };
 }
+// The same rule, for the routes that MOVE a wedding's date. Creating is not the only way to end up with a wedding
+// dated after the free year: open one inside it and drag it out, and the year has paid for next season. Every date a
+// venue sets goes through here — the admin's own hand does not (he must be able to fix a date by phone).
+const afterTrialDate = (v, date) => !!(v && date && onTrial(v) && ymdOk((v.license || {}).seasonEnd) && date > v.license.seasonEnd);
+const trialDenied = v => json({ error: "after_trial", until: (v.license || {}).seasonEnd || null }, 403);
+const publicTrial = v => v.trial ? { startedAt: v.trial.startedAt || null, endsAt: v.trial.endsAt || null,
+  verifiedAt: v.trial.verifiedAt || null, seasonEnd: v.trial.seasonEnd || null, inForce: onTrial(v) } : null;
 function publicVenue(v) {   // returned to the venue itself (no key)
   return { id: v.id, name: v.name, contact: v.contact, license: publicLicense(v.license), used: v.used || 0,
-    active: v.active, createdAt: v.createdAt, weddingCount: (v.weddings || []).length, keyRotated: !!(v.keyRotated || v.keyPrivate), hasTemplate: !!v.templateId };
+    active: v.active, createdAt: v.createdAt, weddingCount: (v.weddings || []).length, keyRotated: !!(v.keyRotated || v.keyPrivate), hasTemplate: !!v.templateId,
+    trial: publicTrial(v) };
 }
 function adminVenue(v) {     // returned to the owner — counts only: no plan ids, no keys, no wedding names
   return { ...publicVenue(v), email: v.email || "", emailVerified: !!v.emailVerified, lang: v.lang || "el", notes: v.notes || "", retention: v.retention || null,
+    afm: v.afm || "", phone: v.phone || "", selfSignup: !!v.selfSignup, signupId: v.signupId || null,
     license: v.license ? { autoRenew: true, ...v.license } : v.license, trashCount: (v.trash || []).length, renewals: (v.renewals || []).slice(-5) };
 }
 async function adminCouple(env, c) {   // licence metadata only — never the plan id, a key, or anything inside the plan

@@ -7,9 +7,9 @@
 
 // How long each bucket counts for. The housekeeping must never drop a row that is still counting
 // (`:findfail` also carries the per-token rows, whose keys end in `!<hash>`).
-export const RL_WINDOW = k => k.endsWith(':mail') || k.includes(':findfail') ? 3600000 : k.endsWith(':find') ? 600000 : 60000;
+export const RL_WINDOW = k => k.endsWith(':mail') || k.endsWith(':signup') || k.includes(':findfail') ? 3600000 : k.endsWith(':find') ? 600000 : 60000;
 // What each bucket's ceiling is — kept next to the limits themselves so «Διαγνωστικά» can never show a stale number.
-export const RL_LIMIT = { find: 400, findfail: 10, findtoken: 1, mail: 20, pdf: 10, amelie: 12, create: 20, write: 120, authfail: 60 };
+export const RL_LIMIT = { find: 400, findfail: 10, findtoken: 1, mail: 20, signup: 5, pdf: 10, amelie: 12, create: 20, write: 120, authfail: 60 };
 
 // The per-token rows are `<ip>:findfail!<sha>`; everything else is `<ip>:<bucket>`.
 export const rateKind = k => k.includes('!') ? 'findtoken' : (k.slice(k.lastIndexOf(':') + 1) || 'other');

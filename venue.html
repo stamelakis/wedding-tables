@@ -155,6 +155,11 @@
   .seg .opt{ margin-top:0; flex:1 1 auto; justify-content:center; padding:8px 10px; font-size:14px; }
   .picklist{ max-height:46vh; overflow:auto; margin-top:10px; padding-right:2px; }
   .prev{ margin-top:14px; font-size:14px; }
+  .fset{ text-align:left; margin-top:6px; }
+  .fset .fl{ display:block; font-size:12.5px; font-weight:600; color:var(--soft); margin:12px 0 4px; }
+  .fset .chk{ display:flex; gap:10px; align-items:flex-start; font-size:13.5px; line-height:1.45; margin-top:16px; cursor:pointer; }
+  .fset .chk input{ margin-top:3px; }
+  .fset .hint{ margin-top:5px; }
   #toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#2a2620; color:#fff; padding:10px 16px; border-radius:10px; font-size:14px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:30; max-width:calc(100vw - 32px); text-align:center; }
   #toast.show{ opacity:1; }
   @media (max-width:560px){
@@ -242,6 +247,14 @@ function licenseBadge(v){
   if(L.type==="per_wedding"){ const left=(L.quota||0)-(v.used||0);
     return `<span class="badge ${left<=0?'warn':'per'}">Ανά γάμο · ${v.used||0}/${L.quota||"∞"} · απομένουν ${Math.max(0,left)}</span>`; }
   const s=ymdOk(L.seasonStart)?fmtYMD(L.seasonStart):"", e=ymdOk(L.seasonEnd)?fmtYMD(L.seasonEnd):"";
+  // The free first year does not renew itself, so there is no switch to show — only when it ends and what then.
+  if(v.trial && v.trial.inForce){
+    const over=ymdOk(L.seasonEnd) && todayAthens()>L.seasonEnd;
+    return `<span class="badge season">Δωρεάν πρώτος χρόνος${e?" έως "+esc(e):""}</span>`
+      +`<span class="ended">${helpify(over
+        ? "Ο δωρεάν χρόνος έληξε — τίποτα δεν διαγράφηκε· για νέους γάμους επικοινωνήστε μαζί μας"
+        : "Στη λήξη δεν διαγράφεται τίποτα· για νέους γάμους μετά από τότε χρειάζεται συνδρομή — επικοινωνήστε μαζί μας")}</span>`;
+  }
   const badge=`<span class="badge season">Σεζόν${s&&e?" "+esc(s)+" – "+esc(e):e?" έως "+esc(e):s?" από "+esc(s):""}${L.cap?` · μέχρι ${L.cap} ταυτόχρονα`:""}</span>`;
   // The season ended without a renewal (no reminder went out for it): only TakeaSeat renews now.
   if(L.renewSkipped) return badge+`<span class="ended">${helpify(`Η σεζόν έληξε στις ${ymdOk(L.renewSkipped)?fmtYMD(L.renewSkipped):e||"—"} — για ανανέωση επικοινωνήστε μαζί μας`)}</span>`;
@@ -256,7 +269,11 @@ function reasonText(r){
   const L=(DATA&&DATA.venue.license)||{};
   return { inactive:"Ο λογαριασμός είναι ανενεργός — επικοινωνήστε μαζί μας.",
     before_season:`Η σεζόν σας ξεκινά ${ymdOk(L.seasonStart)?"στις "+fmtYMD(L.seasonStart):"σύντομα"} — από τότε μπορείτε να δημιουργείτε γάμους. Για νωρίτερα, επικοινωνήστε μαζί μας.`,
-    after_season:`Η σεζόν σας έληξε${ymdOk(L.seasonEnd)?" στις "+fmtYMD(L.seasonEnd):""}. Για ανανέωση, επικοινωνήστε μαζί μας.`,
+    after_season:(DATA&&DATA.venue.trial&&DATA.venue.trial.inForce)
+      ? `Ο δωρεάν χρόνος σας έληξε${ymdOk(L.seasonEnd)?" στις "+fmtYMD(L.seasonEnd):""}. Οι γάμοι σας μένουν — για νέους χρειάζεται συνδρομή· επικοινωνήστε μαζί μας.`
+      : `Η σεζόν σας έληξε${ymdOk(L.seasonEnd)?" στις "+fmtYMD(L.seasonEnd):""}. Για ανανέωση, επικοινωνήστε μαζί μας.`,
+    // The free year covers the weddings that HAPPEN inside it, not the ones opened inside it.
+    after_trial:`Ο δωρεάν χρόνος σας καλύπτει γάμους έως ${ymdOk(L.seasonEnd)?fmtYMD(L.seasonEnd):"τη λήξη του"}. Για γάμο με μεταγενέστερη ημερομηνία χρειάζεται συνδρομή — επικοινωνήστε μαζί μας.`,
     quota_reached:`Χρησιμοποιήσατε ${L.quota?`και τους ${L.quota} γάμους`:"όλους τους γάμους"} του πακέτου σας. Για συνδρομή σεζόν, επικοινωνήστε μαζί μας.`,
     cap_reached:`Έχετε ήδη ${L.cap||"τους μέγιστους"} γάμους ταυτόχρονα. Διαγράψτε έναν που έχει ολοκληρωθεί ή επικοινωνήστε μαζί μας για μεγαλύτερο όριο.` }[r]||"";
 }
@@ -350,12 +367,14 @@ function renderLogin(err){
     ${err?`<div class="hint" style="color:var(--danger);margin-top:8px">${esc(err)}</div>`:""}
     <div class="row"><button class="btn primary" id="go" style="flex:1">Σύνδεση</button></div>
     <button class="btn quiet" id="forgot" style="margin-top:8px;font-size:13.5px">Ξεχάσατε τον κωδικό;</button>
-    <div class="hint" style="margin-top:8px">${helpify("Δεν έχετε κωδικό; Επικοινωνήστε μαζί μας για πρόσβαση.")}</div>
+    <div class="note" style="margin-top:16px;text-align:left">Νέο κτήμα; Κάντε εγγραφή μόνοι σας — ο πρώτος χρόνος είναι δωρεάν, μία φορά ανά επιχείρηση.</div>
+    <div class="row"><button class="btn" id="signup" style="flex:1">Εγγραφή κτήματος</button></div>
   </div>`;
   const go=async()=>{ const k=document.getElementById("key").value.trim(); if(!k) return; setKey(k); load(); };
   document.getElementById("go").onclick=go;
   document.getElementById("key").addEventListener("keydown",e=>{ if(e.key==="Enter") go(); });
   document.getElementById("forgot").onclick=()=>renderForgot({});
+  document.getElementById("signup").onclick=()=>renderSignup({});
 }
 
 // ---- signed-out screens (the login card): a forgotten key, and the links we e-mail ----
@@ -377,12 +396,13 @@ function tokenNonce(kind, token){
 }
 function linkFromHash(){
   const h=location.hash, get=k=>{ const m=h.match(new RegExp("(?:^#|&)"+k+"=([^&]+)")); if(!m) return ""; try{ return decodeURIComponent(m[1]); }catch(e){ return m[1]; } };
-  const rtok=get("recover"), vtok=get("verify"), ask=/(?:^#|&)recover(?:&|$)/.test(h);
-  if(!rtok && !vtok && !ask) return false;
+  const rtok=get("recover"), vtok=get("verify"), ask=/(?:^#|&)recover(?:&|$)/.test(h), sign=/(?:^#|&)signup(?:&|$)/.test(h);
+  if(!rtok && !vtok && !ask && !sign) return false;
   try{ history.replaceState(null,"",location.pathname+location.search); }catch(e){}
   closeModal(); closeMenu();
   if(rtok) renderRecoverKey({ token:rtok, nonce:tokenNonce("rec",rtok) });
   else if(vtok) renderVerify({ token:vtok, nonce:tokenNonce("ver",vtok) });
+  else if(sign) renderSignup({});
   else renderForgot({});
   return true;
 }
@@ -437,6 +457,79 @@ function renderForgot(st){
   };
   btn.onclick=go;
   inp.addEventListener("keydown",e=>{ if(e.key==="Enter") go(); });
+}
+
+// ---- signup: a venue gives itself a console (index.html's venue CTA lands on venue.html#signup) ----
+// The ΑΦΜ is checked here, properly, so a malformed one never becomes a request: nine digits whose last one is a
+// check digit — the sum of d(i)·2^(9-i) over the first eight, mod 11, mod 10. The server checks it again.
+const AFM_OK=x=>{ const s=String(x||"").replace(/[\s.\-]/g,""); if(!/^\d{9}$/.test(s)||s==="000000000") return "";
+  let n=0; for(let i=0;i<8;i++) n+=Number(s[i])*(1<<(8-i));
+  return (n%11)%10===Number(s[8])?s:""; };
+const PHONE_OK=x=>{ const s=String(x||"").trim(), d=s.replace(/\D/g,"");
+  return (s.length<=30 && /^[+(\d][\d\s()./+-]*$/.test(s) && d.length>=10 && d.length<=15)?s:""; };
+const SIGNUP_FIELDS=[["suName","name"],["suAfm","afm"],["suEmail","email"],["suPhone","phone"]];
+function readSignup(f){
+  const o={ ...f };
+  for(const [id,k] of SIGNUP_FIELDS){ const el=document.getElementById(id); if(el) o[k]=el.value.trim(); }
+  const t=document.getElementById("suTerms"); if(t) o.terms=t.checked;
+  return o;
+}
+function renderSignup(st){
+  st=st||{}; const f=Object.assign({ name:"", afm:"", email:"", phone:"", terms:false }, st.f||{});
+  if(st.step==="sent"){
+    // The API answers the same thing whatever happened, so this screen must not promise what only one branch does.
+    // In two of them the explanation goes to the address already on file — not to the one just typed here.
+    screen(`<h1>Ελέγξτε το email σας</h1>
+      <p>Αν η διεύθυνση <b style="overflow-wrap:anywhere">${esc(f.email)}</b> είναι σωστή, ο σύνδεσμος είναι ήδη καθ' οδόν. Ανοίξτε τον για να ορίσετε τον κωδικό της κονσόλας — ισχύει 7 ημέρες, και ο δωρεάν χρόνος μετράει από εκεί. Δείτε και τα ανεπιθύμητα.</p>
+      <div class="note" style="text-align:left">Αν η επιχείρηση ή η διεύθυνση είναι ήδη καταχωρημένη, δεύτερος λογαριασμός δεν δημιουργείται: η εξήγηση πηγαίνει στη διεύθυνση που την καταχώρησε, όχι απαραίτητα σε αυτή. Αν δεν έρθει τίποτα, ή αν γράψατε λάθος ΑΦΜ, γράψτε μας στο <a href="mailto:info@takeaseat.gr">info@takeaseat.gr</a>.</div>
+      ${backHTML()}`);
+    bindBack(); return;
+  }
+  screen(`<h1>Εγγραφή κτήματος</h1>
+    <p>Ο πρώτος χρόνος δωρεάν, μία φορά ανά επιχείρηση. Δεν ζητάμε στοιχεία πληρωμής.</p>
+    <p class="note" style="text-align:left">365 ημέρες από τη στιγμή που θα ανοίξετε τον σύνδεσμο, για τους γάμους που <b>γίνονται</b> μέσα σε αυτές — γάμο με ημερομηνία μετά τη λήξη δεν τον δημιουργείτε και δεν τον μεταφέρετε εκεί.<br>
+      Στη λήξη δεν χρεώνεστε και δεν διαγράφεται τίποτα: η κονσόλα ανοίγει, οι γάμοι σας συνεχίζουν ως την ημερομηνία τους, για νέους χρειάζεται συνδρομή. Ειδοποίηση 60, 30 και 7 ημέρες πριν.</p>
+    <div class="fset">
+      <label class="fl" for="suName">Επωνυμία</label>
+      <input id="suName" maxlength="120" autocomplete="organization" placeholder="π.χ. Κτήμα Ηλιοβασίλεμα" value="${esc(f.name)}">
+      <label class="fl" for="suAfm">ΑΦΜ</label>
+      <input id="suAfm" inputmode="numeric" maxlength="12" autocomplete="off" placeholder="9 ψηφία" value="${esc(f.afm)}">
+      <div class="hint">Δύο λόγοι: ο δωρεάν χρόνος δίνεται μία φορά ανά επιχείρηση, και σε αυτό εκδίδεται το τιμολόγιο.</div>
+      <label class="fl" for="suEmail">Email</label>
+      <input id="suEmail" type="email" inputmode="email" maxlength="200" autocomplete="email" placeholder="εκεί πάει ο σύνδεσμος" value="${esc(f.email)}">
+      <label class="fl" for="suPhone">Τηλέφωνο</label>
+      <input id="suPhone" type="tel" inputmode="tel" maxlength="30" autocomplete="tel" placeholder="π.χ. 210 987 6543" value="${esc(f.phone)}">
+      <label class="chk" for="suTerms"><input type="checkbox" id="suTerms" ${f.terms?"checked":""}>
+        <span>Αποδέχομαι τους <a href="/terms.html" target="_blank" rel="noopener">Όρους</a> και την <a href="/privacy.html" target="_blank" rel="noopener">Πολιτική απορρήτου</a>.</span></label>
+    </div>
+    ${st.err?`<div class="hint" style="color:var(--danger);margin-top:10px;text-align:left">${esc(st.err)}</div>`:""}
+    <div class="row"><button class="btn primary" id="suGo" style="flex:1">Εγγραφή</button></div>${backHTML()}`);
+  bindBack();
+  const go=()=>doSignup(readSignup(f));
+  document.getElementById("suGo").onclick=go;
+  for(const [id] of SIGNUP_FIELDS) document.getElementById(id).addEventListener("keydown",e=>{ if(e.key==="Enter") go(); });
+  const first=document.getElementById(st.focus||"suName"); if(first) first.focus();
+}
+async function doSignup(f){
+  if(!f.name){ renderSignup({ f, err:"Γράψτε την επωνυμία του κτήματος.", focus:"suName" }); return; }
+  if(!AFM_OK(f.afm)){ renderSignup({ f, err:"Το ΑΦΜ δεν είναι σωστό — εννέα ψηφία, με σωστό ψηφίο ελέγχου.", focus:"suAfm" }); return; }
+  if(!EMAIL_OK(f.email)){ renderSignup({ f, err:"Ελέγξτε το email.", focus:"suEmail" }); return; }
+  if(!PHONE_OK(f.phone)){ renderSignup({ f, err:"Ελέγξτε το τηλέφωνο — 10 ψηφία, ή με κωδικό χώρας.", focus:"suPhone" }); return; }
+  if(!f.terms){ renderSignup({ f, err:"Χρειάζεται να αποδεχθείτε τους Όρους.", focus:"suTerms" }); return; }
+  busy(); const my=loadSeq;
+  const r=await pub("/signup/venue",{ name:f.name, afm:AFM_OK(f.afm), email:f.email, phone:f.phone, terms:true, lang:"el" });
+  if(my!==loadSeq) return;
+  if(r.ok){ renderSignup({ f, step:"sent" }); return; }
+  const err=r.d&&r.d.error;
+  renderSignup({ f, err:
+      r.status===429 ? RATE_MSG
+    : r.status===503 ? "Η εγγραφή δεν είναι διαθέσιμη αυτή τη στιγμή. Γράψτε μας στο info@takeaseat.gr."
+    : err==="bad_afm" ? "Το ΑΦΜ δεν είναι σωστό."
+    : err==="bad_email" ? "Ελέγξτε το email."
+    : err==="bad_phone" ? "Ελέγξτε το τηλέφωνο."
+    : err==="bad_name" ? "Γράψτε την επωνυμία του κτήματος."
+    : err==="terms_required" ? "Χρειάζεται να αποδεχθείτε τους Όρους."
+    : r.status ? "Κάτι πήγε στραβά — δοκιμάστε ξανά." : "Σφάλμα σύνδεσης — δοκιμάστε ξανά." });
 }
 
 // #recover=<token>: a new random key for the console (the old one stops working). Shown once, then the console.
@@ -639,7 +732,7 @@ function renderDashboard(){
     <div class="toolbar">
       <div class="newform">
         <input id="newlabel" placeholder="Όνομα ζευγαριού (π.χ. Μαρία &amp; Νίκος)" maxlength="120" ${DATA.canCreate?"":"disabled"}>
-        <label class="datefld${DATA.canCreate?"":" off"}"><span>Ημ/νία γάμου</span><input id="newdate" type="date" required aria-label="Ημερομηνία γάμου"min="${today}" max="${addDays(today,DATE_AHEAD)}" ${DATA.canCreate?"":"disabled"}></label>
+        <label class="datefld${DATA.canCreate?"":" off"}"><span>Ημ/νία γάμου</span><input id="newdate" type="date" required aria-label="Ημερομηνία γάμου"min="${today}" max="${maxWeddingDate(today,"")}" ${DATA.canCreate?"":"disabled"}></label>
         <button class="btn primary" id="create" ${DATA.canCreate?"":"disabled"}>+ Νέος γάμος</button>
       </div>
       <label class="langsel" title="Γλώσσα του τραπεζολογίου στους συνδέσμους που ανοίγετε ή αντιγράφετε">Γλώσσα ζευγαριού
@@ -861,12 +954,18 @@ function supportDialog(t){
 
 // ---- the wedding's name & date. The date decides when the plan locks and is deleted, so the server limits it:
 // today … +2 years, the first date free then 3 changes, never removed, fixed once the wedding is over. ----
+// On the free year the server refuses any date after its end — on a new wedding and on a change alike. The picker
+// stops there too, so the dialog does not have to explain a refusal that could be avoided.
+const trialEndYmd=()=>{ const t=DATA&&DATA.venue&&DATA.venue.trial, L=(DATA&&DATA.venue.license)||{};
+  return (t&&t.inForce&&ymdOk(L.seasonEnd))?L.seasonEnd:""; };
+const maxWeddingDate=(today,have)=>{ let m=addDays(today,DATE_AHEAD); const te=trialEndYmd();
+  if(te&&te<m) m=te; if(have&&have>m) m=have; return m; };
 const DATE_ERR={ bad_date:"Η ημερομηνία πρέπει να είναι από σήμερα έως δύο χρόνια μπροστά.",
   missing_date:"Ορίστε την ημερομηνία του γάμου — χωρίς αυτήν δεν δημιουργείται γάμος.",
   no_more_changes:"Η ημερομηνία έχει ήδη αλλάξει όσες φορές επιτρέπεται. Για νέα αλλαγή, γράψτε μας ή τηλεφωνήστε.",
   locked:"Ο γάμος έχει ολοκληρωθεί — δεν αλλάζει πια." };   // the server refuses name, perms and date once the wedding is over
 function detailsDialog(w, focusDate){
-  const L=w.life||{}, left=Math.max(0,w.dateChangesLeft|0), today=todayAthens(), max=addDays(today,DATE_AHEAD);
+  const L=w.life||{}, left=Math.max(0,w.dateChangesLeft|0), today=todayAthens(), max=maxWeddingDate(today,w.date);
   const dateOn=!L.locked && !isPast(w) && (!w.date || left>0);
   const keepDays=L.deleteAt&&L.lockAt?Math.round((L.deleteAt-L.lockAt)/DAY):null;
   const leftText=d=>isPast(w)?"Ο γάμος έγινε — η ημερομηνία δεν αλλάζει πλέον."
@@ -901,13 +1000,13 @@ function detailsDialog(w, focusDate){
     if(label!==w.label) body.label=label;
     if(dateOn){
       if(!date && w.date){ err("Η ημερομηνία δεν αφαιρείται — διαλέξτε νέα ή πατήστε «Άκυρο»."); dateI.focus(); return; }
-      if(date && date!==w.date){ if(date<today||date>max){ err(DATE_ERR.bad_date); dateI.focus(); return; } body.date=date; }
+      if(date && date!==w.date){ if(date<today||date>max){ err(trialEndYmd()&&date>trialEndYmd()?reasonText("after_trial"):DATE_ERR.bad_date); dateI.focus(); return; } body.date=date; }
     }
     if(!Object.keys(body).length){ closeModal(); return; }
     save.disabled=true; err("");
     const r=await call("PATCH","/venues/"+DATA.venue.id+"/weddings/"+encodeURIComponent(w.planId),body);
     if(r.gone) return;
-    if(!r.ok){ save.disabled=false; if(!r.net) err(DATE_ERR[r.d.error]||(r.d.error==="missing label"?"Γράψτε το όνομα του ζευγαριού.":"Αποτυχία αποθήκευσης — δοκιμάστε ξανά."));
+    if(!r.ok){ save.disabled=false; if(!r.net) err(DATE_ERR[r.d.error]||reasonText(r.d.error)||(r.d.error==="missing label"?"Γράψτε το όνομα του ζευγαριού.":"Αποτυχία αποθήκευσης — δοκιμάστε ξανά."));
       if(r.d.error==="locked"){ nameI.disabled=dateI.disabled=save.disabled=true; dlg.querySelector("#mLeft").textContent=""; load(); return; }
       if(r.d.error==="no_more_changes"){ dateI.value=w.date||""; dateI.disabled=true; dlg.querySelector("#mLeft").textContent="";   // the date is fixed now: the name can still be saved
         load().then(()=>{ const f=findW(w.planId); if(f && f.date){ w.date=f.date; dateI.value=f.date; dlg.querySelector("#mLife").textContent=lifeText(f.date); } }); }
