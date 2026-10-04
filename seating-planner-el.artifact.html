@@ -1515,7 +1515,7 @@ el:{
   stats:"{t} τραπέζια · {s}/{g} με θέση · {c} θέσεις",
   headTable:"Νυφικό τραπέζι", headFacing:"βλέπει προς την πίστα",
   groupsDefault:["Πλευρά νύφης","Πλευρά γαμπρού","Φίλοι","Οικογένεια"],
-  featEntrance:"Είσοδος καλεσμένων", featDrinks:"Ποτό υποδοχής", featFloor:"Πίστα χορού", featDJ:"DJ",
+  featEntrance:"Είσοδος καλεσμένων", featDrinks:"Ποτό υποδοχής", featFloor:"Πίστα χορού", featDJ:"DJ", featKids:"Παιδική γωνιά",
   mats:{grass:"Γρασίδι",parquet:"Παρκέ",wood:"Ξύλινο δάπεδο",stone:"Πέτρα",tile:"Πλακάκι",marble:"Μάρμαρο",sand:"Άμμος",water:"Νερό",carpet:"Κόκκινο χαλί",concrete:"Τσιμέντο"},
   decorItems:["Τραπέζι ευχών","Τραπέζι δώρων","Τραπέζι τούρτας","Τραπέζι γλυκών","Ποτά υποδοχής","Μπαρ","Μπουφές","Καθιστικό / καναπές","Photo booth","Αψίδα τελετής","Βιβλίο ευχών","Καμπίνα DJ","Ηχείο","Τουαλέτες","Επιπλέον καρέκλες","Φυτά / λουλούδια","Σιντριβάνι","Κεριά","Σκηνή / ομιλίες","Πάρκινγκ","Περιοχή ξύλινου δαπέδου","Περιοχή πέτρινου δαπέδου","Περιοχή με γρασίδι"],
   decorTitle:"Προσθήκη διακόσμησης & αντικειμένων", decorHint:"Πατήστε ένα αντικείμενο για να μπει στον χώρο· μετά σύρετέ το στη θέση του και αλλάξτε μέγεθος από τη γωνία του.", decorAdded:"{n} — σύρετέ το στη θέση του",
@@ -1719,7 +1719,7 @@ en:{
   stats:"{t} tables · {s}/{g} seated · {c} seats",
   headTable:"Head table", headFacing:"faces the dance floor",
   groupsDefault:["Bride's side","Groom's side","Friends","Family"],
-  featEntrance:"Guest entrance", featDrinks:"Welcome drink", featFloor:"Dance floor", featDJ:"DJ",
+  featEntrance:"Guest entrance", featDrinks:"Welcome drink", featFloor:"Dance floor", featDJ:"DJ", featKids:"Kids' corner",
   mats:{grass:"Grass",parquet:"Parquet",wood:"Wood deck",stone:"Stone",tile:"Tile",marble:"Marble",sand:"Sand",water:"Water",carpet:"Red carpet",concrete:"Concrete"},
   decorItems:["Wishes table","Gift table","Cake table","Candy bar","Welcome drinks","Bar","Buffet","Lounge / sofa","Photo booth","Ceremony arch","Guest book","DJ booth","Speaker","Restrooms","Extra chairs","Plants / flowers","Fountain","Candles","Stage / speeches","Parking","Wood floor area","Stone floor area","Grass area"],
   decorTitle:"Add decor & items", decorHint:"Click an item to drop it into the space, then drag it into place and resize from its corner.", decorAdded:"{n} — drag it into place",
@@ -1921,7 +1921,7 @@ de:{
   stats:"{t} Tische · {s}/{g} platziert · {c} Plätze",
   headTable:"Brauttisch", headFacing:"blickt zur Tanzfläche",
   groupsDefault:["Seite der Braut","Seite des Bräutigams","Freunde","Familie"],
-  featEntrance:"Gästeeingang", featDrinks:"Empfangsgetränk", featFloor:"Tanzfläche", featDJ:"DJ",
+  featEntrance:"Gästeeingang", featDrinks:"Empfangsgetränk", featFloor:"Tanzfläche", featDJ:"DJ", featKids:"Kinderecke",
   mats:{grass:"Gras",parquet:"Parkett",wood:"Holzdeck",stone:"Stein",tile:"Fliesen",marble:"Marmor",sand:"Sand",water:"Wasser",carpet:"Roter Teppich",concrete:"Beton"},
   decorItems:["Wunschtisch","Geschenketisch","Tortentisch","Candy-Bar","Empfangsgetränke","Bar","Buffet","Lounge / Sofa","Fotobox","Traubogen","Gästebuch","DJ-Pult","Lautsprecher","Toiletten","Zusätzliche Stühle","Pflanzen / Blumen","Brunnen","Kerzen","Bühne / Reden","Parkplatz","Holzboden-Fläche","Steinboden-Fläche","Rasenfläche"],
   decorTitle:"Deko & Objekte hinzufügen", decorHint:"Objekt anklicken, um es auf die Fläche zu setzen; dann an die richtige Stelle ziehen und an der Ecke die Größe ändern.", decorAdded:"{n} — an die richtige Stelle ziehen",
@@ -2078,12 +2078,22 @@ let labCutPending=0;      // empty tables beyond the lab's limit dropped while l
 
 // Garden features — movable & resizable. kind: "zone" (a floor/surface area), "prop" (an item card),
 // "marker" (dark box), "label" (text badge). Zones carry a material; props carry an icon.
-function defaultFeatures(legacy){ const fy=legacy?1040:STARTER.floorY; return [
+// A baptism gets ONE thing a wedding does not: the children's corner. Every other difference people suggest —
+// τούρτα, candy bar, μπομπονιέρες — is a table the customer places in two taps from the decor menu and that changes
+// no seating decision; the kids' corner does, because it decides which tables the families with small children get.
+// A wedding's four items keep their ids and coordinates exactly, so no existing plan moves by a pixel.
+function defaultFeatures(legacy, ev){ const fy=legacy?1040:STARTER.floorY; const out=[
   {id:"f-ent",   kind:"label",  x:900, y:60,   w:190,h:28, label:tr("featEntrance")},
   {id:"f-kiosk", kind:"prop",   x:1500,y:66,   w:150,h:64, label:tr("featDrinks"), icon:"🍹"},
   {id:"f-floor", kind:"zone",   x:900, y:fy,   w:460,h:340,label:tr("featFloor"), material:"parquet"},
   {id:"f-dj",    kind:"marker", x:1190,y:fy,   w:78, h:34, label:tr("featDJ")},
-]; }
+];
+  // Mirrors the dance floor on the far side from the DJ and the speaker — a parent would move it away from those
+  // first. Clear of everything on the starter floor: 95 px under the table at (450,540), 107 px from the head
+  // table's left end seat, 180 px from the dance floor, 130 px from the wall. Not on the legacy path: a migration
+  // must never invent furniture in a room somebody already laid out.
+  if(!legacy && (ev||EVK)==="baptism") out.push({id:"f-kids", kind:"zone", x:310, y:fy, w:360, h:280, label:tr("featKids"), material:"sand"});
+  return out; }
 // Convert an old (cls/text) feature to the new model, preserving position & size.
 function upgradeFeature(f){
   if(f.kind) return f;
@@ -2175,7 +2185,7 @@ let profiles = ensureProfiles();
 let state = loadPlan(profiles.activeId);
 // A cloud-linked profile whose local copy is missing/unreadable must be refilled FROM the server — and must not be
 // allowed to push anything until that pull has succeeded (otherwise a blank default could overwrite the real plan).
-if(!state){ const p0=profiles.profiles.find(p=>p.id===profiles.activeId); if(p0&&p0.cloudId){ p0.unsynced=true; try{ localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles)); }catch(e){} } state=defaultState(); }
+if(!state){ const p0=profiles.profiles.find(p=>p.id===profiles.activeId); if(p0&&p0.cloudId){ p0.unsynced=true; try{ localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles)); }catch(e){} } state=defaultState((p0&&p0.kind)||"wedding"); }
 let zoom = 1;
 // Extra canvas (screen px) beyond the half-view of free paper around the room, only while the view needs it: left/top
 // when a left/top change could not be followed by the scroll, right/bottom when the room shrank under a far-scrolled view.
@@ -2186,18 +2196,22 @@ let activeMenuTableId = null;
 let uid = state._uid || 2001;
 function nextId(){ uid++; state._uid = uid; return uid; }
 
-function makeHeadTable(id){ return { id, label:tr("headTable"), shape:"head", x:900, y:STARTER.headY, capacity:10, seats:Array(10).fill(null) }; }
-function defaultState(){
+function makeHeadTable(id, ev){ return { id, label:wordFor(ev||EVK,"headTable"), shape:"head", x:900, y:STARTER.headY, capacity:10, seats:Array(10).fill(null) }; }
+// `ev` is the event this plan IS, which is not always the event on screen: three call sites build a starter before
+// the kind is settled, and one of them (newProfile) writes the result straight to localStorage where nothing ever
+// corrects it. Pass the kind; EVK is only the fallback for the paths that genuinely have a plan open.
+function defaultState(ev){
+  ev=ev||EVK;
   const tables = DEFAULT_POSITIONS.map((p,i)=>({ id:1001+i, label:String(i+1), shape:"round", x:p[0], y:p[1], capacity:10, seats:Array(10).fill(null) }));
-  tables.push(makeHeadTable(2000));
-  const names=tr("groupsDefault");   // through the resolver, or b_groupsDefault would be dead code and every baptism would open with the bride's and groom's sides
+  tables.push(makeHeadTable(2000, ev));
+  const names=wordFor(ev,"groupsDefault");   // through the resolver, or b_groupsDefault would be dead code and every baptism would open with the bride's and groom's sides
   const groups = names.map((n,i)=>({id:"grp"+(i+1), name:n, color:GROUP_PALETTE[i]}));
-  return { _uid:2001, tables, guests:{}, groups, parties:[], activeGroupId:null, features:defaultFeatures(),
+  return { _uid:2001, tables, guests:{}, groups, parties:[], activeGroupId:null, features:defaultFeatures(false, ev),
            seatFontScale:1, tableFontScale:1, nameMode:"full", stage:{w:1800,h:STARTER.h}, stageMaterial:"grass", layoutVersion:LAYOUT_VERSION };
 }
 // The lab starts with a realistic demo wedding so there's something to play with immediately.
 function labState(){
-  const s=defaultState(); const names=T.labNames||T_ALL.el.labNames;
+  const s=defaultState("wedding"); const names=T.labNames||T_ALL.el.labNames;
   names.forEach((nm,i)=>{ s.guests["g"+(3000+i)]={ name:nm, groupId:s.groups[i%4].id }; });
   const ids=Object.keys(s.guests); let k=0;
   for(const t of s.tables.slice(0,3)){ for(let i=0;i<t.capacity&&k<26;i++) t.seats[i]=ids[k++]; }
@@ -2233,7 +2247,7 @@ function ensureProfiles(){
   const id=newProfileId();
   let migrated=null;
   if(!IS_LAB){ try{ const old=JSON.parse(localStorage.getItem(STORE_KEY)); if(old&&old.tables) migrated=old; }catch(e){} }
-  try{ localStorage.setItem(planKey(id), JSON.stringify(migrated||(IS_LAB?labState():defaultState()))); }catch(e){}
+  try{ localStorage.setItem(planKey(id), JSON.stringify(migrated||(IS_LAB?labState():defaultState("wedding")))); }catch(e){}
   const p={ activeId:id, profiles:[{id, name:IS_LAB?tr("labPlan"):tr("ourWedding")}] };
   try{ localStorage.setItem(PROFILES_KEY, JSON.stringify(p)); }catch(e){}  // persist so we don't re-migrate on next load
   return p;
@@ -3364,6 +3378,7 @@ function loadActive(){
   unfocusTable();
   const lp=currentProfile();
   let st=null; if(lp&&lp.support&&lp._mem){ try{ st=JSON.parse(lp._mem); sanitizePlan(st); if(st.layoutVersion!==LAYOUT_VERSION) migrateLayout(st); }catch(e){ st=null; } }
+  setEventKind((lp&&lp.kind)||"wedding");   // the word BEFORE the room: applyAccess() below also sets it, but by then the fallback starter would already be built for whatever was on screen
   state=st||loadPlan(profiles.activeId)||defaultState(); uid=state._uid||2001; fontScale=state.seatFontScale||1;
   applyAccess();
   applyStage(); $("stageFloor").value=state.stageMaterial||"grass";
@@ -3382,7 +3397,8 @@ function newProfile(){
   const id=newProfileId();
   profiles.profiles.push({id, name:(name.trim()||tr("weddingN",{n:profiles.profiles.length+1}))});
   profiles.activeId=id; saveProfilesIdx();
-  state=defaultState(); uid=state._uid; fontScale=1;
+  setEventKind("wedding");   // a new plan carries no kind, so it IS a wedding — and the room must say so, whatever was open a moment ago
+  state=defaultState("wedding"); uid=state._uid; fontScale=1;
   try{ localStorage.setItem(planKey(id), JSON.stringify(state)); }catch(e){}
   loadActive(); toast(tr("tProfileCreated"));
 }
@@ -3415,9 +3431,14 @@ async function changeEventKind(){
   if(!confirm(tr(want==="baptism"?"askKindB":"askKindW"))) return;
   let r; try{ r=await fetch(planPath(cur.cloudId),{method:"PUT",headers:authHeaders(cur),body:JSON.stringify({kind:want})}); }catch(e){ toast(tr("tKindFailed"),4000); return; }
   if(!r||!r.ok){ toast(tr("tKindFailed"),4000); return; }
+  // The server stamps `updated` on this PUT too. Without carrying it back, the save() below pushes a base the server
+  // has already moved past: it answers 409, the planner adopts the server's copy whole (as it must), and the retyped
+  // head table and group names revert a couple of seconds later under a «newer copy» toast.
+  const d=await r.json().catch(()=>({})); const wasOnline=!!cur.cloudUpdated;
+  if(d&&d.updated) cur.cloudUpdated=d.updated;
   cur.kind=want; saveProfilesIdx(); setEventKind(want);
   if(retypeStarterWords(want)){
-    if(cur.cloudUpdated) save();   // already online: this is an ordinary edit of the plan
+    if(wasOnline) save();   // already online: this is an ordinary edit of the plan
     // still only on this device: it goes online with the first real edit, exactly as the starter always did — a push
     // here would put a layout nobody designed on the server (and, for a venue, lock the room with it)
     else { lastJSON=JSON.stringify(state); try{ localStorage.setItem(planKey(cur.id), lastJSON); }catch(e){} }

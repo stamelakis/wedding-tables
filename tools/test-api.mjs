@@ -2462,6 +2462,48 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
         "planner: applyPulledPlan settles the event kind before it builds the starter room, so the head table and the groups belong to the right event",
         { setEventKind: setK, defaultState: starter });
     }
+    // The same ordering, at the three other places a starter is built. newProfile is the one that mattered: it writes
+    // the result straight to localStorage on a plan that carries no kind, so nothing online ever corrects it — make a
+    // second plan while a baptism is open and you used to get a wedding furnished with «Πλευρά μητέρας» and «Νονοί».
+    for (const [fname, label] of [['newProfile', 'a new plan'], ['loadActive', 'switching plans']]) {
+      const fn = src.slice(src.indexOf('function ' + fname + '('));
+      const body = fn.slice(0, fn.indexOf('\nfunction '));
+      const setK = body.indexOf('setEventKind('), starter = body.indexOf('defaultState(');
+      ok(setK > 0 && starter > 0 && setK < starter,
+        `planner: ${fname} names the event before it builds a starter room — ${label} must not inherit the last one's words`,
+        { setEventKind: setK, defaultState: starter });
+    }
+    // `legacy` has to stay the FIRST argument: migrateLayout calls defaultFeatures(true), and an argument shift there
+    // is invisible to both build guards while it moves the dance floor of every pre-v4 plan that is migrated.
+    ok(/function defaultFeatures\(legacy, *ev\)/.test(src) && /s\.features = defaultFeatures\(true\)/.test(src),
+      'planner: defaultFeatures still takes legacy first, so the migration path keeps meaning what it meant');
+    {
+      const fn = src.slice(src.indexOf('function defaultFeatures('));
+      const body = fn.slice(0, fn.indexOf('\n// Convert an old'));
+      // the wedding room, unchanged to the pixel — an existing plan may not move because a baptism gained a corner
+      for (const [id, xy] of [['f-ent', 'x:900, y:60'], ['f-kiosk', 'x:1500,y:66'], ['f-floor', 'x:900, y:fy'], ['f-dj', 'x:1190,y:fy']])
+        ok(body.includes(`id:"${id}"`) && body.includes(xy), `planner: the wedding starter still places ${id} exactly where it always did`);
+      const kids = body.indexOf('f-kids'), guard = body.indexOf('==="baptism"');
+      ok(kids > 0 && guard > 0 && guard < kids && /!legacy *&& *\(ev\|\|EVK\)==="baptism"/.test(body),
+        'planner: the children’s corner is the one thing a baptism starter adds, and only a baptism starter adds it');
+      ok(/label:tr\("featKids"\)/.test(body) && LANGS.every(l => typeof T_ALL[l].featKids === 'string' && T_ALL[l].featKids),
+        'planner: … and it is named through tr(), in all three languages', LANGS.map(l => T_ALL[l] && T_ALL[l].featKids));
+      ok(!('b_featKids' in T_ALL.el),
+        'planner: … with no baptism twin — only a baptism ever sees it, so a twin would be dead code');
+    }
+    // Correcting the kind PUTs on its own, and the server stamps `updated` on that PUT. The planner used to throw the
+    // answer away, so the save() that carried the retyped words pushed a stale base, took a 409, and adopted the
+    // server's untouched copy back over them — the correction visibly undid itself about two seconds later.
+    {
+      const fn = src.slice(src.indexOf('async function changeEventKind('));
+      const body = fn.slice(0, fn.indexOf('\n}'));
+      const put = body.indexOf('method:"PUT"'), carry = body.indexOf('cur.cloudUpdated=d.updated'), saved = body.indexOf('if(wasOnline) save()');   // not indexOf('save()'): the comment above names it first
+      ok(put > 0 && carry > put && saved > carry,
+        'planner: the kind correction carries the server’s new timestamp back before it saves the retyped words',
+        { put, carry, save: saved });
+      ok(/const wasOnline=!!cur\.cloudUpdated/.test(body) && /if\(wasOnline\) save\(\)/.test(body),
+        'planner: … and still decides "already online?" from BEFORE that timestamp, or a plan that was never pushed would push a room nobody designed');
+    }
     // ---- no reachable baptism screen calls the customer a couple (b_cVenueLinks was the last one that did) ----
     // The lab and the local, never-synced plans are weddings on purpose (HANDOFF §1i), so they are named here.
     const COUPLE_OK = new Set(['labBride', 'labGroom', 'labCap', 'labPlan', 'labNames', 'ourWedding', 'weddingN', 'newPlan', 'switchPlan', 'promptNewProfile']);
