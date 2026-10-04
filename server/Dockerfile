@@ -47,7 +47,8 @@ COPY server/rate.mjs ./server/
 COPY server/pdf.mjs ./server/
 COPY tools/test-api.mjs ./tools/
 # the tests also read three files of the product itself and assert on what is in them
-COPY planner.src.html venue.html ./
+COPY planner.src.html venue.html sitemap.xml ./
+COPY tools/build-planner.mjs ./tools/
 RUN ln -s /app/node_modules /t/node_modules \
     && { node tools/test-api.mjs > /t/test.log 2>&1 || { cat /t/test.log; echo "API TESTS FAILED — image not built"; exit 1; }; } \
     && tail -n 1 /t/test.log

@@ -2504,6 +2504,21 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
       ok(/const wasOnline=!!cur\.cloudUpdated/.test(body) && /if\(wasOnline\) save\(\)/.test(body),
         'planner: … and still decides "already online?" from BEFORE that timestamp, or a plan that was never pushed would push a room nobody designed');
     }
+    // The free demo is the page every call to action on the site points at. It spent its whole life noindexed, which
+    // is why nothing of it ever ranked. The two halves have to agree: if it is in the sitemap it must be indexable,
+    // and if it is ever noindexed again it has to leave the sitemap in the same commit.
+    {
+      const bp = fs.readFileSync(path.join(root, 'tools', 'build-planner.mjs'), 'utf8');
+      const sm = fs.readFileSync(path.join(root, 'sitemap.xml'), 'utf8');
+      const inMap = sm.includes('<loc>https://takeaseat.gr/lab.html</loc>');
+      const labCfg = bp.slice(bp.indexOf("file: 'lab.html'"), bp.indexOf("file: 'lab.html'") + 400);
+      const indexable = labCfg.includes('canonical:') && labCfg.includes('description:');
+      ok(inMap === indexable, inMap
+        ? 'seo: lab.html is in the sitemap, so its build gives it a canonical and a description instead of a noindex'
+        : 'seo: lab.html is noindexed, so it is not in the sitemap either', { inMap, indexable });
+      ok(/o\.canonical \|\| o\.description/.test(bp) && /noindex,nofollow/.test(bp),
+        'seo: … and a planner build with neither still gets the noindex — a plan link must never be indexable');
+    }
     // ---- no reachable baptism screen calls the customer a couple (b_cVenueLinks was the last one that did) ----
     // The lab and the local, never-synced plans are weddings on purpose (HANDOFF §1i), so they are named here.
     const COUPLE_OK = new Set(['labBride', 'labGroom', 'labCap', 'labPlan', 'labNames', 'ourWedding', 'weddingN', 'newPlan', 'switchPlan', 'promptNewProfile']);

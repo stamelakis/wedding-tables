@@ -101,11 +101,22 @@ const OUTPUTS = [
   { file: 'seating-planner-el.html', lang: 'el', mode: 'app', twin: 'seating-planner-el.artifact.html' },
   { file: 'seating-planner.html',    lang: 'en', mode: 'app', twin: 'seating-planner.artifact.html' },
   { file: 'seating-planner-de.html', lang: 'de', mode: 'app', twin: 'seating-planner-de.artifact.html' },
-  { file: 'lab.html',                lang: 'el', mode: 'lab', title: 'TakeaSeat Lab 🧪' },
+  { file: 'lab.html',                lang: 'el', mode: 'lab', title: 'Δωρεάν πλάνο τραπεζιών γάμου & βάπτισης — δοκιμή | TakeaSeat',
+    canonical: 'https://takeaseat.gr/lab.html',
+    description: 'Στήστε δωρεάν ένα πλάνο τραπεζιών για γάμο ή βάπτιση — έως 8 τραπέζια, χωρίς λογαριασμό και χωρίς email. Ό,τι φτιάχνετε μένει στη συσκευή σας.' },
 ];
 
 function render(o) {
-  const robots = o.mode === 'lab' ? '<meta name="robots" content="noindex,nofollow">' : '';   // the sandbox must not be indexed
+  // The app pages are opened from a link in a mail or a console — they are not landing pages, so they stay out of the
+  // index. The lab is the opposite: it is the free demo every call to action on the site points at, so since
+  // 2026-10-04 it is the one planner build that IS indexed, with a canonical and a description of its own. If it ever
+  // goes back to noindex, take it out of sitemap.xml in the same commit — a noindexed URL in a sitemap is a Search
+  // Console error, and the image build refuses a sitemap that lists a page it does not serve.
+  const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const robots = (o.canonical || o.description)
+    ? [o.description ? `<meta name="description" content="${esc(o.description)}">` : '',
+       o.canonical ? `<link rel="canonical" href="${o.canonical}">` : ''].filter(Boolean).join(String.fromCharCode(10))
+    : '<meta name="robots" content="noindex,nofollow">';
   return src.replaceAll('__LANG__', o.lang).replaceAll('__MODE__', o.mode).replaceAll('__TITLE__', o.title || TITLES[o.lang]).replace('__ROBOTS__\n', robots ? robots + '\n' : '');
 }
 // Artifact twin: from the first <style> to the closing </script> — no doctype/head/body (the host supplies them).

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- lastmod is the one hint Google actually uses; changefreq and priority it ignores, so they are not here.
-     lab.html is NOT listed: it ships with <meta name="robots" content="noindex,nofollow">, and submitting a
-     noindexed URL is a Search Console error. If the free demo should compete for «δωρεάν πλάνο τραπεζιών γάμου»,
-     drop the noindex in tools/build-planner.mjs (mode === 'lab') first, then add it back here. -->
+     lab.html IS listed since 2026-10-04: it is the free demo every call to action on the site points at, and it no
+     longer carries a noindex. If it ever goes back to noindex, take it out of here in the same commit — a noindexed
+     URL in a sitemap is a Search Console error. The image build refuses a sitemap listing a page it does not serve. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://takeaseat.gr/</loc>
@@ -14,6 +14,10 @@
   </url>
   <url>
     <loc>https://takeaseat.gr/plano-trapezion-vaptisis.html</loc>
+    <lastmod>2026-10-04</lastmod>
+  </url>
+  <url>
+    <loc>https://takeaseat.gr/lab.html</loc>
     <lastmod>2026-10-04</lastmod>
   </url>
   <url>
