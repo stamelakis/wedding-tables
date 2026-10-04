@@ -5373,7 +5373,7 @@ function placeTour(){
   else { spot.style.left=(vw/2)+"px"; spot.style.top=(vh/2)+"px"; spot.style.width="0px"; spot.style.height="0px"; spot.style.outlineWidth="0"; }
   const tk=(st.key==="dFloor"&&!can("layout"))?((ACCESS.phase==="names"&&!ACCESS.venueCouple)?"dFloorNames":"dFloorLocked"):st.key;
   // the same twin rule tr() uses — the tour reads its own nested object, so it has to ask for the twin itself
-  const tb=EVK==="baptism" ? ((T.tour&&T.tour["b_"+tk])||T_ALL.el.tour["b_"+tk]) : null;
+  const tp=KIND_PFX[EVK], tb=tp ? ((T.tour&&T.tour[tp+tk])||T_ALL.el.tour[tp+tk]) : null;
   const tx=tb||(T.tour&&T.tour[tk])||T_ALL.el.tour[tk];
   const last=tour.i===tour.steps.length-1;
   card.innerHTML=`<button class="tour-x" data-a="skip" title="${escapeHtml(tr("tourSkip"))}">✕</button><div class="tour-step">${tour.i+1} / ${tour.steps.length}</div><h3>${escapeHtml(tx[0])}</h3><p>${tx[1]}</p>
@@ -6147,7 +6147,7 @@ function adoptAccess(prof, d){
   if(d.supportExpires) prof.supportExpires=d.supportExpires;
   if("email" in d){ prof.hasRecEmail=true; prof.recEmail=d.email||""; prof.mailOn=!!d.mail; }
   if("life" in d) prof.life=d.life||null;   // wedding date, lock / delete times (the server decides; see renderLifeBar)
-  if("kind" in d) prof.kind=(d.kind==="baptism")?"baptism":"wedding";   // what the event IS — the server owns it; kept here so a print is right before the next fetch
+  if("kind" in d) prof.kind=(KIND_PFX[d.kind]!==undefined)?d.kind:"wedding";   // what the event IS — the server owns it; kept here so a print is right before the next fetch
   // Amelie (writers only): connected / dead / last pulled — never the key. Kept out of the comparison below (lastPullAt moves on
   // every pull); connected or gone on another device → this one follows (ameSync).
   { const was=String([ameOn(prof), !!(prof.amelie&&prof.amelie.dead)]);

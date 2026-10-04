@@ -2562,6 +2562,19 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
       const n = (src.match(/PARTY_POSITIONS = \[([^\]]*\]){6}/) || [])[0];
       ok(!!n, 'planner: … on exactly the six positions the clearances were measured for');
     }
+    // The second kind leaked by growing `=== "baptism"` tests all over the planner; the third one found two of them
+    // still standing — one that flattened a party into a wedding on every pull from the server, and one that read
+    // the tour cards from the baptism twins only. Anything that genuinely belongs to ONE kind is named here; every
+    // other kind question has to go through KIND_PFX, or the fourth kind leaks exactly the same way.
+    {
+      const ONLY_BAPTISM = ['f-kids'];   // the children's corner really is a baptism's and nobody else's
+      const hits = src.split('\n').map((ln, i) => [i + 1, ln]).filter(([, ln]) => /=== *"baptism"/.test(ln))
+        .filter(([, ln]) => !ONLY_BAPTISM.some(w => ln.includes(w)));
+      ok(hits.length === 0, 'planner: no kind question is answered by naming baptism — they all read the kind map',
+        hits.map(([n, ln]) => n + ': ' + ln.trim().slice(0, 90)));
+      ok(/prof\.kind=\(KIND_PFX\[d\.kind\]!==undefined\)/.test(src),
+        'planner: … the kind the server sends is adopted whole, so a party stays a party after the first pull');
+    }
     // ---- no reachable baptism screen calls the customer a couple (b_cVenueLinks was the last one that did) ----
     // The lab and the local, never-synced plans are weddings on purpose (HANDOFF §1i), so they are named here.
     const COUPLE_OK = new Set(['labBride', 'labGroom', 'labCap', 'labPlan', 'labNames', 'ourWedding', 'weddingN', 'newPlan', 'switchPlan', 'promptNewProfile']);

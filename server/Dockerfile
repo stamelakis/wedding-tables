@@ -26,7 +26,7 @@ RUN mkdir -p /app/public
 # production while Search Console has already been told it exists.
 # trapezi.html is the guest's finder page: it is NOT in the sitemap (noindex, and it is reached only from the QR's
 # fragment), but it still has to ship — a guest at the door scanning the QR is the one request that cannot 404.
-COPY index.html plano-trapezion-gamou.html plano-trapezion-vaptisis.html seating-planner.html seating-planner-de.html seating-planner-el.html lab.html admin.html venue.html privacy.html terms.html dpa.html trapezi.html robots.txt sitemap.xml og-takeaseat.png /app/public/
+COPY index.html plano-trapezion-gamou.html plano-trapezion-vaptisis.html plano-trapezion-giortis.html seating-planner.html seating-planner-de.html seating-planner-el.html lab.html admin.html venue.html privacy.html terms.html dpa.html trapezi.html robots.txt sitemap.xml og-takeaseat.png /app/public/
 
 ENV PORT=8080 \
     DB_PATH=/data/wedding.db \
