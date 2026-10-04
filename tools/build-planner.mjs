@@ -101,9 +101,9 @@ const OUTPUTS = [
   { file: 'seating-planner-el.html', lang: 'el', mode: 'app', twin: 'seating-planner-el.artifact.html' },
   { file: 'seating-planner.html',    lang: 'en', mode: 'app', twin: 'seating-planner.artifact.html' },
   { file: 'seating-planner-de.html', lang: 'de', mode: 'app', twin: 'seating-planner-de.artifact.html' },
-  { file: 'lab.html',                lang: 'el', mode: 'lab', title: 'Δωρεάν πλάνο τραπεζιών γάμου & βάπτισης — δοκιμή | TakeaSeat',
+  { file: 'lab.html',                lang: 'el', mode: 'lab', title: 'Δωρεάν πλάνο τραπεζιών — γάμος, βάπτιση, γιορτή | TakeaSeat',
     canonical: 'https://takeaseat.gr/lab.html',
-    description: 'Στήστε δωρεάν ένα πλάνο τραπεζιών για γάμο ή βάπτιση — έως 8 τραπέζια, χωρίς λογαριασμό και χωρίς email. Ό,τι φτιάχνετε μένει στη συσκευή σας.' },
+    description: 'Στήστε δωρεάν ένα πλάνο τραπεζιών για γάμο, βάπτιση ή γιορτή — έως 8 τραπέζια, χωρίς λογαριασμό και χωρίς email. Ό,τι φτιάχνετε μένει στη συσκευή σας.' },
 ];
 
 function render(o) {

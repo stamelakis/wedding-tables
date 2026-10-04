@@ -88,6 +88,11 @@
   .langsel a.on{ color:var(--accent-ink); background:var(--accent-soft); }
   #labBadge{ display:none; font-size:11px; font-weight:700; background:#fff3c4; color:#7a5a00; border:1px solid #f0d78a; border-radius:20px; padding:3px 9px; white-space:nowrap; cursor:help; }
   body.mode-lab #labBadge{ display:inline-block; }
+  #labKinds{ display:none; gap:4px; }
+  body.mode-lab #labKinds{ display:inline-flex; }
+  #labKinds button{ font:inherit; font-size:11px; font-weight:600; border:1px solid var(--line); background:#fff; color:var(--ink);
+    border-radius:20px; padding:3px 10px; cursor:pointer; white-space:nowrap; }
+  #labKinds button[aria-pressed="true"]{ background:var(--brand); border-color:var(--brand); color:#fff; cursor:default; }
   #roleBadge{ font:inherit; font-size:11.5px; font-weight:700; border-radius:20px; padding:3px 10px; white-space:nowrap; cursor:pointer; border:1px solid var(--line); background:var(--card); color:var(--soft); max-width:220px; overflow:hidden; text-overflow:ellipsis; }
   #roleBadge.r-venue{ background:var(--accent-soft); color:var(--accent-ink); border-color:#d9c7e2; }
   #roleBadge.r-support{ background:#fff1d6; color:#8a5a00; border-color:#f0cf8a; }
@@ -1133,6 +1138,7 @@
   <button id="navBtn" class="ibtn" data-t-title="guestsTools"><svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg></button>
   <span class="brand">Take<em>a</em>Seat</span>
   <span id="labBadge" data-t="labBadge" data-t-title="labHint"></span>
+  <span id="labKinds"></span>
   <button id="roleBadge" type="button" hidden></button>
   <div class="planpick">
     <span class="planname" id="planName" aria-hidden="true"><span class="txt"></span><svg class="ic" aria-hidden="true"><use href="#i-down"/></svg></span>
@@ -1423,6 +1429,10 @@
 //  Built from planner.src.html by tools/build-planner.mjs — edit the SOURCE, not the outputs.
 // ============================================================
 const LANG="de", MODE="app", IS_LAB=(MODE==="lab");
+// Which event the free sandbox is showing. Two thirds of the product used to be invisible here: a visitor could not
+// see a baptism or a γιορτή anywhere, because correcting the kind needs a plan on the server and the lab has none.
+// ?ev= makes each one a shareable link, and the badge beside the title switches between them.
+let LAB_EV = IS_LAB ? (/[?&]ev=(baptism|party)/.exec(location.search) || [, "wedding"])[1] : null;
 document.body.classList.add("mode-"+MODE);
 if(!document.documentElement.lang) document.documentElement.lang=LANG;   // artifact twins have no <html lang>
 
@@ -1491,7 +1501,7 @@ el:{
   supOpened:"Υποστήριξη: «{n}» — η πρόσβαση είναι προσωρινή.", supEnded:"Η πρόσβαση υποστήριξης έληξε ή σταμάτησε.", accLost:"Αυτή η συσκευή δεν έχει πια πρόσβαση στο σχέδιο — ανοίξτε τον πιο πρόσφατο σύνδεσμο.", accViewExpired:"Αυτός ο σύνδεσμος δεν ισχύει πια — ζητήστε νέο από το ζευγάρι ή το κτήμα.",
   claimUsed:"Αυτός ο σύνδεσμος έχει ήδη ανοιχτεί. Ανοίξτε το σχέδιο από τη συσκευή που το ανοίξατε πρώτη φορά, ή γράψτε μας στο info@takeaseat.gr.", claimWelcome:"Καλώς ήρθατε! Το «{n}» είναι δικό σας — η TakeaSeat δεν το ανοίγει χωρίς πρόσκλησή σας. Κρατήστε τον σύνδεσμο (☁) για τις άλλες συσκευές σας.",
   cVenueLinks:"Είστε συνδεδεμένοι ως κτήμα. Τον σύνδεσμο του ζευγαριού τον αντιγράφετε από την κονσόλα του κτήματος.", cSupportNoLinks:"Προσωρινή πρόσβαση υποστήριξης — χωρίς συνδέσμους κοινής χρήσης.",
-  labBadge:"🧪 Εργαστήριο", labHint:"Δοκιμαστικός χώρος — ό,τι αλλάζετε εδώ μένει μόνο σε αυτή τη συσκευή.",
+  labSwitch:"Αλλαγή σε {e}; Το δοκιμαστικό σχέδιο ξαναστήνεται από την αρχή.", labBadge:"🧪 Εργαστήριο", labHint:"Δοκιμαστικός χώρος — ό,τι αλλάζετε εδώ μένει μόνο σε αυτή τη συσκευή.",
   switchPlan:"Αλλαγή ζευγαριού / εκδήλωσης", newPlan:"Νέο σχέδιο (ζευγάρι / εκδήλωση)", planMore:"Μετονομασία · αντιγραφή · διαγραφή",
   shareTitle:"Κοινή χρήση & συγχρονισμός", fontDown:"Μικρότερα ονόματα", fontUp:"Μεγαλύτερα ονόματα", fit:"Προσαρμογή", zoomIn:"Μεγέθυνση", zoomOut:"Σμίκρυνση", print:"Εκτύπωση", more:"Περισσότερα",
   tsTitle:"Τραπέζια", tsAll:"Όλα", tsToggle:"Εμφάνιση / απόκρυψη λίστας τραπεζιών",
@@ -1609,6 +1619,9 @@ el:{
   labNames:["Μαρία Π.","Γιώργος Κ.","Ελένη Α.","Νίκος Δ.","Κατερίνα Μ.","Δημήτρης Σ.","Σοφία Λ.","Κώστας Β.","Άννα Χ.","Παναγιώτης Ρ.","Χριστίνα Τ.","Μιχάλης Γ.","Ειρήνη Ν.","Βασίλης Ζ.","Δέσποινα Φ.","Αλέξανδρος Κ.","Ιωάννα Π.","Θανάσης Μ.","Αγγελική Σ.","Στέλιος Α.","Φωτεινή Δ.","Μανώλης Λ.","Ζωή Β.","Πέτρος Χ.","Ευαγγελία Ρ.","Σπύρος Τ.","Ναταλία Γ.","Χρήστος Ν.","Μαρίνα Ζ.","Λευτέρης Φ.","Αναστασία Κ.","Αντώνης Π.","Ελευθερία Μ.","Σταύρος Σ.","Νεφέλη Α.","Ορέστης Δ.","Δανάη Λ.","Άρης Β.","Ισμήνη Χ.","Φίλιππος Ρ."],
   // ---- βαπτίσεις: the twins of every key whose text NAMES the event (see tr() / EVK). Nothing else is duplicated;
   // a key without a twin reads the same for both kinds, which is most of this dictionary.
+    // the free sandbox and the names of a device-only plan: these name the event too, and the lab is now
+  // allowed to be any of the three, so a baptism demo must not offer to sell the visitor a wedding
+  b_labCap:"Η δωρεάν δοκιμή έχει έως {n} τραπέζια. Για ολόκληρη τη βάπτιση:", p_labCap:"Η δωρεάν δοκιμή έχει έως {n} τραπέζια. Για ολόκληρη τη γιορτή σας:", b_labPlan:"Δοκιμαστική βάπτιση", p_labPlan:"Δοκιμαστική γιορτή", b_ourWedding:"Η βάπτισή μας", p_ourWedding:"Η γιορτή μας", b_weddingN:"Βάπτιση {n}", p_weddingN:"Γιορτή {n}", b_labBride:"Μητέρα", p_labBride:"Εορτάζουσα", b_labGroom:"Πατέρας", p_labGroom:"Εορτάζων",
   b_evNom:"βάπτιση", b_title:"Οργάνωση Τραπεζιών Βάπτισης", b_awCouple:"Γονείς",
   b_tRenameVenue:"Το όνομα της βάπτισης το ορίζει {v}.",
   b_goneVenue:"Η βάπτιση διαγράφηκε από το κτήμα — αν έγινε κατά λάθος, το κτήμα μπορεί να ζητήσει επαναφορά.",
@@ -1730,7 +1743,7 @@ en:{
   supOpened:"Support: “{n}” — access is temporary.", supEnded:"Support access has expired or was ended.", accLost:"This device no longer has access to the plan — open the latest link.", accViewExpired:"This link no longer works — ask the couple or the venue for a new one.",
   claimUsed:"This link has already been opened. Open the plan on the device you first used, or write to info@takeaseat.gr.", claimWelcome:"Welcome! “{n}” is yours — TakeaSeat never opens it without your invitation. Keep the link (☁) for your other devices.",
   cVenueLinks:"You are signed in as the venue. Copy the couple's link from the venue console.", cSupportNoLinks:"Temporary support access — no sharing links.",
-  labBadge:"🧪 Lab", labHint:"Sandbox — whatever you change here stays on this device only.",
+  labSwitch:"Switch to a {e}? The demo plan is built again from scratch.", labBadge:"🧪 Lab", labHint:"Sandbox — whatever you change here stays on this device only.",
   switchPlan:"Switch couple / event", newPlan:"New plan (couple / event)", planMore:"Rename · duplicate · delete",
   shareTitle:"Share & sync", fontDown:"Smaller names", fontUp:"Larger names", fit:"Fit", zoomIn:"Zoom in", zoomOut:"Zoom out", print:"Print", more:"More",
   tsTitle:"Tables", tsAll:"All", tsToggle:"Show / hide the table list",
@@ -1846,6 +1859,9 @@ en:{
   labBride:"Bride", labGroom:"Groom",
   labNames:["Maria P.","George K.","Helen A.","Nick D.","Katerina M.","Jim S.","Sophia L.","Kostas V.","Anna C.","Peter R.","Christina T.","Michael G.","Irene N.","Bill Z.","Despina F.","Alex K.","Joanna P.","Thanos M.","Angela S.","Steve A.","Fay D.","Manolis L.","Zoe V.","Petros C.","Eva R.","Spyros T.","Natalie G.","Chris N.","Marina Z.","Lefteris F.","Anastasia K.","Tony P.","Ellie M.","Stavros S.","Nefeli A.","Orestis D.","Danae L.","Aris V.","Ismene C.","Philip R."],
   // ---- christenings: the twins of every key whose text NAMES the event (see tr() / EVK).
+    // the free sandbox and the names of a device-only plan: these name the event too, and the lab is now
+  // allowed to be any of the three, so a baptism demo must not offer to sell the visitor a wedding
+  b_labCap:"The free trial has up to {n} tables. For the whole christening:", p_labCap:"The free trial has up to {n} tables. For your whole celebration:", b_labPlan:"Demo christening", p_labPlan:"Demo celebration", b_ourWedding:"Our christening", p_ourWedding:"Our celebration", b_weddingN:"Christening {n}", p_weddingN:"Celebration {n}", b_labBride:"Mother", p_labBride:"Guest of honour", b_labGroom:"Father", p_labGroom:"Host",
   b_evNom:"christening", b_title:"Christening Seating Planner", b_awCouple:"Parents",
   b_tRenameVenue:"The christening's name is set by {v}.",
   b_goneVenue:"The venue deleted this christening — if that was a mistake, the venue can ask for it to be restored.",
@@ -1965,7 +1981,7 @@ de:{
   supOpened:"Support: „{n}“ — der Zugriff ist vorübergehend.", supEnded:"Der Support-Zugriff ist abgelaufen oder wurde beendet.", accLost:"Dieses Gerät hat keinen Zugriff mehr auf den Plan — öffnen Sie den neuesten Link.", accViewExpired:"Dieser Link gilt nicht mehr — bitten Sie das Paar oder die Location um einen neuen.",
   claimUsed:"Dieser Link wurde bereits geöffnet. Öffnen Sie den Plan auf dem Gerät, das Sie zuerst benutzt haben, oder schreiben Sie an info@takeaseat.gr.", claimWelcome:"Willkommen! „{n}“ gehört Ihnen — TakeaSeat öffnet ihn nie ohne Ihre Einladung. Bewahren Sie den Link (☁) für Ihre anderen Geräte auf.",
   cVenueLinks:"Sie sind als Location angemeldet. Den Link des Paares kopieren Sie in der Location-Konsole.", cSupportNoLinks:"Vorübergehender Support-Zugriff — keine Freigabelinks.",
-  labBadge:"🧪 Labor", labHint:"Sandbox — alles, was Sie hier ändern, bleibt nur auf diesem Gerät.",
+  labSwitch:"Zu {e} wechseln? Der Demo-Plan wird neu aufgebaut.", labBadge:"🧪 Labor", labHint:"Sandbox — alles, was Sie hier ändern, bleibt nur auf diesem Gerät.",
   switchPlan:"Paar / Veranstaltung wechseln", newPlan:"Neuer Plan (Paar / Veranstaltung)", planMore:"Umbenennen · duplizieren · löschen",
   shareTitle:"Teilen & synchronisieren", fontDown:"Kleinere Namen", fontUp:"Größere Namen", fit:"Einpassen", zoomIn:"Vergrößern", zoomOut:"Verkleinern", print:"Drucken", more:"Mehr",
   tsTitle:"Tische", tsAll:"Alle", tsToggle:"Tischliste ein-/ausblenden",
@@ -2081,6 +2097,9 @@ de:{
   labBride:"Braut", labGroom:"Bräutigam",
   labNames:["Maria P.","Georg K.","Helena A.","Niko D.","Katharina M.","Jan S.","Sophie L.","Konstantin V.","Anna C.","Peter R.","Christina T.","Michael G.","Irene N.","Wilhelm Z.","Despina F.","Alex K.","Johanna P.","Thomas M.","Angelika S.","Stefan A.","Frieda D.","Manuel L.","Zoe V.","Petra C.","Eva R.","Sebastian T.","Natalie G.","Christoph N.","Marina Z.","Leon F.","Anastasia K.","Anton P.","Elli M.","Stefanos S.","Nefeli A.","Oliver D.","Diana L.","Aris V.","Isabel C.","Philipp R."],
   // ---- Taufen: die Zwillinge jedes Schlüssels, dessen Text die Veranstaltung BENENNT (siehe tr() / EVK).
+    // the free sandbox and the names of a device-only plan: these name the event too, and the lab is now
+  // allowed to be any of the three, so a baptism demo must not offer to sell the visitor a wedding
+  b_labCap:"Die kostenlose Testversion hat bis zu {n} Tische. Für die ganze Taufe:", p_labCap:"Die kostenlose Testversion hat bis zu {n} Tische. Für Ihre ganze Feier:", b_labPlan:"Demo-Taufe", p_labPlan:"Demo-Feier", b_ourWedding:"Unsere Taufe", p_ourWedding:"Unsere Feier", b_weddingN:"Taufe {n}", p_weddingN:"Feier {n}", b_labBride:"Mutter", p_labBride:"Ehrengast", b_labGroom:"Vater", p_labGroom:"Gastgeber",
   b_evNom:"eine Taufe", b_title:"Tauf-Sitzplan", b_awCouple:"Eltern",
   b_tRenameVenue:"Den Namen der Taufe legt {v} fest.",
   b_goneVenue:"Die Location hat diese Taufe gelöscht — falls das ein Versehen war, kann die Location die Wiederherstellung anfordern.",
@@ -2358,14 +2377,39 @@ function defaultState(ev){
            seatFontScale:1, tableFontScale:1, nameMode:"full", stage:{w:1800,h:STARTER.h}, stageMaterial:"grass", layoutVersion:LAYOUT_VERSION };
 }
 // The lab starts with a realistic demo wedding so there's something to play with immediately.
-function labState(){
-  const s=defaultState("wedding"); const names=T.labNames||T_ALL.el.labNames;
+function labState(ev){
+  ev=ev||"wedding";
+  const s=defaultState(ev); const names=T.labNames||T_ALL.el.labNames;
   names.forEach((nm,i)=>{ s.guests["g"+(3000+i)]={ name:nm, groupId:s.groups[i%4].id }; });
   const ids=Object.keys(s.guests); let k=0;
   for(const t of s.tables.slice(0,3)){ for(let i=0;i<t.capacity&&k<26;i++) t.seats[i]=ids[k++]; }
-  s.guests.g3900={ name:tr("labBride"), groupId:s.groups[0].id }; s.guests.g3901={ name:tr("labGroom"), groupId:s.groups[1].id };
+  s.guests.g3900={ name:wordFor(ev,"labBride"), groupId:s.groups[0].id }; s.guests.g3901={ name:wordFor(ev,"labGroom"), groupId:s.groups[1].id };
   const head=s.tables.find(t=>t.shape==="head"); head.seats[3]="g3900"; head.seats[4]="g3901";
   s._uid=3950; return s;
+}
+
+// The sandbox shows one event at a time and says which, in words the visitor can click. Everything here is local:
+// no plan, no server, nothing to confirm beyond the one question that says the demo will be rebuilt.
+function renderLabKinds(){
+  const box=$("labKinds"); if(!box||!IS_LAB) return;
+  box.innerHTML="";
+  for(const k of Object.keys(KIND_PFX)){
+    const nom=wordFor(k,"evNom"), b=document.createElement("button");
+    b.type="button"; b.textContent=nom.charAt(0).toUpperCase()+nom.slice(1);
+    b.setAttribute("aria-pressed", String(k===LAB_EV));
+    if(k!==LAB_EV) b.onclick=()=>switchLabKind(k);
+    box.appendChild(b);
+  }
+}
+function switchLabKind(k){
+  if(!IS_LAB || k===LAB_EV || KIND_PFX[k]===undefined) return;
+  if(!confirm(tr("labSwitch",{e:wordFor(k,"evNom")}))) return;
+  LAB_EV=k; setEventKind(k);
+  const cur=currentProfile(); if(cur){ cur.kind=k; cur.name=tr("labPlan"); saveProfilesIdx(); }
+  setPick(null); closeMenu();
+  state=labState(k); uid=state._uid; fontScale=1;
+  save(); renderProfiles(); renderLabKinds(); applyAccess(); renderAll(); resetHistory();
+  try{ const u=new URL(location.href); if(k==="wedding") u.searchParams.delete("ev"); else u.searchParams.set("ev",k); history.replaceState(null,"",u); }catch(e){}
 }
 
 // ---------- persistence (multiple named profiles / couples) ----------
@@ -2395,8 +2439,9 @@ function ensureProfiles(){
   const id=newProfileId();
   let migrated=null;
   if(!IS_LAB){ try{ const old=JSON.parse(localStorage.getItem(STORE_KEY)); if(old&&old.tables) migrated=old; }catch(e){} }
-  try{ localStorage.setItem(planKey(id), JSON.stringify(migrated||(IS_LAB?labState():defaultState("wedding")))); }catch(e){}
-  const p={ activeId:id, profiles:[{id, name:IS_LAB?tr("labPlan"):tr("ourWedding")}] };
+  if(IS_LAB) setEventKind(LAB_EV);   // the words BEFORE the demo is built, exactly as applyPulledPlan does it online
+  try{ localStorage.setItem(planKey(id), JSON.stringify(migrated||(IS_LAB?labState(LAB_EV):defaultState("wedding")))); }catch(e){}
+  const p={ activeId:id, profiles:[{id, name:IS_LAB?tr("labPlan"):tr("ourWedding"), ...(IS_LAB?{kind:LAB_EV}:{})}] };
   try{ localStorage.setItem(PROFILES_KEY, JSON.stringify(p)); }catch(e){}  // persist so we don't re-migrate on next load
   return p;
 }
@@ -3543,10 +3588,11 @@ function newProfile(){
   if(name===null) return;
   save();
   const id=newProfileId();
-  profiles.profiles.push({id, name:(name.trim()||tr("weddingN",{n:profiles.profiles.length+1}))});
+  profiles.profiles.push({id, name:(name.trim()||tr("weddingN",{n:profiles.profiles.length+1})), ...(LAB_EV?{kind:LAB_EV}:{})});
   profiles.activeId=id; saveProfilesIdx();
-  setEventKind("wedding");   // a new plan carries no kind, so it IS a wedding — and the room must say so, whatever was open a moment ago
-  state=defaultState("wedding"); uid=state._uid; fontScale=1;
+  const nk=LAB_EV||"wedding";   // online, a new plan carries no kind and so IS a wedding; in the sandbox it is whatever the sandbox shows
+  setEventKind(nk);
+  state=defaultState(nk); uid=state._uid; fontScale=1;
   try{ localStorage.setItem(planKey(id), JSON.stringify(state)); }catch(e){}
   loadActive(); toast(tr("tProfileCreated"));
 }
@@ -5506,7 +5552,7 @@ function resetPlan(){
     delete state.amelieVer;   // the list is empty now: a connected plan must get the whole Amelie document again, not «unchanged»
     save(); renderAll(); toast(ACCESS.owner==="venue"?tr("tResetKeepSpace",{v:ACCESS.venueName||tr("theVenue")}):tr("tResetKeepRoom"),4500); return;
   }
-  state=IS_LAB?labState():defaultState(); uid=state._uid; fontScale=1;
+  state=IS_LAB?labState(LAB_EV):defaultState(); uid=state._uid; fontScale=1;
   state.tables.forEach(t=>{ const m=maxSeatsFor(t); if(t.capacity>m){ t.capacity=m; t.seats=t.seats.slice(0,m); } });
   applyStage(); $("stageFloor").value=state.stageMaterial; save(); renderAll();
   toast((cur&&cur.cloudId)?tr("tResetHist"):tr("tReset"),3500);
@@ -7446,7 +7492,7 @@ if(!state.stageMaterial) state.stageMaterial="grass";
 applyStage();
 // the room's eight edge handles — BEFORE any table or decor item in the DOM (same z-index as the cards: those paint above)
 srzEls=["n","s","e","w","nw","ne","sw","se"].map(k=>{ const h=document.createElement("div"); h.className="srz "+k; h.title=tr("stageResizeTip"); h.style.setProperty("--iz", String(1/zoom)); stage.appendChild(h); makeStageResizable(h, k); return h; });
-initFloorSelect(); initDecor(); renderProfiles();
+initFloorSelect(); initDecor(); renderProfiles(); renderLabKinds();
 applyAccess(); renderAll(); resetHistory(); shownProf=profiles.activeId;
 setTimeout(()=>fitView(initialZoom()),50);
 // Turn each SVG texture into a plain bitmap once (canvas → JPEG data URI). Browsers re-render the SVG noise
