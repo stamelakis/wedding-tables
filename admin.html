@@ -240,11 +240,12 @@ const todayYmd=()=>{ try{ const s=new Intl.DateTimeFormat("en-CA",{ timeZone:"Eu
 const MAX_KEEP_DAYS=3650;   // the server's limit for "delete N days after the event"
 // ---- what a customer bought for: a wedding or a baptism. One field (`kind`) on the plan; everything else about
 // the sale — the price, the 14-day wait, the phases, the retention — is identical, so only labels read it.
-const evKind=x=>(x && x.kind==="baptism") ? "baptism" : "wedding";
 const EVW={ wedding:{ one:"wedding", date:"Wedding date", name:"Couple name", who:"couple", Who:"Couple", askName:"Enter the couple's name" },
-            baptism:{ one:"baptism",  date:"Baptism date", name:"Child's name", who:"parents", Who:"Parents", askName:"Enter the child's name" } };
+            baptism:{ one:"baptism",  date:"Baptism date", name:"Child's name", who:"parents", Who:"Parents", askName:"Enter the child's name" },
+            party:{   one:"celebration", date:"Date", name:"Name of the celebration", who:"host", Who:"Host", askName:"Enter the name of the celebration" } };
+const evKind=x=>(x && EVW[x.kind]) ? x.kind : "wedding";   // anything we do not know is a wedding
 const EV=x=>EVW[evKind(x)];
-const kindBadge=x=>evKind(x)==="baptism" ? ` <span class="badge tpl" title="A baptism — same licence, same lifecycle, different words">baptism</span>` : "";
+const kindBadge=x=>{ const k=evKind(x); return k==="wedding" ? "" : ` <span class="badge tpl" title="A ${EVW[k].one} — same licence, same lifecycle, different words">${EVW[k].one}</span>`; };
 
 function licenseText(L){ L=L||{};
   if(L.type==="per_wedding") return L.quota ? `Per-wedding · quota ${L.quota}` : "Per-wedding · unlimited";

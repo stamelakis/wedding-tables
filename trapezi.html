@@ -268,12 +268,20 @@ var TAS_TOKEN = (function () {
       foot: "Erstellt mit TakeaSeat"
     }
   };
-  /* Baptisms: the twin of every line that NAMES the event. The server sends `kind` with each answer this token
-     gets (the open ones and «closed» alike), so by the time any of these is on screen we know which it is. */
+  /* Every line that NAMES the event, per kind. The server sends `kind` with each answer this token gets (the open
+     ones and «closed» alike), so by the time any of these is on screen we know which it is. A wedding is the
+     unprefixed original; a kind we do not know reads as a wedding, which is what every plan was before kinds. */
   var B = {
-    el: { closedSub: "Ανοίγει μία εβδομάδα πριν τη βάπτιση και κλείνει δύο μέρες μετά. Αν η βάπτιση γίνεται σήμερα, ρωτήστε το προσωπικό." },
-    en: { closedSub: "It opens one week before the christening and closes two days after. If the christening is today, please ask the staff." },
-    de: { closedSub: "Sie öffnet eine Woche vor der Taufe und schließt zwei Tage danach. Wenn die Taufe heute ist, fragen Sie bitte das Personal." }
+    baptism: {
+      el: { closedSub: "Ανοίγει μία εβδομάδα πριν τη βάπτιση και κλείνει δύο μέρες μετά. Αν η βάπτιση γίνεται σήμερα, ρωτήστε το προσωπικό." },
+      en: { closedSub: "It opens one week before the christening and closes two days after. If the christening is today, please ask the staff." },
+      de: { closedSub: "Sie öffnet eine Woche vor der Taufe und schließt zwei Tage danach. Wenn die Taufe heute ist, fragen Sie bitte das Personal." }
+    },
+    party: {
+      el: { closedSub: "Ανοίγει μία εβδομάδα πριν τη γιορτή και κλείνει δύο μέρες μετά. Αν η γιορτή γίνεται σήμερα, ρωτήστε το προσωπικό." },
+      en: { closedSub: "It opens one week before the celebration and closes two days after. If it is today, please ask the staff." },
+      de: { closedSub: "Sie öffnet eine Woche vor der Feier und schließt zwei Tage danach. Wenn die Feier heute ist, fragen Sie bitte das Personal." }
+    }
   };
   /* Foreign guests at Greek weddings are common, so the phone decides and the switch is one tap away. */
   var LANG = (function () {
@@ -283,8 +291,8 @@ var TAS_TOKEN = (function () {
   })();
   var T = function () {
     var base = S[LANG];
-    if (V.kind !== "baptism") return base;
-    var o = {}, k, b = B[LANG] || {};
+    if (!B[V.kind]) return base;
+    var o = {}, k, b = B[V.kind][LANG] || {};
     for (k in base) o[k] = base[k];
     for (k in b) o[k] = b[k];
     return o;
@@ -470,7 +478,7 @@ var TAS_TOKEN = (function () {
         /* The wedding header, before anything returns: a guest whose FIRST search is «too many» must still be able to
            see that they scanned the right wedding's QR. Keep what is already known if the answer carries nothing. */
         if (d.event != null) V.event = String(d.event);
-        if (d.kind) V.kind = (d.kind === "baptism") ? "baptism" : "wedding";
+        if (d.kind) V.kind = B[d.kind] ? d.kind : "wedding";
         if (d.date) V.date = d.date;
         if (d.tooMany) { show({ key: "many" }); return; }
         var hits = (d.matches || []).filter(function (h) { return h && h.name; });
@@ -481,7 +489,7 @@ var TAS_TOKEN = (function () {
       }
       if (r.s === 400 && d.error === "too_short") { show({ key: "short" }); return; }
       if (r.s === 404) { show({ key: "gone" }, true); return; }
-      if (r.s === 403) { if (d.kind) V.kind = (d.kind === "baptism") ? "baptism" : "wedding"; show({ key: "closed" }, true); return; }
+      if (r.s === 403) { if (d.kind) V.kind = B[d.kind] ? d.kind : "wedding"; show({ key: "closed" }, true); return; }
       if (r.s === 429) { show({ key: "busy", ra: r.ra }); return; }
       show({ key: "oops" });
     }, function () { if (mine !== seq) return; setPending(false); show({ key: "net" }); });

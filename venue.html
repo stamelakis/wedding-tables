@@ -234,8 +234,15 @@ const EVW = {
             custN:"οι γονείς", custA:"τους γονείς", custG:"γονέων", custTo:"στους γονείς",
             changes:"αλλάζουν", sets:"στήνουν", sees:"βλέπουν", writes:"γράφουν", puts:"βάζουν", alone:"μόνοι τους", poss:"της",
             nameLbl:"Όνομα παιδιού", namePh:"Όνομα παιδιού (π.χ. Ελένη)", nameAsk:"Γράψτε το όνομα του παιδιού" },
+  party:{ nomA:"η γιορτή", genA:"της γιορτής", accA:"τη γιορτή", accT:"αυτή τη γιορτή", inA:"στη γιορτή", bareG:"γιορτής", created:"Η γιορτή δημιουργήθηκε",
+            made:"Η γιορτή έγινε", over:"Η εκδήλωση έχει ολοκληρωθεί", started:"Η γιορτή ξεκίνησε", deleted:"Η γιορτή διαγράφηκε",
+            notFound:"Η γιορτή δεν βρέθηκε.", isOver:"Η γιορτή έχει ολοκληρωθεί.", nw:"Νέα γιορτή",
+            details:"Στοιχεία γιορτής", del:"Διαγραφή γιορτής", dateLbl:"Ημερομηνία γιορτής", dateShort:"Ημ/νία γιορτής",
+            custN:"ο διοργανωτής", custA:"τον διοργανωτή", custG:"διοργανωτή", custTo:"στον διοργανωτή",
+            changes:"αλλάζει", sets:"στήνει", sees:"βλέπει", writes:"γράφει", puts:"βάζει", alone:"μόνος του", poss:"της",
+            nameLbl:"Όνομα γιορτής", namePh:"Όνομα γιορτής (π.χ. Τα 40ά της Μαρίας)", nameAsk:"Γράψτε το όνομα της γιορτής" },
 };
-const evKind = w => (w && w.kind === "baptism") ? "baptism" : "wedding";   // anything else is a wedding
+const evKind = w => (w && EVW[w.kind]) ? w.kind : "wedding";   // anything we do not know is a wedding
 const EV = w => EVW[evKind(w)];
 const PLANNER_FILE={ el:"seating-planner-el.html", en:"seating-planner.html", de:"seating-planner-de.html" };
 let LINK_LANG=(()=>{ try{ const v=localStorage.getItem(LANG_STORE); return PLANNER_FILE[v]?v:"el"; }catch(e){ return "el"; } })();

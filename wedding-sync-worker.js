@@ -73,7 +73,10 @@ function normPerms(p, fallback) {
 // ONE field on the plan record. A venue's licence and a couple's purchase cover both kinds; the date, the phases, the
 // retention and the door list are identical — only the words follow this. Anything without it is a wedding, which is
 // what every plan made before today is, so no stored plan changes meaning.
-const EVENT_KINDS = ["wedding", "baptism"];
+const EVENT_KINDS = ["wedding", "baptism", "party"];
+// One place decides which dictionary a kind reads from. A wedding is the unprefixed original, so adding a kind is a
+// row here plus its twins — never a new `=== "baptism"` test somewhere, which is how the second kind leaked.
+const KIND_PFX = { wedding: "", baptism: "b_", party: "p_" };
 const normKind = k => (typeof k === "string" && EVENT_KINDS.includes(k)) ? k : "wedding";
 const kindOf = rec => normKind(rec && rec.kind);
 // `undefined` when the body did not mention it (leave it alone), otherwise the normalised kind.
@@ -274,6 +277,8 @@ const MAILS = {
     // Greeks actually say at a baptism — «να σας ζήσει» — not the couple's.
     b_keepsake: ["Το αναμνηστικό της βάπτισης — TakeaSeat", "Συγχαρητήρια!\n\nΣας στέλνουμε, ως μικρό αναμνηστικό, το τραπεζολόγιο της βάπτισης «{name}» ({date}): όλοι όσοι γιόρτασαν μαζί σας και πού κάθισαν. Θα το βρείτε συνημμένο σε PDF.\n\nΤο σχέδιο είναι πλέον μόνο για προβολή και θα διαγραφεί οριστικά στις {until}. Αν θέλετε να το κρατήσετε, αποθηκεύστε το συνημμένο αρχείο.\n\nΝα σας ζήσει!\nTakeaSeat"],
     b_keepsakeKeep: ["Το αναμνηστικό της βάπτισης — TakeaSeat", "Συγχαρητήρια!\n\nΣας στέλνουμε, ως μικρό αναμνηστικό, το τραπεζολόγιο της βάπτισης «{name}» ({date}): όλοι όσοι γιόρτασαν μαζί σας και πού κάθισαν. Θα το βρείτε συνημμένο σε PDF.\n\nΝα σας ζήσει!\nTakeaSeat"],
+    p_keepsake: ["Το αναμνηστικό της γιορτής — TakeaSeat", "Γεια σας,\n\nΣας στέλνουμε, ως μικρό αναμνηστικό, το τραπεζολόγιο της γιορτής «{name}» ({date}): όλοι όσοι γιόρτασαν μαζί σας και πού κάθισαν. Θα το βρείτε συνημμένο σε PDF.\n\nΤο σχέδιο είναι πλέον μόνο για προβολή και θα διαγραφεί οριστικά στις {until}. Αν θέλετε να το κρατήσετε, αποθηκεύστε το συνημμένο αρχείο.\n\nΜε τις καλύτερες ευχές,\nTakeaSeat"],
+    p_keepsakeKeep: ["Το αναμνηστικό της γιορτής — TakeaSeat", "Γεια σας,\n\nΣας στέλνουμε, ως μικρό αναμνηστικό, το τραπεζολόγιο της γιορτής «{name}» ({date}): όλοι όσοι γιόρτασαν μαζί σας και πού κάθισαν. Θα το βρείτε συνημμένο σε PDF.\n\nΜε τις καλύτερες ευχές,\nTakeaSeat"],
     // ---- self-signup. The API answers every signup the same way; what really happened is said HERE, to the address
     // that the business already registered — so a stranger who probes an ΑΦΜ or an email learns nothing.
     afmUsed: ["Ο δωρεάν χρόνος αυτής της επιχείρησης — TakeaSeat", "Γεια σας,\n\nΛάβαμε εγγραφή για δωρεάν πρώτο χρόνο με το ΑΦΜ {afm}. Η επιχείρηση αυτή έχει ήδη πάρει τον δωρεάν της χρόνο — δίνεται μία φορά ανά ΑΦΜ.\n\nΔεν δημιουργήθηκε δεύτερος λογαριασμός και δεν χρεωθήκατε τίποτα. Για να συνεχίσετε με συνδρομή, ή αν νομίζετε ότι έγινε λάθος, γράψτε μας στο info@takeaseat.gr ή τηλεφωνήστε στο 697 735 5378 (10:00–14:00 και 17:00–21:00).\n\nTakeaSeat"],
@@ -306,6 +311,8 @@ const MAILS = {
     keepsakeKeep: ["A keepsake of your wedding — TakeaSeat", "Congratulations!\n\nAs a small keepsake, here is the seating plan of your wedding “{name}” ({date}): everyone who celebrated with you and where they sat. You will find it attached as a PDF.\n\nWishing you every happiness!\nTakeaSeat"],
     b_keepsake: ["A keepsake of the christening — TakeaSeat", "Congratulations!\n\nAs a small keepsake, here is the seating plan of the christening “{name}” ({date}): everyone who celebrated with you and where they sat. You will find it attached as a PDF.\n\nThe plan is now view-only and will be deleted for good on {until}. If you want to keep it, save the attached file.\n\nMay the little one have a long and happy life!\nTakeaSeat"],
     b_keepsakeKeep: ["A keepsake of the christening — TakeaSeat", "Congratulations!\n\nAs a small keepsake, here is the seating plan of the christening “{name}” ({date}): everyone who celebrated with you and where they sat. You will find it attached as a PDF.\n\nMay the little one have a long and happy life!\nTakeaSeat"],
+    p_keepsake: ["A keepsake of the celebration — TakeaSeat", "Hello,\n\nAs a small keepsake, here is the seating plan of “{name}” ({date}): everyone who celebrated with you and where they sat. You will find it attached as a PDF.\n\nThe plan is now view-only and will be deleted for good on {until}. If you want to keep it, save the attached file.\n\nWith our best wishes,\nTakeaSeat"],
+    p_keepsakeKeep: ["A keepsake of the celebration — TakeaSeat", "Hello,\n\nAs a small keepsake, here is the seating plan of “{name}” ({date}): everyone who celebrated with you and where they sat. You will find it attached as a PDF.\n\nWith our best wishes,\nTakeaSeat"],
     afmUsed: ["This business has already had its free year — TakeaSeat", "Hello,\n\nWe received a signup for a free first year with the tax number (ΑΦΜ) {afm}. This business has already had its free year — it is given once per ΑΦΜ.\n\nNo second account was created and you were not charged. To continue with a subscription, or if you think this is a mistake, write to info@takeaseat.gr or call +30 697 735 5378 (10:00–14:00 and 17:00–21:00, Greek time).\n\nTakeaSeat"],
     haveConsole: ["You already have a console — TakeaSeat", "Hello,\n\nWe received a venue signup with this email. There is already a console on this address, so we did not make a second one.\n\nIf you forgot the key, ask for a new one here: {link}\n\nIf the signup was for a different business, write to info@takeaseat.gr.\n\nTakeaSeat"],
     trialEnds: ["Your free year ends on {date} — TakeaSeat", "Hello,\n\nThe free first year of “{name}” ends on {date} — in {days} days.\n\nWhat happens then: nothing is deleted. The console still opens and the events you have already created — weddings and christenings alike — run to their date. Creating new events needs a subscription.\n\nTo continue: info@takeaseat.gr · +30 697 735 5378 (10:00–14:00 and 17:00–21:00, Greek time). Your console: {link}\n\nTakeaSeat"],
@@ -334,6 +341,8 @@ const MAILS = {
     keepsakeKeep: ["Eine Erinnerung an Ihre Hochzeit — TakeaSeat", "Herzlichen Glückwunsch!\n\nAls kleine Erinnerung senden wir Ihnen den Sitzplan Ihrer Hochzeit „{name}“ ({date}): alle, die mit Ihnen gefeiert haben, und wo sie saßen. Sie finden ihn als PDF im Anhang.\n\nAlles Glück der Welt!\nTakeaSeat"],
     b_keepsake: ["Eine Erinnerung an die Taufe — TakeaSeat", "Herzlichen Glückwunsch!\n\nAls kleine Erinnerung senden wir Ihnen den Sitzplan der Taufe „{name}“ ({date}): alle, die mit Ihnen gefeiert haben, und wo sie saßen. Sie finden ihn als PDF im Anhang.\n\nDer Plan ist jetzt nur noch lesbar und wird am {until} endgültig gelöscht. Wenn Sie ihn behalten möchten, speichern Sie die angehängte Datei.\n\nAlles Gute für Ihr Kind!\nTakeaSeat"],
     b_keepsakeKeep: ["Eine Erinnerung an die Taufe — TakeaSeat", "Herzlichen Glückwunsch!\n\nAls kleine Erinnerung senden wir Ihnen den Sitzplan der Taufe „{name}“ ({date}): alle, die mit Ihnen gefeiert haben, und wo sie saßen. Sie finden ihn als PDF im Anhang.\n\nAlles Gute für Ihr Kind!\nTakeaSeat"],
+    p_keepsake: ["Eine Erinnerung an die Feier — TakeaSeat", "Hallo,\n\nAls kleine Erinnerung senden wir Ihnen den Sitzplan von „{name}“ ({date}): alle, die mit Ihnen gefeiert haben, und wo sie saßen. Sie finden ihn als PDF im Anhang.\n\nDer Plan ist jetzt nur noch lesbar und wird am {until} endgültig gelöscht. Wenn Sie ihn behalten möchten, speichern Sie die angehängte Datei.\n\nMit den besten Wünschen,\nTakeaSeat"],
+    p_keepsakeKeep: ["Eine Erinnerung an die Feier — TakeaSeat", "Hallo,\n\nAls kleine Erinnerung senden wir Ihnen den Sitzplan von „{name}“ ({date}): alle, die mit Ihnen gefeiert haben, und wo sie saßen. Sie finden ihn als PDF im Anhang.\n\nMit den besten Wünschen,\nTakeaSeat"],
     afmUsed: ["Dieses Unternehmen hatte sein Gratisjahr bereits — TakeaSeat", "Hallo,\n\nwir haben eine Anmeldung für ein kostenloses erstes Jahr mit der Steuernummer (ΑΦΜ) {afm} erhalten. Dieses Unternehmen hat sein Gratisjahr bereits erhalten — es wird einmal pro ΑΦΜ vergeben.\n\nEs wurde kein zweites Konto angelegt und Ihnen nichts berechnet. Für ein Abonnement, oder wenn Sie das für einen Fehler halten, schreiben Sie an info@takeaseat.gr oder rufen Sie +30 697 735 5378 an (10:00–14:00 und 17:00–21:00, griechische Zeit).\n\nTakeaSeat"],
     haveConsole: ["Sie haben bereits eine Konsole — TakeaSeat", "Hallo,\n\nwir haben eine Location-Anmeldung mit dieser E-Mail erhalten. Unter dieser Adresse gibt es bereits eine Konsole, deshalb haben wir keine zweite angelegt.\n\nWenn Sie den Schlüssel vergessen haben, fordern Sie hier einen neuen an: {link}\n\nWenn die Anmeldung ein anderes Unternehmen betraf, schreiben Sie an info@takeaseat.gr.\n\nTakeaSeat"],
     trialEnds: ["Ihr Gratisjahr endet am {date} — TakeaSeat", "Hallo,\n\ndas kostenlose erste Jahr von „{name}“ endet am {date} — in {days} Tagen.\n\nWas dann passiert: nichts wird gelöscht. Die Konsole öffnet weiterhin und die bereits angelegten Veranstaltungen — Hochzeiten wie Taufen — laufen bis zu ihrem Datum. Für neue Veranstaltungen brauchen Sie ein Abonnement.\n\nZum Weitermachen: info@takeaseat.gr · +30 697 735 5378 (10:00–14:00 und 17:00–21:00, griechische Zeit). Ihre Konsole: {link}\n\nTakeaSeat"],
@@ -346,7 +355,7 @@ const fmtDay = (t, lang) => { try { return new Date(t).toLocaleDateString(langOf
 const fill = (t, v) => String(t).replace(/\{(\w+)\}/g, (m, k) => (v[k] != null ? String(v[k]) : m));
 // `ev` is the event kind: a mail whose words name the event has a `b_` twin for baptisms (see b_keepsake); every other
 // mail has one text and ignores it. One lookup, so a new type-aware mail is a dictionary entry, never a conditional.
-function mailMsg(lang, kind, v, ev) { const L = MAILS[langOf(lang)]; const m = (normKind(ev) === "baptism" && L["b_" + kind]) ? L["b_" + kind] : L[kind]; return { subject: fill(m[0], v), text: fill(m[1], v) }; }
+function mailMsg(lang, kind, v, ev) { const L = MAILS[langOf(lang)]; const p = KIND_PFX[normKind(ev)]; const m = (p && L[p + kind]) || L[kind]; return { subject: fill(m[0], v), text: fill(m[1], v) }; }
 async function indexEmail(env, email, kind, id, add) {
   if (!email) return;
   await kvUpdate(env, "email:" + email, ix => { ix = ix || {}; ix.couples = ix.couples || []; ix.venues = ix.venues || []; const k = kind === "venue" ? "venues" : "couples";
@@ -898,21 +907,24 @@ function layoutOnly(src, fromWedding) {
 // and a wedding copied from a wedding's template gets back the words it already had.
 const STARTER_WORDS = [
   { wedding: { head: "Νυφικό τραπέζι", groups: ["Πλευρά νύφης", "Πλευρά γαμπρού", "Φίλοι", "Οικογένεια"] },
-    baptism: { head: "Τραπέζι της οικογένειας", groups: ["Πλευρά μητέρας", "Πλευρά πατέρα", "Νονοί", "Φίλοι"] } },
+    baptism: { head: "Τραπέζι της οικογένειας", groups: ["Πλευρά μητέρας", "Πλευρά πατέρα", "Νονοί", "Φίλοι"] },
+    party: { head: "Τραπέζι της γιορτής", groups: ["Οικογένεια", "Φίλοι", "Συνάδελφοι", "Παιδιά"] } },
   { wedding: { head: "Head table", groups: ["Bride's side", "Groom's side", "Friends", "Family"] },
-    baptism: { head: "Family table", groups: ["Mother's side", "Father's side", "Godparents", "Friends"] } },
+    baptism: { head: "Family table", groups: ["Mother's side", "Father's side", "Godparents", "Friends"] },
+    party: { head: "Celebration table", groups: ["Family", "Friends", "Colleagues", "Children"] } },
   { wedding: { head: "Brauttisch", groups: ["Seite der Braut", "Seite des Bräutigams", "Freunde", "Familie"] },
-    baptism: { head: "Familientisch", groups: ["Seite der Mutter", "Seite des Vaters", "Paten", "Freunde"] } },
+    baptism: { head: "Familientisch", groups: ["Seite der Mutter", "Seite des Vaters", "Paten", "Freunde"] },
+    party: { head: "Festtisch", groups: ["Familie", "Freunde", "Kolleginnen und Kollegen", "Kinder"] } },
 ];
 function retypeStarter(plan, kind) {
   if (!plan) return plan;
   const want = normKind(kind);
   for (const L of STARTER_WORDS) {
     for (const t of (plan.tables || [])) {
-      if (t && t.shape === "head" && (t.label === L.wedding.head || t.label === L.baptism.head)) t.label = L[want].head;
+      if (t && t.shape === "head" && EVENT_KINDS.some(k => t.label === L[k].head)) t.label = L[want].head;
     }
     const names = (plan.groups || []).map(g => g && g.name);
-    for (const from of ["wedding", "baptism"]) {
+    for (const from of EVENT_KINDS) {
       if (names.length === L[from].groups.length && names.every((n, i) => n === L[from].groups[i])) {
         plan.groups = plan.groups.map((g, i) => ({ ...g, name: L[want].groups[i] }));
         break;
@@ -1296,8 +1308,9 @@ const TEST_SUR = [["Παπαδόπουλος", "Παπαδοπούλου"], ["Γ
   ["Παπαγεωργίου", "Παπαγεωργίου"], ["Μακρής", "Μακρή"], ["Καραγιάννης", "Καραγιάννη"], ["Σταματίου", "Σταματίου"],
   ["Αθανασίου", "Αθανασίου"], ["Λαμπρόπουλος", "Λαμπροπούλου"], ["Χατζής", "Χατζή"], ["Ανδρέου", "Ανδρέου"],
   ["Μιχαηλίδης", "Μιχαηλίδου"], ["Σαμαράς", "Σαμαρά"], ["Βλάχος", "Βλάχου"], ["Ρούσσος", "Ρούσσου"]];
-const TEST_GROUPS = ["Πλευρά νύφης", "Πλευρά γαμπρού", "Φίλοι", "Οικογένεια"];
-const TEST_GROUPS_B = ["Πλευρά μητέρας", "Πλευρά πατέρα", "Νονοί", "Φίλοι"];   // the same four slots, read for a baptism
+// The Greek starter words of each kind, taken from the one table that already holds them, so a test plan can never
+// drift from what the planner actually writes. STARTER_WORDS[0] is Greek.
+const TEST_WORDS = STARTER_WORDS[0];
 const TEST_COLORS = ["#e26d8a", "#4a90d9", "#3aa657", "#e0a030"];
 const TEST_POS = [[450, 250], [750, 250], [1050, 250], [1350, 250], [450, 540], [750, 540], [1050, 540], [1350, 540]];   // the planner's own 4×2 starter
 // Math.random lives here and nowhere else in this file: these pick names for a demo wedding, never a credential (rnd()).
@@ -1306,11 +1319,11 @@ const testGuestName = (k, woman) => (woman ? TEST_WOMEN[k % TEST_WOMEN.length] :
 
 // 60 guests on 8 round tables + the head table: 4 invitations, 54 seated, 4 still without a seat, a few «πιθανόν»
 // and a few notes — the same shape a real plan has, so everything in the planner has something to show.
-function testWeddingPlan(a1, a2, kind) {   // a wedding: the couple; a baptism: the parents
+function testWeddingPlan(a1, a2, kind) {   // a wedding: the couple; a baptism: the parents; a party: the host
   const tables = TEST_POS.map((p, i) => ({ id: 1001 + i, label: String(i + 1), shape: "round", x: p[0], y: p[1], capacity: 10, seats: Array(10).fill(null) }));
-  const bap = normKind(kind) === "baptism";
-  tables.push({ id: 2000, label: bap ? "Τραπέζι της οικογένειας" : "Νυφικό τραπέζι", shape: "head", x: 900, y: 1110, capacity: 10, seats: Array(10).fill(null) });
-  const groups = (bap ? TEST_GROUPS_B : TEST_GROUPS).map((n, i) => ({ id: "grp" + (i + 1), name: n, color: TEST_COLORS[i] }));
+  const ev = normKind(kind), bap = ev === "baptism";
+  tables.push({ id: 2000, label: TEST_WORDS[ev].head, shape: "head", x: 900, y: 1110, capacity: 10, seats: Array(10).fill(null) });
+  const groups = TEST_WORDS[ev].groups.map((n, i) => ({ id: "grp" + (i + 1), name: n, color: TEST_COLORS[i] }));
   const features = [
     { id: "f-ent", kind: "label", x: 900, y: 60, w: 190, h: 28, label: "Είσοδος καλεσμένων" },
     { id: "f-kiosk", kind: "prop", x: 1500, y: 66, w: 150, h: 64, label: "Ποτό υποδοχής", icon: "🍹" },

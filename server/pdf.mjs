@@ -44,6 +44,9 @@ const MATERIAL = {   // [stage tint, zone fill, zone edge, zone label]
 const GROUP_FALLBACK = '#9a8c7d';
 
 // ---------------------------------------------------------------- words
+// Which dictionary each event kind reads from — the same map the worker and the planner keep. A wedding is the
+// unprefixed original, so a new kind is a row here plus its twins, never a new test against a kind name.
+const KIND_PFX = { wedding: '', baptism: 'b_', party: 'p_' };
 const L10N = {
   el: {
     days: ['Κυριακή', 'Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο'],
@@ -54,6 +57,7 @@ const L10N = {
     seatsOf: (s, c) => `${s} από ${c} θέσεις`,
     table: 'Τραπέζι', warm: 'Όλοι όσοι γιόρτασαν μαζί σας.', ourWedding: 'Ο γάμος μας', seatingPlan: 'Σχέδιο τραπεζιών',
     b_ourWedding: 'Η βάπτισή μας',
+    p_ourWedding: 'Η γιορτή μας',
     floor: 'Η κάτοψη', whoSat: 'Ποιος κάθισε πού', index: 'Αλφαβητικός κατάλογος', namesByTable: 'Ονόματα ανά τραπέζι',
     unseated: 'Χωρίς θέση', cancelled: 'ακυρώθηκε', cont: 'συνέχεια',
     brand: 'Φτιάχτηκε με TakeaSeat · takeaseat.gr', brandWarm: 'Φτιαγμένο με αγάπη · TakeaSeat · takeaseat.gr',
@@ -69,6 +73,7 @@ const L10N = {
     seatsOf: (s, c) => `${s} of ${c} seats`,
     table: 'Table', warm: 'Everyone who celebrated with you.', ourWedding: 'Our wedding', seatingPlan: 'Seating plan',
     b_ourWedding: 'Our christening',
+    p_ourWedding: 'Our celebration',
     floor: 'The floor plan', whoSat: 'Who sat where', index: 'Alphabetical index', namesByTable: 'Names by table',
     unseated: 'Without a seat', cancelled: 'cancelled', cont: 'continued',
     brand: 'Made with TakeaSeat · takeaseat.gr', brandWarm: 'Made with love · TakeaSeat · takeaseat.gr',
@@ -84,6 +89,7 @@ const L10N = {
     seatsOf: (s, c) => `${s} von ${c} Plätzen`,
     table: 'Tisch', warm: 'Alle, die mit Ihnen gefeiert haben.', ourWedding: 'Unsere Hochzeit', seatingPlan: 'Sitzplan',
     b_ourWedding: 'Unsere Taufe',
+    p_ourWedding: 'Unsere Feier',
     floor: 'Der Sitzplan', whoSat: 'Wer saß wo', index: 'Alphabetisches Verzeichnis', namesByTable: 'Namen pro Tisch',
     unseated: 'Ohne Platz', cancelled: 'abgesagt', cont: 'Fortsetzung',
     brand: 'Erstellt mit TakeaSeat · takeaseat.gr', brandWarm: 'Mit Liebe erstellt · TakeaSeat · takeaseat.gr',
@@ -298,10 +304,11 @@ export async function renderPlanPdf(plan, meta = {}) {
   meta = meta && typeof meta === 'object' ? meta : {};
   const lang = ['el', 'en', 'de'].includes(meta.lang) ? meta.lang : 'el';
   const mode = meta.mode === 'keepsake' ? 'keepsake' : 'floor';
-  // The event's own word: a key with a `b_` twin is read through it, every other key is untouched. A plan that
-  // says nothing is a wedding, which is what every plan rendered before this existed.
-  const bap = meta.kind === 'baptism';
-  const W = bap ? new Proxy(L10N[lang], { get: (t, k) => (typeof k === 'string' && t['b_' + k] !== undefined) ? t['b_' + k] : t[k] }) : L10N[lang];
+  // The event's own word: a key with a twin for this kind is read through it, every other key is untouched. A plan
+  // that says nothing is a wedding, which is what every plan rendered before this existed.
+  const kind = KIND_PFX[meta.kind] !== undefined ? meta.kind : 'wedding';
+  const pfx = KIND_PFX[kind];
+  const W = pfx ? new Proxy(L10N[lang], { get: (t, k) => (typeof k === 'string' && t[pfx + k] !== undefined) ? t[pfx + k] : t[k] }) : L10N[lang];
   const P = normalize(plan, lang);
   const date = parseDate(meta.weddingDate);
   const title = cleanText(meta.name, 120) || (mode === 'keepsake' ? W.ourWedding : W.seatingPlan);
@@ -327,7 +334,7 @@ export async function renderPlanPdf(plan, meta = {}) {
     if (fonts.parsed) for (const k of faces) { const f = fonts.parsed[k]; if (f && f._glyphs) f._glyphs = {}; }
     const ctx = makeCtx(doc, fonts.nameScale);
     if (!fonts.parsed) { const parsed = {}; for (const k of faces) { doc.font(k); if (doc._font && doc._font.font && typeof doc._font.font.layout === 'function') parsed[k] = doc._font.font; } if (Object.keys(parsed).length === faces.length) fonts.parsed = parsed; }
-    const K = { doc, ctx, P, W, lang, mode, title, venue, longDate, shortDate, date, baptism: bap, brand: meta.brand !== false, budget: makeBudget() };
+    const K = { doc, ctx, P, W, lang, mode, title, venue, longDate, shortDate, date, kind, brand: meta.brand !== false, budget: makeBudget() };
     if (mode === 'keepsake') renderKeepsake(K); else renderFloor(K);
     footers(K);
   } catch (e) { done.catch(() => {}); try { doc.end(); } catch { /* ignore */ } throw e; }
@@ -406,8 +413,16 @@ function petals(doc, cx, cy, size, color) {
     .fill(color).restore();
   doc.save().translate(cx, cy).scale(size).circle(0, 0, 0.09).fill(color).restore();
 }
+// A party's honour table belongs to whoever is being celebrated: a small five-point star, drawn at the same size,
+// in the same colour and in the same places as the heart and the flower.
+function star(doc, cx, cy, size, color) {
+  doc.save().translate(cx, cy).scale(size)
+    .path('M0,-0.5 L0.1234,-0.1699 L0.4755,-0.1545 L0.1997,0.0649 L0.2939,0.4045 L0,0.21 L-0.2939,0.4045 L-0.1997,0.0649 L-0.4755,-0.1545 L-0.1234,-0.1699 Z')
+    .fill(color).restore();
+}
 // Every ornament in the document goes through here, so the event's kind decides the shape in one place.
-const mark = (K, doc, cx, cy, size, color) => (K && K.baptism ? petals : heart)(doc, cx, cy, size, color);
+const MARKS = { wedding: heart, baptism: petals, party: star };
+const mark = (K, doc, cx, cy, size, color) => (MARKS[K && K.kind] || heart)(doc, cx, cy, size, color);
 function flourish(doc, cx, cy, halfW, color, K) {   // ——— ♥ ———  with tapering hairlines (a baptism gets the flower)
   doc.save().lineWidth(0.5).strokeColor(color).strokeOpacity(0.85);
   doc.moveTo(cx - halfW, cy).lineTo(cx - 9, cy).stroke();
@@ -786,7 +801,8 @@ function drawTableBody(K, T) {
 // label is plan DATA: an event created as a baptism and later corrected to a wedding still carries «Τραπέζι της
 // οικογένειας», and a label the planner wrote itself must not print where the couple's ♥ belongs.
 const HEAD_DEFAULTS = ['νυφικό τραπέζι', 'head table', 'brauttisch',
-  'τραπέζι της οικογένειας', 'family table', 'familientisch'];
+  'τραπέζι της οικογένειας', 'family table', 'familientisch',
+  'τραπέζι της γιορτής', 'celebration table', 'festtisch'];
 function isDefaultHead(label) { const l = label.toLowerCase().replace(/^💑\s*/, ''); return !l || HEAD_DEFAULTS.includes(l); }
 
 function drawTableLabel(K, T, numbers) {
@@ -809,7 +825,7 @@ function drawTableLabel(K, T, numbers) {
   // head / long table: the label runs along the table, kept upright
   let a = ((T.rot % 360) + 540) % 360 - 180; if (a > 90) a -= 180; if (a < -90) a += 180;
   const head = t.shape === 'head';
-  const def = head && !K.baptism && isDefaultHead(t.label);   // ♥ belongs to a couple; a baptism's head table shows its label
+  const def = head && K.kind !== 'baptism' && isDefaultHead(t.label);   // ♥ or ★ belongs to the people the evening is for; a baptism's head table shows its label
   doc.save().translate(T.cx, T.cy).rotate(a);
   const maxW = T.w * 0.84, sz0 = clamp(T.h * 0.36, 4.5, 12);
   if (def) {   // the couple's table: a heart
