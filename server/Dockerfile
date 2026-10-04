@@ -26,7 +26,7 @@ RUN mkdir -p /app/public
 # production while Search Console has already been told it exists.
 # trapezi.html is the guest's finder page: it is NOT in the sitemap (noindex, and it is reached only from the QR's
 # fragment), but it still has to ship — a guest at the door scanning the QR is the one request that cannot 404.
-COPY index.html plano-trapezion-gamou.html seating-planner.html seating-planner-de.html seating-planner-el.html lab.html admin.html venue.html privacy.html terms.html dpa.html trapezi.html robots.txt sitemap.xml og-takeaseat.png /app/public/
+COPY index.html plano-trapezion-gamou.html plano-trapezion-vaptisis.html seating-planner.html seating-planner-de.html seating-planner-el.html lab.html admin.html venue.html privacy.html terms.html dpa.html trapezi.html robots.txt sitemap.xml og-takeaseat.png /app/public/
 
 ENV PORT=8080 \
     DB_PATH=/data/wedding.db \
@@ -51,6 +51,9 @@ COPY planner.src.html venue.html ./
 RUN ln -s /app/node_modules /t/node_modules \
     && { node tools/test-api.mjs > /t/test.log 2>&1 || { cat /t/test.log; echo "API TESTS FAILED — image not built"; exit 1; }; } \
     && tail -n 1 /t/test.log
+# Refuse to ship a sitemap that promises a page the image does not have: the baptism landing page was
+# committed, listed in the sitemap, and left out of the COPY above — Google would have crawled a 404.
+RUN miss=0; for u in $(grep -o '<loc>[^<]*</loc>' /app/public/sitemap.xml | sed 's|</*loc>||g'); do       p=${u#https://takeaseat.gr/}; [ -n "$p" ] || p=index.html;       [ -f "/app/public/$p" ] || { echo "sitemap lists $u but $p is not in the image"; miss=1; };     done; [ "$miss" = 0 ] || { echo "SITEMAP CHECK FAILED — image not built"; exit 1; };     echo "sitemap: every listed page is in the image"
 # Refuse to ship stale planner outputs: the committed html must match what planner.src.html builds.
 COPY planner.src.html /chk/
 COPY tools/build-planner.mjs /chk/tools/
