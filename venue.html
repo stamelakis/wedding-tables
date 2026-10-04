@@ -242,6 +242,8 @@ const EVW = {
             changes:"αλλάζει", sets:"στήνει", sees:"βλέπει", writes:"γράφει", puts:"βάζει", alone:"μόνος του", poss:"της",
             nameLbl:"Όνομα γιορτής", namePh:"Όνομα γιορτής (π.χ. Τα 40ά της Μαρίας)", nameAsk:"Γράψτε το όνομα της γιορτής" },
 };
+const EVNAME = { wedding:"Γάμος", baptism:"Βάπτιση", party:"Γιορτή" };   // what the «Είδος» selects show
+const kindOptions = (sel) => Object.keys(EVW).map(k => `<option value="${k}" ${k===sel?"selected":""}>${EVNAME[k]}</option>`).join("");
 const evKind = w => (w && EVW[w.kind]) ? w.kind : "wedding";   // anything we do not know is a wedding
 const EV = w => EVW[evKind(w)];
 const PLANNER_FILE={ el:"seating-planner-el.html", en:"seating-planner.html", de:"seating-planner-de.html" };
@@ -767,10 +769,10 @@ function renderDashboard(){
     <div class="toolbar">
       <div class="newform">
         <label class="kindfld${DATA.canCreate?"":" off"}"><span>Είδος</span><select id="newkind" aria-label="Είδος εκδήλωσης" ${DATA.canCreate?"":"disabled"}>
-          <option value="wedding" ${UI.newKind==="baptism"?"":"selected"}>Γάμος</option><option value="baptism" ${UI.newKind==="baptism"?"selected":""}>Βάπτιση</option></select></label>
-        <input id="newlabel" placeholder="${esc(EVW[UI.newKind==="baptism"?"baptism":"wedding"].namePh)}" maxlength="120" ${DATA.canCreate?"":"disabled"}>
-        <label class="datefld${DATA.canCreate?"":" off"}"><span id="newdatelbl">${esc(EVW[UI.newKind==="baptism"?"baptism":"wedding"].dateShort)}</span><input id="newdate" type="date" required aria-label="Ημερομηνία εκδήλωσης"min="${today}" max="${maxWeddingDate(today,"")}" ${DATA.canCreate?"":"disabled"}></label>
-        <button class="btn primary" id="create" ${DATA.canCreate?"":"disabled"}>+ ${esc(EVW[UI.newKind==="baptism"?"baptism":"wedding"].nw)}</button>
+          ${kindOptions(EVW[UI.newKind]?UI.newKind:"wedding")}</select></label>
+        <input id="newlabel" placeholder="${esc(EVW[UI.newKind]?EVW[UI.newKind].namePh:EVW.wedding.namePh)}" maxlength="120" ${DATA.canCreate?"":"disabled"}>
+        <label class="datefld${DATA.canCreate?"":" off"}"><span id="newdatelbl">${esc(EVW[UI.newKind]?EVW[UI.newKind].dateShort:EVW.wedding.dateShort)}</span><input id="newdate" type="date" required aria-label="Ημερομηνία εκδήλωσης"min="${today}" max="${maxWeddingDate(today,"")}" ${DATA.canCreate?"":"disabled"}></label>
+        <button class="btn primary" id="create" ${DATA.canCreate?"":"disabled"}>+ ${esc(EVW[UI.newKind]?EVW[UI.newKind].nw:EVW.wedding.nw)}</button>
       </div>
       <label class="langsel" title="Γλώσσα του τραπεζολογίου στους συνδέσμους που ανοίγετε ή αντιγράφετε">Γλώσσα πελάτη
         <select id="linklang">${[["el","Ελληνικά"],["en","English"],["de","Deutsch"]].map(([k,n])=>`<option value="${k}" ${LINK_LANG===k?"selected":""}>${n}</option>`).join("")}</select>
@@ -830,7 +832,7 @@ function bindDashboard(v){
 
   // new wedding
   const create=$("create"), newlabel=$("newlabel"), newdate=$("newdate"), newkind=$("newkind");
-  const pickedKind=()=>(newkind && newkind.value==="baptism")?"baptism":"wedding";
+  const pickedKind=()=>(newkind && EVW[newkind.value])?newkind.value:"wedding";
   if(newkind) newkind.onchange=()=>{   // the form says what it is about to make, before it makes it
     UI.newKind=pickedKind(); const K=EVW[UI.newKind];
     newlabel.placeholder=K.namePh; $("newdatelbl").textContent=K.dateShort; create.textContent="+ "+K.nw; };
@@ -1028,7 +1030,7 @@ function detailsDialog(w, focusDate){
   };
   const dlg=openModal(`<h3 id="mTitle">${EVp().details}</h3><div class="msub">${esc(w.label)}</div>
     <div class="fld"><label class="lbl" for="mKind">Είδος εκδήλωσης</label>
-      <select id="mKind" ${L.locked?"disabled":""}><option value="wedding" ${evKind(w)==="wedding"?"selected":""}>Γάμος</option><option value="baptism" ${evKind(w)==="baptism"?"selected":""}>Βάπτιση</option></select>
+      <select id="mKind" ${L.locked?"disabled":""}>${kindOptions(evKind(w))}</select>
       <div class="hint">Αν το καταχωρήσατε λάθος, διορθώστε το εδώ — αλλάζουν μόνο οι λέξεις, όχι οι ημερομηνίες.</div></div>
     <div class="fld"><label class="lbl" for="mName">${EVp().nameLbl}</label><input id="mName" maxlength="120" value="${esc(w.label)}" ${focusDate&&dateOn?"":"data-focus"}></div>
     <div class="fld"><label class="lbl" for="mDate">${EVp().dateLbl}</label>
@@ -1063,7 +1065,7 @@ function detailsDialog(w, focusDate){
   };
   save.onclick=go;
   [nameI,dateI].forEach(i=>i.addEventListener("keydown",e=>{ if(e.key==="Enter") go(); }));
-  if(kindI) kindI.onchange=()=>{ pickedKind=kindI.value==="baptism"?"baptism":"wedding";   // the words follow the pick, before it is even saved
+  if(kindI) kindI.onchange=()=>{ pickedKind=EVW[kindI.value]?kindI.value:"wedding";   // the words follow the pick, before it is even saved
     const K=EVp();
     dlg.querySelector("#mTitle").textContent=K.details;
     dlg.querySelector('label[for="mName"]').textContent=K.nameLbl; dlg.querySelector('label[for="mDate"]').textContent=K.dateLbl;

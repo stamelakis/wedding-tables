@@ -1114,6 +1114,7 @@
   <symbol id="i-longtable" viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="6" rx="1.5"/><circle cx="7" cy="5.3" r="1.3"/><circle cx="12" cy="5.3" r="1.3"/><circle cx="17" cy="5.3" r="1.3"/><circle cx="7" cy="18.7" r="1.3"/><circle cx="12" cy="18.7" r="1.3"/><circle cx="17" cy="18.7" r="1.3"/></symbol>
   <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></symbol>
   <!-- a baptism's honour table is the family's, not a couple's: the same slot gets the four-petal flower the PDFs draw -->
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.2l2.37 6.04 6.43.33-5.02 4.06 1.69 6.26L12 16.4l-5.47 3.49 1.69-6.26-5.02-4.06 6.43-.33Z"/></symbol>
   <symbol id="i-petals" viewBox="0 0 24 24"><path d="M12 12.4C8.4 10.8 8.4 4.6 12 4.6s3.6 6.2 0 7.8Z"/><path d="M11.6 12c1.6-3.6 7.8-3.6 7.8 0s-6.2 3.6-7.8 0Z"/><path d="M12 11.6c3.6 1.6 3.6 7.8 0 7.8s-3.6-6.2 0-7.8Z"/><path d="M12.4 12c-1.6 3.6-7.8 3.6-7.8 0s6.2-3.6 7.8 0Z"/></symbol>
   <symbol id="i-table" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="3.5" r="1.3"/><circle cx="19.4" cy="7.8" r="1.3"/><circle cx="19.4" cy="16.2" r="1.3"/><circle cx="12" cy="20.5" r="1.3"/><circle cx="4.6" cy="16.2" r="1.3"/><circle cx="4.6" cy="7.8" r="1.3"/></symbol>
   <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
@@ -1513,6 +1514,7 @@ el:{
   tipGroups:"Δώστε χρώμα στις παρέες: η κουκκίδα δίπλα σε κάθε όνομα αλλάζει ομάδα · το γρανάζι βάζει όλο το τραπέζι σε μία.", tipFull:"Γέμισε; Από τις ρυθμίσεις του τραπεζιού (γρανάζι) αλλάζετε τις θέσεις του.", tipPrint:"Σχεδόν έτοιμο! Στο ⋯ → Εκτύπωση βγαίνει η λίστα ανά τραπέζι.",
   tour:{
     b_dFloorNames:["Η κάτοψη","Η διάταξη των τραπεζιών ανοίγει 30 ημέρες πριν από τη βάπτιση. <b>Πατήστε</b> ένα τραπέζι για να γράψετε ονόματα. Ctrl+Z για αναίρεση."],
+    p_dFloorNames:["Η κάτοψη","Η διάταξη των τραπεζιών ανοίγει 30 ημέρες πριν από τη γιορτή. <b>Πατήστε</b> ένα τραπέζι για να γράψετε ονόματα. Ctrl+Z για αναίρεση."],
     dGuests:["Καλεσμένοι","Γράψτε ονόματα στο <b>Προσθήκη ονομάτων</b>, ένα ανά γραμμή."],
     dTables:["Ονόματα στα τραπέζια","<b>Πατήστε ένα τραπέζι</b>, γράψτε όνομα, <b>Enter</b>. Η κουκκίδα = ομάδα."],
     dFloor:["Η κάτοψη","<b>Σύρετε</b> τραπέζια και διακόσμηση. Ctrl+Z για αναίρεση."],
@@ -1543,7 +1545,7 @@ el:{
   stats:"{t} τραπέζια · {s}/{g} με θέση · {c} θέσεις",
   headTable:"Νυφικό τραπέζι", headFacing:"βλέπει προς την πίστα",
   groupsDefault:["Πλευρά νύφης","Πλευρά γαμπρού","Φίλοι","Οικογένεια"],
-  featEntrance:"Είσοδος καλεσμένων", featDrinks:"Ποτό υποδοχής", featFloor:"Πίστα χορού", featDJ:"DJ", featKids:"Παιδική γωνιά",
+  featEntrance:"Είσοδος καλεσμένων", featDrinks:"Ποτό υποδοχής", featFloor:"Πίστα χορού", featDJ:"DJ", featKids:"Παιδική γωνιά", featBar:"Μπαρ",
   mats:{grass:"Γρασίδι",parquet:"Παρκέ",wood:"Ξύλινο δάπεδο",stone:"Πέτρα",tile:"Πλακάκι",marble:"Μάρμαρο",sand:"Άμμος",water:"Νερό",carpet:"Κόκκινο χαλί",concrete:"Τσιμέντο"},
   decorItems:["Τραπέζι ευχών","Τραπέζι δώρων","Τραπέζι τούρτας","Τραπέζι γλυκών","Ποτά υποδοχής","Μπαρ","Μπουφές","Καθιστικό / καναπές","Photo booth","Αψίδα τελετής","Βιβλίο ευχών","Καμπίνα DJ","Ηχείο","Τουαλέτες","Επιπλέον καρέκλες","Φυτά / λουλούδια","Σιντριβάνι","Κεριά","Σκηνή / ομιλίες","Πάρκινγκ","Περιοχή ξύλινου δαπέδου","Περιοχή πέτρινου δαπέδου","Περιοχή με γρασίδι"],
   decorTitle:"Προσθήκη διακόσμησης & αντικειμένων", decorHint:"Πατήστε ένα αντικείμενο για να μπει στον χώρο· μετά σύρετέ το στη θέση του και αλλάξτε μέγεθος από τη γωνία του.", decorAdded:"{n} — σύρετέ το στη θέση του",
@@ -1553,9 +1555,9 @@ el:{
   gmRename:"Μετονομασία «{n}»", gmRecolor:"Αλλαγή χρώματος", gmDelete:"Διαγραφή ομάδας", noGroup:"Χωρίς ομάδα", geName:"Όνομα καλεσμένου", geType:"Ομάδα",
   pRename:"Μετονομασία", pDup:"Αντιγραφή", pDel:"Διαγραφή",
   // the type is corrected by exactly whoever may rename the event — here, the customer who bought their own plan
-  pKind:"Είδος εκδήλωσης…",
-  askKindB:"Να γίνει βάπτιση αυτή η εκδήλωση; Αλλάζουν μόνο οι λέξεις — η ημερομηνία, το σχέδιο, οι καλεσμένοι και οι σύνδεσμοι μένουν ακριβώς όπως είναι.",
-  askKindW:"Να γίνει γάμος αυτή η εκδήλωση; Αλλάζουν μόνο οι λέξεις — η ημερομηνία, το σχέδιο, οι καλεσμένοι και οι σύνδεσμοι μένουν ακριβώς όπως είναι.",
+ 
+  askKind:"Να γίνει {e} αυτή η εκδήλωση; Αλλάζουν μόνο οι λέξεις — η ημερομηνία, το σχέδιο, οι καλεσμένοι και οι σύνδεσμοι μένουν ακριβώς όπως είναι.", pKindTo:"Να γίνει {e}", evNom:"γάμος",
+  
   tKindSaved:"Αποθηκεύτηκε — άλλαξαν μόνο οι λέξεις.", tKindFailed:"Το είδος δεν άλλαξε — δοκιμάστε ξανά.",
   promptNewGroup:"Όνομα νέας ομάδας:", groupN:"Ομάδα {n}", promptRenameGroup:"Μετονομασία ομάδας:", confirmDeleteGroup:"Διαγραφή ομάδας «{n}»; Οι καλεσμένοι κρατούν τις θέσεις τους αλλά χάνουν το χρώμα.",
   promptNewProfile:"Νέο σχέδιο — όνομα ζευγαριού / εκδήλωσης:", weddingN:"Γάμος {n}", promptRenameProfile:"Μετονομασία σχεδίου:", copySuffix:" (αντίγραφο)", confirmDeleteProfile:"Διαγραφή του σχεδίου «{n}»; Δεν μπορεί να αναιρεθεί.", keepOne:"Διατηρήστε τουλάχιστον ένα σχέδιο",
@@ -1607,7 +1609,7 @@ el:{
   labNames:["Μαρία Π.","Γιώργος Κ.","Ελένη Α.","Νίκος Δ.","Κατερίνα Μ.","Δημήτρης Σ.","Σοφία Λ.","Κώστας Β.","Άννα Χ.","Παναγιώτης Ρ.","Χριστίνα Τ.","Μιχάλης Γ.","Ειρήνη Ν.","Βασίλης Ζ.","Δέσποινα Φ.","Αλέξανδρος Κ.","Ιωάννα Π.","Θανάσης Μ.","Αγγελική Σ.","Στέλιος Α.","Φωτεινή Δ.","Μανώλης Λ.","Ζωή Β.","Πέτρος Χ.","Ευαγγελία Ρ.","Σπύρος Τ.","Ναταλία Γ.","Χρήστος Ν.","Μαρίνα Ζ.","Λευτέρης Φ.","Αναστασία Κ.","Αντώνης Π.","Ελευθερία Μ.","Σταύρος Σ.","Νεφέλη Α.","Ορέστης Δ.","Δανάη Λ.","Άρης Β.","Ισμήνη Χ.","Φίλιππος Ρ."],
   // ---- βαπτίσεις: the twins of every key whose text NAMES the event (see tr() / EVK). Nothing else is duplicated;
   // a key without a twin reads the same for both kinds, which is most of this dictionary.
-  b_title:"Οργάνωση Τραπεζιών Βάπτισης", b_awCouple:"Γονείς",
+  b_evNom:"βάπτιση", b_title:"Οργάνωση Τραπεζιών Βάπτισης", b_awCouple:"Γονείς",
   b_tRenameVenue:"Το όνομα της βάπτισης το ορίζει {v}.",
   b_goneVenue:"Η βάπτιση διαγράφηκε από το κτήμα — αν έγινε κατά λάθος, το κτήμα μπορεί να ζητήσει επαναφορά.",
   b_lifeWas:"Η βάπτιση του παιδιού σας έγινε στις {d}.", b_lifeWasV:"Η βάπτιση έγινε στις {d}.",
@@ -1640,6 +1642,40 @@ el:{
   b_headTable:"Τραπέζι της οικογένειας", b_addHead:"Οικογενειακό", b_mHead:"Τραπέζι της οικογένειας",
   b_menuTitleHead:"Ρυθμίσεις τραπεζιού οικογένειας", b_tHeadAdded:"Προστέθηκε τραπέζι της οικογένειας",
   b_groupsDefault:["Πλευρά μητέρας","Πλευρά πατέρα","Νονοί","Φίλοι"],
+  // «Η γιορτή» — γενέθλια, ονομαστική, επέτειος, εταιρικό δείπνο. Same 46 keys as the baptism twin above, read
+  // through the same resolver; a key with no twin falls back to the wedding wording, which is the neutral one.
+  p_accCouplePerms:"Τι μπορεί να αλλάξει ο διοργανωτής", p_accDate:"Ημερομηνία γιορτής",
+  p_accDateConfirm:"Ημερομηνία γιορτής: {d}. Μετά μπορείτε να την αλλάξετε έως {n} φορές. Συνέχεια;",
+  p_accDateConfirm1:"Ημερομηνία γιορτής: {d}. Μετά μπορείτε να την αλλάξετε μόνο μία φορά. Συνέχεια;",
+  p_accDateHint:"Από την επόμενη μέρα της γιορτής το σχέδιο γίνεται μόνο για προβολή (με αναμνηστικό PDF).",
+  p_accDateOnce:"Νέα ημερομηνία γιορτής: {d}.\n\nΜπορείτε να αλλάξετε την ημερομηνία μόνο μία φορά. Μετά την αλλαγή το σχέδιο γίνεται μόνο για προβολή έως 14 ημέρες πριν από τη νέα ημερομηνία ({f}).\n\nΣυνέχεια;",
+  p_accDateOnceNow:"Νέα ημερομηνία γιορτής: {d}.\n\nΜπορείτε να αλλάξετε την ημερομηνία μόνο μία φορά. Συνέχεια;",
+  p_accPreview:"Δείτε το όπως ο διοργανωτής",
+  p_accSupportHintVenue:"Η TakeaSeat δεν ανοίγει τις εκδηλώσεις σας χωρίς πρόσκλησή σας — κάθε πρόσβαση καταγράφεται. Για βοήθεια, δώστε μας πρόσβαση σε αυτή τη γιορτή για λίγο — τη διακόπτετε όποτε θέλετε.",
+  p_accViewExpired:"Αυτός ο σύνδεσμος δεν ισχύει πια — ζητήστε νέο από τον διοργανωτή ή το κτήμα.", p_addHead:"Γιορτινό",
+  p_atDate:"όρισε την ημερομηνία της γιορτής σε {d}", p_atLocked:"η γιορτή έγινε — το σχέδιο είναι πλέον μόνο για προβολή", p_awCouple:"Διοργανωτής",
+  p_cUploadOver:"Η γιορτή έγινε — δεν μπαίνουν νέα σχέδια online.",
+  p_cUploadWait:"Ένα ακόμη σχέδιο μπαίνει online όταν ο σχεδιαστής της γιορτής είναι σε πλήρη επεξεργασία — από τις {d}.",
+  p_cUploadWait0:"Ένα ακόμη σχέδιο μπαίνει online όταν ο σχεδιαστής της γιορτής είναι σε πλήρη επεξεργασία.",
+  p_cVenueLinks:"Είστε συνδεδεμένοι ως κτήμα. Τον σύνδεσμο του διοργανωτή τον αντιγράφετε από την κονσόλα του κτήματος.",
+  p_capLocal:"Ένα σχέδιο μόνο σε αυτή τη συσκευή έχει έως {n} τραπέζια. Για ολόκληρη τη γιορτή:",
+  p_capLocalOwn:"Ένα σχέδιο μόνο σε αυτή τη συσκευή έχει έως {n} τραπέζια — το online σχέδιο της γιορτής δεν έχει αυτό το όριο.",
+  p_dateNudge:"Ορίστε την ημερομηνία της γιορτής.",
+  p_findAfter:"Η γιορτή έγινε: νέο QR δεν ανοίγει πια, αλλά αυτό που τρέχει μπορείτε να το κλείσετε εδώ.",
+  p_findLockedMsg:"Η γιορτή έγινε — νέο QR δεν ανοίγει πια. Το κλείσιμο δουλεύει πάντα.",
+  p_findNoDate:"Χρειάζεται πρώτα η ημερομηνία της γιορτής: το QR ανοίγει 7 ημέρες πριν από αυτήν και κλείνει 2 ημέρες μετά. Ορίστε την στο ⋯ → «Πρόσβαση & υποστήριξη» και ξαναελάτε εδώ.",
+  p_findWindow:"Ανοίγει {a} (7 ημέρες πριν τη γιορτή) και κλείνει το βράδυ της {b} (2 ημέρες μετά). Έξω από αυτές τις μέρες ο καλεσμένος βλέπει ότι είναι κλειστό.",
+  p_goneVenue:"Η γιορτή διαγράφηκε από το κτήμα — αν έγινε κατά λάθος, το κτήμα μπορεί να ζητήσει επαναφορά.",
+  p_groupsDefault:["Οικογένεια","Φίλοι","Συνάδελφοι","Παιδιά"], p_headTable:"Τραπέζι της γιορτής", p_lifeWas:"Η γιορτή σας έγινε στις {d}.",
+  p_lifeWasV:"Η γιορτή έγινε στις {d}.", p_mHead:"Τραπέζι της γιορτής", p_menuTitleHead:"Ρυθμίσεις τραπεζιού γιορτής",
+  p_openedAsVenue:"Ανοίξατε ως κτήμα (αυτή η συσκευή έχει τον σύνδεσμο του κτήματος). Για να το δείτε όπως ο διοργανωτής: Πρόσβαση & υποστήριξη.",
+  p_phFrozen:"Αλλάξατε την ημερομηνία της γιορτής — το σχέδιο είναι μόνο για προβολή έως {d}.",
+  p_phLineFrozen:"Φάση: μόνο προβολή έως {d} — αλλάξατε την ημερομηνία της γιορτής.", p_printTitle:"Σχέδιο Τραπεζιών Γιορτής",
+  p_printWed:"Γιορτή: {d}", p_rbPreview:"👁 Όπως το βλέπει ο διοργανωτής",
+  p_rbVenueTip:"Ανοίξατε τη γιορτή ως κτήμα: αλλάζετε τα πάντα. Ο διοργανωτής αλλάζει μόνο ό,τι του επιτρέπετε.",
+  p_tDateSet:"Ημερομηνία γιορτής: {d}", p_tHeadAdded:"Προστέθηκε τραπέζι της γιορτής",
+  p_tLockedWed:"Η γιορτή έγινε — το σχέδιο είναι μόνο για προβολή.", p_tPreviewOn:"Βλέπετε όσα βλέπει ο διοργανωτής.",
+  p_tRenameVenue:"Το όνομα της γιορτής το ορίζει {v}.", p_evNom:"γιορτή", p_title:"Οργάνωση Τραπεζιών Γιορτής",
 },
 en:{
   title:"Wedding Seating Planner", guestsTools:"Guests & tools",
@@ -1717,6 +1753,7 @@ en:{
   tipGroups:"Colour the groups: the dot next to a name changes its group · the gear puts a whole table in one.", tipFull:"Full? Table settings (the gear) change its number of seats.", tipPrint:"Almost there! ⋯ → Print gives you the list per table.",
   tour:{
     b_dFloorNames:["The floor","The table layout opens 30 days before the christening. <b>Click</b> a table to write names. Ctrl+Z undoes."],
+    p_dFloorNames:["The floor","The table layout opens 30 days before the celebration. <b>Click</b> a table to write names. Ctrl+Z undoes."],
     dGuests:["Guests","Type names under <b>Add names</b>, one per line."],
     dTables:["Names at the tables","<b>Click a table</b>, type a name, <b>Enter</b>. The dot = group."],
     dFloor:["The floor","<b>Drag</b> tables and decor. Ctrl+Z undoes."],
@@ -1747,7 +1784,7 @@ en:{
   stats:"{t} tables · {s}/{g} seated · {c} seats",
   headTable:"Head table", headFacing:"faces the dance floor",
   groupsDefault:["Bride's side","Groom's side","Friends","Family"],
-  featEntrance:"Guest entrance", featDrinks:"Welcome drink", featFloor:"Dance floor", featDJ:"DJ", featKids:"Kids' corner",
+  featEntrance:"Guest entrance", featDrinks:"Welcome drink", featFloor:"Dance floor", featDJ:"DJ", featKids:"Kids' corner", featBar:"Bar",
   mats:{grass:"Grass",parquet:"Parquet",wood:"Wood deck",stone:"Stone",tile:"Tile",marble:"Marble",sand:"Sand",water:"Water",carpet:"Red carpet",concrete:"Concrete"},
   decorItems:["Wishes table","Gift table","Cake table","Candy bar","Welcome drinks","Bar","Buffet","Lounge / sofa","Photo booth","Ceremony arch","Guest book","DJ booth","Speaker","Restrooms","Extra chairs","Plants / flowers","Fountain","Candles","Stage / speeches","Parking","Wood floor area","Stone floor area","Grass area"],
   decorTitle:"Add decor & items", decorHint:"Click an item to drop it into the space, then drag it into place and resize from its corner.", decorAdded:"{n} — drag it into place",
@@ -1756,9 +1793,9 @@ en:{
   stageResizeTip:"Drag out for more space, in for less", tStageMax:"The space has reached its largest size — it can’t grow any further.", tableTip:"Click for names · drag to move · gear for settings · Delete to remove",
   gmRename:"Rename “{n}”", gmRecolor:"Change colour", gmDelete:"Delete group", noGroup:"No group", geName:"Guest name", geType:"Group",
   pRename:"Rename", pDup:"Duplicate", pDel:"Delete",
-  pKind:"Event type…",
-  askKindB:"Make this event a christening? Only the words change — the date, the plan, the guests and the links stay exactly as they are.",
-  askKindW:"Make this event a wedding? Only the words change — the date, the plan, the guests and the links stay exactly as they are.",
+ 
+  askKind:"Make this event a {e}? Only the words change — the date, the plan, the guests and the links stay exactly as they are.", pKindTo:"Make it a {e}", evNom:"wedding",
+  
   tKindSaved:"Saved — only the words changed.", tKindFailed:"The type did not change — please try again.",
   promptNewGroup:"New group name:", groupN:"Group {n}", promptRenameGroup:"Rename group:", confirmDeleteGroup:"Delete group “{n}”? Guests keep their seats but lose the colour.",
   promptNewProfile:"New plan — couple / event name:", weddingN:"Wedding {n}", promptRenameProfile:"Rename plan:", copySuffix:" (copy)", confirmDeleteProfile:"Delete the plan “{n}”? This cannot be undone.", keepOne:"Keep at least one plan",
@@ -1809,7 +1846,7 @@ en:{
   labBride:"Bride", labGroom:"Groom",
   labNames:["Maria P.","George K.","Helen A.","Nick D.","Katerina M.","Jim S.","Sophia L.","Kostas V.","Anna C.","Peter R.","Christina T.","Michael G.","Irene N.","Bill Z.","Despina F.","Alex K.","Joanna P.","Thanos M.","Angela S.","Steve A.","Fay D.","Manolis L.","Zoe V.","Petros C.","Eva R.","Spyros T.","Natalie G.","Chris N.","Marina Z.","Lefteris F.","Anastasia K.","Tony P.","Ellie M.","Stavros S.","Nefeli A.","Orestis D.","Danae L.","Aris V.","Ismene C.","Philip R."],
   // ---- christenings: the twins of every key whose text NAMES the event (see tr() / EVK).
-  b_title:"Christening Seating Planner", b_awCouple:"Parents",
+  b_evNom:"christening", b_title:"Christening Seating Planner", b_awCouple:"Parents",
   b_tRenameVenue:"The christening's name is set by {v}.",
   b_goneVenue:"The venue deleted this christening — if that was a mistake, the venue can ask for it to be restored.",
   b_lifeWas:"Your child's christening took place on {d}.", b_lifeWasV:"The christening took place on {d}.",
@@ -1842,6 +1879,38 @@ en:{
   b_headTable:"Family table", b_addHead:"Family table", b_mHead:"Family table",
   b_menuTitleHead:"Family table settings", b_tHeadAdded:"Family table added",
   b_groupsDefault:["Mother's side","Father's side","Godparents","Friends"],
+  // «Η γιορτή» — γενέθλια, ονομαστική, επέτειος, εταιρικό δείπνο. Same 46 keys as the baptism twin above, read
+  // through the same resolver; a key with no twin falls back to the wedding wording, which is the neutral one.
+  p_accCouplePerms:"What the host may change", p_accDate:"Celebration date",
+  p_accDateConfirm:"Celebration date: {d}. You can change it up to {n} times afterwards. Continue?",
+  p_accDateConfirm1:"Celebration date: {d}. You can change it only once afterwards. Continue?",
+  p_accDateHint:"From the day after the celebration the plan is view-only (with a keepsake PDF).",
+  p_accDateOnce:"New celebration date: {d}.\n\nYou can change the date only once. After the change the plan becomes view-only until 14 days before the new date ({f}).\n\nContinue?",
+  p_accDateOnceNow:"New celebration date: {d}.\n\nYou can change the date only once. Continue?", p_accPreview:"See it as the host does",
+  p_accSupportHintVenue:"TakeaSeat never opens your events without your invitation — every access is logged. For help, give us access to this celebration for a while — end it whenever you like.",
+  p_accViewExpired:"This link no longer works — ask the host or the venue for a new one.", p_addHead:"Celebration table",
+  p_atDate:"set the celebration date to {d}", p_atLocked:"the celebration is over — the plan is now view-only", p_awCouple:"Host",
+  p_cUploadOver:"The celebration is over — no new plans go online.",
+  p_cUploadWait:"Another plan can go online once the celebration's planner is in full editing — from {d}.",
+  p_cUploadWait0:"Another plan can go online once the celebration's planner is in full editing.",
+  p_cVenueLinks:"You are signed in as the venue. Copy the host's link from the venue console.",
+  p_capLocal:"A plan that lives only on this device has up to {n} tables. For the whole celebration:",
+  p_capLocalOwn:"A plan that lives only on this device has up to {n} tables — the celebration's online plan has no such limit.",
+  p_dateNudge:"Set the celebration date.",
+  p_findAfter:"The celebration is over: no new QR opens now, but the one that is running can be switched off here.",
+  p_findLockedMsg:"The celebration is over — no new QR opens. Switching it off always works.",
+  p_findNoDate:"The celebration date comes first: the QR opens 7 days before it and closes 2 days after. Set the date under ⋯ → “Access & support”, then come back here.",
+  p_findWindow:"Opens {a} (7 days before the celebration) and closes at the end of {b} (2 days after). Outside those days a guest is told it is closed.",
+  p_goneVenue:"The venue deleted this celebration — if that was a mistake, the venue can ask for it to be restored.",
+  p_groupsDefault:["Family","Friends","Colleagues","Children"], p_headTable:"Celebration table", p_lifeWas:"Your celebration took place on {d}.",
+  p_lifeWasV:"The celebration took place on {d}.", p_mHead:"Celebration table", p_menuTitleHead:"Celebration table settings",
+  p_openedAsVenue:"Opened as the venue (this device has the venue's link). To see it as the host does: Access & support.",
+  p_phFrozen:"You changed the celebration date — the plan is view-only until {d}.",
+  p_phLineFrozen:"Phase: view-only until {d} — you changed the celebration date.", p_printTitle:"Celebration Seating Plan",
+  p_printWed:"Celebration: {d}", p_rbPreview:"👁 As the host sees it",
+  p_rbVenueTip:"You opened this celebration as the venue: you can change everything. The host changes only what you allow.",
+  p_tDateSet:"Celebration date: {d}", p_tHeadAdded:"Celebration table added", p_tLockedWed:"The celebration is over — the plan is view-only.",
+  p_tPreviewOn:"You now see what the host sees.", p_tRenameVenue:"The celebration's name is set by {v}.", p_evNom:"celebration", p_title:"Celebration Seating Planner",
 },
 de:{
   title:"Hochzeits-Sitzplan", guestsTools:"Gäste & Werkzeuge",
@@ -1919,6 +1988,7 @@ de:{
   tipGroups:"Farbe für die Gruppen: der Punkt neben einem Namen ändert seine Gruppe · das Zahnrad legt einen ganzen Tisch in eine.", tipFull:"Voll? In den Tisch-Einstellungen (Zahnrad) ändern Sie die Platzzahl.", tipPrint:"Fast fertig! ⋯ → Drucken gibt die Liste pro Tisch.",
   tour:{
     b_dFloorNames:["Die Fläche","Die Tischanordnung öffnet 30 Tage vor der Taufe. Einen Tisch <b>anklicken</b>, um Namen einzutragen. Strg+Z macht rückgängig."],
+    p_dFloorNames:["Die Fläche","Die Tischanordnung öffnet 30 Tage vor der Feier. Einen Tisch <b>anklicken</b>, um Namen einzutragen. Strg+Z macht rückgängig."],
     dGuests:["Gäste","Namen unter <b>Namen hinzufügen</b> eingeben, einen pro Zeile."],
     dTables:["Namen an den Tischen","<b>Tisch anklicken</b>, Namen eingeben, <b>Enter</b>. Der Punkt = Gruppe."],
     dFloor:["Die Fläche","Tische und Deko <b>ziehen</b>. Strg+Z macht rückgängig."],
@@ -1949,7 +2019,7 @@ de:{
   stats:"{t} Tische · {s}/{g} platziert · {c} Plätze",
   headTable:"Brauttisch", headFacing:"blickt zur Tanzfläche",
   groupsDefault:["Seite der Braut","Seite des Bräutigams","Freunde","Familie"],
-  featEntrance:"Gästeeingang", featDrinks:"Empfangsgetränk", featFloor:"Tanzfläche", featDJ:"DJ", featKids:"Kinderecke",
+  featEntrance:"Gästeeingang", featDrinks:"Empfangsgetränk", featFloor:"Tanzfläche", featDJ:"DJ", featKids:"Kinderecke", featBar:"Bar",
   mats:{grass:"Gras",parquet:"Parkett",wood:"Holzdeck",stone:"Stein",tile:"Fliesen",marble:"Marmor",sand:"Sand",water:"Wasser",carpet:"Roter Teppich",concrete:"Beton"},
   decorItems:["Wunschtisch","Geschenketisch","Tortentisch","Candy-Bar","Empfangsgetränke","Bar","Buffet","Lounge / Sofa","Fotobox","Traubogen","Gästebuch","DJ-Pult","Lautsprecher","Toiletten","Zusätzliche Stühle","Pflanzen / Blumen","Brunnen","Kerzen","Bühne / Reden","Parkplatz","Holzboden-Fläche","Steinboden-Fläche","Rasenfläche"],
   decorTitle:"Deko & Objekte hinzufügen", decorHint:"Objekt anklicken, um es auf die Fläche zu setzen; dann an die richtige Stelle ziehen und an der Ecke die Größe ändern.", decorAdded:"{n} — an die richtige Stelle ziehen",
@@ -1958,9 +2028,9 @@ de:{
   stageResizeTip:"Nach außen ziehen für mehr Fläche, nach innen für weniger", tStageMax:"Die Fläche hat ihre größte Ausdehnung erreicht — sie kann nicht weiter wachsen.", tableTip:"Antippen für Namen · ziehen zum Verschieben · Zahnrad für Einstellungen · Entf zum Löschen",
   gmRename:"„{n}“ umbenennen", gmRecolor:"Farbe ändern", gmDelete:"Gruppe löschen", noGroup:"Keine Gruppe", geName:"Gastname", geType:"Gruppe",
   pRename:"Umbenennen", pDup:"Duplizieren", pDel:"Löschen",
-  pKind:"Veranstaltungsart…",
-  askKindB:"Diese Veranstaltung in eine Taufe ändern? Nur die Wörter ändern sich — Datum, Plan, Gäste und Links bleiben genau wie sie sind.",
-  askKindW:"Diese Veranstaltung in eine Hochzeit ändern? Nur die Wörter ändern sich — Datum, Plan, Gäste und Links bleiben genau wie sie sind.",
+ 
+  askKind:"Diese Veranstaltung in {e} ändern? Nur die Wörter ändern sich — Datum, Plan, Gäste und Links bleiben genau wie sie sind.", pKindTo:"In {e} ändern", evNom:"eine Hochzeit",
+  
   tKindSaved:"Gespeichert — nur die Wörter haben sich geändert.", tKindFailed:"Die Art wurde nicht geändert — bitte erneut versuchen.",
   promptNewGroup:"Name der neuen Gruppe:", groupN:"Gruppe {n}", promptRenameGroup:"Gruppe umbenennen:", confirmDeleteGroup:"Gruppe „{n}“ löschen? Die Gäste behalten ihre Plätze, verlieren aber die Farbe.",
   promptNewProfile:"Neuer Plan — Name des Paares / der Veranstaltung:", weddingN:"Hochzeit {n}", promptRenameProfile:"Plan umbenennen:", copySuffix:" (Kopie)", confirmDeleteProfile:"Plan „{n}“ löschen? Das kann nicht rückgängig gemacht werden.", keepOne:"Mindestens einen Plan behalten",
@@ -2011,7 +2081,7 @@ de:{
   labBride:"Braut", labGroom:"Bräutigam",
   labNames:["Maria P.","Georg K.","Helena A.","Niko D.","Katharina M.","Jan S.","Sophie L.","Konstantin V.","Anna C.","Peter R.","Christina T.","Michael G.","Irene N.","Wilhelm Z.","Despina F.","Alex K.","Johanna P.","Thomas M.","Angelika S.","Stefan A.","Frieda D.","Manuel L.","Zoe V.","Petra C.","Eva R.","Sebastian T.","Natalie G.","Christoph N.","Marina Z.","Leon F.","Anastasia K.","Anton P.","Elli M.","Stefanos S.","Nefeli A.","Oliver D.","Diana L.","Aris V.","Isabel C.","Philipp R."],
   // ---- Taufen: die Zwillinge jedes Schlüssels, dessen Text die Veranstaltung BENENNT (siehe tr() / EVK).
-  b_title:"Tauf-Sitzplan", b_awCouple:"Eltern",
+  b_evNom:"eine Taufe", b_title:"Tauf-Sitzplan", b_awCouple:"Eltern",
   b_tRenameVenue:"Den Namen der Taufe legt {v} fest.",
   b_goneVenue:"Die Location hat diese Taufe gelöscht — falls das ein Versehen war, kann die Location die Wiederherstellung anfordern.",
   b_lifeWas:"Die Taufe Ihres Kindes war am {d}.", b_lifeWasV:"Die Taufe war am {d}.",
@@ -2044,6 +2114,39 @@ de:{
   b_headTable:"Familientisch", b_addHead:"Familientisch", b_mHead:"Familientisch",
   b_menuTitleHead:"Einstellungen Familientisch", b_tHeadAdded:"Familientisch hinzugefügt",
   b_groupsDefault:["Seite der Mutter","Seite des Vaters","Paten","Freunde"],
+  // «Η γιορτή» — γενέθλια, ονομαστική, επέτειος, εταιρικό δείπνο. Same 46 keys as the baptism twin above, read
+  // through the same resolver; a key with no twin falls back to the wedding wording, which is the neutral one.
+  p_accCouplePerms:"Was der Gastgeber ändern darf", p_accDate:"Datum der Feier",
+  p_accDateConfirm:"Datum der Feier: {d}. Danach können Sie es bis zu {n}-mal ändern. Fortfahren?",
+  p_accDateConfirm1:"Datum der Feier: {d}. Danach können Sie es nur einmal ändern. Fortfahren?",
+  p_accDateHint:"Ab dem Tag nach der Feier ist der Plan nur noch zum Ansehen (mit Erinnerungs-PDF).",
+  p_accDateOnce:"Neues Datum der Feier: {d}.\n\nSie können das Datum nur einmal ändern. Nach der Änderung ist der Plan bis 14 Tage vor dem neuen Datum ({f}) nur zum Ansehen.\n\nFortfahren?",
+  p_accDateOnceNow:"Neues Datum der Feier: {d}.\n\nSie können das Datum nur einmal ändern. Fortfahren?",
+  p_accPreview:"So ansehen, wie es der Gastgeber sieht",
+  p_accSupportHintVenue:"TakeaSeat öffnet Ihre Veranstaltungen nie ohne Ihre Einladung — jeder Zugriff wird protokolliert. Für Hilfe geben Sie uns kurz Zugriff auf diese Feier — Sie beenden ihn jederzeit.",
+  p_accViewExpired:"Dieser Link gilt nicht mehr — bitten Sie den Gastgeber oder die Location um einen neuen.", p_addHead:"Festtisch",
+  p_atDate:"legte das Datum der Feier auf {d} fest", p_atLocked:"die Feier ist vorbei — der Plan ist jetzt nur noch zum Ansehen",
+  p_awCouple:"Gastgeber", p_cUploadOver:"Die Feier ist vorbei — neue Pläne gehen nicht mehr online.",
+  p_cUploadWait:"Ein weiterer Plan kann online gehen, sobald der Planer Ihrer Feier voll bearbeitbar ist — ab {d}.",
+  p_cUploadWait0:"Ein weiterer Plan kann online gehen, sobald der Planer Ihrer Feier voll bearbeitbar ist.",
+  p_cVenueLinks:"Sie sind als Location angemeldet. Den Link des Gastgebers kopieren Sie in der Location-Konsole.",
+  p_capLocal:"Ein Plan nur auf diesem Gerät hat bis zu {n} Tische. Für Ihre ganze Feier:",
+  p_capLocalOwn:"Ein Plan nur auf diesem Gerät hat bis zu {n} Tische — der Online-Plan Ihrer Feier hat diese Grenze nicht.",
+  p_dateNudge:"Legen Sie das Datum Ihrer Feier fest.",
+  p_findAfter:"Die Feier ist vorbei: ein neuer QR-Code öffnet nicht mehr, der laufende kann hier aber abgeschaltet werden.",
+  p_findLockedMsg:"Die Feier ist vorbei — ein neuer QR-Code öffnet nicht mehr. Abschalten geht immer.",
+  p_findNoDate:"Zuerst das Datum der Feier: der QR-Code öffnet 7 Tage davor und schließt 2 Tage danach. Tragen Sie das Datum unter ⋯ → „Zugriff & Support“ ein und kommen Sie dann zurück.",
+  p_findWindow:"Öffnet {a} (7 Tage vor der Feier) und schließt am Abend des {b} (2 Tage danach). Außerhalb dieser Tage sieht der Gast, dass es geschlossen ist.",
+  p_goneVenue:"Die Location hat diese Feier gelöscht — falls das ein Versehen war, kann die Location die Wiederherstellung anfordern.",
+  p_groupsDefault:["Familie","Freunde","Kollegen","Kinder"], p_headTable:"Festtisch", p_lifeWas:"Ihre Feier war am {d}.",
+  p_lifeWasV:"Die Feier war am {d}.", p_mHead:"Festtisch", p_menuTitleHead:"Einstellungen Festtisch",
+  p_openedAsVenue:"Als Location geöffnet (dieses Gerät hat den Link der Location). So ansehen wie der Gastgeber: Zugriff & Support.",
+  p_phFrozen:"Sie haben das Datum der Feier geändert — der Plan ist bis {d} nur zum Ansehen.",
+  p_phLineFrozen:"Phase: nur ansehen bis {d} — Sie haben das Datum der Feier geändert.", p_printTitle:"Feier-Sitzplan", p_printWed:"Feier: {d}",
+  p_rbPreview:"👁 So sieht es der Gastgeber",
+  p_rbVenueTip:"Sie haben diese Feier als Location geöffnet: Sie können alles ändern. Der Gastgeber ändert nur, was Sie erlauben.",
+  p_tDateSet:"Datum der Feier: {d}", p_tHeadAdded:"Festtisch hinzugefügt", p_tLockedWed:"Die Feier ist vorbei — der Plan ist nur noch zum Ansehen.",
+  p_tPreviewOn:"Sie sehen jetzt, was der Gastgeber sieht.", p_tRenameVenue:"Den Namen der Feier legt {v} fest.", p_evNom:"eine Feier", p_title:"Feier-Sitzplan",
 },
 };
 const T=T_ALL[LANG]||T_ALL.el;
@@ -2052,13 +2155,18 @@ const T=T_ALL[LANG]||T_ALL.el;
 // from one place instead of a conditional at every call site. A plan that says nothing is a wedding, which is what
 // every plan made before this field existed is, and stays.
 let EVK="wedding";
-function tr(k,v){ let s;
-  if(EVK==="baptism"){ s=T["b_"+k]; if(s==null) s=T_ALL.el["b_"+k]; }
+// A kind reads its own dictionary through one prefix. The wedding is the unprefixed original, so a key with no twin
+// falls back to it — which is the neutral wording and the right answer for every line that does not name the event.
+// server/pdf.mjs, wedding-sync-worker.js and trapezi.html keep the same map; adding a kind is a row in each.
+const KIND_PFX={ wedding:"", baptism:"b_", party:"p_" };
+function tr(k,v){ let s; const p=KIND_PFX[EVK];
+  if(p){ s=T[p+k]; if(s==null) s=T_ALL.el[p+k]; }
   if(s==null) s=T[k]; if(s==null) s=T_ALL.el[k]; if(s==null) return k;
   if(typeof s!=="string") return s; if(v) for(const x in v) s=s.split("{"+x+"}").join(v[x]); return s; }
-// The ornament that stands for the honour table and the keepsake: the couple's ♥, or the four-petal flower of a
-// baptism. server/pdf.mjs decides the same thing in mark(); this is the screen's one place for it.
-const EVMARK=()=>EVK==="baptism"?"petals":"heart";
+// The ornament that stands for the honour table and the keepsake: the couple's ♥, the four-petal flower of a
+// baptism, the star of a γιορτή. server/pdf.mjs decides the same thing in MARKS; this is the screen's one place.
+const EVMARKS={ wedding:"heart", baptism:"petals", party:"star" };
+const EVMARK=()=>EVMARKS[EVK]||"heart";
 // Fill static markup: data-t → textContent, data-t-title → title, data-t-ph → placeholder.
 // Called again whenever the event's kind changes, so the chrome that was painted as a wedding becomes a baptism.
 function applyStaticI18n(){
@@ -2073,10 +2181,10 @@ const ICON=n=>`<svg class="ic" aria-hidden="true"><use href="#i-${n}"/></svg>`; 
 document.querySelectorAll("#langsel a").forEach(a=>a.classList.toggle("on", a.dataset.lang===LANG));
 // The active plan decides the word. Everything that re-reads the dictionary is redrawn; nothing else changes.
 function setEventKind(k){
-  const want=(k==="baptism")?"baptism":"wedding";
+  const want=KIND_PFX[k]!==undefined?k:"wedding";   // a kind we do not know is a wedding, as every plan was before kinds
   if(want===EVK) return false;
   EVK=want; applyStaticI18n();
-  document.body.classList.toggle("ev-baptism", EVK==="baptism");
+  for(const kk in KIND_PFX) document.body.classList.toggle("ev-"+kk, EVK===kk);
   return true;
 }
 
@@ -2096,6 +2204,11 @@ const DEFAULT_POSITIONS = [   // 4×2 grid centred on an 1800×1220 floor; the d
   [450,540],[750,540],[1050,540],[1350,540],
 ];
 const STARTER={ h:1220, floorY:860, headY:1110 };   // floor height, dance floor centre, head table centre
+// A γιορτή is usually a restaurant or a bar, not a κτήμα: long tables in two columns instead of a grid of round ones,
+// and the room keeps its lower half free for the floor, the bar and the table of honour. Six tables of ten, because a
+// long table of ten is 354 wide and 126 deep with its chairs — two columns fit with 343 px of wall on each side and
+// 406 px down the middle, and the three rows clear each other by 54 px and the dance floor by 87.
+const PARTY_POSITIONS = [[520,180],[1280,180],[520,360],[1280,360],[520,540],[1280,540]];
 const LEGACY_POSITIONS = [   // the old 4×3 starter on an 1800×1400 floor (dance floor y 1040, head table y 1290): only migrateLayout (<v4) still uses it
   [450,230],[750,230],[1050,230],[1350,230],
   [450,480],[750,480],[1050,480],[1350,480],
@@ -2121,6 +2234,12 @@ function defaultFeatures(legacy, ev){ const fy=legacy?1040:STARTER.floorY; const
   // table's left end seat, 180 px from the dance floor, 130 px from the wall. Not on the legacy path: a migration
   // must never invent furniture in a room somebody already laid out.
   if(!legacy && (ev||EVK)==="baptism") out.push({id:"f-kids", kind:"zone", x:310, y:fy, w:360, h:280, label:tr("featKids"), material:"sand"});
+  // A party drinks at a bar, not at a welcome-drink stand: the bar takes the kiosk's job and the corner the kids'
+  // zone would have had. Same side of the room, clear of the floor by 210 px and of the honour table by 137.
+  if(!legacy && (ev||EVK)==="party"){
+    const i=out.findIndex(f=>f.id==="f-kiosk"); if(i>=0) out.splice(i,1);
+    out.push({id:"f-bar", kind:"zone", x:310, y:fy, w:300, h:240, label:tr("featBar"), material:"wood"});
+  }
   return out; }
 // Convert an old (cls/text) feature to the new model, preserving position & size.
 function upgradeFeature(f){
@@ -2230,7 +2349,8 @@ function makeHeadTable(id, ev){ return { id, label:wordFor(ev||EVK,"headTable"),
 // corrects it. Pass the kind; EVK is only the fallback for the paths that genuinely have a plan open.
 function defaultState(ev){
   ev=ev||EVK;
-  const tables = DEFAULT_POSITIONS.map((p,i)=>({ id:1001+i, label:String(i+1), shape:"round", x:p[0], y:p[1], capacity:10, seats:Array(10).fill(null) }));
+  const party=ev==="party", pos=party?PARTY_POSITIONS:DEFAULT_POSITIONS;
+  const tables = pos.map((p,i)=>({ id:1001+i, label:String(i+1), shape:party?"rect":"round", x:p[0], y:p[1], capacity:10, seats:Array(10).fill(null) }));
   tables.push(makeHeadTable(2000, ev));
   const names=wordFor(ev,"groupsDefault");   // through the resolver, or b_groupsDefault would be dead code and every baptism would open with the bride's and groom's sides
   const groups = names.map((n,i)=>({id:"grp"+(i+1), name:n, color:GROUP_PALETTE[i]}));
@@ -3435,28 +3555,29 @@ function renameProfile(){ const p=currentProfile(); const nm=prompt(tr("promptRe
 // rule: not support, not a restricted couple, not a template). Nothing but the word changes — the date, the plan, the
 // guests and every link stay as they are — so this goes on its own, without the plan, and never touches the save path.
 // tr() for a kind other than the one on screen — the same twin rule, asked a question about the other event.
-function wordFor(kind,k){ const T=T_ALL[LANG]||T_ALL.el; let s;
-  if(kind==="baptism"){ s=T["b_"+k]; if(s==null) s=T_ALL.el["b_"+k]; }
+function wordFor(kind,k){ const T=T_ALL[LANG]||T_ALL.el; let s; const p=KIND_PFX[kind];
+  if(p){ s=T[p+k]; if(s==null) s=T_ALL.el[p+k]; }
   if(s==null) s=T[k]; if(s==null) s=T_ALL.el[k]; return s; }
 // The head table's label and the group names are plan DATA, so correcting the type has to re-point the ones the
 // PLANNER wrote — otherwise a corrected baptism keeps «Νυφικό τραπέζι» and «Πλευρά νύφης» on the printed list and at
 // the door. A label the customer typed is theirs and is never touched, which is why both kinds' starters are matched
 // exactly before anything is replaced. (The server does the same thing to a template copy; see retypeStarter.)
 function retypeStarterWords(want){
-  const heads=[wordFor("wedding","headTable"), wordFor("baptism","headTable")], toHead=wordFor(want,"headTable");
+  const heads=Object.keys(KIND_PFX).map(k=>wordFor(k,"headTable")), toHead=wordFor(want,"headTable");
   let changed=false;
   for(const t of state.tables) if(t.shape==="head" && heads.indexOf(t.label)>=0 && t.label!==toHead){ t.label=toHead; changed=true; }
   const names=state.groups.map(g=>g.name), toG=wordFor(want,"groupsDefault");
-  for(const k of ["wedding","baptism"]){ const S=wordFor(k,"groupsDefault");
+  for(const k in KIND_PFX){ const S=wordFor(k,"groupsDefault");
     if(S.length===names.length && names.every((n,i)=>n===S[i])){
       if(names.some((n,i)=>n!==toG[i])){ state.groups=state.groups.map((g,i)=>({...g, name:toG[i]})); changed=true; }
       break; } }
   return changed;
 }
-async function changeEventKind(){
+async function changeEventKind(to){
   const cur=currentProfile(); if(!cur||!cur.cloudId) return;
-  const want=EVK==="baptism"?"wedding":"baptism";
-  if(!confirm(tr(want==="baptism"?"askKindB":"askKindW"))) return;
+  const want=KIND_PFX[to]!==undefined?to:"wedding";
+  if(want===EVK) return;
+  if(!confirm(tr("askKind",{e:wordFor(want,"evNom")}))) return;
   let r; try{ r=await fetch(planPath(cur.cloudId),{method:"PUT",headers:authHeaders(cur),body:JSON.stringify({kind:want})}); }catch(e){ toast(tr("tKindFailed"),4000); return; }
   if(!r||!r.ok){ toast(tr("tKindFailed"),4000); return; }
   // The server stamps `updated` on this PUT too. Without carrying it back, the save() below pushes a base the server
@@ -3504,9 +3625,9 @@ function openProfileMenu(evt){
   const pl=pc.life, pd=pl&&pl.weddingDate;
   // the type sits next to the rename because the server lets exactly the same hand change it (see changeEventKind)
   const canKind=!!pc.cloudId && !pc.support && !pc.template && !ACCESS.ro && !ACCESS.venueCouple;
-  menu.innerHTML=(pd||dateEditable()?`<div class="gm-item" data-act="date">${ICON("clock")}${escapeHtml(pd?fmtDate(pd):tr("accDate")+"…")}</div><div class="gm-sep"></div>`:"")+`<div class="gm-item" data-act="rename">${ICON("edit")}${escapeHtml(tr("pRename"))}</div>`+(canKind?`<div class="gm-item" data-act="kind">${ICON(EVMARK())}${escapeHtml(tr("pKind"))}</div>`:"")+`<div class="gm-item" data-act="dup">${ICON("copy")}${escapeHtml(tr("pDup"))}</div><div class="gm-sep"></div><div class="gm-item danger" data-act="del">${ICON("trash")}${escapeHtml(tr("pDel"))}</div>`;
+  menu.innerHTML=(pd||dateEditable()?`<div class="gm-item" data-act="date">${ICON("clock")}${escapeHtml(pd?fmtDate(pd):tr("accDate")+"…")}</div><div class="gm-sep"></div>`:"")+`<div class="gm-item" data-act="rename">${ICON("edit")}${escapeHtml(tr("pRename"))}</div>`+(canKind?Object.keys(KIND_PFX).filter(k=>k!==EVK).map(k=>`<div class="gm-item" data-kind="${k}">${ICON(EVMARKS[k])}${escapeHtml(tr("pKindTo",{e:wordFor(k,"evNom")}))}</div>`).join(""):"")+`<div class="gm-item" data-act="dup">${ICON("copy")}${escapeHtml(tr("pDup"))}</div><div class="gm-sep"></div><div class="gm-item danger" data-act="del">${ICON("trash")}${escapeHtml(tr("pDel"))}</div>`;
   const dt=menu.querySelector('[data-act="date"]'); if(dt) dt.onclick=()=>{ closeProfileMenu(); openAccess(); };
-  const kd=menu.querySelector('[data-act="kind"]'); if(kd) kd.onclick=()=>{ closeProfileMenu(); changeEventKind(); };
+  menu.querySelectorAll('[data-kind]').forEach(el=>{ el.onclick=()=>{ closeProfileMenu(); changeEventKind(el.dataset.kind); }; });
   menu.querySelector('[data-act="rename"]').onclick=()=>{ closeProfileMenu(); if(ACCESS.ro){ roToast(); return; } if(ACCESS.venueCouple){ toast(tr("tRenameVenue",{v:ACCESS.venueName||tr("theVenue")}),4000); return; } renameProfile(); };
   menu.querySelector('[data-act="dup"]').onclick=()=>{ closeProfileMenu(); if(pc.support){ toast(tr("tNoCopySupport"),4000); return; } duplicateProfile(); };
   menu.querySelector('[data-act="del"]').onclick=()=>{ closeProfileMenu(); deleteProfile(); };

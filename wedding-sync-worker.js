@@ -914,7 +914,7 @@ const STARTER_WORDS = [
     party: { head: "Celebration table", groups: ["Family", "Friends", "Colleagues", "Children"] } },
   { wedding: { head: "Brauttisch", groups: ["Seite der Braut", "Seite des Bräutigams", "Freunde", "Familie"] },
     baptism: { head: "Familientisch", groups: ["Seite der Mutter", "Seite des Vaters", "Paten", "Freunde"] },
-    party: { head: "Festtisch", groups: ["Familie", "Freunde", "Kolleginnen und Kollegen", "Kinder"] } },
+    party: { head: "Festtisch", groups: ["Familie", "Freunde", "Kollegen", "Kinder"] } },
 ];
 function retypeStarter(plan, kind) {
   if (!plan) return plan;

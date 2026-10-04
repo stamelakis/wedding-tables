@@ -2303,8 +2303,11 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
   {   // the planner's own side of that correction: the starter words follow, a word the customer typed does not
     const fs = await import('node:fs');
     const psrc = fs.readFileSync(path.join(root, 'planner.src.html'), 'utf8');
-    ok(/function changeEventKind\(/.test(psrc) && /data-act="kind"/.test(psrc),
+    ok(/function changeEventKind\(/.test(psrc) && /data-kind="/.test(psrc),
       'planner: the planner offers the correction where it offers the rename, so the brief and the product agree');
+    // With three kinds a toggle is not enough: the menu has to name each OTHER kind, or the third is unreachable.
+    ok(/Object\.keys\(KIND_PFX\)\.filter\(k=>k!==EVK\)/.test(psrc) && !/askKindB|askKindW/.test(psrc),
+      'planner: … one entry per kind the event is not, built from the kind map rather than from a pair of strings');
     const fn = psrc.slice(psrc.indexOf('function retypeStarterWords('));
     const body = fn.slice(0, fn.indexOf('\nasync function changeEventKind'));
     ok(/heads\.indexOf\(t\.label\)>=0/.test(body) && /names\.every\(\(n,i\)=>n===S\[i\]\)/.test(body),
@@ -2400,12 +2403,24 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     const a = src.indexOf('const T_ALL='), b = src.indexOf('const T=T_ALL[LANG]');
     const T_ALL = new Function('return (' + src.slice(a + 'const T_ALL='.length, b).trim().replace(/;$/, '') + ')')();
     const LANGS = ['el', 'en', 'de'];
-    // tr()'s rule, copied: a baptism reads the twin when there is one, the ordinary key when there is not.
-    const trr = (lang, kind, k) => { const T = T_ALL[lang];
-      let s; if (kind === 'baptism') { s = T['b_' + k]; if (s == null) s = T_ALL.el['b_' + k]; }
+    // tr()'s rule, copied: a kind reads its twin when there is one, the ordinary key when there is not. The map is
+    // read out of the planner rather than written again here, so a kind added there cannot be missed by these checks.
+    const PFX = eval('(' + /const KIND_PFX=(\{[^}]*\})/.exec(src)[1] + ')');
+    const trr = (lang, kind, k) => { const T = T_ALL[lang], p = PFX[kind];
+      let s; if (p) { s = T[p + k]; if (s == null) s = T_ALL.el[p + k]; }
       if (s == null) s = T[k]; if (s == null) s = T_ALL.el[k]; return s; };
+    ok(Object.keys(PFX).join(',') === 'wedding,baptism,party',
+      'planner: the planner knows exactly the kinds the server does', Object.keys(PFX));
     const twins = Object.keys(T_ALL.el).filter(k => k.startsWith('b_'));
     ok(twins.length >= 30, 'planner: the baptism dictionary exists', twins.length);
+    for (const p of Object.values(PFX).filter(Boolean)) {
+      const have = new Set(Object.keys(T_ALL.el).filter(k => k.startsWith(p)).map(k => k.slice(p.length)));
+      const want = new Set(twins.map(k => k.slice(2)));
+      const missing = [...want].filter(k => !have.has(k));
+      ok(missing.length === 0, `planner: the ${p} dictionary covers every key the baptism one does`, missing);
+      ok(LANGS.every(l => [...have].every(k => T_ALL[l][p + k] != null)),
+        `planner: … in all three languages`, LANGS.map(l => [...have].filter(k => T_ALL[l][p + k] == null)));
+    }
     ok(twins.every(k => k.slice(2) in T_ALL.el), 'planner: every b_ twin has a real key behind it (no orphan twins)',
       twins.filter(k => !(k.slice(2) in T_ALL.el)));
     ok(LANGS.every(l => twins.every(k => k in T_ALL[l])), 'planner: every twin exists in all three languages',
@@ -2518,6 +2533,34 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
         : 'seo: lab.html is noindexed, so it is not in the sitemap either', { inMap, indexable });
       ok(/o\.canonical \|\| o\.description/.test(bp) && /noindex,nofollow/.test(bp),
         'seo: … and a planner build with neither still gets the noindex — a plan link must never be indexable');
+    }
+    // The planner and the server each write the starter words, and they have to be the same words or a plan created
+    // from a venue template is re-pointed to a name the planner would never produce. This is not hypothetical: the
+    // party head table was «Τραπέζι τιμής» on one side and «Τραπέζι της γιορτής» on the other for an hour.
+    {
+      const wsrc = fs.readFileSync(path.join(root, 'wedding-sync-worker.js'), 'utf8');
+      const blk = wsrc.slice(wsrc.indexOf('const STARTER_WORDS'), wsrc.indexOf('function retypeStarter'));
+      const SW = eval(blk.replace('const STARTER_WORDS =', '(').replace(/;\s*$/, ')'));
+      const LI = { el: 0, en: 1, de: 2 };
+      for (const l of LANGS) for (const k of ['wedding', 'baptism', 'party']) {
+        ok(SW[LI[l]][k].head === trr(l, k, 'headTable'),
+          `kind: the server and the planner write the same ${k} head table in ${l}`, [SW[LI[l]][k].head, trr(l, k, 'headTable')]);
+        ok(SW[LI[l]][k].groups.join('·') === trr(l, k, 'groupsDefault').join('·'),
+          `kind: … and the same ${k} groups in ${l}`, [SW[LI[l]][k].groups, trr(l, k, 'groupsDefault')]);
+      }
+    }
+    // A γιορτή is a restaurant or a bar: long tables, and a bar instead of the welcome-drink stand.
+    {
+      const ds = src.slice(src.indexOf('function defaultState('), src.indexOf('function labState('));
+      ok(/party\?"rect":"round"/.test(ds) && /party\?PARTY_POSITIONS:DEFAULT_POSITIONS/.test(ds),
+        'planner: a party starts on long tables, a wedding and a baptism on round ones');
+      const df = src.slice(src.indexOf('function defaultFeatures('), src.indexOf('// Convert an old'));
+      ok(/\(ev\|\|EVK\)==="party"/.test(df) && /f-bar/.test(df) && /findIndex\(f=>f\.id==="f-kiosk"\)/.test(df),
+        'planner: … with a bar in place of the welcome drink');
+      ok(LANGS.every(l => typeof T_ALL[l].featBar === 'string' && T_ALL[l].featBar),
+        'planner: … and the bar is named in all three languages', LANGS.map(l => T_ALL[l].featBar));
+      const n = (src.match(/PARTY_POSITIONS = \[([^\]]*\]){6}/) || [])[0];
+      ok(!!n, 'planner: … on exactly the six positions the clearances were measured for');
     }
     // ---- no reachable baptism screen calls the customer a couple (b_cVenueLinks was the last one that did) ----
     // The lab and the local, never-synced plans are weddings on purpose (HANDOFF §1i), so they are named here.
