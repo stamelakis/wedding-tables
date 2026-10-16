@@ -84,10 +84,15 @@ build runs the full suite), restarts and health-checks; on failure it rolls back
   *processor* — the 7-day deletion is the venue's documented instruction in `dpa.html` §4 and cannot
   be changed unilaterally. The honest promises are a fixed period («ένας χρόνος μετά την εκδήλωση»)
   and an opt-in with the free-text note field stripped, because that field holds allergies.
-- **A couple's own plan is kept one year after the event, automatically** (Andreas, 2026-10-16; not yet
-  built). Rejected: an opt-in box (his call), and "forever" (GDPR, above). Venue weddings stay at 7 days —
-  that is the venue's instruction in `dpa.html` §4. The plan stays read-only from the day after the event
-  (`lockAfter: true`); the hourly sweep must stop reading archived plans before the period grows.
+- **Every plan is kept one year after the event, automatically** — a couple's own and a venue's wedding,
+  past events included (Andreas, 2026-10-16). Rejected: an opt-in box, a 7-day exception for venues ("why
+  make an exception?"), and "forever" (GDPR, above). For venues the year is their instruction in `dpa.html`
+  §4: change the default and the agreement together, never one. Read-only from the day after the event.
+  The hourly sweep skips finished plans via `meta:archive` (full pass nightly after 04:00) — keep that, or
+  a year of plans is read every hour.
+- **Guest notes are erased the day after the event**, from the plan and every `hist:` version; names and
+  seats stay. The note field is where allergies (health data) end up, and it serves the evening, not the
+  year. The pages say so; do not drop the erasure without changing privacy, terms and dpa.
 - **Greek is reviewed by Andreas himself.** Strings a customer reads are written per language and
   cross-checked, never find-replaced: 36 `p_*` strings contain «γιορτ» and name the *event*, while
   only five name the *table*.
