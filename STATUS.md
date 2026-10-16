@@ -2,8 +2,8 @@
 
 Updated: 2026-10-16
 
-**Status:** Live runs `534f2c1` (tag `deploy-2026-10-16-2`), healthy, everything in the repo is deployed.
-Retention (Next 4) is being built in a separate session started 2026-10-16.
+**Status:** Live runs `b7beb77` (deployed 2026-10-16 evening), healthy, everything in the repo is deployed.
+Retention is done and live: every plan is kept a year after the event, guest notes go the day after.
 
 ## In progress / unfinished
 
@@ -22,12 +22,7 @@ Retention (Next 4) is being built in a separate session started 2026-10-16.
 2. **Lab: a returning visitor's saved plan beats the `?ev=` door.** Found by the 2026-10-16 smoke test:
    after `?ev=baptism`, both `?ev=party` and plain `lab.html` reopen the baptism plan, so the «γιορτή»
    landing page's button can land a returning visitor in their old plan. Fresh visitors are fine.
-3. **Retention: one year, automatically, for every couple's own plan** (decided 2026-10-16, CLAUDE.md →
-   Decisions). Venue weddings stay 7 days. First take archived plans out of the hourly sweep, then change
-   the default, then every page that promises 7 days (privacy, terms, index, landing pages, planner,
-   venue/admin) in el/en/de — Greek reviewed by Andreas. **In progress in its own session** (started
-   2026-10-16 from the session that decided it) — check its commits before starting this again.
-4. **The free 8-table cap on the server.** Needed before advertising anything "free online".
+3. **The free 8-table cap on the server.** Needed before advertising anything "free online".
 
 ## Waiting on Andreas
 
@@ -47,14 +42,18 @@ Retention (Next 4) is being built in a separate session started 2026-10-16.
 
 ## Known problems
 
-- **The hourly sweep reads every plan** on the same thread that answers the API. Blocks any long
-  retention: ~210 MB and 2.6 s per pass at 5,000 plans.
 - **The 8-table free cap is client-side only** — no server limit exists at all.
 - **Shared-box disk.** On 2026-10-06 Docker build cache (edu-admin's builds, 40 GB of 53 GB) filled the
   disk to 85 %. Cleared — 23 % on 2026-10-16. Recurs unless edu-admin's Dockerfile stops rebuilding
   node_modules every time. TakeaSeat's own share was 0.1 GB.
 
 ## History
+
+- 2026-10-16 (evening) — Deployed `b7beb77`, retention: **every plan (couple's own and venue wedding, past
+  events too) is kept one year after the event**; guest notes are erased the day after, from the plan and every
+  saved version; dpa.html §4 says a year for new venues. The hourly sweep skips finished plans (`meta:archive`,
+  full pass nightly after 04:00). privacy/terms/dpa/index/landing pages reworded, Greek approved by Andreas.
+  903 checks. Live `meta:settings` had no stored rule, so both defaults are 365 (confirmed via the admin API).
 
 - 2026-10-16 — Deployed `eb2f0cb` (the five commits since 2026-10-04, tag `deploy-2026-10-16-1`), then
   `534f2c1` (tag `-2`): a venue's seat maximum now covers an honour table the couple adds (it was exempt),
