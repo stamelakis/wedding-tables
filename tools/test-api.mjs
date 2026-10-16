@@ -14,7 +14,9 @@ const PLANS = { get: async k => (m.has(k) ? m.get(k) : null), put: async (k, v) 
   list: async prefix => [...m.keys()].filter(k => k.startsWith(prefix)) };
 const env = { OWNER_KEY: 'owner-test-key', PLANS };
 const raw = k => JSON.parse(m.get(k));
-const patchRaw = (k, fn) => { const o = raw(k); fn(o); m.set(k, JSON.stringify(o)); };
+// Editing a plan behind the API's back (moving its date into the past, say) is time travel the archive list cannot see:
+// drop the list, as the API's own date and retention routes do. The archive tests below set it up themselves.
+const patchRaw = (k, fn) => { const o = raw(k); fn(o); m.set(k, JSON.stringify(o)); if (k.startsWith('plan:')) m.delete('meta:archive'); };
 const NEW = { 'X-Client': '2' };
 
 const athensDay = n => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Athens', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(Date.now() + n * 86400000));
@@ -673,7 +675,13 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
   ok(sw.keepsakes === 0 && sent.filter(m => m.attachments).length === 1, 'the keepsake goes once');
   patchRaw('plan:' + C9.id, o => { o.weddingDate = day(-9); });
   sw = await mod.sweep(env);
-  ok(!m.has('plan:' + C9.id) && raw('couple:' + K9.id).purgedAt && !raw('couple:' + K9.id).email && !m.has('email:d9@example.com'), '7 days after the wedding the plan is deleted and the address forgotten', sw);
+  ok(m.has('plan:' + C9.id) && raw('couple:' + K9.id).email === 'd9@example.com', "a couple's own plan is still there 9 days after the event (a venue's would be gone)", sw);
+  patchRaw('plan:' + C9.id, o => { o.weddingDate = day(-365); });
+  await mod.sweep(env);
+  ok(m.has('plan:' + C9.id) && (await call('GET', '/plans/' + C9.id, undefined, HC)).d.life.locked, '… and 365 days after, still there and still view-only');
+  patchRaw('plan:' + C9.id, o => { o.weddingDate = day(-367); });
+  sw = await mod.sweep(env);
+  ok(!m.has('plan:' + C9.id) && raw('couple:' + K9.id).purgedAt && !raw('couple:' + K9.id).email && !m.has('email:d9@example.com'), "a year after the event the couple's plan is deleted and the address forgotten", sw);
   // the admin's exceptions: keep forever / stay editable (the owner's own wedding), per venue, global
   const WB = (await call('POST', '/venues/' + V9.id + '/weddings', { label: 'Δικός μας', date: day(10) }, HV)).d;
   patchRaw('plan:' + WB.planId, o => { o.weddingDate = day(-30); });
@@ -745,7 +753,7 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     patchRaw('plan:' + M.id, o => { o.weddingDate = day(-2); o.plan = layout(); });
     ok((await call('PUT', '/plans/' + X.id, { plan: layout(), baseUpdated: raw('plan:' + X.id).updated }, HX)).status === 403, 'after the wedding the extra plan is locked too');
     ok((await call('POST', '/plans', { name: 'more', plan: layout(), parentId: X.id }, HX)).d.error === 'wedding_over', 'and no new plans can be made from it');
-    patchRaw('plan:' + M.id, o => { o.weddingDate = day(-9); });
+    patchRaw('plan:' + M.id, o => { o.weddingDate = day(-367); });
     await mod.sweep(env);
     const cp9 = raw('couple:' + K.id);
     ok(!m.has('plan:' + M.id) && !m.has('plan:' + X.id) && cp9.purgedAt && !JSON.stringify(cp9).includes('x9@example.com') && !cp9.plans.length, 'the main plan takes its extra plans with it; no trace of the address remains', cp9);
@@ -2646,6 +2654,80 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
   env.MAIL = keepMail; env.PDF = keepPdf;
   if (!keepMail) delete env.MAIL;
   if (!keepPdf) delete env.PDF;
+}
+
+// ---------- retention: a couple's own plan a year, a venue's wedding 7 days — and the hourly sweep leaves finished plans alone ----------
+{
+  const day = athensDay, realNow = Date.now, DAYMS = 86400000;
+  const keepMail = env.MAIL, keepPdf = env.PDF;
+  const athensMs = (ymd, h) => { const utc = Date.parse(ymd + 'T00:00:00Z');
+    const q = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Athens', hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+      .formatToParts(new Date(utc)).filter(x => x.type !== 'literal').map(x => [x.type, +x.value]));
+    return utc - (Date.UTC(q.year, q.month - 1, q.day, q.hour, q.minute) - utc) + h * 3600000; };
+  const sweepAt = async ms => { Date.now = () => ms; try { return await mod.sweep(env); } finally { Date.now = realNow; } };
+  try {
+    const AV = (await call('POST', '/admin/venues', { name: 'Κτήμα Αρχείο', license: { type: 'seasonal', seasonStart: day(-30), seasonEnd: day(300) } }, OWN)).d, HAV = { 'X-Venue-Key': AV.key };
+    const AW = (await call('POST', '/venues/' + AV.id + '/weddings', { label: 'Αρχείο', date: day(10) }, HAV)).d, HAW = { 'X-Edit-Key': AW.venueKey };
+    const AK = (await call('POST', '/admin/couples', { name: 'Αρχείο ζευγάρι', email: 'arch@example.com', weddingDate: day(10) }, OWN)).d.couple;
+    const AC = (await call('POST', '/claim', { token: raw('couple:' + AK.id).claimToken, nonce: 'n' })).d, HAC = { 'X-Edit-Key': AC.editKey };
+    patchRaw('plan:' + AW.planId, o => { o.weddingDate = day(-2); });
+    patchRaw('plan:' + AC.id, o => { o.weddingDate = day(-2); o.plan = layout(); });
+    let st = (await call('GET', '/admin/settings', undefined, OWN)).d;
+    ok(st.retention.keepDays === 7 && st.coupleRetention.keepDays === 365 && st.coupleRetention.lockAfter === true, 'retention: venue weddings 7 days, couples\' own plans 365 — both view-only after the event', st);
+    const lockAt = athensMs(day(-1), 0);
+    const lifeV = (await call('GET', '/plans/' + AW.planId, undefined, HAW)).d.life, lifeC = (await call('GET', '/plans/' + AC.id, undefined, HAC)).d.life;
+    ok(lifeV.locked && lifeV.deleteAt === lockAt + 7 * DAYMS && lifeC.locked && lifeC.deleteAt === lockAt + 365 * DAYMS, 'retention: the venue wedding goes 7 days after the lock, the couple\'s plan 365', { lifeV, lifeC });
+
+    // the keepsake is still owed (mail on, the PDF fails): the plan stays off the list and is tried again every hour
+    env.MAIL = { enabled: true, send: () => true }; env.PDF = { render: async () => { throw new Error('no fonts'); } };
+    let sw = await mod.sweep(env);
+    ok(sw.full && raw('meta:archive').plans[AW.planId] === lifeV.deleteAt && !(AC.id in raw('meta:archive').plans), 'archive: a locked venue wedding is listed with its deletion time; a couple still owed the keepsake is not', sw);
+    env.PDF = { render: async () => new TextEncoder().encode('%PDF-1.4 fake') };
+    sw = await mod.sweep(env);
+    ok(sw.keepsakes === 1 && raw('meta:archive').plans[AC.id] === lifeC.deleteAt, 'archive: once the keepsake is sent, the couple\'s plan joins the list');
+
+    // the point of it: the next hourly pass does not open either plan
+    const reads = [], get0 = PLANS.get;
+    PLANS.get = async k => { reads.push(k); return get0(k); };
+    try { sw = await mod.sweep(env); } finally { PLANS.get = get0; }
+    ok(!sw.full && sw.skipped >= 2 && !reads.includes('plan:' + AW.planId) && !reads.includes('plan:' + AC.id), 'archive: the hourly sweep skips archived plans without reading them', { sw, reads: reads.filter(k => k.startsWith('plan:')).length });
+    ok(reads.filter(k => k.startsWith('plan:')).length < (await PLANS.list('plan:')).length, 'archive: … so it reads fewer plans than there are');
+
+    // anything that can move a deletion date drops the list; saving the venues' rule never touches the couples' one
+    ok((await call('PUT', '/admin/settings', { retention: { keepDays: 7, lockAfter: true } }, OWN)).d.coupleRetention.keepDays === 365 && !m.has('meta:archive'),
+      'archive: saving the venues\' 7 days leaves couples at 365, and drops the list so the next sweep reads everything');
+    ok((await mod.sweep(env)).full && raw('meta:archive').plans[AC.id] === lifeC.deleteAt, 'archive: … which rebuilds it');
+    await call('PATCH', '/admin/couples/' + AK.id, { retention: { keepDays: 30 } }, OWN);
+    ok(!m.has('meta:archive'), 'archive: a couple\'s own rule changed by the admin drops it too');
+    ok((await call('GET', '/plans/' + AC.id, undefined, HAC)).d.life.deleteAt === lockAt + 30 * DAYMS, 'retention: a couple\'s own rule beats the 365 default');
+    await call('PATCH', '/admin/couples/' + AK.id, { retention: null }, OWN);
+    await mod.sweep(env);
+    await call('DELETE', '/venues/' + AV.id + '/weddings/' + AW.planId, undefined, HAV);
+    ok(!(AW.planId in raw('meta:archive').plans) && AC.id in raw('meta:archive').plans, 'archive: a venue\'s delete takes the wedding off the list (the trash empties on its own date)');
+    await call('POST', '/admin/venues/' + AV.id + '/trash/' + AW.planId + '/restore', {}, OWN);
+
+    // once a night every plan is read again anyway
+    const today = day(0);
+    m.set('meta:archive', JSON.stringify({ ...raw('meta:archive'), fullDay: day(-1) }));
+    ok(!(await sweepAt(athensMs(today, 3))).full, 'archive: before 04:00 Athens the pass stays short');
+    ok((await sweepAt(athensMs(today, 5))).full && raw('meta:archive').fullDay === today, 'archive: the first sweep after 04:00 reads every plan, once a day');
+    ok(!(await sweepAt(athensMs(today, 6))).full, 'archive: … and the next one is short again');
+
+    // the clock runs on: the venue wedding goes after 7 days, the couple's plan after 365 — not a day earlier
+    await sweepAt(lifeV.deleteAt - 3600000);
+    ok(m.has('plan:' + AW.planId), 'retention: a venue wedding is still there an hour before its 7 days are up');
+    await sweepAt(lifeV.deleteAt + 3600000);
+    ok(!m.has('plan:' + AW.planId) && !raw('venue:' + AV.id).weddings.some(w => w.planId === AW.planId), 'retention: a venue wedding is deleted 7 days after the event');
+    ok(m.has('plan:' + AC.id), 'retention: the couple\'s plan is still there on day 8');
+    await sweepAt(lifeC.deleteAt - 3600000);
+    ok(m.has('plan:' + AC.id) && raw('couple:' + AK.id).email === 'arch@example.com', 'retention: a couple\'s plan is still there an hour before its year is up');
+    sw = await sweepAt(lifeC.deleteAt + 3600000);
+    ok(!m.has('plan:' + AC.id) && raw('couple:' + AK.id).purgedAt && !raw('couple:' + AK.id).email && !(AC.id in (raw('meta:archive').plans || {})), 'retention: a year after the event the couple\'s plan is deleted, the address forgotten, and it leaves the list', sw);
+  } finally {
+    Date.now = realNow; env.MAIL = keepMail; env.PDF = keepPdf;
+    if (!keepMail) delete env.MAIL;
+    if (!keepPdf) delete env.PDF;
+  }
 }
 
 console.log(`\nall ${n} checks passed`);

@@ -132,6 +132,9 @@ const nextGen = o => { o.lgen = (o.lgen || 0) + 1; return o.lgen; };
 // ---- wedding date & lifecycle ----
 const DAY = 86400000, FALLBACK_DAYS = 548, TRASH_DAYS = 14, DATE_CHANGES = 3, DATE_AHEAD_DAYS = 730, MAX_KEEP_DAYS = 3650;
 const DEFAULT_RETENTION = { keepDays: 7, lockAfter: true, keep: false };
+// A couple's own plan is kept one year after the event (Andreas, 2026-10-16). Venue weddings stay on DEFAULT_RETENTION:
+// that is the venue's instruction to us as its processor (dpa.html §4) and cannot be changed from here.
+const COUPLE_RETENTION = { keepDays: 365 };
 // Couple phases: a couple who buys directly waits out the 14-day withdrawal period (the payment day doesn't count, so the
 // planner opens at 00:00 on day 15); everyone
 // arranges the room only in the last 30 days; a couple's one date change freezes the plan until 14 days before the new date.
@@ -158,11 +161,16 @@ function normRetention(x) {   // {keepDays?, lockAfter?, keep?} — only what wa
   if (typeof x.keep === "boolean") o.keep = x.keep;
   return Object.keys(o).length ? o : null;
 }
-function policyOf(settings, ...layers) {   // global settings < venue / couple < plan
+function policyOf(settings, ...layers) {   // global settings < venue / couple < plan — the venue weddings' rules
   const out = { ...DEFAULT_RETENTION, ...(normRetention(settings && settings.retention) || {}) };
   for (const l of layers) Object.assign(out, normRetention(l) || {});
   return out;
 }
+// The same for a couple's own plan: its own global setting (settings.coupleRetention), never the venues' one. The venues'
+// setting is stored with keepDays filled in as soon as the admin saves it once, so it cannot be the couples' default.
+const couplePolicyOf = (settings, ...layers) =>
+  policyOf({ retention: { ...COUPLE_RETENTION, ...(normRetention(settings && settings.coupleRetention) || {}) } }, ...layers);
+const policyFor = (own, settings, ...layers) => (own.type === "venue" ? policyOf : couplePolicyOf)(settings, ...layers);
 async function getSettings(env) { return safeParse(await env.PLANS.get("meta:settings")) || {}; }
 async function lifecycleSince(env) {   // plans older than this feature count their fallback from its first day
   const m = safeParse(await env.PLANS.get("meta:lifecycle"));
@@ -201,11 +209,11 @@ async function planLife(env, rec, id, ctx) {
       const main = c.purgedAt ? null : safeParse(await env.PLANS.get("plan:" + c.planId));
       if (!main) { const now = Date.now(); return { weddingDate: null, lockAt: now, deleteAt: now, over: true, locked: true, keep: false, fallback: false, child: true }; }
       const L = lifeOf({ ...rec, weddingDate: main.weddingDate || null, createdAt: main.createdAt || rec.createdAt, opensAt: main.opensAt || null, frozenUntil: main.frozenUntil || null },
-        policyOf(settings, layer, main.retention, rec.retention), since);
+        couplePolicyOf(settings, layer, main.retention, rec.retention), since);
       return { ...L, child: true };
     }
   }
-  return lifeOf(rec, policyOf(settings, layer, rec.retention), since);
+  return lifeOf(rec, policyFor(own, settings, layer, rec.retention), since);
 }
 // Setting the date: from today up to 2 years ahead, the first time free then 3 changes, never cleared, not after the wedding.
 // These limits stop one paid wedding from being reused for others; the admin is not limited.
@@ -456,14 +464,36 @@ export async function sweep(env) {
   await record({ out });
   return out;
 }
+// The archive list (meta:archive): plans with nothing left to happen but their deletion — view-only, door list closed,
+// keepsake sent — each with the time it is due (0 = kept). The hourly sweep reads this one row and skips them instead of
+// opening every plan a year of keeping would pile up. Whatever can move a deletion date (a retention setting, a date the
+// admin sets, a venue's delete) calls unarchive(); and once a night every plan is read again, so nothing is missed for
+// more than a day.
+const ARCHIVE_KEY = "meta:archive", FULL_PASS_HOUR = 4;   // the nightly full pass: the first sweep after 04:00 Athens
+async function unarchive(env, id) {   // one plan, or (no id) the whole list: the next sweep reads every plan again
+  if (!id) { await env.PLANS.delete(ARCHIVE_KEY); return; }
+  await kvUpdate(env, ARCHIVE_KEY, a => { if (!a || !a.plans || !(id in a.plans)) return null; delete a.plans[id]; return a; });
+}
+const athensParts = ms => Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Athens", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit" })
+  .formatToParts(new Date(ms)).filter(x => x.type !== "literal").map(x => [x.type, x.value]));
 // After the wedding: view only (+ a keepsake PDF by mail to couples who bought directly), deleted keepDays later.
 async function lifecycleSweep(env, now) {
-  const out = { locked: 0, keepsakes: 0, purged: 0, trash: 0, findEnded: 0 };
+  const out = { locked: 0, keepsakes: 0, purged: 0, trash: 0, findEnded: 0, archived: 0, skipped: 0, full: false };
   const settings = await getSettings(env), since = await lifecycleSince(env);
   const venues = new Map(), couples = new Map();
   const cached = async (map, key) => { if (!map.has(key)) map.set(key, safeParse(await env.PLANS.get(key))); return map.get(key); };
+  const ap = athensParts(now), day = ap.year + "-" + ap.month + "-" + ap.day;
+  const arcRaw = await env.PLANS.get(ARCHIVE_KEY), arc = safeParse(arcRaw);
+  const full = !arc || !arc.plans || (arc.fullDay !== day && +ap.hour >= FULL_PASS_HOUR);
+  const plans = full ? {} : { ...arc.plans }, listed = new Set();
+  out.full = full;
   for (const k of (await env.PLANS.list("plan:")) || []) {
-    const id = k.slice(5), rec = safeParse(await env.PLANS.get(k)); if (!rec) continue;
+    const id = k.slice(5); listed.add(id);
+    if (id in plans) {   // archived: untouched until its deletion is due
+      if (!plans[id] || now < plans[id]) { out.skipped++; continue; }
+      delete plans[id];
+    }
+    const rec = safeParse(await env.PLANS.get(k)); if (!rec) continue;
     const own = ownerOf(rec);
     if (rec.deletedAt) {   // a venue's trash
       if (now >= (rec.purgeAt || rec.deletedAt + TRASH_DAYS * DAY)) {
@@ -486,14 +516,15 @@ async function lifecycleSweep(env, now) {
     // The door list dies at the END of its window (2 days after the wedding), not at the lock the night before: the QR on
     // the door has to answer while the last guests are still arriving. Then the key goes, and every printed QR is an
     // unknown token from that moment on.
-    if (rec.find && rec.find.key && now >= findEndsAt(L)) {
+    let findOpen = !!(rec.find && rec.find.key);
+    if (findOpen && now >= findEndsAt(L)) {
       await env.PLANS.delete("find:" + rec.find.key);
       await kvUpdate(env, k, cur => { if (!cur || !cur.find) return null; delete cur.find; return cur; });
-      out.findEnded++;
+      out.findEnded++; findOpen = false;
     }
     // The keepsake: once, to a couple who bought directly (main plan) — before any deletion; if it could not be made or
     // sent, the plan waits up to 3 more days for another try rather than disappearing without it.
-    let holdPurge = false;
+    let holdPurge = false, keepsakeDue = false;
     if (!rec.keepsakeSentAt && c && c.planId === id && c.email && mailOn(env) && env.PDF && typeof env.PDF.render === "function"
         && isPlan(rec.plan) && rec.plan.tables.length) {
       let sent = false;
@@ -506,6 +537,7 @@ async function lifecycleSweep(env, now) {
         if (sent) { await kvUpdate(env, k, cur => { if (!cur) return null; cur.keepsakeSentAt = now; return cur; }); out.keepsakes++; }
       } catch (e) { console.error("keepsake failed for a plan: " + ((e && e.message) || e)); }
       if (!sent && L.deleteAt && now < L.deleteAt + 3 * DAY) holdPurge = true;
+      keepsakeDue = !sent;
     }
     if (L.deleteAt && now >= L.deleteAt && !holdPurge) {
       await purgePlan(env, id); out.purged++;
@@ -519,8 +551,14 @@ async function lifecycleSweep(env, now) {
         if (c.email) { await indexEmail(env, c.email, "couple", c.id, false); await forgetEmail(env, c.email); }
       } else if (c) await kvUpdate(env, "couple:" + c.id, cp => { if (!cp) return null; cp.plans = (cp.plans || []).filter(x => x !== id); return cp; });
       console.log("lifecycle: deleted a " + own.type + " plan after the wedding");
+      continue;
     }
+    // Nothing left to do but delete it (or keep it): on the archive list until then.
+    if (L.locked && !findOpen && !keepsakeDue && !holdPurge) { plans[id] = L.deleteAt || 0; out.archived++; }
   }
+  for (const id of Object.keys(plans)) if (!listed.has(id)) delete plans[id];   // deleted some other way
+  const arcNew = JSON.stringify({ fullDay: full ? day : arc.fullDay, plans });
+  if (arcNew !== arcRaw) await env.PLANS.put(ARCHIVE_KEY, arcNew);
   if (out.purged || out.trash) {   // device-link rows must not keep the names of plans that no longer exist
     for (const k of (await env.PLANS.list("code:")) || []) {
       const idx = safeParse(await env.PLANS.get(k)); if (!idx || !Array.isArray(idx.plans)) continue;
@@ -2138,15 +2176,20 @@ export default {
             const st = await getSettings(env), ids = safeParse(await env.PLANS.get("retention:index")) || [];
             const ex = [];
             for (const pid of ids) { const r = safeParse(await env.PLANS.get("plan:" + pid)); if (r && r.retention) ex.push({ planId: pid, ...r.retention, weddingDate: r.weddingDate || null, owner: ownerOf(r).type }); }
-            const pol = policyOf(st);
-            return json({ retention: { keepDays: pol.keepDays, lockAfter: pol.lockAfter }, planExceptions: ex });
+            const pol = policyOf(st), cpol = couplePolicyOf(st);
+            return json({ retention: { keepDays: pol.keepDays, lockAfter: pol.lockAfter }, coupleRetention: { keepDays: cpol.keepDays, lockAfter: cpol.lockAfter }, planExceptions: ex });
           }
           if (request.method === "PUT" || request.method === "PATCH") {
-            const ret = normRetention((await readBody(request)).retention) || {};
-            const r = await kvUpdate(env, "meta:settings", st => { st = st || {}; const pol = policyOf(st);
-              st.retention = { keepDays: ret.keepDays ?? pol.keepDays, lockAfter: ret.lockAfter ?? pol.lockAfter }; return st; });
-            console.log("admin: lifecycle settings " + JSON.stringify(r.obj.retention));
-            return json({ ok: true, retention: r.obj.retention });
+            // `retention` = venue weddings, `coupleRetention` = couples' own plans; either may be left out.
+            const b = await readBody(request), ret = normRetention(b.retention), cret = normRetention(b.coupleRetention);
+            const r = await kvUpdate(env, "meta:settings", st => { st = st || {}; const pol = policyOf(st), cpol = couplePolicyOf(st);
+              if (ret) st.retention = { keepDays: ret.keepDays ?? pol.keepDays, lockAfter: ret.lockAfter ?? pol.lockAfter };
+              if (cret) st.coupleRetention = { keepDays: cret.keepDays ?? cpol.keepDays, lockAfter: cret.lockAfter ?? cpol.lockAfter };
+              return st; });
+            await unarchive(env);
+            const pol = policyOf(r.obj), cpol = couplePolicyOf(r.obj);
+            console.log("admin: lifecycle settings " + JSON.stringify({ venues: r.obj.retention || null, couples: r.obj.coupleRetention || null }));
+            return json({ ok: true, retention: { keepDays: pol.keepDays, lockAfter: pol.lockAfter }, coupleRetention: { keepDays: cpol.keepDays, lockAfter: cpol.lockAfter } });
           }
         }
         if (parts[1] === "plans" && parts.length === 4 && parts[3] === "retention" && (request.method === "PUT" || request.method === "DELETE")) {
@@ -2155,6 +2198,7 @@ export default {
           const r = await kvUpdate(env, "plan:" + pid, rec => { if (!rec) return null; if (ret) rec.retention = ret; else delete rec.retention; return rec; });
           if (!r.obj) return json({ error: "not found" }, 404);
           if (ret) await addIndex(env, "retention:index", pid); else await removeIndex(env, "retention:index", pid);
+          await unarchive(env);   // its extra plans follow it, so not just this one entry
           console.log("admin: plan exception " + (ret ? JSON.stringify(ret) : "removed") + " for " + pid);
           const L = await planLife(env, r.obj, pid);
           return json({ ok: true, life: { weddingDate: L.weddingDate, lockAt: L.lockAt, deleteAt: L.deleteAt, locked: L.locked, keep: L.keep } });
@@ -2255,6 +2299,7 @@ export default {
               if (email != null && email !== old) { v.email = email; v.emailVerified = false; v.pendingVerify = null; nextGen(v); }   // links sent to the old address retire
               return { __obj: v, __res: old }; });
             if (!r.obj) return json({ error: "not found" }, 404);
+            if (b.retention !== undefined) await unarchive(env);   // its weddings' deletion dates may have moved
             if (email != null && email !== r.res) {
               await indexEmail(env, r.res, "venue", r.obj.id, false); await indexEmail(env, email, "venue", r.obj.id, true);
               if (r.res) send(env, r.res, mailMsg(r.obj.lang, "changed", { name: r.obj.name, email: maskEmail(email) || "—", by: MAILS[langOf(r.obj.lang)].byAdmin }));
@@ -2372,6 +2417,7 @@ export default {
               if (email != null && email !== old) { c.email = email; c.emailVerified = false; c.pendingVerify = null; nextGen(c); }   // links sent to the old address retire
               return { __obj: c, __res: old }; });
             if (!r.obj) return json({ error: "not found" }, 404);
+            if (b.weddingDate !== undefined || b.retention !== undefined) await unarchive(env);   // a deletion date may have moved
             let c = r.obj, mailed = null;
             if (email != null && email !== r.res) {   // changing a couple's address is visible to them: old address told, access log entry
               await indexEmail(env, r.res, "couple", c.id, false); await indexEmail(env, email, "couple", c.id, true);
@@ -2611,7 +2657,7 @@ export default {
           return json({ at: now, today: todayAthens(), listed, counts: c,
             mail: { enabled: mailOn(env), from: mailOn(env) ? String(env.MAIL.from || "") : "", ...st },
             sweep: safeParse(await env.PLANS.get("meta:sweep")) || null,
-            retention: policyOf(await getSettings(env)), host });
+            retention: policyOf(await getSettings(env)), coupleRetention: couplePolicyOf(await getSettings(env)), host });
         }
         // One real message, to an address he types: delivery proved in ten seconds.
         if (parts[1] === "test" && parts[2] === "email" && parts.length === 3 && request.method === "POST") {
@@ -2815,6 +2861,7 @@ export default {
           const p = await ownPlan(parts[3]), now = Date.now(), purgeAt = now + TRASH_DAYS * DAY;
           if (p) {
             await kvUpdate(env, "plan:" + parts[3], rec => { if (!rec) return null; rec.deletedAt = now; rec.purgeAt = purgeAt; rec.support = null; return rec; });
+            await unarchive(env, parts[3]);   // the trash empties on its own date, not the wedding's
             await removeIndex(env, "support:index", parts[3]);
           }
           await kvUpdate(env, vkey, cur => { if (!cur) return null; cur.weddings = (cur.weddings || []).filter(x => x.planId !== parts[3]);
