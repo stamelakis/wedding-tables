@@ -84,6 +84,10 @@ build runs the full suite), restarts and health-checks; on failure it rolls back
   *processor* — the 7-day deletion is the venue's documented instruction in `dpa.html` §4 and cannot
   be changed unilaterally. The honest promises are a fixed period («ένας χρόνος μετά την εκδήλωση»)
   and an opt-in with the free-text note field stripped, because that field holds allergies.
+- **A couple's own plan is kept one year after the event, automatically** (Andreas, 2026-10-16; not yet
+  built). Rejected: an opt-in box (his call), and "forever" (GDPR, above). Venue weddings stay at 7 days —
+  that is the venue's instruction in `dpa.html` §4. The plan stays read-only from the day after the event
+  (`lockAfter: true`); the hourly sweep must stop reading archived plans before the period grows.
 - **Greek is reviewed by Andreas himself.** Strings a customer reads are written per language and
   cross-checked, never find-replaced: 36 `p_*` strings contain «γιορτ» and name the *event*, while
   only five name the *table*.

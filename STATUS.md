@@ -25,7 +25,10 @@ The repo is one commit further: the two honour-table server bugs are fixed and t
 3. **Lab: a returning visitor's saved plan beats the `?ev=` door.** Found by the 2026-10-16 smoke test:
    after `?ev=baptism`, both `?ev=party` and plain `lab.html` reopen the baptism plan, so the «γιορτή»
    landing page's button can land a returning visitor in their old plan. Fresh visitors are fine.
-4. **Retention 7 → 395 days**, after taking archived plans out of the hourly sweep.
+4. **Retention: one year, automatically, for every couple's own plan** (decided 2026-10-16, CLAUDE.md →
+   Decisions). Venue weddings stay 7 days. First take archived plans out of the hourly sweep, then change
+   the default, then every page that promises 7 days (privacy, terms, index, landing pages, planner,
+   venue/admin) in el/en/de — Greek reviewed by Andreas.
 5. **The free 8-table cap on the server.** Needed before advertising anything "free online".
 
 ## Waiting on Andreas
@@ -42,10 +45,6 @@ The repo is one commit further: the two honour-table server bugs are fixed and t
 - **Decide the γιορτή wording:** customer = «ο διοργανωτής», ornament = ★, groups =
   Οικογένεια/Φίλοι/Συνάδελφοι/Παιδιά are already built and live; only the honour table («Κεντρικό
   τραπέζι», opt-in) is still to build.
-- **Retention: Andreas chose one year (2026-10-16).** Still to settle: automatic for every couple's own
-  plan, or only when the couple ticks «κράτα το πλάνο για έναν χρόνο» (notes field stripped). Venue
-  weddings stay 7 days (dpa.html §4). The plan stays read-only from the day after the event
-  (`lockAfter: true` in DEFAULT_RETENTION — keep it). Needs the hourly-sweep fix first (Next 4).
 - **Accountant** (€10,000 VAT threshold), **company registration**, **lawyer review** of terms.
 
 ## Known problems
