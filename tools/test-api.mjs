@@ -362,6 +362,20 @@ ok(r.d.role === 'couple' && r.d.perms.labels === false, 'code auth keeps the cou
   pr = await call('PUT', '/plans/' + W3.planId, { plan: zero, baseUpdated: g.updated }, { 'X-Edit-Key': W3.editKey });
   const t0c = raw('plan:' + W3.planId).plan.tables[0];
   ok(t0c.capacity === 8 && t0c.seats.length === 8, 'capacity 0 cannot sneak past the seat maximum', t0c);
+  {   // the seat maximum covers an honour table the couple adds (it was exempt: a way around the venue's layout); the venue's own keeps its size
+    const lay4 = layout(); lay4.tables.push({ id: 3, shape: 'head', x: 900, y: 1200, label: 'H', capacity: 14, seats: Array(14).fill(null) });
+    await call('PUT', '/plans/' + T3.planId, { plan: lay4 }, { 'X-Edit-Key': T3.venueKey });
+    await call('PUT', '/venues/' + V3.id + '/defaults', { perms: { floor: false, decor: false, layout: false, tables: true, seats: true, labels: false, maxSeats: 8 } }, H3);
+    const W4 = (await call('POST', '/venues/' + V3.id + '/weddings', { label: 'W4' }, H3)).d, H4 = { 'X-Edit-Key': W4.editKey };
+    const g4 = (await call('GET', '/plans/' + W4.planId, undefined, H4)).d;
+    const addH = JSON.parse(JSON.stringify(g4.plan)); addH.tables.push({ id: 40, shape: 'head', x: 900, y: 300, label: 'H2', capacity: 30, seats: Array(30).fill(null) });
+    const r4 = await call('PUT', '/plans/' + W4.planId, { plan: addH, baseUpdated: g4.updated }, H4);
+    const p4 = raw('plan:' + W4.planId).plan, h40 = p4.tables.find(t => t.id === 40), h3 = p4.tables.find(t => t.id === 3);
+    ok(r4.status === 200 && h40 && h40.capacity === 8 && h40.seats.length === 8, 'a venue\'s seat maximum covers an honour table the couple adds', h40 && h40.capacity);
+    ok(h3 && h3.capacity === 14, 'the venue\'s own honour table keeps the size the venue gave it', h3 && h3.capacity);
+    await call('PUT', '/plans/' + T3.planId, { plan: lay }, { 'X-Edit-Key': T3.venueKey });
+    await call('PUT', '/venues/' + V3.id + '/defaults', { perms: { floor: false, decor: false, layout: false, tables: false, seats: true, labels: false, maxSeats: 8 } }, H3);
+  }
   g = (await call('GET', '/plans/' + W3.planId, undefined, { 'X-Edit-Key': W3.editKey })).d;
   const poison = JSON.parse(JSON.stringify(g.plan)); poison._uid = 2 ** 53;
   await call('PUT', '/plans/' + W3.planId, { plan: poison, baseUpdated: g.updated }, { 'X-Edit-Key': W3.editKey });
@@ -814,6 +828,16 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     const firstUp = big(40); firstUp.tables.push({ id: 99, shape: 'head', x: 900, y: 1200, label: 'H', capacity: 4, seats: Array(4).fill(null) });
     r = await call('PUT', '/plans/' + QC.id, { plan: firstUp, baseUpdated: raw('plan:' + QC.id).updated }, HQ);
     ok(r.d.enforced && raw('plan:' + QC.id).plan.tables.length === 9 && raw('plan:' + QC.id).plan.tables.some(t => t.shape === 'head'), 'a first upload in the names phase keeps only the starting 8 tables + head table', raw('plan:' + QC.id).plan.tables.length);
+    {   // counted as the planner counts: a second honour table is one of the 8, never silently dropped from a plan the planner allowed
+      const Q2 = (await call('POST', '/admin/couples', { name: 'Two heads', weddingDate: day(60), startNow: false }, OWN)).d.couple;
+      const Q2C = (await call('POST', '/claim', { token: raw('couple:' + Q2.id).claimToken, nonce: 'n2' })).d, HQ2 = { 'X-Edit-Key': Q2C.editKey };
+      patchRaw('plan:' + Q2C.id, o => { o.opensAt = Date.now() - 1000; });
+      const head = id => ({ id, shape: 'head', x: 900, y: 1200, label: 'H' + id, capacity: 4, seats: Array(4).fill(null) });
+      const two = big(7); two.tables.push(head(91), head(92));
+      r = await call('PUT', '/plans/' + Q2C.id, { plan: two, baseUpdated: raw('plan:' + Q2C.id).updated }, HQ2);
+      const kept2 = raw('plan:' + Q2C.id).plan.tables;
+      ok(r.status === 200 && !r.d.enforced && kept2.length === 9 && kept2.filter(t => t.shape === 'head').length === 2, 'a first upload with two honour tables and 7 others arrives whole, no notice', [r.d.enforced, kept2.length]);
+    }
     const dec = JSON.parse(JSON.stringify(raw('plan:' + QC.id).plan)); dec.features = [{ id: 'f9', kind: 'prop', x: 400, y: 400, w: 80, h: 80, label: 'Photo booth' }];
     r = await call('PUT', '/plans/' + QC.id, { plan: dec, baseUpdated: raw('plan:' + QC.id).updated }, HQ);
     ok(!r.d.enforced && raw('plan:' + QC.id).plan.features.some(f => f.id === 'f9'), 'decor stays open in the names phase (owner decision)');

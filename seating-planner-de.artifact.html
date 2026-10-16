@@ -4840,7 +4840,7 @@ function openMenu(tableId, evt){
   menu.querySelectorAll(".caps button").forEach((b,k)=>{ b.dataset.cap=presets[k]; b.textContent=presets[k]; });
   $("menuLabel").value=t.label; $("menuLabel").readOnly=!can("labels");
   $("menuCapCustom").value=presets.includes(t.capacity)?"":t.capacity; $("menuCapCustom").min=rect?2:1;
-  const mx=maxSeatsFor(t); $("menuCapCustom").max=mx; $("menuCapCustom").disabled=!can("seats");
+  const mx=maxSeatsFor(t); $("menuCapCustom").max=Math.max(mx,t.capacity); $("menuCapCustom").disabled=!can("seats");
   menu.querySelectorAll(".caps button").forEach(b=>{ b.classList.toggle("active",+b.dataset.cap===t.capacity); b.disabled=!can("seats") || (+b.dataset.cap>mx && +b.dataset.cap>t.capacity); });
   showPopover(menu,evt);
 }
@@ -5460,7 +5460,7 @@ function addRectTable(){
   save(); renderTables(); setNav(false); toast(tr("tTableAdded")); focusTable(id,{row:isTouch?null:0});
 }
 $("addRectBtn").addEventListener("click",addRectTable);
-$("addHeadBtn").addEventListener("click",()=>{ if(!can("tables")){ lockedToast("tables"); return; } if(labFull("head")) return; const c=visibleCenter(); const t=makeHeadTable(nextId()); t.x=c.x; t.y=c.y; settleNew(t, 200, 100); state.tables.push(t); save(); renderTables(); setNav(false); toast(tr("tHeadAdded")); focusTable(t.id); });
+$("addHeadBtn").addEventListener("click",()=>{ if(!can("tables")){ lockedToast("tables"); return; } if(labFull("head")) return; const c=visibleCenter(); const t=makeHeadTable(nextId()), m=maxSeatsFor(t); if(t.capacity>m){ t.capacity=m; t.seats=t.seats.slice(0,m); } t.x=c.x; t.y=c.y; settleNew(t, 200, 100); state.tables.push(t); save(); renderTables(); setNav(false); toast(tr("tHeadAdded")); focusTable(t.id); });
 $("addGuestBtn").addEventListener("click",()=>{
   const ta=$("guestInput");
   // "Οικ. Παπαδόπουλου:" on its own line names an invitation; the names under it belong to it until a blank line or the next such line
@@ -5579,7 +5579,7 @@ function mergePlanInto(src, mode){
     idmap[sid]=nid; gCount++; });
   const remap=seats=>seats.map(x=>(x&&idmap[x])||null);
   const addTable=st=>{ const t={...st, id:nextId(), seats:remap(st.seats)};
-    if(t.shape!=="head"){ const m=maxSeatsFor(t); if(t.capacity>m){ t.capacity=m; t.seats=t.seats.slice(0,m); } }   // the venue's seat maximum: extra guests stay visibly unseated   // a new table steps aside if the spot is taken (a file exported from this very plan lands on top of it)
+    { const m=maxSeatsFor(t); if(t.capacity>m){ t.capacity=m; t.seats=t.seats.slice(0,m); } }   // the venue's seat maximum: extra guests stay visibly unseated   // a new table steps aside if the spot is taken (a file exported from this very plan lands on top of it)
     let k=0; while(k<20 && state.tables.some(x=>Math.hypot(x.x-t.x,x.y-t.y)<40)){ t.x+=40; t.y+=40; k++; } state.tables.push(t); };
   let tCount=0, added=0, grown=0, labCut=0;
   if(mode==="appendAll"){   // their tables come in as new tables, where they were, with their people
@@ -6650,7 +6650,7 @@ function lockedToast(k){ if(ACCESS.ro){ roToast(); return; } if(Date.now()-locke
   const L=(currentProfile()||{}).life||{};
   if(ACCESS.phase==="names" && PHASE_LOCKS.includes(k) && L.fullAt){ toast(tr(ACCESS.venueCouple?"tPhaseLockedV":"tPhaseLocked",{w:tr(PERM_LABEL[k]), d:fmtDate(L.fullAt)}),4500); return; }   // closed by the phase: say when it opens
   toast(tr("tLockedPart",{v:ACCESS.venueName||tr("theVenue"), w:tr(PERM_LABEL[k])}),3500); }
-function maxSeatsFor(t){ const m=(ACCESS.perms&&ACCESS.perms.maxSeats)||0; return (m && t && t.shape!=="head")? m : 30; }
+function maxSeatsFor(t){ const m=(ACCESS.perms&&ACCESS.perms.maxSeats)||0; return m || 30; }   // honour tables too; a bigger one the venue set keeps its size (callers never shrink below t.capacity), as on the server
 // Decor items the venue placed stay the venue's; what the couple adds (photo booth, candy bar…) is theirs to move.
 function featLocked(f){ return ACCESS.ro || !can("decor") && !!f && (f.by==="venue" || (f.by===undefined && ACCESS.owner==="venue")); }
 function permListHtml(p, keys){

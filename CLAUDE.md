@@ -9,14 +9,15 @@ decisions a future session might undo by mistake. `STATUS.md` says where we are.
 ```bash
 node tools/build-planner.mjs            # regenerate the planner outputs
 node tools/build-planner.mjs --check    # must print "all planner outputs up to date"
-node tools/test-api.mjs                 # the whole suite (867 checks today)
+node tools/test-api.mjs                 # the whole suite (870 checks today)
 node tools/dev.mjs                      # local stack on :8080 — never `node server/server.mjs`
 ```
 
 Preview with `preview_start {name:"takeaseat-local"}` (`.claude/launch.json`), then
 `http://localhost:8080/lab.html?ev=baptism|party`.
 
-Deploy: `ssh root@178.104.158.125 /opt/takeaseat/server/deploy.sh`. It backs up, pulls, builds (the
+Deploy: `ssh -i ~/.ssh/hetzner root@178.104.158.125 /opt/takeaseat/server/deploy.sh` (without `-i` the
+login is refused). It backs up, pulls, builds (the
 build runs the full suite), restarts and health-checks; on failure it rolls back by itself.
 
 ## Gotchas

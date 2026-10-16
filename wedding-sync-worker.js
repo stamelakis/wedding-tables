@@ -812,7 +812,7 @@ function enforcePerms(cur, next, perms, ownerIsVenue) {
     }
     let cap = Math.min(30, Math.max(1, Math.floor(+t.capacity) || 10));   // the chair count the planner will show
     if (!perms.seats) cap = ct ? ct.capacity : Math.min(cap, 10);          // seat counts locked: a new table gets at most the default
-    else if (perms.maxSeats && t.shape !== "head") cap = Math.min(cap, Math.max(perms.maxSeats, ct ? ct.capacity : 0));
+    else if (perms.maxSeats) cap = Math.min(cap, Math.max(perms.maxSeats, ct ? ct.capacity : 0));   // honour tables too: the venue's own keeps its size (ct), one the couple adds gets the maximum
     if (cap !== t.capacity) { t.capacity = cap; const s = (Array.isArray(t.seats) ? t.seats : []).slice(0, cap); while (s.length < cap) s.push(null); t.seats = s; }
   }
   out.tables = tables;
@@ -1548,8 +1548,10 @@ export default {
             const actsForVenue = a.owner.type === "venue" && (a.role === "venue" || a.role === "support");   // on a venue plan only the venue can invite support
             if (actsForVenue) plan = stampVenue(rec.plan, plan);
             else if (phasePerms && PL.phase === "names" && !isPlan(rec.plan)) {   // first upload: the starting room, no more
-              let guestT = 0, headT = 0;
-              const keep = plan.tables.filter(t => { if (t && t.shape === "head") return ++headT <= 1; return ++guestT <= STARTER_GUEST_TABLES; });
+              // Counted exactly as the planner's local cap counts (guestTableCount / labTrim): the first honour table is free,
+              // any further honour table is one of the 8. A plan the planner allowed must arrive whole.
+              let rest = 0, head = false;
+              const keep = plan.tables.filter(t => { if (t && t.shape === "head" && !head) return head = true; return ++rest <= STARTER_GUEST_TABLES; });
               if (keep.length !== plan.tables.length) { plan = { ...plan, tables: keep }; enforced = true; }
             }
             else if (phasePerms && PL.phase === "names") { const e = enforcePerms(rec.plan, plan, phasePerms, a.owner.type === "venue"); enforced = reverted(e, plan); plan = e; }   // the room opens 30 days before
