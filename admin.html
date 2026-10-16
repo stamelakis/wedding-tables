@@ -266,9 +266,12 @@ function renewalHtml(v){ const L=(v&&v.license)||{};
   return at<todayYmd() ? `<div class="muted">season ended — the renewal is checked within the hour</div>` : `<div class="muted">auto-renews ${when}</div>`; }
 
 // ---------------------------------------------------------------- after the event (retention)
-let settingsCache=null;   // GET /admin/settings → {retention:{keepDays, lockAfter}, planExceptions:[…]}
-const globalRet=()=>{ const r=(settingsCache&&settingsCache.retention)||{};
-  return { keepDays:Number.isFinite(+r.keepDays)&&r.keepDays!=null?+r.keepDays:7, lockAfter:r.lockAfter!==false }; };
+let settingsCache=null;   // GET /admin/settings → {retention:{keepDays, lockAfter}, coupleRetention:{…}, planExceptions:[…]}
+// Two rules: `retention` for venue weddings (7 days: the venue's instruction, dpa.html §4), `coupleRetention` for a
+// couple's own plan (a year). The fallbacks are the server's defaults.
+const retOf=(r, days)=>{ r=r||{}; return { keepDays:Number.isFinite(+r.keepDays)&&r.keepDays!=null?+r.keepDays:days, lockAfter:r.lockAfter!==false }; };
+const globalRet=()=>retOf(settingsCache&&settingsCache.retention, 7);
+const coupleRet=()=>retOf(settingsCache&&settingsCache.coupleRetention, 365);
 const daysText=n=>`${n} day${n===1?"":"s"}`;
 // A retention override ({keepDays?, lockAfter?, keep?}) in words; "" when there is none.
 function retentionText(r){ if(!r) return "";
@@ -279,7 +282,7 @@ function retentionText(r){ if(!r) return "";
   return p.join(" · "); }
 // Two choices, each "same as everyone" or its own value: view-only after the event, and when the plan is deleted.
 // `el` renders the same two fields in Greek, for the support card's «Διατήρηση…» — the rest of the console is English.
-function retentionFields(p, r, el){ r=r||{}; const g=globalRet();
+function retentionFields(p, r, el, couple){ r=r||{}; const g=couple?coupleRet():globalRet();
   const lock=r.lockAfter===true?"1":r.lockAfter===false?"0":"";
   const del=r.keep===true?"keep":r.keepDays!=null?"days":"";
   const W = el
@@ -707,7 +710,7 @@ function renderDashboard(venues){
       <h2>After the event</h2>
       <div class="stack">
         <div class="card">
-          <p class="lead" style="margin:0 0 12px">For every plan — unless a venue, a couple or one plan has its own setting («Edit…» on its row, or an exception below).</p>
+          <p class="lead" style="margin:0 0 12px">Two rules: one for venue weddings, one for a couple's own plan — unless a venue, a couple or one plan has its own setting («Edit…» on its row, or an exception below).</p>
           <div id="gbox"><div class="empty">Loading…</div></div>
         </div>
         <div class="card">
@@ -1155,7 +1158,7 @@ function openCoupleEdit(c){
         <div class="full"><label for="ce_notes">Private notes <span class="hint">— only you see this</span></label><textarea id="ce_notes" maxlength="200" rows="2">${esc(c.contact||"")}</textarea></div>
       </div>
       <div class="subh">After the event <span class="muted">— this customer only</span></div>
-      ${retentionFields("ce_", c.retention)}
+      ${retentionFields("ce_", c.retention, false, true)}
     </div>
     <div class="dfoot"><button class="btn" data-dclose>Cancel</button><button class="btn primary" id="ce_save">Save</button></div>`);
   wireRetention("ce_", d);
@@ -1493,29 +1496,40 @@ async function refreshSettings(){
   const res=await req("/admin/settings");
   const gbox=document.getElementById("gbox"), xlist=document.getElementById("xlist"); if(!gbox || !xlist) return;
   if(!res.ok || !res.d){ if(res.status!==403){ gbox.innerHTML=`<div class="empty">Could not load the settings — reload the page.</div>`; xlist.innerHTML=""; } return; }
-  settingsCache={ retention:res.d.retention||{}, planExceptions:Array.isArray(res.d.planExceptions)?res.d.planExceptions:[] };
+  settingsCache={ retention:res.d.retention||{}, coupleRetention:res.d.coupleRetention||{}, planExceptions:Array.isArray(res.d.planExceptions)?res.d.planExceptions:[] };
   renderGlobal(); renderExceptions();
 }
 function renderGlobal(){
   const box=document.getElementById("gbox"); if(!box) return;
-  const g=globalRet();
-  box.innerHTML=`<label class="chk"><input type="checkbox" id="glock"${g.lockAfter?" checked":""}> Plans become view-only the day after the wedding</label>
-    <div class="row fw" style="margin-top:12px;font-size:14px">Delete <input type="number" class="inl" id="gdays" min="0" max="${MAX_KEEP_DAYS}" value="${esc(g.keepDays)}"> days after the wedding</div>
-    <div class="muted" style="margin-top:8px">Until then anyone with access can still open the plan and download its PDF. A plan without a wedding date counts as over 18 months after it was made.</div>
+  const block=(p, title, g)=>`<h3 style="margin:0 0 8px;font-size:15px">${esc(title)}</h3>
+    <label class="chk"><input type="checkbox" id="${p}lock"${g.lockAfter?" checked":""}> View-only from the day after the event</label>
+    <div class="row fw" style="margin-top:12px;font-size:14px">Delete <input type="number" class="inl" id="${p}days" min="0" max="${MAX_KEEP_DAYS}" value="${esc(g.keepDays)}"> days after the event</div>`;
+  box.innerHTML=`${block("g", "Venue weddings", globalRet())}
+    <div class="muted" style="margin-top:6px">7 days is what the venues signed (dpa.html §4) — change it only with a new agreement.</div>
+    <div style="margin-top:18px">${block("gc", "A couple's own plan (bought directly)", coupleRet())}</div>
+    <div class="muted" style="margin-top:8px">Until then anyone with access can still open the plan and download its PDF. A plan without an event date counts as over 18 months after it was made.</div>
     <div class="row fw" style="margin-top:14px"><button class="btn primary" id="gsave">Save</button></div>`;
   document.getElementById("gsave").onclick=saveGlobal;
 }
 async function saveGlobal(){
-  const btn=document.getElementById("gsave"), el=document.getElementById("gdays"); if(!btn || btn.disabled) return;
-  const n=el.value.trim()===""?NaN:Number(el.value), lockAfter=document.getElementById("glock").checked, g=globalRet();
-  if(!Number.isInteger(n) || n<0 || n>MAX_KEEP_DAYS){ invalid(el, `Enter the number of days (0–${MAX_KEEP_DAYS})`); return; }
-  if(n===g.keepDays && lockAfter===g.lockAfter){ toast("Nothing changed"); return; }
-  if(n<g.keepDays && !confirm(`Delete plans ${daysText(n)} after the wedding instead of ${daysText(g.keepDays)}?\n\nPlans whose wedding was more than ${daysText(n)} ago are deleted at the next hourly check (unless they have their own setting). This cannot be undone.`)) return;
+  const btn=document.getElementById("gsave"); if(!btn || btn.disabled) return;
+  const read=p=>{ const el=document.getElementById(p+"days"), n=el.value.trim()===""?NaN:Number(el.value);
+    return { el, keepDays:n, lockAfter:document.getElementById(p+"lock").checked }; };
+  const rules=[{ p:"g", key:"retention", who:"venue weddings", g:globalRet() }, { p:"gc", key:"coupleRetention", who:"couples' own plans", g:coupleRet() }];
+  const body={};
+  for(const x of rules){ const v=read(x.p);
+    if(!Number.isInteger(v.keepDays) || v.keepDays<0 || v.keepDays>MAX_KEEP_DAYS){ invalid(v.el, `Enter the number of days (0–${MAX_KEEP_DAYS})`); return; }
+    if(v.keepDays===x.g.keepDays && v.lockAfter===x.g.lockAfter) continue;
+    if(v.keepDays<x.g.keepDays && !confirm(`Delete ${x.who} ${daysText(v.keepDays)} after the event instead of ${daysText(x.g.keepDays)}?
+
+Plans whose event was more than ${daysText(v.keepDays)} ago are deleted at the next hourly check (unless they have their own setting). This cannot be undone.`)) return;
+    body[x.key]={ keepDays:v.keepDays, lockAfter:v.lockAfter }; }
+  if(!Object.keys(body).length){ toast("Nothing changed"); return; }
   btn.disabled=true;
-  const res=await req("/admin/settings",{ method:"PUT", body:JSON.stringify({ retention:{ keepDays:n, lockAfter } }) });
+  const res=await req("/admin/settings",{ method:"PUT", body:JSON.stringify(body) });
   btn.disabled=false;
   if(!res.ok || !res.d){ failToast(res, "Could not save the settings"); return; }
-  settingsCache={ ...(settingsCache||{}), retention:res.d.retention||{ keepDays:n, lockAfter } };
+  settingsCache={ ...(settingsCache||{}), retention:res.d.retention||globalRet(), coupleRetention:res.d.coupleRetention||coupleRet() };
   renderGlobal(); toast("Saved");
 }
 function exceptionRule(x){ return retentionText(x) || "—"; }
@@ -1951,8 +1965,12 @@ function tile(label, n, hot){ return `<div${hot?' class="hot"':''}><b>${esc(Stri
 const GR_SWEEP={ tok:"σύνδεσμοι", rlmail:"όρια email", claim:"προσκλήσεις", find:"ορφανά QR", locked:"κλείδωσαν",
   keepsakes:"αναμνηστικά", purged:"σβήστηκαν", trash:"κάδος", findEnded:"QR που έκλεισαν", renewed:"ανανεώσεις", reminded:"υπενθυμίσεις",
   rl:"όρια αιτημάτων", trialReminded:"υπενθυμίσεις δωρεάν χρόνου", signupsExpired:"εγγραφές που έληξαν", signupsDropped:"εγγραφές που σβήστηκαν" };
-function sweepWords(o){ const xs=Object.entries(o||{}).filter(([k,v])=>v).map(([k,v])=>`${v} ${GR_SWEEP[k]||k}`);
-  return xs.length?xs.join(" · "):"δεν χρειάστηκε να κάνει τίποτα"; }
+// skipped / archived / full describe HOW it looked (the archive list), not what it did — said apart, after the work.
+function sweepWords(o){ o=o||{}; const how=new Set(["skipped","archived","full"]);
+  const xs=Object.entries(o).filter(([k,v])=>v && !how.has(k)).map(([k,v])=>`${v} ${GR_SWEEP[k]||k}`);
+  const done=xs.length?xs.join(" · "):"δεν χρειάστηκε να κάνει τίποτα";
+  const look=o.full?"πλήρης έλεγχος όλων των σχεδίων":o.skipped?`${o.skipped} αρχειοθετημένα σχέδια δεν χρειάστηκε να τα ανοίξει`:"";
+  return done+(look?` (${look})`:""); }
 // The per-IP buckets server.mjs counts. «findtoken» is one slot per unknown QR per address, so it always sits at its
 // own ceiling of 1 — that is not pressure, and it is not coloured as such.
 const GR_BUCKET={ write:"γραψίματα", create:"νέα σχέδια", find:"αναζητήσεις QR", findfail:"άγνωστα QR",
@@ -1969,7 +1987,8 @@ function diagHtml(d){
       ["Έκδοση", h?`${esc(h.version||"—")}${h.commit?` · commit <span class="mono">${esc(h.commit.slice(0,8))}</span>`:" · commit άγνωστο"}${h.builtAt?` · build ${esc(h.builtAt)}`:""}`:"—"],
       ["Διακομιστής", h?`ξεκίνησε ${esc(gAgo(h.startedAt))} · node ${esc(h.node)} · KV ${esc(h.kv)} · PDF ${h.pdf?"ναι":"όχι"} · RAM ${Math.round((h.rss||0)/1048576)} MB`:"—"],
       ["Σκούπα (ωριαία)", sw?`${esc(gWhen(sw.at))} · ${esc(sweepWords(sw.out))}`:"δεν έχει τρέξει ακόμη από την εκκίνηση"],
-      ["Μετά τον γάμο", `${d.retention&&d.retention.lockAfter?"κλειδώνει":"μένει ανοιχτό"} · ${d.retention&&d.retention.keep?"δεν σβήνει ποτέ":"σβήνει μετά "+(d.retention?d.retention.keepDays:"?")+" μέρες"}`],
+      ...[["Μετά την εκδήλωση — κτήματα", d.retention], ["Μετά την εκδήλωση — ζευγάρια", d.coupleRetention]].map(([t, r])=>
+        [t, `${r&&r.lockAfter?"κλειδώνει":"μένει ανοιχτό"} · ${r&&r.keep?"δεν σβήνει ποτέ":"σβήνει μετά από "+(r?r.keepDays:"?")+" μέρες"}`]),
     ])}
     <div class="subh">Τι υπάρχει <span class="muted">— μόνο πελάτες</span></div>
     <div class="kv">${tile("κτήματα",c.venues)}${tile("ζευγάρια",c.couples)}${tile("σχέδια",c.plans)}${tile("QR ανοιχτά",c.findersOn)}${tile("QR που απαντούν",c.findersOpen)}${tile("ανοιχτές υποστηρίξεις",c.support)}${tile("χωρίς ημερομηνία",c.noDate,c.noDate>0)}${tile("κλειδωμένα",c.locked)}</div>
