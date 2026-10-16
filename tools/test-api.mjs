@@ -2723,6 +2723,16 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     ok(m.has('plan:' + AC.id) && raw('couple:' + AK.id).email === 'arch@example.com', 'retention: a couple\'s plan is still there an hour before its year is up');
     sw = await sweepAt(lifeC.deleteAt + 3600000);
     ok(!m.has('plan:' + AC.id) && raw('couple:' + AK.id).purgedAt && !raw('couple:' + AK.id).email && !(AC.id in (raw('meta:archive').plans || {})), 'retention: a year after the event the couple\'s plan is deleted, the address forgotten, and it leaves the list', sw);
+    // what the customer is told matches: a year for couples, 7 days only where a venue's wedding is meant
+    const fs = await import('node:fs'), read = f => fs.readFileSync(path.join(root, f), 'utf8');
+    const lands = ['plano-trapezion-gamou.html', 'plano-trapezion-vaptisis.html', 'plano-trapezion-giortis.html'];
+    const pages = ['index.html', 'privacy.html', 'terms.html', 'dpa.html', ...lands];
+    ok(pages.every(f => !/σβήνουμε ποτέ|never delete/i.test(read(f))), 'retention: no page promises we never delete (GDPR storage limitation)');
+    ok(lands.every(f => !/Επτά ημέρες μετά/.test(read(f)) && /Έναν χρόνο μετά/.test(read(f)) && /Αν σας το έδωσε το κτήμα, διαγράφεται 7 ημέρες μετά/.test(read(f))),
+      "retention: the landing pages give a year to those who bought directly and 7 days to a venue's plan");
+    ok(['privacy.html', 'terms.html'].every(f => /έναν χρόνο μετά την εκδήλωση/.test(read(f)) && /one year after the event/.test(read(f))), 'retention: privacy and terms say a year, in Greek and English');
+    ok(/μένει για προβολή έναν χρόνο/.test(read('index.html')) && !/μένει για προβολή 7 ημέρες/.test(read('index.html')), "retention: the home page's price card says a year");
+    ok(/<b>7 ημέρες μετά την εκδήλωση<\/b>/.test(read('dpa.html')) && /<b>7 days after the event<\/b>/.test(read('dpa.html')), "retention: the venue agreement still says 7 days — the venue's instruction, unchanged");
   } finally {
     Date.now = realNow; env.MAIL = keepMail; env.PDF = keepPdf;
     if (!keepMail) delete env.MAIL;
