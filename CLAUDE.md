@@ -9,7 +9,7 @@ decisions a future session might undo by mistake. `STATUS.md` says where we are.
 ```bash
 node tools/build-planner.mjs            # regenerate the planner outputs
 node tools/build-planner.mjs --check    # must print "all planner outputs up to date"
-node tools/test-api.mjs                 # the whole suite (870 checks today)
+node tools/test-api.mjs                 # the whole suite (903 checks today)
 node tools/dev.mjs                      # local stack on :8080 — never `node server/server.mjs`
 ```
 

@@ -23,6 +23,8 @@ Retention is done and live: every plan is kept a year after the event, guest not
    after `?ev=baptism`, both `?ev=party` and plain `lab.html` reopen the baptism plan, so the «γιορτή»
    landing page's button can land a returning visitor in their old plan. Fresh visitors are fine.
 3. **The free 8-table cap on the server.** Needed before advertising anything "free online".
+4. **Small: tell the planner user that guest notes are erased the day after the event**, next to the note
+   field (el/en/de, Greek reviewed by Andreas). The pages say it; the field itself does not yet.
 
 ## Waiting on Andreas
 
