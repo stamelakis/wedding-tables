@@ -700,7 +700,7 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
   await call('PATCH', '/admin/venues/' + V9.id, { retention: null }, OWN);
   await mod.sweep(env);
   ok(!m.has('plan:' + WC.planId) && !raw('venue:' + V9.id).weddings.some(w => w.planId === WC.planId), 'back on the (shorter) global default it is deleted and leaves the list');
-  await call('PUT', '/admin/settings', { retention: { keepDays: 7 } }, OWN);
+  await call('PUT', '/admin/settings', { retention: { keepDays: 365 } }, OWN);
   // trash: the venue deletes, only the admin restores (14 days)
   const WD = (await call('POST', '/venues/' + V9.id + '/weddings', { label: 'Σβήστηκε', date: day(50) }, HV)).d;
   r = await call('DELETE', '/venues/' + V9.id + '/weddings/' + WD.planId, undefined, HV);
@@ -765,7 +765,7 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     // a finished wedding cannot be restored into an immediate deletion
     const WR = (await call('POST', '/venues/' + V9.id + '/weddings', { label: 'Old', date: day(15) }, HV)).d;
     await call('DELETE', '/venues/' + V9.id + '/weddings/' + WR.planId, undefined, HV);
-    patchRaw('plan:' + WR.planId, o => { o.weddingDate = day(-20); });
+    patchRaw('plan:' + WR.planId, o => { o.weddingDate = day(-370); });
     r = await call('POST', '/admin/venues/' + V9.id + '/trash/' + WR.planId + '/restore', {}, OWN);
     ok(r.status === 409 && r.d.error === 'past_retention' && r.d.deleteAt, 'restoring a wedding past its deletion date is refused with the reason', r.d);
     await call('PUT', '/admin/plans/' + WR.planId + '/retention', { keep: true }, OWN);
@@ -2670,17 +2670,33 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     const AW = (await call('POST', '/venues/' + AV.id + '/weddings', { label: 'Αρχείο', date: day(10) }, HAV)).d, HAW = { 'X-Edit-Key': AW.venueKey };
     const AK = (await call('POST', '/admin/couples', { name: 'Αρχείο ζευγάρι', email: 'arch@example.com', weddingDate: day(10) }, OWN)).d.couple;
     const AC = (await call('POST', '/claim', { token: raw('couple:' + AK.id).claimToken, nonce: 'n' })).d, HAC = { 'X-Edit-Key': AC.editKey };
-    patchRaw('plan:' + AW.planId, o => { o.weddingDate = day(-2); });
-    patchRaw('plan:' + AC.id, o => { o.weddingDate = day(-2); o.plan = layout(); });
+    // guest notes (where allergies end up): in the plan and in a saved version, on both finished plans and on one still to come
+    const noted = () => layout({ guests: { g1: { name: 'Άννα', note: 'Αλλεργία στα φιστίκια' }, g2: { name: 'Βασίλης', note: 'Καρεκλάκι μωρού' }, g3: { name: 'Γιώργος' } } });
+    patchRaw('plan:' + AW.planId, o => { o.weddingDate = day(-2); o.plan = noted(); o.plan.tables[0].seats[0] = 'g1'; });
+    patchRaw('plan:' + AC.id, o => { o.weddingDate = day(-2); o.plan = noted(); });
+    m.set('hist:' + AC.id, JSON.stringify([{ updated: 1, name: 'x', plan: noted() }, { updated: 2, name: 'x', plan: layout() }]));
+    const AF = (await call('POST', '/venues/' + AV.id + '/weddings', { label: 'Αργότερα', date: day(40) }, HAV)).d;
+    patchRaw('plan:' + AF.planId, o => { o.plan = noted(); });
     let st = (await call('GET', '/admin/settings', undefined, OWN)).d;
-    ok(st.retention.keepDays === 7 && st.coupleRetention.keepDays === 365 && st.coupleRetention.lockAfter === true, 'retention: venue weddings 7 days, couples\' own plans 365 — both view-only after the event', st);
+    ok(st.retention.keepDays === 365 && st.retention.lockAfter === true && st.coupleRetention.keepDays === 365 && st.coupleRetention.lockAfter === true, 'retention: a year after the event for venue weddings and couples alike, both view-only', st);
     const lockAt = athensMs(day(-1), 0);
-    const lifeV = (await call('GET', '/plans/' + AW.planId, undefined, HAW)).d.life, lifeC = (await call('GET', '/plans/' + AC.id, undefined, HAC)).d.life;
-    ok(lifeV.locked && lifeV.deleteAt === lockAt + 7 * DAYMS && lifeC.locked && lifeC.deleteAt === lockAt + 365 * DAYMS, 'retention: the venue wedding goes 7 days after the lock, the couple\'s plan 365', { lifeV, lifeC });
+    let lifeV = (await call('GET', '/plans/' + AW.planId, undefined, HAW)).d.life;
+    const lifeC = (await call('GET', '/plans/' + AC.id, undefined, HAC)).d.life;
+    ok(lifeV.locked && lifeV.deleteAt === lockAt + 365 * DAYMS && lifeC.locked && lifeC.deleteAt === lockAt + 365 * DAYMS, 'retention: the venue wedding and the couple' + "'" + 's plan both go 365 days after the lock', { lifeV, lifeC });
+    // a venue that agreed a shorter period with us keeps it (its own instruction, dpa.html §4)
+    await call('PATCH', '/admin/venues/' + AV.id, { retention: { keepDays: 7 } }, OWN);
+    lifeV = (await call('GET', '/plans/' + AW.planId, undefined, HAW)).d.life;
+    ok(lifeV.deleteAt === lockAt + 7 * DAYMS && (await call('GET', '/plans/' + AC.id, undefined, HAC)).d.life.deleteAt === lifeC.deleteAt, 'retention: a venue set to 7 days has its weddings deleted after 7; a couple is not affected');
 
     // the keepsake is still owed (mail on, the PDF fails): the plan stays off the list and is tried again every hour
     env.MAIL = { enabled: true, send: () => true }; env.PDF = { render: async () => { throw new Error('no fonts'); } };
     let sw = await mod.sweep(env);
+    const gs = id => raw('plan:' + id).plan.guests;
+    ok(sw.notesGone >= 2 && !('note' in gs(AW.planId).g1) && !('note' in gs(AW.planId).g2) && !('note' in gs(AC.id).g1) && raw('plan:' + AC.id).notesGoneAt,
+      'notes: the day after the event every guest note is gone from the plan', sw);
+    ok(gs(AW.planId).g1.name === 'Άννα' && raw('plan:' + AW.planId).plan.tables[0].seats[0] === 'g1' && Object.keys(gs(AC.id)).length === 3, 'notes: … and nothing else: the names, the guests and the seats stay');
+    ok(!m.get('hist:' + AC.id).includes('φιστίκια') && JSON.parse(m.get('hist:' + AC.id)).length === 2, 'notes: … and from every saved version too');
+    ok(gs(AF.planId).g1.note === 'Αλλεργία στα φιστίκια', 'notes: a plan whose event is still to come keeps its notes');
     ok(sw.full && raw('meta:archive').plans[AW.planId] === lifeV.deleteAt && !(AC.id in raw('meta:archive').plans), 'archive: a locked venue wedding is listed with its deletion time; a couple still owed the keepsake is not', sw);
     env.PDF = { render: async () => new TextEncoder().encode('%PDF-1.4 fake') };
     sw = await mod.sweep(env);
@@ -2694,8 +2710,9 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     ok(reads.filter(k => k.startsWith('plan:')).length < (await PLANS.list('plan:')).length, 'archive: … so it reads fewer plans than there are');
 
     // anything that can move a deletion date drops the list; saving the venues' rule never touches the couples' one
-    ok((await call('PUT', '/admin/settings', { retention: { keepDays: 7, lockAfter: true } }, OWN)).d.coupleRetention.keepDays === 365 && !m.has('meta:archive'),
-      'archive: saving the venues\' 7 days leaves couples at 365, and drops the list so the next sweep reads everything');
+    ok((await call('PUT', '/admin/settings', { retention: { keepDays: 200, lockAfter: true } }, OWN)).d.coupleRetention.keepDays === 365 && !m.has('meta:archive'),
+      'archive: saving the venues' + "'" + ' rule leaves the couples' + "'" + ' one alone, and drops the list so the next sweep reads everything');
+    await call('PUT', '/admin/settings', { retention: { keepDays: 365 } }, OWN);
     ok((await mod.sweep(env)).full && raw('meta:archive').plans[AC.id] === lifeC.deleteAt, 'archive: … which rebuilds it');
     await call('PATCH', '/admin/couples/' + AK.id, { retention: { keepDays: 30 } }, OWN);
     ok(!m.has('meta:archive'), 'archive: a couple\'s own rule changed by the admin drops it too');
@@ -2723,16 +2740,18 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     ok(m.has('plan:' + AC.id) && raw('couple:' + AK.id).email === 'arch@example.com', 'retention: a couple\'s plan is still there an hour before its year is up');
     sw = await sweepAt(lifeC.deleteAt + 3600000);
     ok(!m.has('plan:' + AC.id) && raw('couple:' + AK.id).purgedAt && !raw('couple:' + AK.id).email && !(AC.id in (raw('meta:archive').plans || {})), 'retention: a year after the event the couple\'s plan is deleted, the address forgotten, and it leaves the list', sw);
-    // what the customer is told matches: a year for couples, 7 days only where a venue's wedding is meant
+    // what the customer is told matches: a year for everyone, and the notes go the day after
     const fs = await import('node:fs'), read = f => fs.readFileSync(path.join(root, f), 'utf8');
     const lands = ['plano-trapezion-gamou.html', 'plano-trapezion-vaptisis.html', 'plano-trapezion-giortis.html'];
     const pages = ['index.html', 'privacy.html', 'terms.html', 'dpa.html', ...lands];
     ok(pages.every(f => !/σβήνουμε ποτέ|never delete/i.test(read(f))), 'retention: no page promises we never delete (GDPR storage limitation)');
-    ok(lands.every(f => !/Επτά ημέρες μετά/.test(read(f)) && /Έναν χρόνο μετά/.test(read(f)) && /Αν σας το έδωσε το κτήμα, διαγράφεται 7 ημέρες μετά/.test(read(f))),
-      "retention: the landing pages give a year to those who bought directly and 7 days to a venue's plan");
+    ok(lands.every(f => !/Επτά ημέρες μετά|7 ημέρες μετά/.test(read(f)) && /Έναν χρόνο μετά/.test(read(f)) && /σημειώσεις των καλεσμένων σας σβήνονται/.test(read(f))),
+      'retention: the landing pages say a year, with no 7-day exception, and that guest notes go the day after');
     ok(['privacy.html', 'terms.html'].every(f => /έναν χρόνο μετά την εκδήλωση/.test(read(f)) && /one year after the event/.test(read(f))), 'retention: privacy and terms say a year, in Greek and English');
     ok(/μένει για προβολή έναν χρόνο/.test(read('index.html')) && !/μένει για προβολή 7 ημέρες/.test(read('index.html')), "retention: the home page's price card says a year");
-    ok(/<b>7 ημέρες μετά την εκδήλωση<\/b>/.test(read('dpa.html')) && /<b>7 days after the event<\/b>/.test(read('dpa.html')), "retention: the venue agreement still says 7 days — the venue's instruction, unchanged");
+    ok(/<b>έναν χρόνο μετά την εκδήλωση<\/b>/.test(read('dpa.html')) && /<b>one year after the event<\/b>/.test(read('dpa.html')) && !/7 ημέρες μετά την εκδήλωση|7 days after the event/.test(read('dpa.html')),
+      'retention: the venue agreement says a year, in both languages');
+    ok(['privacy.html', 'terms.html', 'dpa.html'].every(f => /την επόμενη ημέρα της εκδήλωσης/.test(read(f)) && /σημειώσεις/.test(read(f)) && /notes/.test(read(f))), 'notes: privacy, terms and the venue agreement say guest notes go the day after');
   } finally {
     Date.now = realNow; env.MAIL = keepMail; env.PDF = keepPdf;
     if (!keepMail) delete env.MAIL;

@@ -131,10 +131,10 @@ async function readBody(request) { const b = await request.json().catch(() => nu
 const nextGen = o => { o.lgen = (o.lgen || 0) + 1; return o.lgen; };
 // ---- wedding date & lifecycle ----
 const DAY = 86400000, FALLBACK_DAYS = 548, TRASH_DAYS = 14, DATE_CHANGES = 3, DATE_AHEAD_DAYS = 730, MAX_KEEP_DAYS = 3650;
-const DEFAULT_RETENTION = { keepDays: 7, lockAfter: true, keep: false };
-// A couple's own plan is kept one year after the event (Andreas, 2026-10-16). Venue weddings stay on DEFAULT_RETENTION:
-// that is the venue's instruction to us as its processor (dpa.html §4) and cannot be changed from here.
-const COUPLE_RETENTION = { keepDays: 365 };
+// Every plan is kept one year after the event (Andreas, 2026-10-16). For a venue's wedding that is the venue's own
+// instruction to us as its processor, in the agreement it accepts (dpa.html §4) — change the two together, never one.
+const DEFAULT_RETENTION = { keepDays: 365, lockAfter: true, keep: false };
+const COUPLE_RETENTION = { keepDays: 365 };   // couples have their own setting (settings.coupleRetention), same default
 // Couple phases: a couple who buys directly waits out the 14-day withdrawal period (the payment day doesn't count, so the
 // planner opens at 00:00 on day 15); everyone
 // arranges the room only in the last 30 days; a couple's one date change freezes the plan until 14 days before the new date.
@@ -474,11 +474,18 @@ async function unarchive(env, id) {   // one plan, or (no id) the whole list: th
   if (!id) { await env.PLANS.delete(ARCHIVE_KEY); return; }
   await kvUpdate(env, ARCHIVE_KEY, a => { if (!a || !a.plans || !(id in a.plans)) return null; delete a.plans[id]; return a; });
 }
+const hasGuestNotes = p => !!(p && p.guests && typeof p.guests === "object" && Object.values(p.guests).some(g => g && g.note != null));
+function withoutGuestNotes(p) {
+  if (!hasGuestNotes(p)) return p;
+  const guests = {};
+  for (const [gid, g] of Object.entries(p.guests)) { if (g && g.note != null) { const { note, ...rest } = g; guests[gid] = rest; } else guests[gid] = g; }
+  return { ...p, guests };
+}
 const athensParts = ms => Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Athens", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit" })
   .formatToParts(new Date(ms)).filter(x => x.type !== "literal").map(x => [x.type, x.value]));
 // After the wedding: view only (+ a keepsake PDF by mail to couples who bought directly), deleted keepDays later.
 async function lifecycleSweep(env, now) {
-  const out = { locked: 0, keepsakes: 0, purged: 0, trash: 0, findEnded: 0, archived: 0, skipped: 0, full: false };
+  const out = { locked: 0, keepsakes: 0, purged: 0, trash: 0, findEnded: 0, notesGone: 0, archived: 0, skipped: 0, full: false };
   const settings = await getSettings(env), since = await lifecycleSince(env);
   const venues = new Map(), couples = new Map();
   const cached = async (map, key) => { if (!map.has(key)) map.set(key, safeParse(await env.PLANS.get(key))); return map.get(key); };
@@ -512,6 +519,14 @@ async function lifecycleSweep(env, now) {
       AMELIE_MEM.delete(id);
       await removeIndex(env, "support:index", id); out.locked++;
       if (own.type === "venue" && rec.support) await mirrorVenueSupport(env, own.venueId, id, null);
+    }
+    // Guest notes go the day after: they serve the evening (an allergy, a high chair), not the year the plan is kept, and
+    // they are where health data ends up. From the plan and from every saved version; again if an editable plan gets new ones.
+    if (!rec.notesGoneAt || hasGuestNotes(rec.plan)) {
+      const r = await kvUpdate(env, k, cur => { if (!cur) return null; cur.plan = withoutGuestNotes(cur.plan); cur.notesGoneAt = cur.notesGoneAt || now; return cur; });
+      if (r.obj) rec.plan = r.obj.plan;
+      await kvUpdate(env, "hist:" + id, h => { if (!Array.isArray(h) || !h.some(v => v && hasGuestNotes(v.plan))) return null; return h.map(v => v ? { ...v, plan: withoutGuestNotes(v.plan) } : v); });
+      out.notesGone++;
     }
     // The door list dies at the END of its window (2 days after the wedding), not at the lock the night before: the QR on
     // the door has to answer while the last guests are still arriving. Then the key goes, and every printed QR is an

@@ -267,10 +267,10 @@ function renewalHtml(v){ const L=(v&&v.license)||{};
 
 // ---------------------------------------------------------------- after the event (retention)
 let settingsCache=null;   // GET /admin/settings → {retention:{keepDays, lockAfter}, coupleRetention:{…}, planExceptions:[…]}
-// Two rules: `retention` for venue weddings (7 days: the venue's instruction, dpa.html §4), `coupleRetention` for a
-// couple's own plan (a year). The fallbacks are the server's defaults.
+// Two rules: `retention` for venue weddings (the venue's instruction to us, dpa.html §4), `coupleRetention` for a
+// couple's own plan. Both a year by default; the fallbacks are the server's defaults.
 const retOf=(r, days)=>{ r=r||{}; return { keepDays:Number.isFinite(+r.keepDays)&&r.keepDays!=null?+r.keepDays:days, lockAfter:r.lockAfter!==false }; };
-const globalRet=()=>retOf(settingsCache&&settingsCache.retention, 7);
+const globalRet=()=>retOf(settingsCache&&settingsCache.retention, 365);
 const coupleRet=()=>retOf(settingsCache&&settingsCache.coupleRetention, 365);
 const daysText=n=>`${n} day${n===1?"":"s"}`;
 // A retention override ({keepDays?, lockAfter?, keep?}) in words; "" when there is none.
@@ -1505,7 +1505,7 @@ function renderGlobal(){
     <label class="chk"><input type="checkbox" id="${p}lock"${g.lockAfter?" checked":""}> View-only from the day after the event</label>
     <div class="row fw" style="margin-top:12px;font-size:14px">Delete <input type="number" class="inl" id="${p}days" min="0" max="${MAX_KEEP_DAYS}" value="${esc(g.keepDays)}"> days after the event</div>`;
   box.innerHTML=`${block("g", "Venue weddings", globalRet())}
-    <div class="muted" style="margin-top:6px">7 days is what the venues signed (dpa.html §4) — change it only with a new agreement.</div>
+    <div class="muted" style="margin-top:6px">This is what the venues accept in their agreement (dpa.html §4: a year after the event) — change it only together with the agreement. Guest notes are erased the day after the event, whatever is set here.</div>
     <div style="margin-top:18px">${block("gc", "A couple's own plan (bought directly)", coupleRet())}</div>
     <div class="muted" style="margin-top:8px">Until then anyone with access can still open the plan and download its PDF. A plan without an event date counts as over 18 months after it was made.</div>
     <div class="row fw" style="margin-top:14px"><button class="btn primary" id="gsave">Save</button></div>`;
@@ -1963,7 +1963,7 @@ async function savePlanRetention(pid, name, d){
 function tile(label, n, hot){ return `<div${hot?' class="hot"':''}><b>${esc(String(n))}</b><span>${esc(label)}</span></div>`; }
 // What the hourly sweep actually did, in words, with the zeros left out.
 const GR_SWEEP={ tok:"σύνδεσμοι", rlmail:"όρια email", claim:"προσκλήσεις", find:"ορφανά QR", locked:"κλείδωσαν",
-  keepsakes:"αναμνηστικά", purged:"σβήστηκαν", trash:"κάδος", findEnded:"QR που έκλεισαν", renewed:"ανανεώσεις", reminded:"υπενθυμίσεις",
+  keepsakes:"αναμνηστικά", purged:"σβήστηκαν", notesGone:"σχέδια χωρίς σημειώσεις πια", trash:"κάδος", findEnded:"QR που έκλεισαν", renewed:"ανανεώσεις", reminded:"υπενθυμίσεις",
   rl:"όρια αιτημάτων", trialReminded:"υπενθυμίσεις δωρεάν χρόνου", signupsExpired:"εγγραφές που έληξαν", signupsDropped:"εγγραφές που σβήστηκαν" };
 // skipped / archived / full describe HOW it looked (the archive list), not what it did — said apart, after the work.
 function sweepWords(o){ o=o||{}; const how=new Set(["skipped","archived","full"]);
