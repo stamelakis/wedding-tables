@@ -32,16 +32,20 @@ The repo is one commit further: the two honour-table server bugs are fixed and t
 
 - **Search Console — now, the deploy is done.** Request indexing for
   `https://takeaseat.gr/plano-trapezion-giortis.html`, `https://takeaseat.gr/lab.html`,
-  `https://takeaseat.gr/` (property `sc-domain:takeaseat.gr`). Report back what Indexing → **Pages** says
+  `https://takeaseat.gr/` — open Search Console, choose the takeaseat.gr property, paste each URL in the top bar. (The pages
+  return 200; the deep links given on 2026-10-16 opened a 404 inside Search Console.) Report back what Indexing → **Pages** says
   after 2–3 days.
-- **Papaki — DKIM is missing.** DNS is at Papaki (`dns1/dns2.papaki.gr`), mail at SecureMail
-  (`mail-gr.securemail.pro`). Ask Papaki to *enable DKIM for takeaseat.gr and publish the record*. If they
-  hand you a TXT value instead, paste it here. DMARC exists but is `p=none` with no reporting address.
+- **DKIM — switched on 2026-10-16** in Papaki's Email Manager («Η εγγραφή DKIM ρυθμίστηκε σωστά»; the
+  zone's SOA serial changed the same day). Its selector is unknown, so it is not yet confirmed from
+  outside: send one mail from info@takeaseat.gr to a Gmail → «Εμφάνιση πρωτοτύπου» → expect `DKIM: PASS`.
+  DMARC is still `p=none` with no reporting address.
 - **Decide the γιορτή wording:** customer = «ο διοργανωτής», ornament = ★, groups =
   Οικογένεια/Φίλοι/Συνάδελφοι/Παιδιά are already built and live; only the honour table («Κεντρικό
   τραπέζι», opt-in) is still to build.
-- **Decide retention:** raise the default from 7 days to one year? «Δεν σβήνουμε ποτέ» cannot be said —
-  see CLAUDE.md → Decisions.
+- **Retention: Andreas chose one year (2026-10-16).** Still to settle: automatic for every couple's own
+  plan, or only when the couple ticks «κράτα το πλάνο για έναν χρόνο» (notes field stripped). Venue
+  weddings stay 7 days (dpa.html §4). The plan stays read-only from the day after the event
+  (`lockAfter: true` in DEFAULT_RETENTION — keep it). Needs the hourly-sweep fix first (Next 4).
 - **Accountant** (€10,000 VAT threshold), **company registration**, **lawyer review** of terms.
 
 ## Known problems
