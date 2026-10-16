@@ -2709,6 +2709,16 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     ok(!sw.full && sw.skipped >= 2 && !reads.includes('plan:' + AW.planId) && !reads.includes('plan:' + AC.id), 'archive: the hourly sweep skips archived plans without reading them', { sw, reads: reads.filter(k => k.startsWith('plan:')).length });
     ok(reads.filter(k => k.startsWith('plan:')).length < (await PLANS.list('plan:')).length, 'archive: … so it reads fewer plans than there are');
 
+    // a plan left editable after the event: a note typed and removed again survives only in a saved version, which the
+    // live plan cannot show — the sweep still finds it there
+    const AE = (await call('POST', '/venues/' + AV.id + '/weddings', { label: 'Ανοιχτό', date: day(10) }, HAV)).d;
+    await call('PUT', '/admin/plans/' + AE.planId + '/retention', { lockAfter: false }, OWN);
+    patchRaw('plan:' + AE.planId, o => { o.weddingDate = day(-2); o.plan = layout(); o.notesGoneAt = Date.now() - DAYMS; });
+    m.set('hist:' + AE.planId, JSON.stringify([{ updated: 1, name: 'x', plan: noted() }]));
+    sw = await mod.sweep(env);
+    ok(!m.get('hist:' + AE.planId).includes('φιστίκια') && sw.notesGone >= 1 && !(AE.planId in raw('meta:archive').plans),
+      'notes: on a plan still editable after the event, a note left only in an older saved version is erased too', sw);
+
     // anything that can move a deletion date drops the list; saving the venues' rule never touches the couples' one
     ok((await call('PUT', '/admin/settings', { retention: { keepDays: 200, lockAfter: true } }, OWN)).d.coupleRetention.keepDays === 365 && !m.has('meta:archive'),
       'archive: saving the venues' + "'" + ' rule leaves the couples' + "'" + ' one alone, and drops the list so the next sweep reads everything');

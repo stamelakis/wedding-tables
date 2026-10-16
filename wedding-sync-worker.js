@@ -522,11 +522,18 @@ async function lifecycleSweep(env, now) {
     }
     // Guest notes go the day after: they serve the evening (an allergy, a high chair), not the year the plan is kept, and
     // they are where health data ends up. From the plan and from every saved version; again if an editable plan gets new ones.
-    if (!rec.notesGoneAt || hasGuestNotes(rec.plan)) {
-      const r = await kvUpdate(env, k, cur => { if (!cur) return null; cur.plan = withoutGuestNotes(cur.plan); cur.notesGoneAt = cur.notesGoneAt || now; return cur; });
-      if (r.obj) rec.plan = r.obj.plan;
-      await kvUpdate(env, "hist:" + id, h => { if (!Array.isArray(h) || !h.some(v => v && hasGuestNotes(v.plan))) return null; return h.map(v => v ? { ...v, plan: withoutGuestNotes(v.plan) } : v); });
-      out.notesGone++;
+    // While a plan stays editable its history is checked every pass: a note typed and removed again leaves it only in an
+    // older version, where the live plan cannot show it. History goes first, so notesGoneAt is never set over a failed scrub.
+    const notesInPlan = !rec.notesGoneAt || hasGuestNotes(rec.plan);
+    if (notesInPlan || !L.locked) {
+      let hit = false;
+      await kvUpdate(env, "hist:" + id, h => { if (!Array.isArray(h) || !h.some(v => v && hasGuestNotes(v.plan))) return null;
+        hit = true; return h.map(v => v ? { ...v, plan: withoutGuestNotes(v.plan) } : v); });
+      if (notesInPlan) {
+        const r = await kvUpdate(env, k, cur => { if (!cur) return null; cur.plan = withoutGuestNotes(cur.plan); cur.notesGoneAt = cur.notesGoneAt || now; return cur; });
+        if (r.obj) rec.plan = r.obj.plan;
+      }
+      if (notesInPlan || hit) out.notesGone++;
     }
     // The door list dies at the END of its window (2 days after the wedding), not at the lock the night before: the QR on
     // the door has to answer while the last guests are still arriving. Then the key goes, and every printed QR is an
