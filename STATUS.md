@@ -2,10 +2,8 @@
 
 Updated: 2026-10-16
 
-**Status:** Live runs `eb2f0cb` (deployed 2026-10-16, tag `deploy-2026-10-16-1`, healthy, smoke-tested:
-home «Τι σχεδιάζετε», `/plano-trapezion-giortis.html` 200, `lab.html` indexable, all three lab kinds load).
-The repo is one commit further: the two honour-table server bugs are fixed and tested (870 checks) but
-**NOT DEPLOYED** yet.
+**Status:** Live runs `534f2c1` (tag `deploy-2026-10-16-2`), healthy, everything in the repo is deployed.
+Retention (Next 4) is being built in a separate session started 2026-10-16.
 
 ## In progress / unfinished
 
@@ -21,19 +19,19 @@ The repo is one commit further: the two honour-table server bugs are fixed and t
    `LEGACY_HEADS` alias so old plans still get re-pointed.
    *Done when:* checks pass, the lab's «Γιορτή» button does not throw, and a party plan labelled
    «Τραπέζι της γιορτής» still converts correctly to a wedding.
-2. **Deploy the honour-table bug fixes** (with item 1, or alone).
-3. **Lab: a returning visitor's saved plan beats the `?ev=` door.** Found by the 2026-10-16 smoke test:
+2. **Lab: a returning visitor's saved plan beats the `?ev=` door.** Found by the 2026-10-16 smoke test:
    after `?ev=baptism`, both `?ev=party` and plain `lab.html` reopen the baptism plan, so the «γιορτή»
    landing page's button can land a returning visitor in their old plan. Fresh visitors are fine.
-4. **Retention: one year, automatically, for every couple's own plan** (decided 2026-10-16, CLAUDE.md →
+3. **Retention: one year, automatically, for every couple's own plan** (decided 2026-10-16, CLAUDE.md →
    Decisions). Venue weddings stay 7 days. First take archived plans out of the hourly sweep, then change
    the default, then every page that promises 7 days (privacy, terms, index, landing pages, planner,
-   venue/admin) in el/en/de — Greek reviewed by Andreas.
-5. **The free 8-table cap on the server.** Needed before advertising anything "free online".
+   venue/admin) in el/en/de — Greek reviewed by Andreas. **In progress in its own session** (started
+   2026-10-16 from the session that decided it) — check its commits before starting this again.
+4. **The free 8-table cap on the server.** Needed before advertising anything "free online".
 
 ## Waiting on Andreas
 
-- **Search Console — now, the deploy is done.** Request indexing for
+- **Search Console.** Request indexing for
   `https://takeaseat.gr/plano-trapezion-giortis.html`, `https://takeaseat.gr/lab.html`,
   `https://takeaseat.gr/` — open Search Console, choose the takeaseat.gr property, paste each URL in the top bar. (The pages
   return 200; the deep links given on 2026-10-16 opened a 404 inside Search Console.) Report back what Indexing → **Pages** says
@@ -58,9 +56,10 @@ The repo is one commit further: the two honour-table server bugs are fixed and t
 
 ## History
 
-- 2026-10-16 — Deployed `eb2f0cb` (the five commits since 2026-10-04). Fixed, not deployed: a venue's
-  seat maximum now covers an honour table the couple adds (it was exempt), and the first upload counts
-  honour tables as the planner does (a second one was silently dropped). 870 checks.
+- 2026-10-16 — Deployed `eb2f0cb` (the five commits since 2026-10-04, tag `deploy-2026-10-16-1`), then
+  `534f2c1` (tag `-2`): a venue's seat maximum now covers an honour table the couple adds (it was exempt),
+  and the first upload counts honour tables as the planner does (a second one was silently dropped).
+  870 checks. DKIM switched on at Papaki. Retention decided: one year, automatic, couples' own plans.
 - 2026-10-10 — Researched the γιορτή honour table: Greek has no attested phrase for it; decided no
   head table in the starter, «Κεντρικό τραπέζι» if added. Costed archiving (6 cents/year at 10 years).
 - 2026-10-06 — Diagnosed the full disk: Docker build cache, 40 GB of it edu-admin's.
