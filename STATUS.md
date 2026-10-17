@@ -1,29 +1,25 @@
 # TakeaSeat — STATUS
 
-Updated: 2026-10-16
+Updated: 2026-10-17
 
-**Status:** Live runs `b7beb77` (deployed 2026-10-16 evening), healthy, everything in the repo is deployed.
-Retention is done and live: every plan is kept a year after the event, guest notes go the day after.
+**Status:** Live runs `d026190` (deployed 2026-10-17, tag `deploy-2026-10-17-1`), healthy, everything in the
+repo is deployed. A γιορτή now starts with no head table; the toolbar's «Κεντρικό» adds one, named
+«Κεντρικό τραπέζι». Retention (a year per plan, guest notes gone the day after) is live since 2026-10-16.
 
 ## In progress / unfinished
 
-- **The «γιορτή» honour table.** Decision made (CLAUDE.md → Decisions), **no code yet**. Note: the
-  deploy put the old wording live — a party plan's honour table is called «Τραπέζι της γιορτής» on
-  takeaseat.gr today, the phrase the research rejected. Next item 1 fixes it.
+- Nothing half-built. Party plans created before today keep the label «Τραπέζι της γιορτής» until the
+  customer renames it (deliberately not rewritten on load: it could trip a venue's table lock). Converting
+  such a plan to another kind still works (LEGACY_HEADS, on both planner and server).
+- The English and German party head-table words are unchanged («Celebration table», «Festtisch»).
 
 ## Next
 
-1. **The honour table for γιορτή.** A γιορτή starts with NO special table (add one from the toolbar if
-   you want it); if added it is «Κεντρικό τραπέζι». Four things ship together, see CLAUDE.md → Gotchas:
-   the `KIND_HEAD` map, the `labState()` guard, the five Greek strings + `STARTER_WORDS`, and the
-   `LEGACY_HEADS` alias so old plans still get re-pointed.
-   *Done when:* checks pass, the lab's «Γιορτή» button does not throw, and a party plan labelled
-   «Τραπέζι της γιορτής» still converts correctly to a wedding.
-2. **Lab: a returning visitor's saved plan beats the `?ev=` door.** Found by the 2026-10-16 smoke test:
+1. **Lab: a returning visitor's saved plan beats the `?ev=` door.** Found by the 2026-10-16 smoke test:
    after `?ev=baptism`, both `?ev=party` and plain `lab.html` reopen the baptism plan, so the «γιορτή»
    landing page's button can land a returning visitor in their old plan. Fresh visitors are fine.
-3. **The free 8-table cap on the server.** Needed before advertising anything "free online".
-4. **Small: tell the planner user that guest notes are erased the day after the event**, next to the note
+2. **The free 8-table cap on the server.** Needed before advertising anything "free online".
+3. **Small: tell the planner user that guest notes are erased the day after the event**, next to the note
    field (el/en/de, Greek reviewed by Andreas). The pages say it; the field itself does not yet.
 
 ## Waiting on Andreas
@@ -37,9 +33,6 @@ Retention is done and live: every plan is kept a year after the event, guest not
   zone's SOA serial changed the same day). Its selector is unknown, so it is not yet confirmed from
   outside: send one mail from info@takeaseat.gr to a Gmail → «Εμφάνιση πρωτοτύπου» → expect `DKIM: PASS`.
   DMARC is still `p=none` with no reporting address.
-- **Decide the γιορτή wording:** customer = «ο διοργανωτής», ornament = ★, groups =
-  Οικογένεια/Φίλοι/Συνάδελφοι/Παιδιά are already built and live; only the honour table («Κεντρικό
-  τραπέζι», opt-in) is still to build.
 - **Accountant** (€10,000 VAT threshold), **company registration**, **lawyer review** of terms.
 
 ## Known problems
@@ -50,6 +43,7 @@ Retention is done and live: every plan is kept a year after the event, guest not
   node_modules every time. TakeaSeat's own share was 0.1 GB.
 
 ## History
+n- 2026-10-17 — Party head table: no head table in a γιορτή starter, opt-in «Κεντρικό τραπέζι», old label kept as an alias; landing page updated. Deployed d026190, live smoke test passed, 910 checks.
 
 - 2026-10-16 (evening) — Deployed `b7beb77`, retention: **every plan (couple's own and venue wedding, past
   events too) is kept one year after the event**; guest notes are erased the day after, from the plan and every
