@@ -43,7 +43,8 @@ repo is deployed. A γιορτή now starts with no head table; the toolbar's «
   node_modules every time. TakeaSeat's own share was 0.1 GB.
 
 ## History
-n- 2026-10-17 — Party head table: no head table in a γιορτή starter, opt-in «Κεντρικό τραπέζι», old label kept as an alias; landing page updated. Deployed d026190, live smoke test passed, 910 checks.
+
+- 2026-10-17 — Party head table: no head table in a γιορτή starter, opt-in «Κεντρικό τραπέζι», old label kept as an alias; landing page updated. Deployed d026190, live smoke test passed, 910 checks.
 
 - 2026-10-16 (evening) — Deployed `b7beb77`, retention: **every plan (couple's own and venue wedding, past
   events too) is kept one year after the event**; guest notes are erased the day after, from the plan and every
