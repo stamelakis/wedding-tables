@@ -11,11 +11,13 @@ repo is deployed. A γιορτή now starts with no head table; the toolbar's «
 - Nothing half-built. Party plans created before today keep the label «Τραπέζι της γιορτής» until the
   customer renames it (deliberately not rewritten on load: it could trip a venue's table lock). Converting
   such a plan to another kind still works (LEGACY_HEADS, on both planner and server).
-- The English and German party head-table words are unchanged («Celebration table», «Festtisch»).
 
 ## Next
 
-1. **The free 8-table cap on the server.** Needed before advertising anything "free online".
+1. **The free 8-table cap on the server.** Needed before advertising anything "free online". Today only the
+   planner refuses a 9th guest table on a plan that is not online; nothing on the server checks it.
+   *Done when:* the server refuses (with a clear message) a save that would push a capped plan past 8 guest
+   tables, a paid/online plan is unaffected, and tests cover both plus the head table not counting.
 2. **Small: tell the planner user that guest notes are erased the day after the event**, next to the note
    field (el/en/de, Greek reviewed by Andreas). The pages say it; the field itself does not yet.
 
@@ -30,13 +32,16 @@ repo is deployed. A γιορτή now starts with no head table; the toolbar's «
   zone's SOA serial changed the same day). Its selector is unknown, so it is not yet confirmed from
   outside: send one mail from info@takeaseat.gr to a Gmail → «Εμφάνιση πρωτοτύπου» → expect `DKIM: PASS`.
   DMARC is still `p=none` with no reporting address.
+- **English/German name of the party head table.** Greek is now «Κεντρικό τραπέζι»; English still says
+  «Celebration table» and German «Festtisch». Say whether to change them to «Main table» / «Haupttisch»
+  (then the old words join LEGACY_HEADS) or leave them.
 - **Accountant** (€10,000 VAT threshold), **company registration**, **lawyer review** of terms.
 
 ## Known problems
 
 - **The 8-table free cap is client-side only** — no server limit exists at all.
 - **Shared-box disk.** On 2026-10-06 Docker build cache (edu-admin's builds, 40 GB of 53 GB) filled the
-  disk to 85 %. Cleared — 23 % on 2026-10-16. Recurs unless edu-admin's Dockerfile stops rebuilding
+  disk to 85 %. Cleared — 28 % on 2026-10-17. Recurs unless edu-admin's Dockerfile stops rebuilding
   node_modules every time. TakeaSeat's own share was 0.1 GB.
 
 ## History

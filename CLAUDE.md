@@ -75,6 +75,9 @@ build runs the full suite), restarts and health-checks; on failure it rolls back
   a seating decision", not "is it common at a baptism" — τούρτα, candy bar and μπομπονιέρες are all
   common and all two taps away in the decor menu, so putting them in the starter only gives the
   customer something to delete.
+- **The lab keeps one demo per kind** (2026-10-17). A link naming a kind (`?ev=party`) opens the visitor's
+  demo of that kind or adds one beside the old (`labDoor`); a bare `lab.html` reopens what they had. Rejected:
+  rebuilding the open demo from the link — it silently threw away what a returning visitor had built.
 - **`lab.html` is the one indexed planner build**; the three app builds carry `noindex` instead,
   because their URLs carry `?plan=` invite tokens and a plan link must never be indexable. If the lab
   ever goes back to noindex, remove it from `sitemap.xml` in the same commit.
