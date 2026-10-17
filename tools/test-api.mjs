@@ -2283,6 +2283,15 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     const pb2 = await from('baptism');
     ok(pb2.tables.find(t => t.shape === 'head').label === 'Τραπέζι τιμής',
       'kind: only a label the planner wrote itself is re-pointed — one the venue typed is never rewritten', pb2.tables.map(t => t.label));
+    // The party head table was renamed (2026-10-17): a room that still carries the old word the planner wrote is
+    // still planner-written, so it follows the new event like any other starter word (LEGACY_HEADS).
+    const room3 = { ...room, tables: room.tables.map(t => t.shape === 'head' ? { ...t, label: 'Τραπέζι της γιορτής' } : t) };
+    await call('PUT', '/plans/' + TPL.planId, { plan: room3, baseUpdated: raw('plan:' + TPL.planId).updated }, { 'X-Edit-Key': TPL.venueKey });
+    const pw3 = await from('wedding'), pp3 = await from('party');
+    ok(pw3.tables.find(t => t.shape === 'head').label === 'Νυφικό τραπέζι',
+      'kind: a room still labelled with the old «Τραπέζι της γιορτής» becomes a wedding with «Νυφικό τραπέζι»', pw3.tables.map(t => t.label));
+    ok(pp3.tables.find(t => t.shape === 'head').label === 'Κεντρικό τραπέζι',
+      'kind: … and a party with today\'s «Κεντρικό τραπέζι»', pp3.tables.map(t => t.label));
     await call('DELETE', '/admin/venues/' + TV.id, undefined, OWN);
   }
   ok((await call('GET', '/plans/' + BB.planId, undefined, { 'X-Edit-Key': BB.editKey })).d.kind === 'baptism', 'kind: the plan GET returns it to the people who open the planner');
@@ -2344,6 +2353,13 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     const body = fn.slice(0, fn.indexOf('\nasync function changeEventKind'));
     ok(/heads\.indexOf\(t\.label\)>=0/.test(body) && /names\.every\(\(n,i\)=>n===S\[i\]\)/.test(body),
       'planner: … and it re-points only an untouched starter — both kinds matched exactly before anything is replaced');
+    // a word the planner used to write still counts as planner-written, on both sides, with the same list
+    ok(/\.concat\(LEGACY_HEADS\)/.test(body), 'planner: … including a head-table word it no longer writes (LEGACY_HEADS)');
+    const wsrc = fs.readFileSync(path.join(root, 'wedding-sync-worker.js'), 'utf8');
+    const pl = eval((psrc.match(/const LEGACY_HEADS=(\[[^\]]*\]);/) || [])[1] || 'null');
+    const wl = eval((wsrc.match(/const LEGACY_HEADS = (\[.*\]);/) || [])[1] || 'null');
+    ok(pl && wl && pl.join('·') === wl[0].join('·') && pl.includes('Τραπέζι της γιορτής'),
+      'planner: … and the server keeps the same old Greek words', { pl, wl });
   }
 
   // ---- the trash keeps it, so a restore comes back as what it was ----
@@ -2593,6 +2609,14 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
         'planner: … and the bar is named in all three languages', LANGS.map(l => T_ALL[l].featBar));
       const n = (src.match(/PARTY_POSITIONS = \[([^\]]*\]){6}/) || [])[0];
       ok(!!n, 'planner: … on exactly the six positions the clearances were measured for');
+      // A wedding and a baptism have one table the evening is about; a γιορτή may have none, so it starts without
+      // and the toolbar adds one (CLAUDE.md → Decisions). The lab must then seat its hosts somewhere else.
+      ok(/const KIND_HEAD=\{ wedding:true, baptism:true, party:false \};/.test(src) && /if\(KIND_HEAD\[ev\]!==false\) tables\.push\(makeHeadTable/.test(ds),
+        'planner: … and with no head table, while a wedding and a baptism start with one');
+      const ls = src.slice(src.indexOf('function labState('), src.indexOf('function renderLabKinds('));
+      ok(/if\(head\)\{/.test(ls) && /else \{/.test(ls), 'planner: … so the lab seats a party\'s hosts at a guest table instead of throwing');
+      ok(LANGS.every(l => trr(l, 'party', 'headTable') !== 'Τραπέζι της γιορτής') && trr('el', 'party', 'headTable') === 'Κεντρικό τραπέζι',
+        'planner: … and if one is added it is «Κεντρικό τραπέζι»', trr('el', 'party', 'headTable'));
     }
     // The second kind leaked by growing `=== "baptism"` tests all over the planner; the third one found two of them
     // still standing — one that flattened a party into a wedding on every pull from the server, and one that read

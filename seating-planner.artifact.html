@@ -1637,7 +1637,7 @@ el:{
   p_accDateOnceNow:"Νέα ημερομηνία γιορτής: {d}.\n\nΜπορείτε να αλλάξετε την ημερομηνία μόνο μία φορά. Συνέχεια;",
   p_accPreview:"Δείτε το όπως ο διοργανωτής",
   p_accSupportHintVenue:"Η TakeaSeat δεν ανοίγει τις εκδηλώσεις σας χωρίς πρόσκλησή σας — κάθε πρόσβαση καταγράφεται. Για βοήθεια, δώστε μας πρόσβαση σε αυτή τη γιορτή για λίγο — τη διακόπτετε όποτε θέλετε.",
-  p_accViewExpired:"Αυτός ο σύνδεσμος δεν ισχύει πια — ζητήστε νέο από τον διοργανωτή ή το κτήμα.", p_addHead:"Γιορτινό",
+  p_accViewExpired:"Αυτός ο σύνδεσμος δεν ισχύει πια — ζητήστε νέο από τον διοργανωτή ή το κτήμα.", p_addHead:"Κεντρικό",
   p_atDate:"όρισε την ημερομηνία της γιορτής σε {d}", p_atLocked:"η γιορτή έγινε — το σχέδιο είναι πλέον μόνο για προβολή", p_awCouple:"Διοργανωτής",
   p_cUploadOver:"Η γιορτή έγινε — δεν μπαίνουν νέα σχέδια online.",
   p_cUploadWait:"Ένα ακόμη σχέδιο μπαίνει online όταν ο σχεδιαστής της γιορτής είναι σε πλήρη επεξεργασία — από τις {d}.",
@@ -1651,14 +1651,14 @@ el:{
   p_findNoDate:"Χρειάζεται πρώτα η ημερομηνία της γιορτής: το QR ανοίγει 7 ημέρες πριν από αυτήν και κλείνει 2 ημέρες μετά. Ορίστε την στο ⋯ → «Πρόσβαση & υποστήριξη» και ξαναελάτε εδώ.",
   p_findWindow:"Ανοίγει {a} (7 ημέρες πριν τη γιορτή) και κλείνει το βράδυ της {b} (2 ημέρες μετά). Έξω από αυτές τις μέρες ο καλεσμένος βλέπει ότι είναι κλειστό.",
   p_goneVenue:"Η γιορτή διαγράφηκε από το κτήμα — αν έγινε κατά λάθος, το κτήμα μπορεί να ζητήσει επαναφορά.",
-  p_groupsDefault:["Οικογένεια","Φίλοι","Συνάδελφοι","Παιδιά"], p_headTable:"Τραπέζι της γιορτής", p_lifeWas:"Η γιορτή σας έγινε στις {d}.",
-  p_lifeWasV:"Η γιορτή έγινε στις {d}.", p_mHead:"Τραπέζι της γιορτής", p_menuTitleHead:"Ρυθμίσεις τραπεζιού γιορτής",
+  p_groupsDefault:["Οικογένεια","Φίλοι","Συνάδελφοι","Παιδιά"], p_headTable:"Κεντρικό τραπέζι", p_lifeWas:"Η γιορτή σας έγινε στις {d}.",
+  p_lifeWasV:"Η γιορτή έγινε στις {d}.", p_mHead:"Κεντρικό τραπέζι", p_menuTitleHead:"Ρυθμίσεις κεντρικού τραπεζιού",
   p_openedAsVenue:"Ανοίξατε ως κτήμα (αυτή η συσκευή έχει τον σύνδεσμο του κτήματος). Για να το δείτε όπως ο διοργανωτής: Πρόσβαση & υποστήριξη.",
   p_phFrozen:"Αλλάξατε την ημερομηνία της γιορτής — το σχέδιο είναι μόνο για προβολή έως {d}.",
   p_phLineFrozen:"Φάση: μόνο προβολή έως {d} — αλλάξατε την ημερομηνία της γιορτής.", p_printTitle:"Σχέδιο Τραπεζιών Γιορτής",
   p_printWed:"Γιορτή: {d}", p_rbPreview:"👁 Όπως το βλέπει ο διοργανωτής",
   p_rbVenueTip:"Ανοίξατε τη γιορτή ως κτήμα: αλλάζετε τα πάντα. Ο διοργανωτής αλλάζει μόνο ό,τι του επιτρέπετε.",
-  p_tDateSet:"Ημερομηνία γιορτής: {d}", p_tHeadAdded:"Προστέθηκε τραπέζι της γιορτής",
+  p_tDateSet:"Ημερομηνία γιορτής: {d}", p_tHeadAdded:"Προστέθηκε κεντρικό τραπέζι",
   p_tLockedWed:"Η γιορτή έγινε — το σχέδιο είναι μόνο για προβολή.", p_tPreviewOn:"Βλέπετε όσα βλέπει ο διοργανωτής.",
   p_tRenameVenue:"Το όνομα της γιορτής το ορίζει {v}.", p_evNom:"γιορτή", p_title:"Οργάνωση Τραπεζιών Γιορτής",
 },
@@ -2317,6 +2317,13 @@ const SYNC_URL = "";
 // ============================================================
 const FEATURE_KINDS=["zone","prop","marker","label"];
 const isNum=v=>typeof v==="number"&&isFinite(v);   // used by sanitizePlan, which runs inside the top-level loadPlan() below — must be declared first (TDZ)
+// Does the starter carry the table the evening is about? A wedding and a baptism have exactly one; a γιορτή may have
+// none, one or several, so it starts without and the toolbar adds one («Κεντρικό τραπέζι»). CLAUDE.md → Decisions.
+// (Up here: defaultState runs inside the top-level load below — TDZ.)
+const KIND_HEAD={ wedding:true, baptism:true, party:false };
+// Head-table words the planner once wrote and no longer does. retypeStarterWords matches the CURRENT dictionary, so
+// without these an old plan stops being recognised as planner-written. The server keeps the same list (retypeStarter).
+const LEGACY_HEADS=["Τραπέζι της γιορτής"];
 let viewCache=null, srzEls=[], knobTimer=0, rightsSig=null;   // (declared up here: nothing on the load path may meet them uninitialised) — see viewSize, knobClearance, applyAccess
 let loadError="";   // why the local copy could not be loaded (shown once at startup, so the cause can be reported)
 let profiles = ensureProfiles();
@@ -2342,7 +2349,7 @@ function defaultState(ev){
   ev=ev||EVK;
   const party=ev==="party", pos=party?PARTY_POSITIONS:DEFAULT_POSITIONS;
   const tables = pos.map((p,i)=>({ id:1001+i, label:String(i+1), shape:party?"rect":"round", x:p[0], y:p[1], capacity:10, seats:Array(10).fill(null) }));
-  tables.push(makeHeadTable(2000, ev));
+  if(KIND_HEAD[ev]!==false) tables.push(makeHeadTable(2000, ev));
   const names=wordFor(ev,"groupsDefault");   // through the resolver, or b_groupsDefault would be dead code and every baptism would open with the bride's and groom's sides
   const groups = names.map((n,i)=>({id:"grp"+(i+1), name:n, color:GROUP_PALETTE[i]}));
   return { _uid:2001, tables, guests:{}, groups, parties:[], activeGroupId:null, features:defaultFeatures(false, ev),
@@ -2356,7 +2363,9 @@ function labState(ev){
   const ids=Object.keys(s.guests); let k=0;
   for(const t of s.tables.slice(0,3)){ for(let i=0;i<t.capacity&&k<26;i++) t.seats[i]=ids[k++]; }
   s.guests.g3900={ name:wordFor(ev,"labBride"), groupId:s.groups[0].id }; s.guests.g3901={ name:wordFor(ev,"labGroom"), groupId:s.groups[1].id };
-  const head=s.tables.find(t=>t.shape==="head"); head.seats[3]="g3900"; head.seats[4]="g3901";
+  const head=s.tables.find(t=>t.shape==="head");
+  if(head){ head.seats[3]="g3900"; head.seats[4]="g3901"; }
+  else { const t=s.tables.find(x=>x.seats.filter(v=>!v).length>=2), i=t.seats.indexOf(null); t.seats[i]="g3900"; t.seats[i+1]="g3901"; }   // no head table (a γιορτή): the hosts sit with their guests
   s._uid=3950; return s;
 }
 
@@ -3581,7 +3590,7 @@ function wordFor(kind,k){ const T=T_ALL[LANG]||T_ALL.el; let s; const p=KIND_PFX
 // the door. A label the customer typed is theirs and is never touched, which is why both kinds' starters are matched
 // exactly before anything is replaced. (The server does the same thing to a template copy; see retypeStarter.)
 function retypeStarterWords(want){
-  const heads=Object.keys(KIND_PFX).map(k=>wordFor(k,"headTable")), toHead=wordFor(want,"headTable");
+  const heads=Object.keys(KIND_PFX).map(k=>wordFor(k,"headTable")).concat(LEGACY_HEADS), toHead=wordFor(want,"headTable");
   let changed=false;
   for(const t of state.tables) if(t.shape==="head" && heads.indexOf(t.label)>=0 && t.label!==toHead){ t.label=toHead; changed=true; }
   const names=state.groups.map(g=>g.name), toG=wordFor(want,"groupsDefault");

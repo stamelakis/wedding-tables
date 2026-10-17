@@ -965,10 +965,13 @@ function layoutOnly(src, fromWedding) {
 // with «Νυφικό τραπέζι» and the bride's and the groom's sides, which is the one thing this whole field exists to
 // prevent. Only a label the PLANNER wrote is re-pointed; anything the venue typed itself is left exactly as it is,
 // and a wedding copied from a wedding's template gets back the words it already had.
+// Head-table words the planner once wrote and no longer does, per language in STARTER_WORDS order. Matching only the
+// current words would stop recognising an older plan's label as planner-written. The planner keeps the same list.
+const LEGACY_HEADS = [["Τραπέζι της γιορτής"], [], []];
 const STARTER_WORDS = [
   { wedding: { head: "Νυφικό τραπέζι", groups: ["Πλευρά νύφης", "Πλευρά γαμπρού", "Φίλοι", "Οικογένεια"] },
     baptism: { head: "Τραπέζι της οικογένειας", groups: ["Πλευρά μητέρας", "Πλευρά πατέρα", "Νονοί", "Φίλοι"] },
-    party: { head: "Τραπέζι της γιορτής", groups: ["Οικογένεια", "Φίλοι", "Συνάδελφοι", "Παιδιά"] } },
+    party: { head: "Κεντρικό τραπέζι", groups: ["Οικογένεια", "Φίλοι", "Συνάδελφοι", "Παιδιά"] } },
   { wedding: { head: "Head table", groups: ["Bride's side", "Groom's side", "Friends", "Family"] },
     baptism: { head: "Family table", groups: ["Mother's side", "Father's side", "Godparents", "Friends"] },
     party: { head: "Celebration table", groups: ["Family", "Friends", "Colleagues", "Children"] } },
@@ -979,9 +982,9 @@ const STARTER_WORDS = [
 function retypeStarter(plan, kind) {
   if (!plan) return plan;
   const want = normKind(kind);
-  for (const L of STARTER_WORDS) {
+  STARTER_WORDS.forEach((L, li) => {
     for (const t of (plan.tables || [])) {
-      if (t && t.shape === "head" && EVENT_KINDS.some(k => t.label === L[k].head)) t.label = L[want].head;
+      if (t && t.shape === "head" && (EVENT_KINDS.some(k => t.label === L[k].head) || LEGACY_HEADS[li].includes(t.label))) t.label = L[want].head;
     }
     const names = (plan.groups || []).map(g => g && g.name);
     for (const from of EVENT_KINDS) {
@@ -990,7 +993,7 @@ function retypeStarter(plan, kind) {
         break;
       }
     }
-  }
+  });
   return plan;
 }
 

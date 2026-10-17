@@ -9,7 +9,7 @@ decisions a future session might undo by mistake. `STATUS.md` says where we are.
 ```bash
 node tools/build-planner.mjs            # regenerate the planner outputs
 node tools/build-planner.mjs --check    # must print "all planner outputs up to date"
-node tools/test-api.mjs                 # the whole suite (903 checks today)
+node tools/test-api.mjs                 # the whole suite (910 checks today)
 node tools/dev.mjs                      # local stack on :8080 — never `node server/server.mjs`
 ```
 
@@ -63,7 +63,7 @@ build runs the full suite), restarts and health-checks; on failure it rolls back
   — not several kinds. A nameday and a 40th are the same room on the same evening, and each extra kind
   costs ~135 strings in three languages. *Andreas asked for this after hearing the argument against
   building it at all; it is his explicit decision, not a recommendation.*
-- **A γιορτή starts with NO honour table** (decided 2026-10-10, not yet implemented). A γάμος and a
+- **A γιορτή starts with NO honour table** (decided 2026-10-10, built 2026-10-17). A γάμος and a
   βάπτιση each have exactly one table the evening is about; a γιορτή may have none, one or several, so
   it becomes an opt-in table from the toolbar. Rejected: copying the wedding's pattern — Andreas's
   point was that the pattern is not universal, and the language agrees: Greek has no attested phrase
