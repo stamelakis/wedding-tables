@@ -2,7 +2,7 @@
 
 Updated: 2026-10-17
 
-**Status:** Live runs `d026190` (deployed 2026-10-17, tag `deploy-2026-10-17-1`), healthy, everything in the
+**Status:** Live runs `e1d7098` (deployed 2026-10-17, tag `deploy-2026-10-17-2`), healthy, everything in the
 repo is deployed. A γιορτή now starts with no head table; the toolbar's «Κεντρικό» adds one, named
 «Κεντρικό τραπέζι». Retention (a year per plan, guest notes gone the day after) is live since 2026-10-16.
 
@@ -15,11 +15,8 @@ repo is deployed. A γιορτή now starts with no head table; the toolbar's «
 
 ## Next
 
-1. **Lab: a returning visitor's saved plan beats the `?ev=` door.** Found by the 2026-10-16 smoke test:
-   after `?ev=baptism`, both `?ev=party` and plain `lab.html` reopen the baptism plan, so the «γιορτή»
-   landing page's button can land a returning visitor in their old plan. Fresh visitors are fine.
-2. **The free 8-table cap on the server.** Needed before advertising anything "free online".
-3. **Small: tell the planner user that guest notes are erased the day after the event**, next to the note
+1. **The free 8-table cap on the server.** Needed before advertising anything "free online".
+2. **Small: tell the planner user that guest notes are erased the day after the event**, next to the note
    field (el/en/de, Greek reviewed by Andreas). The pages say it; the field itself does not yet.
 
 ## Waiting on Andreas
@@ -43,6 +40,11 @@ repo is deployed. A γιορτή now starts with no head table; the toolbar's «
   node_modules every time. TakeaSeat's own share was 0.1 GB.
 
 ## History
+
+- 2026-10-17 — Lab fix deployed (`e1d7098`): the selected kind button was invisible (undefined `--brand`
+  colour, since 2026-10-04 — Andreas saw «Γάμος · Βάπτιση» and no Γιορτή); a returning visitor's saved demo
+  no longer beats `?ev=` (one demo per kind, nothing overwritten; a bare lab.html keeps what they had). The
+  γιορτή page picture lost its head table. Live smoke test passed, 916 checks.
 
 - 2026-10-17 — Party head table: no head table in a γιορτή starter, opt-in «Κεντρικό τραπέζι», old label kept as an alias; landing page updated. Deployed d026190, live smoke test passed, 910 checks.
 
