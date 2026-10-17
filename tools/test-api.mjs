@@ -2617,6 +2617,29 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
       ok(/if\(head\)\{/.test(ls) && /else \{/.test(ls), 'planner: … so the lab seats a party\'s hosts at a guest table instead of throwing');
       ok(LANGS.every(l => trr(l, 'party', 'headTable') !== 'Τραπέζι της γιορτής') && trr('el', 'party', 'headTable') === 'Κεντρικό τραπέζι',
         'planner: … and if one is added it is «Κεντρικό τραπέζι»', trr('el', 'party', 'headTable'));
+      ok(!/class="head"/.test(fs.readFileSync(path.join(root, 'plano-trapezion-giortis.html'), 'utf8')),
+        'pages: … and the γιορτή page\'s picture of the room has no head table either');
+    }
+    // An undefined CSS variable fails silently: the lab's selected kind was white text on nothing (var(--brand)) for
+    // two weeks, so a visitor saw «Γάμος · Βάπτιση» and no γιορτή at all.
+    {
+      const used = new Set([...src.matchAll(/var\(--([\w-]+)\s*\)/g)].map(m => m[1]));
+      const defd = new Set([...src.matchAll(/--([\w-]+)\s*:/g)].map(m => m[1]));
+      const missing = [...used].filter(v => !defd.has(v));
+      ok(missing.length === 0, 'planner: every CSS variable it uses without a fallback is defined', missing);
+    }
+    // A returning lab visitor: a link that names a kind opens that kind (their own demo of it, or a new one beside the
+    // old), and a bare lab.html reopens what they had — with the kind buttons following the plan on screen.
+    {
+      const door = src.slice(src.indexOf('function labDoor('), src.indexOf('// First run: adopt'));
+      ok(/if\(existing\)\{ if\(IS_LAB\) labDoor\(existing\); return existing; \}/.test(src),
+        'lab: a returning visitor goes through the door, not straight to the last plan they saved');
+      ok(/ev=\(wedding\|baptism\|party\)/.test(src) && /if\(!LAB_EV_URL\)\{ LAB_EV=kindOf\(cur\); return; \}/.test(door),
+        'lab: … a bare lab.html keeps their plan and the buttons follow it; ?ev=wedding is a kind like the others');
+      ok(/p\.profiles\.find\(x=>kindOf\(x\)===LAB_EV_URL\)/.test(door) && /p\.profiles\.push\(/.test(door) && !/removeItem|splice/.test(door),
+        'lab: … ?ev= opens their demo of that kind or adds a new one, and never overwrites or drops the old one');
+      ok(/if\(IS_LAB\)\{ LAB_EV=EVK; renderLabKinds\(\); labUrl\(\); \}/.test(src.slice(src.indexOf('function loadActive('), src.indexOf('function switchProfile('))),
+        'lab: … and switching demos from the plan menu moves the selected kind and the address with it');
     }
     // The second kind leaked by growing `=== "baptism"` tests all over the planner; the third one found two of them
     // still standing — one that flattened a party into a wedding on every pull from the server, and one that read

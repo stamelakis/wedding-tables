@@ -92,7 +92,7 @@
   body.mode-lab #labKinds{ display:inline-flex; }
   #labKinds button{ font:inherit; font-size:11px; font-weight:600; border:1px solid var(--line); background:#fff; color:var(--ink);
     border-radius:20px; padding:3px 10px; cursor:pointer; white-space:nowrap; }
-  #labKinds button[aria-pressed="true"]{ background:var(--brand); border-color:var(--brand); color:#fff; cursor:default; }
+  #labKinds button[aria-pressed="true"]{ background:var(--accent); border-color:var(--accent); color:#fff; cursor:default; }
   #roleBadge{ font:inherit; font-size:11.5px; font-weight:700; border-radius:20px; padding:3px 10px; white-space:nowrap; cursor:pointer; border:1px solid var(--line); background:var(--card); color:var(--soft); max-width:220px; overflow:hidden; text-overflow:ellipsis; }
   #roleBadge.r-venue{ background:var(--accent-soft); color:var(--accent-ink); border-color:#d9c7e2; }
   #roleBadge.r-support{ background:#fff1d6; color:#8a5a00; border-color:#f0cf8a; }
@@ -1432,7 +1432,9 @@ const LANG="de", MODE="app", IS_LAB=(MODE==="lab");
 // Which event the free sandbox is showing. Two thirds of the product used to be invisible here: a visitor could not
 // see a baptism or a γιορτή anywhere, because correcting the kind needs a plan on the server and the lab has none.
 // ?ev= makes each one a shareable link, and the badge beside the title switches between them.
-let LAB_EV = IS_LAB ? (/[?&]ev=(baptism|party)/.exec(location.search) || [, "wedding"])[1] : null;
+// LAB_EV_URL is the kind the link names, or null for a bare lab.html (which then reopens whatever the visitor had).
+const LAB_EV_URL = IS_LAB ? ((/[?&]ev=(wedding|baptism|party)/.exec(location.search) || [])[1] || null) : null;
+let LAB_EV = IS_LAB ? (LAB_EV_URL || "wedding") : null;
 document.body.classList.add("mode-"+MODE);
 if(!document.documentElement.lang) document.documentElement.lang=LANG;   // artifact twins have no <html lang>
 
@@ -2417,9 +2419,9 @@ function switchLabKind(k){
   const cur=currentProfile(); if(cur){ cur.kind=k; cur.name=tr("labPlan"); saveProfilesIdx(); }
   setPick(null); closeMenu();
   state=labState(k); uid=state._uid; fontScale=1;
-  save(); renderProfiles(); renderLabKinds(); applyAccess(); renderAll(); resetHistory();
-  try{ const u=new URL(location.href); if(k==="wedding") u.searchParams.delete("ev"); else u.searchParams.set("ev",k); history.replaceState(null,"",u); }catch(e){}
+  save(); renderProfiles(); renderLabKinds(); applyAccess(); renderAll(); resetHistory(); labUrl();
 }
+function labUrl(){ try{ const u=new URL(location.href); if(LAB_EV==="wedding") u.searchParams.delete("ev"); else u.searchParams.set("ev",LAB_EV); history.replaceState(null,"",u); }catch(e){} }
 
 // ---------- persistence (multiple named profiles / couples) ----------
 function planKey(id){ return PBASE+".plan."+id; }
@@ -2441,10 +2443,27 @@ function loadPlan(id){
   }catch(e){ loadError=String(e&&e.message||e); }
   return null;
 }
+// A returning lab visitor. A link that names a kind (the γιορτή page's button is lab.html?ev=party) opens that kind:
+// their own demo of it if they have one, otherwise a new demo beside the old ones — nothing they built is overwritten.
+// A bare lab.html reopens what they had, and the kind buttons follow that plan instead of claiming a wedding.
+function labDoor(p){
+  const kindOf=x=>(x&&KIND_PFX[x.kind]!==undefined)?x.kind:"wedding";
+  const cur=p.profiles.find(x=>x.id===p.activeId);
+  if(!LAB_EV_URL){ LAB_EV=kindOf(cur); return; }
+  if(kindOf(cur)===LAB_EV_URL) return;
+  const mine=p.profiles.find(x=>kindOf(x)===LAB_EV_URL);
+  if(mine) p.activeId=mine.id;
+  else {
+    const id=newProfileId(); setEventKind(LAB_EV_URL);   // the words BEFORE the demo is built, as on a first visit
+    try{ localStorage.setItem(planKey(id), JSON.stringify(labState(LAB_EV_URL))); }catch(e){}
+    p.profiles.push({id, name:tr("labPlan"), kind:LAB_EV_URL}); p.activeId=id;
+  }
+  try{ localStorage.setItem(PROFILES_KEY, JSON.stringify(p)); }catch(e){}
+}
 // First run: adopt any pre-profiles single-plan save into an initial "Our wedding" profile (lab: a demo plan).
 function ensureProfiles(){
   const existing=loadProfilesIdx();
-  if(existing) return existing;
+  if(existing){ if(IS_LAB) labDoor(existing); return existing; }
   const id=newProfileId();
   let migrated=null;
   if(!IS_LAB){ try{ const old=JSON.parse(localStorage.getItem(STORE_KEY)); if(old&&old.tables) migrated=old; }catch(e){} }
@@ -3581,6 +3600,7 @@ function loadActive(){
   const lp=currentProfile();
   let st=null; if(lp&&lp.support&&lp._mem){ try{ st=JSON.parse(lp._mem); sanitizePlan(st); if(st.layoutVersion!==LAYOUT_VERSION) migrateLayout(st); }catch(e){ st=null; } }
   setEventKind((lp&&lp.kind)||"wedding");   // the word BEFORE the room: applyAccess() below also sets it, but by then the fallback starter would already be built for whatever was on screen
+  if(IS_LAB){ LAB_EV=EVK; renderLabKinds(); labUrl(); }   // a lab visitor may keep one demo per kind (labDoor): the buttons and the address follow the one opened
   state=st||loadPlan(profiles.activeId)||defaultState(); uid=state._uid||2001; fontScale=state.seatFontScale||1;
   applyAccess();
   applyStage(); $("stageFloor").value=state.stageMaterial||"grass";
