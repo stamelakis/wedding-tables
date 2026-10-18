@@ -2,23 +2,30 @@
 
 Updated: 2026-10-18
 
-**Status:** Live runs `33a84df` (deployed 2026-10-18, tag `deploy-2026-10-18-2`), healthy, everything in the
-repo is deployed. Operations phase 1, the «Πελάτες» sheet, is live.
+**Status:** Live runs `33a84df` (deployed 2026-10-18, tag `deploy-2026-10-18-2`), healthy. Operations phase 1,
+the «Πελάτες» sheet, is live. **Phase 2 is built in the repo and NOT deployed**: it waits on Andreas's Greek
+review and his yes.
 
 ## In progress / unfinished
 
-- Nothing half-built. Party plans created before 2026-10-17 keep the label «Τραπέζι της γιορτής» until the customer renames it
+- **Operations phase 2, built, waiting to deploy** (`OPERATIONS-PLAN.md` §4, §7 "Phase 2 as built"). The
+  customer card is where Andreas works: every old button, notes saved as he types, «Επόμενο βήμα» (its day puts
+  the customer in «Θέλουν εμένα»), the timeline with one-tap entries, «Μνήμη» with the 5-year clock, and «Ξέχασε
+  τον πελάτη» keeping only the books. The old lists are gone. privacy.html and terms.html changed with it.
+  Suite 1046, `/security-review` clean (its one note, a signup row lingering 30 days, is fixed), screen checked
+  at desktop and phone width with the seeded stack. Deploy only after Andreas reviews the Greek and says yes;
+  the deploy command is in CLAUDE.md.
+- Party plans created before 2026-10-17 keep the label «Τραπέζι της γιορτής» until the customer renames it
   (deliberately not rewritten on load: it could trip a venue's table lock). Converting such a plan to another
   kind still works (LEGACY_HEADS, on both planner and server).
 
 ## Next
 
-1. **Operations phase 2: the customer card becomes where you work, and remembers** (`OPERATIONS-PLAN.md` §4):
-   the old lists' buttons move into the card, private notes, «Επόμενο βήμα», the timeline, and the memory card
-   with its clock (privacy.html and terms.html change with it; Greek reviewed by Andreas). It builds on phase
-   1's `GET /admin/customers/:key` and `customerCardHtml`; §7 has the shape as built. *Done when:* §4's phase 2
-   line. Phases 3–6 follow in order; phase 7 (online payment) waits on the company, accountant and lawyer.
-2. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today — checked
+1. **Deploy phase 2** once Andreas has reviewed the Greek and said yes. Then his look on the phone, as for
+   phase 1. After that, **phase 3: the venue's own sheet** (`OPERATIONS-PLAN.md` §4).
+2. **Admin dialogs in Greek**: the create, edit and trash dialogs and the key/link boxes the card opens are still
+   English (plan §7: "admin.html's existing English labels move to Greek as each part is touched").
+3. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today — checked
    2026-10-18: every plan on the server comes from a purchase (admin), a venue with a licence or free year,
    or a paying couple's extra plan; no free path exists. The free 8-table cap belongs to plans that stay on
    a device (the lab, unsaved plans), and the planner enforces it. Build the server check together with a
@@ -26,6 +33,14 @@ repo is deployed. Operations phase 1, the «Πελάτες» sheet, is live.
 
 ## Waiting on Andreas
 
+- **Greek review of phase 2, then a yes to deploy.** Locally: `node tools/dev-customers.mjs`, then
+  http://localhost:8080/admin.html with the key `dev-owner-key`; open «Κτήμα Πλάτανος» (a next step due today and
+  two history lines) and «Κτήμα Αμπέλια» (a note). Also the changed paragraphs of privacy.html and terms.html
+  (customer memory, 5 years, what the books keep). Wording a review should look at: «Μνήμη — για πόσο κρατάμε
+  την καρτέλα», the history words (`cTlWords`), and «δεν ανανεώνεται αυτόματα — το email είναι κλειστό στον
+  διακομιστή» (phase 1's, reads unclear).
+- **Accountant, add:** how long the «Για τα λογιστικά» records (name and purchase dates of a forgotten customer)
+  must be kept. Today they stay until deleted by hand.
 - **A look at «Πελάτες» on your phone** (each phase ends checked on your phone): open
   https://takeaseat.gr/admin.html, sign in with the owner key, and the sheet is the first thing. Today it has
   one row, the one real venue. Tap it to open the card. Tell the next session anything that looks off.
@@ -45,6 +60,10 @@ repo is deployed. Operations phase 1, the «Πελάτες» sheet, is live.
 
 ## History
 
+- 2026-10-18 — Operations phase 2 built (not deployed): `4e329ac` server (notes, next step, timeline, memory
+  clock, «Ξέχασέ τον», books), `83bcd96` (a forgotten self-signup venue takes its signup row at once), and the
+  admin card. Andreas decided: free-year venues remembered 5 years (not 2); forgetting keeps only what the books
+  need. Also fixed on the way: the couple edit dialog never sent the event type it offered, and offered no γιορτή.
 - 2026-10-18 — Deployed `33a84df` (tag `deploy-2026-10-18-2`): operations phase 1, «Πελάτες» in admin.html.
   It has one row per customer, the six «Θέλουν εμένα» flags, seating %, a read-only card and Excel. The
   privacy test proves no guest name, key, token or link leaves the endpoints. Suite now 981. Andreas

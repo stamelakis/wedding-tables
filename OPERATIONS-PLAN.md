@@ -289,13 +289,30 @@ options (HANDOFF §8.6).
   venue's wedding row (its label is the venue's client data). A pending signup is its venue's row; only a
   signup whose venue is gone gets its own key, `s:<signupId>`. Local test data with one customer per flag and
   stage: `node tools/dev-customers.mjs` (preview «takeaseat-customers»).
+- **Phase 2 as built.** The card adds `notes`, `nextStep {text,due,at}`, `past [{kind,date,createdAt,goneAt,extra}]`,
+  `memory {lastTouch,forgetAt,years,held}` (`held` = "plans" | "licence" | null; null for `s:`) and `timeline
+  [{at,code,…}]` — codes only, worded in admin.html (`cTlWords`); his own entries are `act:<key>` rows (capped
+  500). Notes stay in the old fields (venue `notes`, couple `contact`, signup `notes`, 2000 chars). Routes under
+  `/admin/customers/:key/`: `PUT notes`, `PUT|DELETE next`, `POST next/done`, `POST timeline {kind,text}`,
+  `DELETE timeline/:id`, `POST forget`; plus `GET /admin/books`. The flag `next_due` joins the list.
+  **One erasure path**: «Ξέχασε τον πελάτη», the old couple/venue/signup deletes and the clock all go through
+  `eraseCouple` / `eraseVenue` / `eraseSignup`, which keep only `books:<key>` (a venue: name, licence type, dates
+  of seasons and renewals; a couple: name, kind, purchase date; nothing for a free year alone). A self-signup
+  venue takes its `signup:` row with it at once. The clock is `MEMORY_YEARS = 5` for every customer (Andreas,
+  2026-10-18, free-year venues included; the 2 years for non-buyers waits for phase 4's leads). It waits while
+  a plan exists or a licence can still make events; `memorySweep` erases in the nightly pass. A deleted plan
+  keeps the couple's card and email but takes the address out of the recovery index. In admin.html the old
+  couple, venue and signup lists are gone: «+ Κτήμα» / «+ Ιδιώτης» open the create forms in a dialog, the
+  signup prune and «Για τα λογιστικά» are in Εργαλεία, and every action runs from the card (`cardAction` reuses
+  `coupleAction` / `venueAction` on the `couplesCache` / `venuesCache` row; answers land in a holder kept across
+  redraws). Still English: the create, edit and trash dialogs and the key/link boxes.
 
 ## 8. Phase status
 
 | Phase | Status |
 |---|---|
 | 1 «Πελάτες» sheet | live 2026-10-18 (`33a84df`, tag `deploy-2026-10-18-2`); Greek approved by Andreas; his own look on his phone still to come |
-| 2 Customer card + memory | — |
+| 2 Customer card + memory | built 2026-10-18, tests and screen check passed; waits on Andreas's Greek review (admin card, privacy.html, terms.html) and his yes to deploy |
 | 3 The venue's own sheet | — |
 | 4 Contacts | — |
 | 5 Payments | — |

@@ -9,7 +9,7 @@ decisions a future session might undo by mistake. `STATUS.md` says where we are.
 ```bash
 node tools/build-planner.mjs            # regenerate the planner outputs
 node tools/build-planner.mjs --check    # must print "all planner outputs up to date"
-node tools/test-api.mjs                 # the whole suite (981 checks today)
+node tools/test-api.mjs                 # the whole suite (1046 checks today)
 node tools/dev.mjs                      # local stack on :8080 — never `node server/server.mjs`
 node tools/dev-customers.mjs            # the same, seeded with one customer per «Θέλουν εμένα» flag and stage
 ```
@@ -112,6 +112,14 @@ build runs the full suite), restarts and health-checks; on failure it rolls back
 - **Customer memory, not "forever"** (Andreas, 2026-10-18): a memory card kept 5 years after the last contact
   for buyers, 2 for non-buyers, the clock restarting on each new contact; plans are still deleted a year after.
   Andreas wanted "as long as possible"; a restarting fixed period is the longest GDPR allows.
+- **A venue on its free year counts as a buyer: 5 years, not 2** (Andreas, 2026-10-18, overriding the suggested 2).
+  Today `MEMORY_YEARS = 5` applies to every card; the 2 years is for phase 4's leads, who never bought anything.
+  The clock waits while a plan exists or a licence can still make events.
+- **Forgetting keeps only what the books need** (Andreas, 2026-10-18): `books:<key>` holds the name and the dates
+  of what was bought (seasons, renewals, a couple's purchase), never an email, phone, note, event or timeline.
+  Rejected: keeping the card or the address "in case". Every erasure (request, clock, old deletes) goes this one way.
+- **A deleted plan keeps the couple's card and email, but takes the address out of the recovery index**
+  (`email:`), so the kept address can reopen nothing. Do not put it back in the index "to help recovery".
 - **The «Πελάτες» sheet never shows what a venue named its events** (2026-10-18). «Οικογένεια Ζαφειρίου» is the
   venue's client data, which the admin never sees (DPA); the card shows date, kind, phase and seating % only,
   and events pass through the whitelist `custEvent`. Rejected: showing the label "to recognise the wedding".
