@@ -312,7 +312,7 @@ options (HANDOFF §8.6).
 | Phase | Status |
 |---|---|
 | 1 «Πελάτες» sheet | live 2026-10-18 (`33a84df`, tag `deploy-2026-10-18-2`); Greek approved by Andreas; his own look on his phone still to come |
-| 2 Customer card + memory | built 2026-10-18, tests and screen check passed; waits on Andreas's Greek review (admin card, privacy.html, terms.html) and his yes to deploy |
+| 2 Customer card + memory | live 2026-10-18 (`aed530c`, tag `deploy-2026-10-18-3`); Greek approved by Andreas; his own look on his phone still to come |
 | 3 The venue's own sheet | — |
 | 4 Contacts | — |
 | 5 Payments | — |
