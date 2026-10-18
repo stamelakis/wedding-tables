@@ -78,6 +78,9 @@ build runs the full suite), restarts and health-checks; on failure it rolls back
 - **The lab keeps one demo per kind** (2026-10-17). A link naming a kind (`?ev=party`) opens the visitor's
   demo of that kind or adds one beside the old (`labDoor`); a bare `lab.html` reopens what they had. Rejected:
   rebuilding the open demo from the link — it silently threw away what a returning visitor had built.
+- **No server-side 8-table cap** (checked 2026-10-18). Every way onto the server needs a purchase, a venue
+  licence/free year or the admin, so nothing free reaches it; the cap is for device-only plans and the planner
+  enforces it. Build a server check only together with a free online plan, if one is ever offered.
 - **`lab.html` is the one indexed planner build**; the three app builds carry `noindex` instead,
   because their URLs carry `?plan=` invite tokens and a plan link must never be indexable. If the lab
   ever goes back to noindex, remove it from `sitemap.xml` in the same commit.
