@@ -2896,6 +2896,12 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     const VT = await mkV('Πελ. Η δωρεάν χρόνος τελειώνει', 'cust-vt@example.gr');
     patchRaw('venue:' + VT, o => { o.keyRotated = true; o.used = 1; o.license = { ...o.license, seasonStart: athensDay(-335), seasonEnd: athensDay(30), autoRenew: false };
       o.trial = { startedAt: ago(335), endsAt: ago(-30), verifiedAt: ago(335), seasonEnd: athensDay(30), signupId: null }; });
+    // the 60-day edge, from both sides
+    const freeYearEndsIn = async (n, tag) => { const id = await mkV('Πελ. Η' + tag + ' δωρεάν χρόνος σε ' + n, 'cust-vt' + tag + '@example.gr');
+      patchRaw('venue:' + id, o => { o.keyRotated = true; o.used = 1; o.license = { ...o.license, seasonStart: athensDay(n - 365), seasonEnd: athensDay(n), autoRenew: false };
+        o.trial = { startedAt: ago(365 - n), endsAt: ago(-n), verifiedAt: ago(365 - n), seasonEnd: athensDay(n), signupId: null }; });
+      return id; };
+    const VT60 = await freeYearEndsIn(60, 'a'), VT61 = await freeYearEndsIn(61, 'b');
     // a claim link that went by mail and was never used
     const C7 = (await call('POST', '/admin/couples', { name: 'Πελ. Ζεύγος δεν πάτησε', email: 'cust-c7@example.gr', weddingDate: athensDay(40) }, OWN)).d.couple.id;
     patchRaw('couple:' + C7, o => { o.claimAt = ago(4); o.createdAt = ago(4); });
@@ -2937,6 +2943,8 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
       ['v:' + VF, 7, [], 'a season over that does not renew'],
       ['v:' + VG, 7, [], 'an inactive venue'],
       ['v:' + VT, 6, ['trial_ending'], 'a free year that ends in 30 days'],
+      ['v:' + VT60, 6, ['trial_ending'], 'a free year that ends in exactly 60 days'],
+      ['v:' + VT61, 5, [], 'a free year that ends in 61 days'],
       ['v:' + VS.id, 5, ['support_open'], 'a venue with events and a support request'],
       ['v:' + SG1v, 4, ['setup_unopened'], 'a signup whose link is unopened for 4 days'],
       ['s:' + SG2s, 4, ['setup_unopened'], 'a pending signup whose venue is gone'],
