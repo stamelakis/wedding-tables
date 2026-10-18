@@ -3,10 +3,7 @@
 Updated: 2026-10-18
 
 **Status:** Live runs `4534cf2` (deployed 2026-10-18, tag `deploy-2026-10-18-1`), healthy, everything in the
-repo is deployed. The Excel import window now says guest notes are erased the day after the event (el/en/de,
-Greek approved by Andreas; shown only on an online plan — the erasure is the server's, device-only plans keep
-notes; the planner has no typed note field). A γιορτή starts with no head table; the toolbar's «Κεντρικό» adds
-one, named «Κεντρικό τραπέζι». Retention (a year per plan, guest notes gone the day after) is live since 2026-10-16.
+repo is deployed. Nothing is open on the product side; what remains waits on Andreas's business steps.
 
 ## In progress / unfinished
 
@@ -33,6 +30,12 @@ one, named «Κεντρικό τραπέζι». Retention (a year per plan, gues
   node_modules every time. TakeaSeat's own share was 0.1 GB.
 
 ## History
+
+- 2026-10-18 — Deployed `4534cf2`: the Excel import window says guest notes are erased the day after the
+  event (el/en/de, Greek approved by Andreas), shown only on an online plan. The planner has no typed note
+  field. New test: every inline planner script parses (a stray `//` once blanked the planner locally with
+  all 917 checks green). First deploy attempt stopped in the Docker check stage (the test read `lab.html`,
+  which that stage does not carry) — nothing went live; fixed and redeployed. 918 checks.
 
 - 2026-10-18 — STATUS corrected: the "server 8-table cap" was not a gap (no free way onto the server);
   Search Console and DKIM checked by Andreas; party head table stays «Celebration table» / «Festtisch» in en/de.

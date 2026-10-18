@@ -24,6 +24,9 @@ build runs the full suite), restarts and health-checks; on failure it rolls back
 
 - **`planner.src.html` is the only source.** `seating-planner-{el,en,de}.html`, the three
   `.artifact.html` twins and `lab.html` are generated. Edit the source, rebuild, then `--check`.
+- **The suite never runs the planner's code** — it only reads the source as text, plus one check that the
+  inline scripts parse. A planner change is not verified until it is opened in the preview. Tests may read
+  `planner.src.html` but not the built pages: the Docker check stage does not carry them.
 - **`server/worker.mjs` is not in git.** `tools/dev.mjs` copies it from `wedding-sync-worker.js`, and
   the Docker build does the same. There is one source of truth; never "fix both".
 - **The Dockerfile copies files by name, twice.** Line 29 for the public pages, and the check stage
@@ -98,7 +101,9 @@ build runs the full suite), restarts and health-checks; on failure it rolls back
   a year of plans is read every hour.
 - **Guest notes are erased the day after the event**, from the plan and every `hist:` version; names and
   seats stay. The note field is where allergies (health data) end up, and it serves the evening, not the
-  year. The pages say so; do not drop the erasure without changing privacy, terms and dpa.
+  year. The pages say so; do not drop the erasure without changing privacy, terms and dpa. The planner
+  says it only in the Excel import (the one way a customer brings notes in) and only on an online plan:
+  the erasure is the server's, so a device-only plan keeps its notes and must not be told otherwise.
 - **Greek is reviewed by Andreas himself.** Strings a customer reads are written per language and
   cross-checked, never find-replaced: 36 `p_*` strings contain «γιορτ» and name the *event*, while
   only five name the *table*.
