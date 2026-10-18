@@ -2,24 +2,29 @@
 
 Updated: 2026-10-18
 
-**Status:** Live runs `4534cf2` (deployed 2026-10-18, tag `deploy-2026-10-18-1`), healthy, everything in the
-repo is deployed. Nothing is open on the product side; what remains waits on Andreas's business steps.
+**Status:** Live runs `4534cf2` (deployed 2026-10-18, tag `deploy-2026-10-18-1`), healthy. The repo is ahead
+by operations phase 1, the «Πελάτες» sheet: built and tested, **not deployed**. It waits on Andreas's Greek
+review and his yes.
 
 ## In progress / unfinished
 
-- Nothing half-built. Party plans created before today keep the label «Τραπέζι της γιορτής» until the
-  customer renames it (deliberately not rewritten on load: it could trip a venue's table lock). Converting
-  such a plan to another kind still works (LEGACY_HEADS, on both planner and server).
+- **Operations phase 1, «Πελάτες» in admin.html** — built 2026-10-18 (`cbcb015` server, `4037e9e` tests,
+  `be84788` screen). Suite 981/981. Checked in the preview at desktop and phone width with
+  `tools/dev-customers.mjs`, which seeds one customer per flag and stage. The Greek review list is in the
+  side-session notes as `customer-sheet-greek-review.md`. It has four open points: «Ενεργός» for a κτήμα, the
+  same flag words for two links, «12:00 π.μ.» against 24-hour time, and «Ανανέωση» meaning both reload and
+  renewal. After his yes: apply his changes, then `/ship`.
+- Party plans created before 2026-10-17 keep the label «Τραπέζι της γιορτής» until the customer renames it
+  (deliberately not rewritten on load: it could trip a venue's table lock). Converting such a plan to another
+  kind still works (LEGACY_HEADS, on both planner and server).
 
 ## Next
 
-1. **Operations plan, phase 1: the «Πελάτες» sheet in admin.html** (`OPERATIONS-PLAN.md` §4, approved
-   2026-10-18 with all seven decisions in §6). One row per venue, direct customer and pending signup, stage,
-   «Θέλουν εμένα» flags, seating % (decision 5), read-only customer card, Excel export. *Done when:* each
-   customer appears exactly once with the right stage; each flag fires for a test customer built for it; a
-   test proves the new endpoint never returns a key, link or guest name; checked on desktop and phone width.
-   Phases 2–6 follow in order; phase 7 (online payment) waits on the company, accountant and lawyer.
-2. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today — checked
+1. **Deploy phase 1** after Andreas's Greek review (above), then check it on his phone against the live data.
+2. **Operations phase 2: the customer card becomes where you work, and remembers** (`OPERATIONS-PLAN.md` §4).
+   It builds on phase 1's `GET /admin/customers/:key` and `customerCardHtml`; §7 has the shape as built.
+   Phases 3–6 follow in order; phase 7 (online payment) waits on the company, accountant and lawyer.
+3. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today — checked
    2026-10-18: every plan on the server comes from a purchase (admin), a venue with a licence or free year,
    or a paying couple's extra plan; no free path exists. The free 8-table cap belongs to plans that stay on
    a device (the lab, unsaved plans), and the planner enforces it. Build the server check together with a

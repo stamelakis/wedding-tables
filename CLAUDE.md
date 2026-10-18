@@ -9,12 +9,14 @@ decisions a future session might undo by mistake. `STATUS.md` says where we are.
 ```bash
 node tools/build-planner.mjs            # regenerate the planner outputs
 node tools/build-planner.mjs --check    # must print "all planner outputs up to date"
-node tools/test-api.mjs                 # the whole suite (916 checks today)
+node tools/test-api.mjs                 # the whole suite (981 checks today)
 node tools/dev.mjs                      # local stack on :8080 — never `node server/server.mjs`
+node tools/dev-customers.mjs            # the same, seeded with one customer per «Θέλουν εμένα» flag and stage
 ```
 
 Preview with `preview_start {name:"takeaseat-local"}` (`.claude/launch.json`), then
-`http://localhost:8080/lab.html?ev=baptism|party`.
+`http://localhost:8080/lab.html?ev=baptism|party`. For admin.html's «Πελάτες» use `takeaseat-customers`
+(owner key `dev-owner-key`). It runs on `node:sqlite`, because better-sqlite3 has no Windows binary here.
 
 Deploy: `ssh -i ~/.ssh/hetzner root@178.104.158.125 /opt/takeaseat/server/deploy.sh` (without `-i` the
 login is refused). It backs up, pulls, builds (the
@@ -110,6 +112,12 @@ build runs the full suite), restarts and health-checks; on failure it rolls back
 - **Customer memory, not "forever"** (Andreas, 2026-10-18): a memory card kept 5 years after the last contact
   for buyers, 2 for non-buyers, the clock restarting on each new contact; plans are still deleted a year after.
   Andreas wanted "as long as possible"; a restarting fixed period is the longest GDPR allows.
+- **The «Πελάτες» sheet never shows what a venue named its events** (2026-10-18). «Οικογένεια Ζαφειρίου» is the
+  venue's client data, which the admin never sees (DPA); the card shows date, kind, phase and seating % only,
+  and events pass through the whitelist `custEvent`. Rejected: showing the label "to recognise the wedding".
+- **In «Πελάτες», «Όλοι» leaves out the archive, but a search on «Όλοι» looks there too**, and a pending
+  signup is its venue's row, not a second one (only a signup whose venue is gone gets its own `s:` row).
+  Rejected: an archive in «Όλοι» (the finished ones bury the live ones), and a row per signup (counted twice).
 - **Greek is reviewed by Andreas himself.** Strings a customer reads are written per language and
   cross-checked, never find-replaced: 36 `p_*` strings contain «γιορτ» and name the *event*, while
   only five name the *table*.

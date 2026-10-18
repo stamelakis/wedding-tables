@@ -281,12 +281,20 @@ options (HANDOFF §8.6).
   key, token, link or venue client card.
 - Labels on the new screens are Greek; admin.html's existing English labels move to Greek as each part is
   touched.
+- **Phase 1 as built.** `GET /admin/customers` → `{ at, today, customers: [row] }`; `GET /admin/customers/:key` →
+  `{ customer: row, venue?, setup?, licence?, couple?, signup?, template?, events: [] }` (`customerList` /
+  `customerCard` in the worker). Flags are codes (`setup_unopened`, `no_event`, `claim_unused`, `invoice_due`,
+  `renew_skipped`, `trial_ending`, `support_open`); admin.html turns them into words (`C_FLAG`). An event
+  reaches the card only through the whitelist `custEvent`: add a field there, never spread a plan or a
+  venue's wedding row (its label is the venue's client data). A pending signup is its venue's row; only a
+  signup whose venue is gone gets its own key, `s:<signupId>`. Local test data with one customer per flag and
+  stage: `node tools/dev-customers.mjs` (preview «takeaseat-customers»).
 
 ## 8. Phase status
 
 | Phase | Status |
 |---|---|
-| 1 «Πελάτες» sheet | next: own session started 2026-10-18 |
+| 1 «Πελάτες» sheet | built and tested 2026-10-18 (cbcb015 server, 4037e9e tests, be84788 screen); waits on Andreas's Greek review and his yes to deploy |
 | 2 Customer card + memory | — |
 | 3 The venue's own sheet | — |
 | 4 Contacts | — |
