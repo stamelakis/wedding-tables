@@ -2,28 +2,23 @@
 
 Updated: 2026-10-18
 
-**Status:** Live runs `4534cf2` (deployed 2026-10-18, tag `deploy-2026-10-18-1`), healthy. The repo is ahead
-by operations phase 1, the «Πελάτες» sheet: built and tested, **not deployed**. It waits on Andreas's Greek
-review and his yes.
+**Status:** Live runs `33a84df` (deployed 2026-10-18, tag `deploy-2026-10-18-2`), healthy, everything in the
+repo is deployed. Operations phase 1, the «Πελάτες» sheet, is live.
 
 ## In progress / unfinished
 
-- **Operations phase 1, «Πελάτες» in admin.html** — built 2026-10-18 (`cbcb015` server, `4037e9e` tests,
-  `be84788` screen, `372f39d` verifier fixes). Suite 981/981. Checked in the preview at desktop and phone
-  width with `tools/dev-customers.mjs`, which seeds one customer per flag and stage. The verifier agent found
-  every brief item met. It stopped at the Greek review (see «Waiting on Andreas»). After his yes: apply his
-  changes, then `/ship`. Not pushed, not deployed.
-- Party plans created before 2026-10-17 keep the label «Τραπέζι της γιορτής» until the customer renames it
+- Nothing half-built. Party plans created before 2026-10-17 keep the label «Τραπέζι της γιορτής» until the customer renames it
   (deliberately not rewritten on load: it could trip a venue's table lock). Converting such a plan to another
   kind still works (LEGACY_HEADS, on both planner and server).
 
 ## Next
 
-1. **Deploy phase 1** after Andreas's Greek review (above), then check it on his phone against the live data.
-2. **Operations phase 2: the customer card becomes where you work, and remembers** (`OPERATIONS-PLAN.md` §4).
-   It builds on phase 1's `GET /admin/customers/:key` and `customerCardHtml`; §7 has the shape as built.
-   Phases 3–6 follow in order; phase 7 (online payment) waits on the company, accountant and lawyer.
-3. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today — checked
+1. **Operations phase 2: the customer card becomes where you work, and remembers** (`OPERATIONS-PLAN.md` §4):
+   the old lists' buttons move into the card, private notes, «Επόμενο βήμα», the timeline, and the memory card
+   with its clock (privacy.html and terms.html change with it; Greek reviewed by Andreas). It builds on phase
+   1's `GET /admin/customers/:key` and `customerCardHtml`; §7 has the shape as built. *Done when:* §4's phase 2
+   line. Phases 3–6 follow in order; phase 7 (online payment) waits on the company, accountant and lawyer.
+2. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today — checked
    2026-10-18: every plan on the server comes from a purchase (admin), a venue with a licence or free year,
    or a paying couple's extra plan; no free path exists. The free 8-table cap belongs to plans that stay on
    a device (the lab, unsaved plans), and the planner enforces it. Build the server check together with a
@@ -31,11 +26,9 @@ review and his yes.
 
 ## Waiting on Andreas
 
-- **Greek review of the «Πελάτες» sheet**, then a yes to deploy it. Every new string is in
-  `C:\Users\andre\AppData\Roaming\Claude\side-session-notes\local_3a33f245-9559-429d-a661-6aa2dd65197a\customer-sheet-greek-review.md`.
-  Four points to decide: «Ενεργός» for a κτήμα; the same row words «δεν άνοιξε τον σύνδεσμο» for a venue's
-  setup link and a couple's plan link; midnight shown as «12:00 π.μ.» (24-hour «00:00» instead?); and
-  «Ανανέωση» meaning both the reload button and the renewal stage. Reply «εντάξει» or the lines to change.
+- **A look at «Πελάτες» on your phone** (each phase ends checked on your phone): open
+  https://takeaseat.gr/admin.html, sign in with the owner key, and the sheet is the first thing. Today it has
+  one row, the one real venue. Tap it to open the card. Tell the next session anything that looks off.
 - **Accountant** (€10,000 VAT threshold, and who issues receipts for TakeaSeat sales until the company
   exists; also how many years payment records must be kept), **company registration** — later. The receipt
   question only blocks the receipt-number part of operations phase 5.
@@ -52,9 +45,12 @@ review and his yes.
 
 ## History
 
-- 2026-10-18 — Operations phase 1 built, not deployed: «Πελάτες» in admin.html. It has one row per customer, the
-  six «Θέλουν εμένα» flags, seating %, a read-only card and Excel. The privacy test proves no guest name, key,
-  token or link leaves the endpoints. Suite now 981.
+- 2026-10-18 — Deployed `33a84df` (tag `deploy-2026-10-18-2`): operations phase 1, «Πελάτες» in admin.html.
+  It has one row per customer, the six «Θέλουν εμένα» flags, seating %, a read-only card and Excel. The
+  privacy test proves no guest name, key, token or link leaves the endpoints. Suite now 981. Andreas
+  approved the Greek as it is, including «Ενεργός» for a κτήμα, the shared row words for two links,
+  «12:00 π.μ.», and «Ανανέωση» for both reload and renewal. Live check: the endpoints refuse anyone without
+  the owner key, and the sheet's one row matches the old lists. The verifier smoke-tested the public pages.
 
 - 2026-10-18 — `OPERATIONS-PLAN.md` written and approved: seven phases from one customer sheet to online
   payment, a customer memory on a restarting 5-/2-year clock, the venues' own client sheet; all seven

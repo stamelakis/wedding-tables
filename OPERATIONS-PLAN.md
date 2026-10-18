@@ -294,7 +294,7 @@ options (HANDOFF §8.6).
 
 | Phase | Status |
 |---|---|
-| 1 «Πελάτες» sheet | built and tested 2026-10-18 (cbcb015 server, 4037e9e tests, be84788 screen); waits on Andreas's Greek review and his yes to deploy |
+| 1 «Πελάτες» sheet | live 2026-10-18 (`33a84df`, tag `deploy-2026-10-18-2`); Greek approved by Andreas; his own look on his phone still to come |
 | 2 Customer card + memory | — |
 | 3 The venue's own sheet | — |
 | 4 Contacts | — |
