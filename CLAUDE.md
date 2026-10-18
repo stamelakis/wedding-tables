@@ -104,6 +104,12 @@ build runs the full suite), restarts and health-checks; on failure it rolls back
   year. The pages say so; do not drop the erasure without changing privacy, terms and dpa. The planner
   says it only in the Excel import (the one way a customer brings notes in) and only on an online plan:
   the erasure is the server's, so a device-only plan keeps its notes and must not be told otherwise.
+- **Back office follows `OPERATIONS-PLAN.md`** (approved 2026-10-18). Customer data stays in our SQLite only;
+  rejected: syncing to Google Sheets or a CRM (two copies drift, data handed to another company). TakeaSeat
+  records payments, Λογιστής issues every receipt. Admin endpoints never return a venue's client cards.
+- **Customer memory, not "forever"** (Andreas, 2026-10-18): a memory card kept 5 years after the last contact
+  for buyers, 2 for non-buyers, the clock restarting on each new contact; plans are still deleted a year after.
+  Andreas wanted "as long as possible"; a restarting fixed period is the longest GDPR allows.
 - **Greek is reviewed by Andreas himself.** Strings a customer reads are written per language and
   cross-checked, never find-replaced: 36 `p_*` strings contain «γιορτ» and name the *event*, while
   only five name the *table*.

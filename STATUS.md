@@ -13,10 +13,12 @@ repo is deployed. Nothing is open on the product side; what remains waits on And
 
 ## Next
 
-1. **Daily operations: `OPERATIONS-PLAN.md`** (written 2026-10-18, draft, revised once). Seven phases: one
-   customer sheet → customer card with notes, timeline and a 5-year customer memory → the venues' own sheet →
-   every contact in the sheet → payments ledger → «Σήμερα» page and morning mail → online payment (later).
-   Waiting for Andreas's OK and his seven decisions (§6); then phase 1.
+1. **Operations plan, phase 1: the «Πελάτες» sheet in admin.html** (`OPERATIONS-PLAN.md` §4, approved
+   2026-10-18 with all seven decisions in §6). One row per venue, direct customer and pending signup, stage,
+   «Θέλουν εμένα» flags, seating % (decision 5), read-only customer card, Excel export. *Done when:* each
+   customer appears exactly once with the right stage; each flag fires for a test customer built for it; a
+   test proves the new endpoint never returns a key, link or guest name; checked on desktop and phone width.
+   Phases 2–6 follow in order; phase 7 (online payment) waits on the company, accountant and lawyer.
 2. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today — checked
    2026-10-18: every plan on the server comes from a purchase (admin), a venue with a licence or free year,
    or a paying couple's extra plan; no free path exists. The free 8-table cap belongs to plans that stay on
@@ -26,8 +28,12 @@ repo is deployed. Nothing is open on the product side; what remains waits on And
 ## Waiting on Andreas
 
 - **Accountant** (€10,000 VAT threshold, and who issues receipts for TakeaSeat sales until the company
-  exists), **company registration**, **lawyer review** of terms — later.
-- **The operations plan**: OK it (or change it) and answer its seven decisions, `OPERATIONS-PLAN.md` §6.
+  exists; also how many years payment records must be kept), **company registration** — later. The receipt
+  question only blocks the receipt-number part of operations phase 5.
+- **Lawyer review** of terms — later. Add to the list: the customer-memory periods (5 years after the last
+  contact for buyers, 2 for non-buyers, venues' client cards 5 by default) and the «say no to related mails»
+  line under ν. 3471/2006 άρθρο 11 §3 (`OPERATIONS-PLAN.md` §2.5 and §6). Both are built before the review;
+  the review may change the numbers.
 
 ## Known problems
 
@@ -36,6 +42,10 @@ repo is deployed. Nothing is open on the product side; what remains waits on And
   node_modules every time. TakeaSeat's own share was 0.1 GB.
 
 ## History
+
+- 2026-10-18 — `OPERATIONS-PLAN.md` written and approved: seven phases from one customer sheet to online
+  payment, a customer memory on a restarting 5-/2-year clock, the venues' own client sheet; all seven
+  decisions accepted as suggested. Nothing built yet.
 
 - 2026-10-18 — Deployed `4534cf2`: the Excel import window says guest notes are erased the day after the
   event (el/en/de, Greek approved by Andreas), shown only on an online plan. The planner has no typed note

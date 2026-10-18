@@ -1,7 +1,8 @@
 # TakeaSeat — daily operations: the development plan
 
-Written 2026-10-18, revised the same day (customer memory, the venues' own sheet). **Status: draft, waiting
-for Andreas's OK.** Each phase below gets its own session and its own status line here as it moves.
+Written 2026-10-18, revised the same day (customer memory, the venues' own sheet). **Status: approved by
+Andreas on 2026-10-18, with all seven decisions in §6 accepted as suggested.** Each phase below gets its own
+session and its own status line here (§8) as it moves.
 
 **The goal, in one line:** every customer, from the first message to years later, is one row you can see,
 tap and act on from your phone, and the system tells you each morning what needs you. Nothing about a
@@ -241,7 +242,7 @@ options (HANDOFF §8.6).
 - **The system on its own:** reminder mails, renewals, locking, keepsakes, plan deletion, forgetting
   memory cards whose clock ran out, backups, monitoring, the morning mail.
 
-## 6. Decisions needed from Andreas
+## 6. Decisions (all seven accepted by Andreas as suggested, 2026-10-18)
 
 1. **Payment methods to offer until phase 7.** The ledger accepts any method; which ones the price page and
    the templates mention is your call. Suggestion: bank transfer and IRIS.
@@ -285,7 +286,7 @@ options (HANDOFF §8.6).
 
 | Phase | Status |
 |---|---|
-| 1 «Πελάτες» sheet | not started, waiting for the OK on this plan |
+| 1 «Πελάτες» sheet | next: own session started 2026-10-18 |
 | 2 Customer card + memory | — |
 | 3 The venue's own sheet | — |
 | 4 Contacts | — |
