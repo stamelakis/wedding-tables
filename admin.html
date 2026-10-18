@@ -186,7 +186,8 @@
     #custTable .reach{ gap:8px; }
     #custTable .reach .btn.sm{ min-height:40px; min-width:44px; padding:8px 12px; font-size:14px; justify-content:center; }   /* a thumb, not a cursor */
     .dlg .dhead, .dlg .dbody, .dlg .dfoot{ padding-left:14px; padding-right:14px; }
-    .cacts .btn.sm, .tlbtns .btn.sm{ min-height:40px; padding:8px 12px; font-size:14px; }   /* thumbs, as on the sheet */
+    .cacts .btn.sm, .tlbtns .btn.sm, .cbox .btn.sm{ min-height:40px; padding:8px 12px; font-size:14px; }   /* thumbs, as on the sheet */
+    .tl .x{ min-width:40px; min-height:36px; }
     .tl li{ flex-wrap:wrap; gap:0 10px; } .tl time{ flex-basis:100%; }
   }
 </style>
@@ -386,7 +387,7 @@ function openDialog(html){
 function closeDialog(){ const d=document.getElementById("dlg"); if(!d) return;
   flushNotes(); cardNotes=null;
   if(d.open){ try{ d.close(); }catch(e){ d.removeAttribute("open"); } } delete d.dataset.ctx; d.innerHTML="";
-  if(dlgBack){ const k=dlgBack; dlgBack=null; openCustomer(k); } }
+  if(dlgBack){ const k=dlgBack; dlgBack=null; refreshCustomers(); openCustomer(k); } else cardPanel=null; }   // back from «Επεξεργασία…» / the trash: the row may have changed too
 const dlgHead=title=>`<div class="dhead"><h2>${title}</h2><button class="btn sm ghost" data-dclose title="Close">✕</button></div>`;
 // A missing or wrong field: say what is needed and put the cursor there.
 function invalid(el, msg){ toast(msg); if(el){ el.setAttribute("aria-invalid","true"); el.focus();
@@ -933,7 +934,7 @@ function openNewCouple(){
   const d=openDialog(`${dlgHead("New customer — couple or parents")}
     <div class="dbody">
       <div class="grid">
-        <div><label for="ckind">Event</label><select id="ckind"><option value="wedding" selected>Wedding</option><option value="baptism">Baptism</option></select></div>
+        <div><label for="ckind">Event</label><select id="ckind"><option value="wedding" selected>Wedding</option><option value="baptism">Baptism</option><option value="party">Celebration (γιορτή)</option></select></div>
         <div><label for="cname" id="cnamelbl">Couple name</label><input id="cname" maxlength="120" placeholder="e.g. Μαρία & Νίκος"></div>
         <div><label for="cemail">Email (optional)</label><input id="cemail" type="email" placeholder="for their link and recovery" autocomplete="off"></div>
         <div><label for="cdate" id="cdatelbl">Wedding date</label><input id="cdate" type="date" required min="${esc(todayYmd())}"></div>
@@ -952,9 +953,9 @@ function openNewCouple(){
   ["input","change"].forEach(t=>d.querySelector("#cdate").addEventListener(t,syncStartNow));
   d.querySelector("#cstart").addEventListener("change",syncStartNow); syncStartNow();
   const k=d.querySelector("#ckind");   // the two labels say what is being sold, before it is sold
-  k.addEventListener("change",()=>{ const K=EVW[k.value==="baptism"?"baptism":"wedding"];
+  k.addEventListener("change",()=>{ const K=EV({ kind:k.value });
     d.querySelector("#cnamelbl").textContent=K.name; d.querySelector("#cdatelbl").textContent=K.date;
-    d.querySelector("#cname").placeholder=k.value==="baptism"?"e.g. Ελένη":"e.g. Μαρία & Νίκος"; });
+    d.querySelector("#cname").placeholder={ baptism:"e.g. Ελένη", party:"e.g. 40ά γενέθλια Κώστα" }[k.value]||"e.g. Μαρία & Νίκος"; });
   d.querySelector("#cname").focus();
 }
 async function createCouple(){
@@ -964,7 +965,7 @@ async function createCouple(){
   const contact=document.getElementById("ccontact").value.trim();
   const email=document.getElementById("cemail").value.trim();
   const sel=document.getElementById("clang").value, lang=PLANNER_FILE[sel]?sel:"el";
-  const kindEl=document.getElementById("ckind"), kind=(kindEl&&kindEl.value==="baptism")?"baptism":"wedding";
+  const kindEl=document.getElementById("ckind"), kind=evKind({ kind:kindEl&&kindEl.value });
   const dateEl=document.getElementById("cdate"), weddingDate=dateEl.value||"", startEl=document.getElementById("cstart");
   if(dateEl.validity && dateEl.validity.badInput){ invalid(dateEl, "That date isn't complete"); return; }
   const PAST_DATE="The event date can't be in the past — a new customer's plan would be deleted at once";
@@ -1075,7 +1076,7 @@ function openCoupleEdit(c){
     <div class="dbody">
       <div class="grid">
         <div class="full"><label for="ce_kind">Event</label>
-          <select id="ce_kind" style="max-width:220px"><option value="wedding" ${evKind(c)==="wedding"?"selected":""}>Wedding</option><option value="baptism" ${evKind(c)==="baptism"?"selected":""}>Baptism</option></select>
+          <select id="ce_kind" style="max-width:220px"><option value="wedding" ${evKind(c)==="wedding"?"selected":""}>Wedding</option><option value="baptism" ${evKind(c)==="baptism"?"selected":""}>Baptism</option><option value="party" ${evKind(c)==="party"?"selected":""}>Celebration (γιορτή)</option></select>
           <div class="muted" style="margin-top:4px">Entered wrongly? Correct it here — only the words change, never the dates or the phases.</div></div>
         <div class="full"><label for="ce_name" id="ce_namelbl">${esc(EV(c).name)}</label><input id="ce_name" maxlength="120" value="${esc(c.name)}"></div>
         <div class="full"><label for="ce_date" id="ce_datelbl">${esc(EV(c).date)}</label>
@@ -1090,18 +1091,19 @@ function openCoupleEdit(c){
     <div class="dfoot"><button class="btn" data-dclose>Cancel</button><button class="btn primary" id="ce_save">Save</button></div>`);
   wireRetention("ce_", d);
   d.querySelector("#ce_clear").onclick=()=>{ d.querySelector("#ce_date").value=""; };
-  d.querySelector("#ce_kind").onchange=e=>{ const K=EVW[e.target.value==="baptism"?"baptism":"wedding"];   // the labels follow the pick
+  d.querySelector("#ce_kind").onchange=e=>{ const K=EV({ kind:e.target.value });   // the labels follow the pick
     d.querySelector("#ce_namelbl").textContent=K.name; d.querySelector("#ce_datelbl").textContent=K.date; };
   d.querySelector("#ce_save").onclick=()=>saveCoupleEdit(c, d);
 }
 async function saveCoupleEdit(c, d){
   const q=s=>d.querySelector(s), btn=q("#ce_save"); if(btn.disabled) return;
-  const kind=q("#ce_kind").value==="baptism"?"baptism":"wedding";
+  const kind=evKind({ kind:q("#ce_kind").value });
   const name=q("#ce_name").value.trim(); if(!name){ invalid(q("#ce_name"), EVW[kind].askName); return; }
   const dateEl=q("#ce_date"); if(dateEl.validity && dateEl.validity.badInput){ invalid(dateEl, "That date isn't complete"); return; }
   const date=dateEl.value||"", oldDate=isYmd(c.weddingDate)?c.weddingDate:"";
   const r=readRetention("ce_", d); if(r.error){ invalid(r.el, r.error); return; }
   const body={ name, retention:r.ret };   // the notes are the card's own box, saved as he types
+  if(kind!==evKind(c)) body.kind=kind;    // the type, corrected (it was picked here but never sent, until phase 2)
   if(date!==oldDate){
     if(date && date<todayYmd() && !confirm(`${fmtYmd(date)} is in the past.\n\nThe plan becomes view-only and — unless it is kept — may be deleted at the next hourly check. Continue?`)) return;
     if(!date && !confirm(`Clear the event date of "${c.name}"?\n\nWithout a date the plan counts as over 18 months after it was made.`)) return;
@@ -1859,8 +1861,12 @@ function cFar(ymd){ const n=cDays(todayYmd(), ymd);
   return n<60 ? cInDays(ymd) : n<730 ? "σε "+gN(Math.round(n/30.44),"μήνα","μήνες") : "σε "+gN(Math.round(n/365.25),"χρόνο","χρόνια"); }
 
 // Opens a card, or redraws the one on screen in place (same scroll), after his own change or an action.
+let cardPanel=null;   // {key, el}: the last answer box (a new key, a new link) of the open card, kept until he closes it or the card
 async function openCustomer(key, holder){
   await flushNotes();
+  if(holder) cardPanel={ key, el:holder };
+  else if(cardPanel && cardPanel.key===key && cardPanel.el.innerHTML) holder=cardPanel.el;   // a later redraw keeps the box
+  else cardPanel=null;
   let d=document.getElementById("dlg");
   const same=!!(d && d.open && d.dataset.ctx==="cust:"+key), top=same ? d.scrollTop : 0;
   if(!same){ d=openDialog(`<div lang="el">${dlgHead("Φορτώνει…")}<div class="dbody"><div class="empty">Φορτώνει…</div></div></div>`); d.dataset.ctx="cust:"+key; }
@@ -2142,7 +2148,7 @@ function customerCardHtml(x){
   out.push(`<div class="subh">Εκδηλώσεις <span class="muted">(${evs.length})</span></div>`
     +(evs.length ? evs.map(cEventHtml).join("") : `<div class="muted">${past.length ? "Καμία με σχέδιο." : "Καμία εκδήλωση ακόμη."}</div>`)
     +cPastHtml(past));
-  out.push(`<div class="subh">Μνήμη <span class="muted">— πόσο τον θυμόμαστε</span></div>`+cMemoryHtml(x));
+  out.push(`<div class="subh">Μνήμη <span class="muted">— για πόσο κρατάμε την καρτέλα</span></div>`+cMemoryHtml(x));
   return out.join("");
 }
 
