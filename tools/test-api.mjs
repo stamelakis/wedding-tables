@@ -2828,4 +2828,186 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
   }
 }
 
+// ---------- 21. «Πελάτες»: every customer once, with its stage and flags — and nothing from inside a plan ----------
+{
+  const keepMail = env.MAIL, mails = [];
+  const mailOff = () => { delete env.MAIL; };
+  const mailOnNow = () => { env.MAIL = { enabled: true, from: 'TakeaSeat <hello@takeaseat.gr>', send: msg => { mails.push(msg); return true; } }; };
+  const DAYMS = 86400000, ago = d => Date.now() - d * DAYMS;
+  const sheet = async () => (await call('GET', '/admin/customers', undefined, OWN)).d;
+  const cardOf = key => call('GET', '/admin/customers/' + encodeURIComponent(key), undefined, OWN);
+  const rowOf = (d, key) => d.customers.filter(x => x.key === key);
+  const same = (a, b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sort());
+  try {
+    // -- the owner only ---------------------------------------------------------
+    mailOff();
+    const VS = (await call('POST', '/admin/venues', { name: 'Πελ. Κτήμα με εκδηλώσεις', contact: 'Γραμματεία 210 555 1234', license: { type: 'per_wedding', quota: 10 } }, OWN)).d;
+    const HS = { 'X-Venue-Key': VS.key };
+    for (const [h, what] of [[{}, 'no key'], [{ 'X-Owner-Key': 'wrong' }, 'a wrong key'], [{ 'X-Owner-Key': VS.key }, "a venue's key"]]) {
+      ok((await call('GET', '/admin/customers', undefined, h)).status === 403 && (await call('GET', '/admin/customers/v:' + VS.id, undefined, h)).status === 403,
+        'customers: the sheet and the card refuse ' + what);
+    }
+
+    // -- the direct customers (mail off: the admin hands the claim link over himself) --
+    let x = await call('POST', '/admin/couples', { name: 'Πελ. Ζεύγος σε εξέλιξη', contact: '6977 000 001', email: 'cust-c5@example.gr', weddingDate: athensDay(9) }, OWN);
+    const C5 = x.d.couple.id, C5claim = (await call('POST', '/claim', { token: x.d.claimToken, nonce: 'cust-c5' })).d;
+    const SECRET_NAMES = ['Ζωή Καλλιγά', 'Πέτρος Ανδρουλάκης', 'Ιφιγένεια Σταυροπούλου', 'Αριστείδης Μπουρνάζος', 'Ευτέρπη Γλυνού', 'Χαράλαμπος Τσιμάρας', 'Κλεάνθης Ρουσιάς'];
+    const SECRET_TEXT = ['αλλεργία στα φιστίκια', 'δυσανεξία στη λακτόζη', 'Οικογένεια Ζαφειρίου', 'Βάπτιση της μικρής Ζαφειρίου', 'ΜΥΣΤΙΚΟ μήνυμα υποστήριξης', 'Ομάδα Κουμπάρων'];
+    const seat = (ids) => [{ id: 1, shape: 'round', x: 100, y: 100, label: '1', capacity: 8, seats: [...ids, ...Array(8 - ids.length).fill(null)] }];
+    x = await call('PUT', '/plans/' + C5claim.id, { plan: layout({ tables: seat(['g1']), groups: [{ id: 'grp1', name: 'Ομάδα Κουμπάρων', color: '#e26d8a' }],
+      guests: { g1: { name: 'Ζωή Καλλιγά', note: 'αλλεργία στα φιστίκια' }, g2: { name: 'Πέτρος Ανδρουλάκης' }, g3: { name: 'Ιφιγένεια Σταυροπούλου', status: 'cut' } } }) },
+      { 'X-Edit-Key': C5claim.editKey });
+    ok(x.status === 200, 'customers: a couple seats one of the two guests still coming (a third is «κόπηκε»)', x.d);
+    ok((await call('POST', '/plans/' + C5claim.id + '/support', { hours: 24, message: 'ΜΥΣΤΙΚΟ μήνυμα υποστήριξης' }, { 'X-Edit-Key': C5claim.editKey })).status === 200, 'customers: … and asks for support');
+    x = await call('POST', '/admin/couples', { name: 'Πελ. Ζεύγος χωρίς email', contact: 'μόνο στο Viber' }, OWN);
+    const C6 = x.d.couple.id, C6token = x.d.claimToken;
+    const C8 = (await call('POST', '/admin/couples', { name: 'Πελ. Βάπτιση', kind: 'baptism', weddingDate: athensDay(60) }, OWN)).d.couple.id;
+    const C9 = (await call('POST', '/admin/couples', { name: 'Πελ. Γιορτή', kind: 'party', weddingDate: athensDay(30) }, OWN)).d.couple.id;
+    const C10 = (await call('POST', '/admin/couples', { name: 'Πελ. Παλιός γάμος', contact: '+44 7700 900123' }, OWN)).d.couple.id;
+    patchRaw('plan:' + raw('couple:' + C10).planId, o => { o.weddingDate = athensDay(-30); });
+
+    // -- the venue with events: a wedding with guests and a support request, a baptism sooner --
+    const W1 = (await call('POST', '/venues/' + VS.id + '/weddings', { label: 'Οικογένεια Ζαφειρίου', date: athensDay(20) }, HS)).d;
+    const W2 = (await call('POST', '/venues/' + VS.id + '/weddings', { label: 'Βάπτιση της μικρής Ζαφειρίου', date: athensDay(5), kind: 'baptism' }, HS)).d;
+    x = await call('PUT', '/plans/' + W1.planId, { plan: layout({ tables: seat(['v1', 'v2']),
+      guests: { v1: { name: 'Αριστείδης Μπουρνάζος' }, v2: { name: 'Ευτέρπη Γλυνού', note: 'δυσανεξία στη λακτόζη' }, v3: { name: 'Χαράλαμπος Τσιμάρας' }, v4: { name: 'Κλεάνθης Ρουσιάς', status: 'cut' } } }) },
+      { 'X-Edit-Key': W1.venueKey });
+    ok(x.status === 200, 'customers: a venue seats two of the three guests still coming', x.d);
+    ok((await call('POST', '/plans/' + W1.planId + '/support', { hours: 24 }, HS)).status === 200, 'customers: … and asks for support on that wedding');
+
+    // -- venues built for each flag and stage (mail on: the setup link goes to the venue) --
+    mailOnNow();
+    const mkV = async (name, email, extra = {}) => (await call('POST', '/admin/venues', { name, email, license: { type: 'seasonal', seasonStart: athensDay(-10), seasonEnd: athensDay(200) }, ...extra }, OWN)).d.id;
+    const VA = await mkV('Πελ. Α σύνδεσμος ανοιχτός', 'cust-va@example.gr', { contact: 'τηλ. 697 735 5378 · κ. Μαρία' });
+    patchRaw('venue:' + VA, o => { o.createdAt = ago(4); });
+    const VB = await mkV('Πελ. Β σύνδεσμος σήμερα', 'cust-vb@example.gr');
+    const VC = await mkV('Πελ. Γ χωρίς εκδήλωση', 'cust-vc@example.gr');
+    patchRaw('venue:' + VC, o => { o.createdAt = ago(15); o.keyRotated = true; o.keyPrivate = false; });
+    const VC2 = await mkV('Πελ. Γ2 χωρίς εκδήλωση, νωρίς ακόμα', 'cust-vc2@example.gr');
+    patchRaw('venue:' + VC2, o => { o.createdAt = ago(10); o.keyRotated = true; o.keyPrivate = false; });
+    const VD = await mkV('Πελ. Δ τιμολόγιο', 'cust-vd@example.gr');
+    patchRaw('venue:' + VD, o => { o.keyRotated = true; o.used = 1; o.license.invoiceDue = true; });
+    const VE = await mkV('Πελ. Ε παράλειψη ανανέωσης', 'cust-ve@example.gr');
+    patchRaw('venue:' + VE, o => { o.keyRotated = true; o.used = 1; o.license = { ...o.license, seasonStart: athensDay(-368), seasonEnd: athensDay(-3), autoRenew: true, renewSkipped: athensDay(-3) }; });
+    const VF = await mkV('Πελ. ΣΤ σεζόν τελείωσε', 'cust-vf@example.gr');
+    patchRaw('venue:' + VF, o => { o.keyRotated = true; o.used = 1; o.license = { ...o.license, seasonStart: athensDay(-368), seasonEnd: athensDay(-3), autoRenew: false }; });
+    const VG = await mkV('Πελ. Ζ ανενεργό', 'cust-vg@example.gr');
+    patchRaw('venue:' + VG, o => { o.keyRotated = true; o.used = 1; o.active = false; });
+    const VT = await mkV('Πελ. Η δωρεάν χρόνος τελειώνει', 'cust-vt@example.gr');
+    patchRaw('venue:' + VT, o => { o.keyRotated = true; o.used = 1; o.license = { ...o.license, seasonStart: athensDay(-335), seasonEnd: athensDay(30), autoRenew: false };
+      o.trial = { startedAt: ago(335), endsAt: ago(-30), verifiedAt: ago(335), seasonEnd: athensDay(30), signupId: null }; });
+    // a claim link that went by mail and was never used
+    const C7 = (await call('POST', '/admin/couples', { name: 'Πελ. Ζεύγος δεν πάτησε', email: 'cust-c7@example.gr', weddingDate: athensDay(40) }, OWN)).d.couple.id;
+    patchRaw('couple:' + C7, o => { o.claimAt = ago(4); o.createdAt = ago(4); });
+    // a signup nobody opened, and one whose venue is gone
+    const su = (body, ip) => call('POST', '/signup/venue', { phone: '2101112233', terms: true, lang: 'el', ...body }, { 'X-Real-IP': ip });
+    ok((await su({ name: 'Πελ. Κτήμα από εγγραφή', afm: '800000002', email: 'cust-sg1@example.gr' }, '203.0.113.71')).status === 200, 'customers: a venue signs up on its own');
+    const SG1 = raw('afm:800000002'), SG1v = SG1.venueId, SG1s = SG1.signupId;
+    patchRaw('venue:' + SG1v, o => { o.createdAt = ago(4); }); patchRaw('signup:' + SG1s, o => { o.createdAt = ago(4); });
+    ok((await su({ name: 'Πελ. Εγγραφή χωρίς κτήμα', afm: '900000005', email: 'cust-sg2@example.gr', phone: '6944 123 456' }, '203.0.113.72')).status === 200, 'customers: a second signup');
+    const SG2 = raw('afm:900000005'), SG2s = SG2.signupId;
+    m.delete('venue:' + SG2.venueId); patchRaw('venues:index', o => { o.splice(o.indexOf(SG2.venueId), 1); });
+    patchRaw('signup:' + SG2s, o => { o.createdAt = ago(4); });
+
+    // -- every customer exactly once --------------------------------------------
+    const d = await sheet();
+    ok(Array.isArray(d.customers) && d.today === athensDay(0) && d.at > 0, 'customers: the sheet answers with its rows and the day it was worked out on');
+    const keys = d.customers.map(c => c.key);
+    ok(new Set(keys).size === keys.length, 'customers: no key appears twice', keys.filter((k, i) => keys.indexOf(k) !== i));
+    const vIds = raw('venues:index').filter(id => m.has('venue:' + id) && !raw('venue:' + id).test);
+    const cIds = raw('couples:index').filter(id => m.has('couple:' + id));
+    ok(vIds.every(id => rowOf(d, 'v:' + id).length === 1) && cIds.every(id => rowOf(d, 'c:' + id).length === 1), 'customers: every venue and every direct customer is on the sheet exactly once',
+      { venues: vIds.filter(id => rowOf(d, 'v:' + id).length !== 1), couples: cIds.filter(id => rowOf(d, 'c:' + id).length !== 1) });
+    ok(!m.has('venue:tasdokimi0') || (!keys.includes('v:tasdokimi0') && (await cardOf('v:tasdokimi0')).status === 404), 'customers: the test venue is not a customer');
+    const sIds = (raw('signups:index') || []).filter(id => m.has('signup:' + id)), sig = id => raw('signup:' + id);
+    ok(sIds.every(id => keys.includes('s:' + id) === (sig(id).status === 'pending' && !m.has('venue:' + sig(id).venueId))),
+      'customers: a signup is its venue\'s row — only a pending one whose venue is gone gets a row of its own; an expired or confirmed one never does');
+    ok(keys.length === vIds.length + cIds.length + keys.filter(k => k.startsWith('s:')).length, 'customers: and nothing else is on the sheet');
+    ok(rowOf(d, 'v:' + SG1v).length === 1 && !keys.includes('s:' + SG1s) && keys.includes('s:' + SG2s), 'customers: the new signup is one row (its venue), the orphan its own');
+
+    // -- stage, flags and the columns, per customer -------------------------------
+    const R = k => rowOf(d, k)[0] || {};
+    const expect = [
+      ['v:' + VA, 4, ['setup_unopened'], 'a setup link unopened for 4 days'],
+      ['v:' + VB, 4, [], 'a setup link sent today'],
+      ['v:' + VC, 5, ['no_event'], 'a confirmed venue with no event after 15 days'],
+      ['v:' + VC2, 5, [], 'a confirmed venue with no event after 10 days'],
+      ['v:' + VD, 6, ['invoice_due'], 'a renewal invoice due'],
+      ['v:' + VE, 6, ['renew_skipped'], 'a renewal skipped'],
+      ['v:' + VF, 7, [], 'a season over that does not renew'],
+      ['v:' + VG, 7, [], 'an inactive venue'],
+      ['v:' + VT, 6, ['trial_ending'], 'a free year that ends in 30 days'],
+      ['v:' + VS.id, 5, ['support_open'], 'a venue with events and a support request'],
+      ['v:' + SG1v, 4, ['setup_unopened'], 'a signup whose link is unopened for 4 days'],
+      ['s:' + SG2s, 4, ['setup_unopened'], 'a pending signup whose venue is gone'],
+      ['c:' + C5, 5, ['support_open'], 'a couple at work who asked for support'],
+      ['c:' + C6, 4, [], 'a couple whose link was handed over today'],
+      ['c:' + C7, 4, ['claim_unused'], 'a couple whose mailed link is unused for 4 days'],
+      ['c:' + C8, 4, [], 'parents of a baptism, link not used yet'],
+      ['c:' + C9, 4, [], 'a party, link not used yet'],
+      ['c:' + C10, 7, [], 'a couple whose wedding is past'],
+    ];
+    for (const [k, stage, flags, what] of expect)
+      ok(R(k).stage === stage && same(R(k).flags || [], flags), 'customers: ' + what + ' → stage ' + stage + (flags.length ? ', «' + flags.join(', ') + '»' : ', no flag'), R(k));
+    ok(['venue', 'venue', 'couple', 'parents', 'party'].every((t, i) => R(['v:' + VA, 's:' + SG2s, 'c:' + C5, 'c:' + C8, 'c:' + C9][i]).type === t), 'customers: the type — venue, couple, parents, party');
+    ok(R('v:' + VS.id).next === athensDay(5) && R('v:' + VS.id).nextKind === 'baptism' && R('v:' + VS.id).nextPct === null && R('v:' + VS.id).upcoming === 2 && R('v:' + VS.id).total === 2,
+      'customers: a venue\'s next event is its soonest, with its kind; two upcoming of two', R('v:' + VS.id));
+    ok(R('c:' + C5).next === athensDay(9) && R('c:' + C5).nextPct === 50 && R('c:' + C5).upcoming === 1 && R('c:' + C5).untilKind === 'plan' && R('c:' + C5).until > athensDay(300),
+      'customers: a couple\'s event, its seating 50 % (the guest who is not coming does not count), the plan kept a year after', R('c:' + C5));
+    ok(R('c:' + C10).next === null && R('c:' + C10).upcoming === 0 && R('c:' + C10).total === 1 && R('c:' + C10).untilKind === 'plan', 'customers: a past wedding has no next event, and the plan\'s end date', R('c:' + C10));
+    ok(R('v:' + VT).until === athensDay(30) && R('v:' + VT).untilKind === 'trial' && R('v:' + VD).untilKind === 'season' && R('v:' + VS.id).until === null, 'customers: a venue\'s end is its season or its free year');
+    ok(R('v:' + VA).phone === '+306977355378' && R('v:' + VS.id).phone === '+302105551234' && R('c:' + C5).phone === '+306977000001' && R('c:' + C10).phone === '+447700900123'
+      && R('c:' + C6).phone === '' && R('v:' + SG1v).phone === '+302101112233' && R('s:' + SG2s).phone === '+306944123456',
+      'customers: a number to call, picked out of the contact field — and none where there is none', ['v:' + VA, 'v:' + VS.id, 'c:' + C5, 'c:' + C10, 'c:' + C6].map(k => R(k).phone));
+    ok(R('v:' + SG1v).afm === '800000002' && R('v:' + SG1v).email === 'cust-sg1@example.gr' && R('c:' + C5).email === 'cust-c5@example.gr', 'customers: ΑΦΜ and email');
+    ok(R('c:' + C5).last >= raw('plan:' + C5claim.id).updated && R('v:' + VA).last > 0, 'customers: the last activity');
+
+    // -- the card ------------------------------------------------------------------
+    let cd = (await cardOf('v:' + VS.id)).d;
+    ok(cd.customer.key === 'v:' + VS.id && cd.venue.name === VS.venue.name && cd.licence && cd.setup && cd.events.length === 2, 'customers: the venue card — details, licence, setup, its events', cd);
+    ok(cd.events[0].date === athensDay(5) && cd.events[1].date === athensDay(20) && cd.events[1].seatedPct === 67 && cd.events[1].support && cd.events[0].phase && cd.events[1].audit.length > 0,
+      'customers: … each event with its date, phase, seating % and access log, soonest first', cd.events);
+    cd = (await cardOf('v:' + SG1v)).d;
+    ok(cd.signup && cd.signup.status === 'pending' && cd.signup.afm === '800000002' && cd.signup.email === 'cust-sg1@example.gr', 'customers: a signup venue\'s card carries the signup', cd.signup);
+    cd = (await cardOf('s:' + SG2s)).d;
+    ok(cd.customer.key === 's:' + SG2s && cd.signup.venueGone === true && cd.events.length === 0, 'customers: an orphan signup\'s card', cd);
+    cd = (await cardOf('c:' + C5)).d;
+    ok(cd.couple.id === C5 && cd.events.length === 1 && cd.events[0].seatedPct === 50 && cd.events[0].audit.some(a => a.who === 'couple'), 'customers: the couple card — the plan\'s state and access log', cd);
+    const C6list = (await call('GET', '/admin/couples', undefined, OWN)).d.couples.find(c => c.id === C6);
+    cd = (await cardOf('c:' + C6)).d;
+    ok(C6list.claimToken === C6token && !('claimToken' in cd.couple) && !JSON.stringify(cd).includes(C6token) && !JSON.stringify(d).includes(C6token),
+      'customers: the old list still offers an unmailed claim link to copy — the sheet and the card never carry it');
+    for (const bad of ['v:nope', 'c:nope', 's:nope', 'x:' + VS.id, VS.id, 'v:' + VS.id + '/x'])
+      ok((await cardOf(bad)).status === 404, 'customers: «' + bad + '» opens no card');
+
+    // -- privacy: nothing from inside a plan, no key, no token, no link ----------------
+    const outs = [JSON.stringify(d)];
+    const disagree = [];
+    for (const k of keys) { const c = await cardOf(k); if (!(c.status === 200 && c.d.customer.key === k && c.d.customer.stage === R(k).stage && same(c.d.customer.flags, R(k).flags))) disagree.push(k); outs.push(JSON.stringify(c.d)); }
+    ok(!disagree.length, 'customers: every row\'s card opens and agrees with its row (' + keys.length + ')', disagree);
+    const all = outs.join('\n');
+    const secrets = new Set();
+    const walk = (o, name) => {
+      if (typeof o === 'string') { if (/key|token|secret/i.test(name || '') && o.length >= 12) secrets.add(o); return; }
+      if (o && typeof o === 'object') for (const [k2, v2] of Object.entries(o)) walk(v2, Array.isArray(o) ? name : k2);
+    };
+    for (const [k, v] of m) {
+      if (/^(tok|claim|plan):/.test(k) && k.length >= 17) secrets.add(k.slice(k.indexOf(':') + 1));
+      let o = null; try { o = JSON.parse(v); } catch (e) {}
+      walk(o, '');
+    }
+    const supKey = (await call('GET', '/admin/support', undefined, OWN)).d.requests.map(q => q.key).filter(Boolean);
+    supKey.forEach(s => secrets.add(s));
+    ok(secrets.size > 50 && supKey.length >= 2, 'privacy: collected every key, token and plan id in the store (' + secrets.size + ')');
+    const leaked = [...secrets].filter(s => all.includes(s));
+    ok(!leaked.length, 'privacy: the sheet and every card carry no plan id, key, token or support key', leaked.slice(0, 5));
+    ok(SECRET_NAMES.every(s => !all.includes(s)), 'privacy: no guest name, from a couple\'s plan or a venue\'s wedding');
+    ok(SECRET_TEXT.every(s => !all.includes(s)), 'privacy: no guest note, no group name, no venue wedding label, no support message');
+    ok(!/#(key|claim|view|vkey|support|recover|find)=|[?&]plan=|https?:/i.test(all), 'privacy: no link of any kind', (all.match(/.{40}(#(key|claim|view|vkey|support|recover|find)=|[?&]plan=|https?:).{40}/i) || [])[0]);
+    ok(!/"(planId|guests|tables|seats|editKey|readKey|venueKey|message|label)"/.test(all), 'privacy: no field that could hold one either');
+  } finally {
+    env.MAIL = keepMail; if (!keepMail) delete env.MAIL;
+  }
+}
+
 console.log(`\nall ${n} checks passed`);
