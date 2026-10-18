@@ -1344,6 +1344,7 @@
   <div class="modal">
     <div class="modal-head"><strong data-t="csvInTitle"></strong><button class="mx" id="csvClose">✕</button></div>
     <div class="mhint" data-t="csvInHint"></div>
+    <div class="mhint" id="csvNoteGone" data-t="csvNoteGone" hidden></div>
     <div class="mbody">
       <textarea id="csvText" data-t-ph="csvPh" style="height:110px" spellcheck="false"></textarea>
       <div id="csvPrev"></div>
@@ -1599,7 +1600,7 @@ el:{
   stProbable:"πιθανή", stCut:"ακυρώθηκε", stConfirmed:"επιβεβαιωμένη",
   mXlsxSeated:"Excel: όσοι έχουν θέση", mXlsxAll:"Excel: όλοι οι καλεσμένοι", xlsxSeatedLbl:"με θέση", xlsxAllLbl:"όλοι", xlsxColGroup:"ΟΜΑΔΑ", xlsxNoSeat:"Χωρίς θέση",
   mCsvOut:"Λίστα καλεσμένων (CSV)", mCsvIn:"Εισαγωγή ονομάτων από Excel…", csvFile:"καλεσμένοι", csvName:"Όνομα", csvTable:"Τραπέζι", csvGroup:"Ομάδα", csvParty:"Προσκλητήριο", csvStatus:"Κατάσταση", csvNote:"Σημείωση",
-  csvInTitle:"Εισαγωγή ονομάτων (Excel / CSV)", csvInHint:"Επικολλήστε κελιά από το Excel ή διαλέξτε αρχείο .csv. Αναγνωρίζονται οι στήλες Όνομα (ή Όνομα + Επώνυμο), Τραπέζι, Ομάδα, Προσκλητήριο, Κατάσταση, Σημείωση — όλες εκτός από το όνομα είναι προαιρετικές.", csvPh:"Επικολλήστε εδώ — μία γραμμή ανά καλεσμένο",
+  csvInTitle:"Εισαγωγή ονομάτων (Excel / CSV)", csvInHint:"Επικολλήστε κελιά από το Excel ή διαλέξτε αρχείο .csv. Αναγνωρίζονται οι στήλες Όνομα (ή Όνομα + Επώνυμο), Τραπέζι, Ομάδα, Προσκλητήριο, Κατάσταση, Σημείωση — όλες εκτός από το όνομα είναι προαιρετικές.", csvNoteGone:"Οι σημειώσεις σβήνονται αυτόματα την επομένη της εκδήλωσης· τα ονόματα και οι θέσεις μένουν.", csvPh:"Επικολλήστε εδώ — μία γραμμή ανά καλεσμένο",
   csvSum:"Ονόματα: {n} · νέα: {k}", csvSumDup:" · ήδη στη λίστα (παραλείπονται): {d}", csvCols:"Στήλες: {c}", csvNoHead:"Χωρίς επικεφαλίδες: η πρώτη στήλη γίνεται όνομα.", csvAdd:"Προσθήκη στη λίστα ({n})",
   csvEnc:"Το αρχείο δεν ήταν σε UTF-8 και διαβάστηκε ως {e}. Αν τα ονόματα φαίνονται λάθος, αποθηκεύστε το στο Excel ως «CSV UTF-8» και δοκιμάστε ξανά.", csvBad:"Κάποιοι χαρακτήρες δεν διαβάστηκαν (�). Αποθηκεύστε το αρχείο στο Excel ως «CSV UTF-8» και δοκιμάστε ξανά.", csvXlsx:"Αυτό είναι αρχείο Excel (.xlsx). Στο Excel: Αποθήκευση ως → «CSV UTF-8», και διαλέξτε αυτό το αρχείο.",
   csvDone:"Προστέθηκαν στη λίστα: {n}", csvDoneSeated:" · σε τραπέζια: {s}", csvDoneNoRoom:" · χωρίς θέση: {k} (το τραπέζι τους δεν βρέθηκε ή είναι γεμάτο)",
@@ -1840,7 +1841,7 @@ en:{
   stProbable:"probable", stCut:"cancelled", stConfirmed:"confirmed",
   mXlsxSeated:"Excel: guests with a seat", mXlsxAll:"Excel: every guest", xlsxSeatedLbl:"seated", xlsxAllLbl:"everyone", xlsxColGroup:"Group", xlsxNoSeat:"No seat",
   mCsvOut:"Guest list (CSV)", mCsvIn:"Import names from Excel…", csvFile:"guests", csvName:"Name", csvTable:"Table", csvGroup:"Group", csvParty:"Invitation", csvStatus:"Status", csvNote:"Note",
-  csvInTitle:"Import names (Excel / CSV)", csvInHint:"Paste cells from Excel or choose a .csv file. Recognised columns: Name (or First name + Last name), Table, Group, Invitation, Status, Note — all but the name are optional.", csvPh:"Paste here — one line per guest",
+  csvInTitle:"Import names (Excel / CSV)", csvInHint:"Paste cells from Excel or choose a .csv file. Recognised columns: Name (or First name + Last name), Table, Group, Invitation, Status, Note — all but the name are optional.", csvNoteGone:"Notes are erased automatically the day after the event; names and seats stay.", csvPh:"Paste here — one line per guest",
   csvSum:"Names: {n} · new: {k}", csvSumDup:" · already on the list (skipped): {d}", csvCols:"Columns: {c}", csvNoHead:"No headings: the first column becomes the name.", csvAdd:"Add to list ({n})",
   csvEnc:"The file was not UTF-8 and was read as {e}. If the names look wrong, save it in Excel as “CSV UTF-8” and try again.", csvBad:"Some characters could not be read (�). Save the file in Excel as “CSV UTF-8” and try again.", csvXlsx:"This is an Excel file (.xlsx). In Excel: Save as → “CSV UTF-8”, then choose that file.",
   csvDone:"Added to the list: {n}", csvDoneSeated:" · at tables: {s}", csvDoneNoRoom:" · unseated: {k} (their table was not found or is full)",
@@ -2078,7 +2079,7 @@ de:{
   stProbable:"wahrscheinlich", stCut:"abgesagt", stConfirmed:"bestätigt",
   mXlsxSeated:"Excel: Gäste mit Platz", mXlsxAll:"Excel: alle Gäste", xlsxSeatedLbl:"mit Platz", xlsxAllLbl:"alle", xlsxColGroup:"Gruppe", xlsxNoSeat:"Ohne Platz",
   mCsvOut:"Gästeliste (CSV)", mCsvIn:"Namen aus Excel importieren…", csvFile:"Gäste", csvName:"Name", csvTable:"Tisch", csvGroup:"Gruppe", csvParty:"Einladung", csvStatus:"Status", csvNote:"Notiz",
-  csvInTitle:"Namen importieren (Excel / CSV)", csvInHint:"Zellen aus Excel einfügen oder eine .csv-Datei wählen. Erkannte Spalten: Name (oder Vorname + Nachname), Tisch, Gruppe, Einladung, Status, Notiz — alle außer dem Namen sind freiwillig.", csvPh:"Hier einfügen — eine Zeile pro Gast",
+  csvInTitle:"Namen importieren (Excel / CSV)", csvInHint:"Zellen aus Excel einfügen oder eine .csv-Datei wählen. Erkannte Spalten: Name (oder Vorname + Nachname), Tisch, Gruppe, Einladung, Status, Notiz — alle außer dem Namen sind freiwillig.", csvNoteGone:"Notizen werden am Tag nach der Veranstaltung automatisch gelöscht; Namen und Plätze bleiben.", csvPh:"Hier einfügen — eine Zeile pro Gast",
   csvSum:"Namen: {n} · neu: {k}", csvSumDup:" · schon auf der Liste (übersprungen): {d}", csvCols:"Spalten: {c}", csvNoHead:"Keine Überschriften: die erste Spalte wird der Name.", csvAdd:"Zur Liste hinzufügen ({n})",
   csvEnc:"Die Datei war nicht UTF-8 und wurde als {e} gelesen. Wenn die Namen falsch aussehen, speichern Sie sie in Excel als „CSV UTF-8“ und versuchen Sie es erneut.", csvBad:"Einige Zeichen konnten nicht gelesen werden (�). Speichern Sie die Datei in Excel als „CSV UTF-8“ und versuchen Sie es erneut.", csvXlsx:"Das ist eine Excel-Datei (.xlsx). In Excel: Speichern unter → „CSV UTF-8“, dann diese Datei wählen.",
   csvDone:"Zur Liste hinzugefügt: {n}", csvDoneSeated:" · an Tischen: {s}", csvDoneNoRoom:" · ohne Platz: {k} (ihr Tisch wurde nicht gefunden oder ist voll)",
@@ -5977,7 +5978,9 @@ function applyCsvImport(){
   toast(tr("csvDone",{n:add.length})+(seated?tr("csvDoneSeated",{s:seated}):"")+(noRoom?tr("csvDoneNoRoom",{k:noRoom}):""), 5000);
   checkTips("added");
 }
-function openCsvImport(){ csvEnc=""; csvLast=null; $("csvText").value=""; renderCsvPreview(); setNav(false); $("csvModal").classList.add("open"); }
+function openCsvImport(){ csvEnc=""; csvLast=null; $("csvText").value=""; renderCsvPreview(); setNav(false);
+  $("csvNoteGone").hidden=!(currentProfile()||{}).cloudId;   // the server erases notes the day after; a device-only plan keeps them, so say it only online
+  $("csvModal").classList.add("open"); }
 $("csvText").addEventListener("input",()=>{ csvEnc=""; clearTimeout(csvTimer); csvTimer=setTimeout(renderCsvPreview,200); });
 $("csvText").addEventListener("keydown",e=>e.stopPropagation());
 $("csvAdd").addEventListener("click",()=>{ clearTimeout(csvTimer); renderCsvPreview(); applyCsvImport(); });

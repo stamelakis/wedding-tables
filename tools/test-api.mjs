@@ -2809,6 +2809,18 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     ok(/<b>έναν χρόνο μετά την εκδήλωση<\/b>/.test(read('dpa.html')) && /<b>one year after the event<\/b>/.test(read('dpa.html')) && !/7 ημέρες μετά την εκδήλωση|7 days after the event/.test(read('dpa.html')),
       'retention: the venue agreement says a year, in both languages');
     ok(['privacy.html', 'terms.html', 'dpa.html'].every(f => /την επόμενη ημέρα της εκδήλωσης/.test(read(f)) && /σημειώσεις/.test(read(f)) && /notes/.test(read(f))), 'notes: privacy, terms and the venue agreement say guest notes go the day after');
+    // the planner says it where notes come in (the Excel import), in every language, and only for an online plan:
+    // the erasure is the server's, so a device-only plan keeps its notes and must not be told otherwise
+    const pl = read('planner.src.html'), said = (pl.match(/\bcsvNoteGone:"[^"]+"/g) || []);
+    ok(said.length === 3 && /επομένη της εκδήλωσης/.test(said[0]) && /day after the event/.test(said[1]) && /Tag nach der Veranstaltung/.test(said[2])
+      && /id="csvNoteGone"[^>]*hidden/.test(pl) && /\$\("csvNoteGone"\)\.hidden=!\(currentProfile\(\)\|\|\{\}\)\.cloudId/.test(pl),
+      'notes: the Excel import says notes go the day after, in el/en/de, only on an online plan');
+    // nothing else here runs the planner, so a stray // that swallows a closing brace passed all 917 checks once
+    const vm = await import('node:vm'), unparsed = [];
+    for (const f of ['planner.src.html', 'lab.html', 'seating-planner-el.html'])
+      for (const [, attrs = '', code] of read(f).matchAll(/<script(\s[^>]*)?>([\s\S]*?)<\/script>/g))
+        if (!/\bsrc=|type="(?!text\/javascript)/.test(attrs)) { try { new vm.Script(code); } catch (e) { unparsed.push(f + ': ' + e.message); } }
+    ok(!unparsed.length, 'planner: every inline script parses' + (unparsed.length ? ' — ' + unparsed.join('; ') : ''));
   } finally {
     Date.now = realNow; env.MAIL = keepMail; env.PDF = keepPdf;
     if (!keepMail) delete env.MAIL;
