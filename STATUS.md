@@ -13,9 +13,10 @@ repo is deployed. Nothing is open on the product side; what remains waits on And
 
 ## Next
 
-1. **Daily operations: `OPERATIONS-PLAN.md`** (written 2026-10-18, draft). Six phases: one customer sheet →
-   customer card with notes and timeline → every contact in the sheet → payments ledger → «Σήμερα» page and
-   morning mail → online payment (later). Waiting for Andreas's OK and his five decisions (§6); then phase 1.
+1. **Daily operations: `OPERATIONS-PLAN.md`** (written 2026-10-18, draft, revised once). Seven phases: one
+   customer sheet → customer card with notes, timeline and a 5-year customer memory → the venues' own sheet →
+   every contact in the sheet → payments ledger → «Σήμερα» page and morning mail → online payment (later).
+   Waiting for Andreas's OK and his seven decisions (§6); then phase 1.
 2. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today — checked
    2026-10-18: every plan on the server comes from a purchase (admin), a venue with a licence or free year,
    or a paying couple's extra plan; no free path exists. The free 8-table cap belongs to plans that stay on
@@ -26,7 +27,7 @@ repo is deployed. Nothing is open on the product side; what remains waits on And
 
 - **Accountant** (€10,000 VAT threshold, and who issues receipts for TakeaSeat sales until the company
   exists), **company registration**, **lawyer review** of terms — later.
-- **The operations plan**: OK it (or change it) and answer its five decisions, `OPERATIONS-PLAN.md` §6.
+- **The operations plan**: OK it (or change it) and answer its seven decisions, `OPERATIONS-PLAN.md` §6.
 
 ## Known problems
 
