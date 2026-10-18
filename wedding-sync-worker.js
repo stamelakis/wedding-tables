@@ -734,7 +734,8 @@ async function signupSweep(env, now) {
       console.log("signup: a pending signup expired unopened — that ΑΦΜ is free again");
       continue;
     }
-    // The row itself stays a month, so «Εγγραφές» can still show what happened, and then it goes.
+    // An expired row stays a month, then goes. ("deleted" is a status only rows from before phase 2 can have: an erased
+    // venue now takes its signup row with it at once.)
     if ((s.status === "expired" || s.status === "deleted") && now - (s.expiredAt || s.createdAt || 0) > SIGNUP_KEEP_DAYS * DAY) {
       await env.PLANS.delete("signup:" + sid); await env.PLANS.delete("act:s:" + sid); await removeIndex(env, "signups:index", sid); out.signupsDropped++;
     }
@@ -754,7 +755,8 @@ async function eraseVenue(env, id, why) {
     await indexEmail(env, dv.email, "venue", dv.id, false); await forgetEmail(env, dv.email);
     // The owner deleting a venue gives its business the free year back — his call, not an accident of bookkeeping.
     if (dv.afm) await kvUpdate(env, "afm:" + dv.afm, c => (c && c.venueId === dv.id) ? { __del: true } : null);
-    if (dv.signupId) await kvUpdate(env, "signup:" + dv.signupId, s => { if (!s) return null; s.status = "deleted"; s.expiredAt = Date.now(); s.venueId = null; return s; });
+    // Its signup row (name, ΑΦΜ, email, phone) goes with it, now: privacy.html promises the card goes at once.
+    if (dv.signupId) { await env.PLANS.delete("signup:" + dv.signupId); await env.PLANS.delete("act:s:" + dv.signupId); await removeIndex(env, "signups:index", dv.signupId); }
   }
   await env.PLANS.delete("venue:" + id);
   await env.PLANS.delete("act:v:" + id);

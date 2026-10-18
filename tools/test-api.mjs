@@ -3213,6 +3213,16 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     await on('PUT', 'v:' + VG.id, 'notes', { notes: 'να σβηστεί' });
     ok((await call('DELETE', '/admin/venues/' + VG.id, undefined, OWN)).status === 200 && raw('books:v:' + VG.id).name === 'Μνήμη Κτήμα διαγραφή' && !m.has('act:v:' + VG.id),
       "«Ξέχασέ τον»: the old venue delete goes the same way, books kept");
+    // a venue that signed itself up: its signup row (name, ΑΦΜ, email, phone) goes with it at once, not a month later
+    const mailBefore = env.MAIL; env.MAIL = { enabled: true, from: 'x', send: () => true };   // a signup needs mail for its setup link
+    r = await call('POST', '/signup/venue', { name: 'Μνήμη Κτήμα εγγραφή', afm: '400000001', email: 'mem-su@example.gr', phone: '2101112223', terms: true, lang: 'el' }, { 'X-Real-IP': '203.0.113.201' });
+    env.MAIL = mailBefore;
+    const SU = m.has('afm:400000001') ? raw('afm:400000001') : {};
+    ok(r.status === 200 && SU && SU.venueId && m.has('signup:' + SU.signupId), '«Ξέχασέ τον»: (a self-signup venue to forget)', r.d);
+    await on('POST', 'v:' + SU.venueId, 'timeline', { kind: 'call', text: '' });
+    r = await on('POST', 'v:' + SU.venueId, 'forget');
+    ok(r.status === 200 && !m.has('venue:' + SU.venueId) && !m.has('signup:' + SU.signupId) && !m.has('afm:400000001') && !(raw('signups:index') || []).includes(SU.signupId),
+      '«Ξέχασέ τον»: a self-signup venue takes its signup row and its ΑΦΜ claim with it, at once', r.d);
     await nightly();
     const bl = (await call('GET', '/admin/books', undefined, OWN)).d.books;
     ok(m.has('books:c:' + CF.id) && m.has('books:c:' + CA.id) && bl.some(b => b.key === 'c:' + CF.id) && bl.some(b => b.key === 'v:' + VF.id),
