@@ -38,6 +38,7 @@
 // admin API never returns one; people recover on their own. Without mail, links are shown to the admin as before.
 //   GET/POST/DELETE /codes/:code  (device linking; the code is a shared secret)
 //   /admin/venues[/:id[/reset-key]] · /admin/couples[/:id[/reset]] · GET /admin/support          (X-Owner-Key)
+//   GET /admin/customers[/:key]  «Πελάτες»: one row per customer, and its card — state only, never inside a plan   (X-Owner-Key)
 //   Εργαλεία (X-Owner-Key, see "Εργαλεία" below): POST /admin/test/wedding · DELETE /admin/test/wedding/:planId · GET/DELETE /admin/test/data
 //          · GET /admin/lookup?q= · GET /admin/diagnostics · POST /admin/test/email {email} · POST /admin/find-test {link|token, q}
 //   POST /admin/recover {email} · POST /admin/recover/claim {token, nonce}   (public: the owner forgot the admin key)
@@ -1451,14 +1452,25 @@ function planIdOf(s) {
   if (m) return m[1];
   return /^[A-Za-z0-9_-]{8,64}$/.test(t) ? t : "";
 }
+// How far the seating is, as ONE number (OPERATIONS-PLAN.md, decision 5): the share of the guests still coming who have
+// a seat, in whole percent; null with no guests yet. Never who, never how many.
+function seatedPct(p) {
+  const g = (p && p.guests && typeof p.guests === "object") ? p.guests : {};
+  const coming = new Set(Object.keys(g).filter(id => !(g[id] && g[id].status === "cut")));   // «κόπηκε»: needs no seat
+  if (!coming.size) return null;
+  const seated = new Set();
+  for (const t of (Array.isArray(p.tables) ? p.tables : [])) for (const s of (Array.isArray(t && t.seats) ? t.seats : [])) if (coming.has(s)) seated.add(s);
+  return Math.round(100 * seated.size / coming.size);
+}
 // State and metadata of ONE plan. Never a guest, a table, a count of either, or the finder's key — those belong to the
-// people who own the plan. The plan id is here on purpose: the retention exception and the access log are keyed on it,
-// and the owner can already act on any id he types (it opens nothing without a key).
+// people who own the plan; the seating progress only as a percentage. The plan id is here on purpose: the retention
+// exception and the access log are keyed on it, and the owner can already act on any id he types (it opens nothing
+// without a key). The customer sheet («Πελάτες») takes only what custEvent picks from this — never the id.
 async function planCard(env, rec, id, ctx) {
   const L = await planLife(env, rec, id, ctx);
   return {
     planId: id, name: String(rec.name || ""), kind: kindOf(rec), test: isTest(rec), template: !!rec.template,
-    createdAt: rec.createdAt || null, updated: rec.updated || null,
+    createdAt: rec.createdAt || null, updated: rec.updated || null, seatedPct: seatedPct(rec.plan),
     weddingDate: L.weddingDate, phase: L.phase, opensAt: L.opensAt || null, fullAt: L.fullAt || null, frozenUntil: L.frozenUntil || null,
     lockAt: L.lockAt, deleteAt: L.deleteAt, locked: !!L.locked, over: !!L.over, keep: !!L.keep, fallback: !!L.fallback, child: !!L.child,
     retention: rec.retention || null,
@@ -1483,7 +1495,7 @@ async function venueCard(env, v, focus) {
   const weddings = [];
   for (const w of (v.weddings || [])) { const p = safeParse(await env.PLANS.get("plan:" + w.planId)); if (p) weddings.push(await planCard(env, p, w.planId, { venue: v })); }
   let template = null;
-  if (v.templateId) { const t = safeParse(await env.PLANS.get("plan:" + v.templateId)); if (t) template = { planId: v.templateId, updated: t.updated || null }; }
+  if (v.templateId) { const t = safeParse(await env.PLANS.get("plan:" + v.templateId)); if (t) template = { planId: v.templateId, updated: t.updated || null, support: supportActive(t) ? { expires: t.support.expires } : null }; }
   const lic = v.license || {};
   // «Πότε ανανεώνεται;» answered the way renewSweep really decides it, not from the dates alone: it renews only after
   // a renewal reminder has actually gone out, which needs an address, mail on and an active venue. When one of those
@@ -1503,6 +1515,120 @@ async function venueCard(env, v, focus) {
       next: renewsAt ? nextSeason(lic) : null, invoiceDue: !!lic.invoiceDue, renewSkipped: lic.renewSkipped || null },
     weddings, template,
     trash: (v.trash || []).map(t => ({ planId: t.planId, label: t.label, kind: normKind(t.kind), deletedAt: t.deletedAt, purgeAt: t.purgeAt, date: t.date || null })) };
+}
+
+// ---- «Πελάτες» (OPERATIONS-PLAN.md, phase 1): one row per customer, and the card behind it ----
+// Every venue, every direct customer, and a pending signup that has somehow lost its venue — each exactly once — built
+// from the support cards above, so the sheet and the card can never disagree with each other or with «Υποστήριξη
+// πελάτη». State, dates, counts and the seating percentage only: never a guest, a plan id, a key, a token, a link, a
+// support message, or the label of a venue's wedding (that label is the venue's client, and what a venue keeps about
+// its clients is not ours to see). Stages are the four the system works out by itself (§3: 4 Ενεργοποίηση · 5 Ενεργός ·
+// 6 Ανανέωση · 7 Ολοκληρώθηκε); phase 4 adds the ones he sets by hand. Keys: v:<venueId> · c:<coupleId> · s:<signupId>.
+const CUST_LINK_DAYS = 3, CUST_FIRST_EVENT_DAYS = 14, CUST_ENDING_DAYS = 60;
+const CUST_TYPE = { wedding: "couple", baptism: "parents", party: "party" };
+const ymdOfMs = t => t ? normYmd(new Date(t).toISOString()) : null;
+const daysTo = (from, to) => Math.round((Date.parse(to + "T00:00:00Z") - Date.parse(from + "T00:00:00Z")) / DAY);
+// A number to call, from a field or from free text («τηλ. 697 735 5378 · info@…»): a Greek number as +30 and ten digits,
+// a foreign one as typed with its +; "" when nothing in it is clearly a phone number (a wrong number is worse than none).
+function phoneOf(...xs) {
+  for (const x of xs) for (const mm of String(x || "").matchAll(/\+?\d[\d\s.()-]{7,}\d/g)) {
+    let d = mm[0].replace(/\D/g, "");
+    if (d.startsWith("0030")) d = d.slice(4); else if (d.length === 12 && d.startsWith("30")) d = d.slice(2);
+    if (d.length === 10 && /^(2|69)/.test(d)) return "+30" + d;
+    if (mm[0].startsWith("+") && d.length >= 8 && d.length <= 15) return "+" + d;
+  }
+  return "";
+}
+// The part of a plan card the sheet may carry. Picked field by field, so nothing added to planCard later leaks here.
+const custEvent = (p, extra) => ({ kind: p.kind, date: p.weddingDate || null, phase: p.phase, over: !!p.over, locked: !!p.locked,
+  opensAt: p.opensAt, fullAt: p.fullAt, frozenUntil: p.frozenUntil, lockAt: p.lockAt, deleteAt: p.deleteAt, keep: !!p.keep, fallback: !!p.fallback,
+  retention: p.retention || null, seatedPct: p.seatedPct ?? null, support: p.support ? { expires: p.support.expires } : null,
+  createdAt: p.createdAt, updated: p.updated, dateChanges: p.dateChanges || 0, audit: p.audit, ...(extra ? { extra: true } : {}) });
+// The customer's own last move on a plan: a save, or an access-log entry that was not ours or the sweep's.
+const custTouch = e => Math.max(e.updated || 0, ...(e.audit || []).filter(a => a.who !== "admin" && a.who !== "system").map(a => Math.max(a.t || 0, a.last || 0)));
+function custRow(o) {   // the columns that come from the events, worked out the same way for every kind of customer
+  const { events, ...rest } = o, mine = events.filter(e => !e.extra), live = mine.filter(e => !e.over);
+  const next = live.filter(e => e.date).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))[0] || null;
+  return { ...rest, next: next ? next.date : null, nextKind: next ? next.kind : null, nextPct: next ? next.seatedPct : null,
+    upcoming: live.length, total: mine.length };
+}
+async function venueCustomer(env, v, now, today) {
+  const vc = await venueCard(env, v);
+  const s = v.signupId ? safeParse(await env.PLANS.get("signup:" + v.signupId)) : null;
+  const events = vc.weddings.filter(p => !p.test && !p.template).map(p => custEvent(p)).sort((a, b) => String(a.date || "~").localeCompare(String(b.date || "~")));
+  const lic = v.license || {}, seasonal = lic.type !== "per_wedding" && ymdOk(lic.seasonEnd);
+  const over = seasonal && now >= seasonOverAt(lic.seasonEnd), left = seasonal ? daysTo(today, lic.seasonEnd) : null;
+  const on = v.active !== false, trial = onTrial(v);
+  // "It opened the link and got going": its own key, a floor plan, an event, or a confirmed signup.
+  const started = !!(v.keyRotated || v.templateId || (v.weddings || []).length || (v.trash || []).length || v.used || (v.trial && v.trial.verifiedAt));
+  const sentAt = Math.max(v.createdAt || 0, (s && s.resentAt) || 0, v.keyResetAt || 0);
+  const flags = [];
+  if (on && !over && !started && now - sentAt > CUST_LINK_DAYS * DAY) flags.push("setup_unopened");
+  if (on && !over && started && !events.length && !(v.trash || []).length && !v.used
+    && now - ((v.trial && v.trial.verifiedAt) || v.createdAt || now) > CUST_FIRST_EVENT_DAYS * DAY) flags.push("no_event");
+  if (lic.invoiceDue) flags.push("invoice_due");
+  if (seasonal && lic.renewSkipped && lic.renewSkipped === lic.seasonEnd) flags.push("renew_skipped");
+  if (on && trial && seasonal && !over && left <= CUST_ENDING_DAYS) flags.push("trial_ending");
+  if (vc.weddings.some(p => p.support) || (vc.template && vc.template.support)) flags.push("support_open");
+  const stage = !on ? 7 : flags.includes("renew_skipped") ? 6 : over ? 7
+    : (lic.invoiceDue || (seasonal && left <= CUST_ENDING_DAYS)) ? 6 : !started ? 4 : 5;
+  const row = custRow({ key: "v:" + v.id, type: "venue", name: v.name || "", stage, flags, events,
+    until: seasonal ? lic.seasonEnd : null, untilKind: seasonal ? (trial ? "trial" : "season") : null,
+    last: Math.max(v.createdAt || 0, (v.trial && v.trial.verifiedAt) || 0, (s && s.createdAt) || 0, (vc.template && vc.template.updated) || 0,
+      ...(v.weddings || []).map(w => w.createdAt || 0), ...events.map(custTouch)) || null,
+    email: v.email || "", phone: phoneOf(v.phone, v.contact, v.notes), afm: v.afm || "", createdAt: v.createdAt || null, active: on });
+  return { row, card: { venue: vc.venue, setup: vc.setup, licence: vc.licence, signup: s ? await signupCard(env, s) : null,
+    template: vc.template ? { updated: vc.template.updated, support: vc.template.support } : null, events } };
+}
+async function coupleCustomer(env, c, now) {
+  const cc = await coupleCard(env, c);
+  const { claimToken, ...couple } = cc.couple;   // with mail off the old list still offers an unused link to copy; the sheet never carries one
+  const main = cc.plan ? custEvent(cc.plan) : null;
+  const events = [...(main ? [main] : []), ...cc.extraPlans.map(p => custEvent(p, true))];
+  const done = !main || main.over;
+  const flags = [];
+  if (couple.pendingClaim && !done && now - (couple.claimIssuedAt || couple.createdAt || now) > CUST_LINK_DAYS * DAY) flags.push("claim_unused");
+  if (events.some(e => e.support)) flags.push("support_open");
+  const stage = done ? 7 : (couple.pendingClaim || main.phase === "waiting") ? 4 : 5;
+  const row = custRow({ key: "c:" + c.id, type: CUST_TYPE[couple.kind] || "couple", name: c.name || "", stage, flags, events,
+    until: (main && !main.keep && main.deleteAt) ? ymdOfMs(main.deleteAt - 1) : null, untilKind: main ? (main.keep ? "keep" : "plan") : null,
+    last: Math.max(c.createdAt || 0, c.claimedAt || 0, ...events.map(custTouch)) || null,
+    email: c.email || "", phone: phoneOf(c.contact), afm: "", createdAt: c.createdAt || null, active: true });
+  return { row, card: { couple, events } };
+}
+async function signupCustomer(env, s, now) {   // only a pending signup whose venue is gone: every other one IS its venue's row
+  const flags = now - (s.resentAt || s.createdAt || now) > CUST_LINK_DAYS * DAY ? ["setup_unopened"] : [];
+  const row = custRow({ key: "s:" + s.id, type: "venue", name: s.name || "", stage: 4, flags, events: [], until: null, untilKind: null,
+    last: Math.max(s.createdAt || 0, s.resentAt || 0) || null, email: s.email || "", phone: phoneOf(s.phone), afm: s.afm || "", createdAt: s.createdAt || null, active: true });
+  return { row, card: { signup: await signupCard(env, s), events: [] } };
+}
+async function customerList(env) {
+  const now = Date.now(), today = todayAthens(), out = [], seen = new Set();
+  for (const vid of (safeParse(await env.PLANS.get("venues:index")) || [])) {
+    const v = safeParse(await env.PLANS.get("venue:" + vid));
+    if (!v || isTest(v) || seen.has("v:" + v.id)) continue;   // the test venue is his playground, not a customer
+    seen.add("v:" + v.id); out.push((await venueCustomer(env, v, now, today)).row);
+  }
+  for (const cid of (safeParse(await env.PLANS.get("couples:index")) || [])) {
+    const c = safeParse(await env.PLANS.get("couple:" + cid));
+    if (!c || seen.has("c:" + c.id)) continue;
+    seen.add("c:" + c.id); out.push((await coupleCustomer(env, c, now)).row);
+  }
+  for (const sid of (safeParse(await env.PLANS.get("signups:index")) || [])) {
+    const s = safeParse(await env.PLANS.get("signup:" + sid));
+    if (!s || s.status !== "pending" || (s.venueId && seen.has("v:" + s.venueId)) || seen.has("s:" + s.id)) continue;
+    seen.add("s:" + s.id); out.push((await signupCustomer(env, s, now)).row);
+  }
+  return { at: now, today, customers: out };
+}
+async function customerCard(env, key) {   // → {customer, …details} or null
+  const mm = /^([vcs]):([A-Za-z0-9_-]{1,64})$/.exec(key || "");
+  if (!mm) return null;
+  const now = Date.now(), rec = safeParse(await env.PLANS.get({ v: "venue:", c: "couple:", s: "signup:" }[mm[1]] + mm[2]));
+  if (!rec) return null;
+  const x = mm[1] === "v" ? (isTest(rec) ? null : await venueCustomer(env, rec, now, todayAthens()))
+    : mm[1] === "c" ? await coupleCustomer(env, rec, now) : await signupCustomer(env, rec, now);
+  return x ? { customer: x.row, ...x.card } : null;
 }
 
 export default {
@@ -2498,6 +2624,13 @@ export default {
             await removeIndex(env, "couples:index", parts[2]);
             return json({ ok: true });
           }
+        }
+        // «Πελάτες»: the sheet, and one customer's card (read-only in phase 1 of OPERATIONS-PLAN.md).
+        if (parts[1] === "customers" && parts.length === 2 && request.method === "GET") return json(await customerList(env));
+        if (parts[1] === "customers" && parts.length === 3 && request.method === "GET") {
+          let key = ""; try { key = decodeURIComponent(parts[2]); } catch (e) { key = ""; }
+          const card = await customerCard(env, key);
+          return card ? json(card) : json({ error: "not found" }, 404);
         }
         if (parts[1] === "support" && parts.length === 2 && request.method === "GET") {   // invitations owners chose to send
           const ids = safeParse(await env.PLANS.get("support:index")) || [];
