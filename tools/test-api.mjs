@@ -2817,7 +2817,7 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
       'notes: the Excel import says notes go the day after, in el/en/de, only on an online plan');
     // nothing else here runs the planner, so a stray // that swallows a closing brace passed all 917 checks once
     const vm = await import('node:vm'), unparsed = [];
-    for (const f of ['planner.src.html', 'lab.html', 'seating-planner-el.html'])
+    for (const f of ['planner.src.html'])   // the source only: the Docker check stage carries no built page, and --check ties them to it
       for (const [, attrs = '', code] of read(f).matchAll(/<script(\s[^>]*)?>([\s\S]*?)<\/script>/g))
         if (!/\bsrc=|type="(?!text\/javascript)/.test(attrs)) { try { new vm.Script(code); } catch (e) { unparsed.push(f + ': ' + e.message); } }
     ok(!unparsed.length, 'planner: every inline script parses' + (unparsed.length ? ' — ' + unparsed.join('; ') : ''));
