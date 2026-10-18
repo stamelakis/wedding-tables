@@ -6,6 +6,12 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["tools/dev.mjs"],
       "port": 8080
+    },
+    {
+      "name": "takeaseat-customers",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["tools/dev-customers.mjs"],
+      "port": 8080
     }
   ]
 }
