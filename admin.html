@@ -147,6 +147,23 @@
   .badge.st6{ background:var(--amber-soft); color:var(--amber); } .badge.st7{ background:#eee; color:#777; }
   .flaglist{ margin:0; padding:0 0 0 2px; list-style:none; font-size:13.5px; }
   .flaglist li{ padding:3px 0; color:var(--amber); }
+  .cstep{ overflow-wrap:anywhere; } .cstep.due{ color:var(--amber); font-weight:600; }
+  /* the customer card is where he works (phase 2): its buttons, his notes, the next step, the timeline */
+  .cacts{ display:flex; flex-wrap:wrap; gap:6px; margin-top:14px; }
+  .cbox{ background:var(--card2); border-radius:10px; padding:10px 12px; margin-top:12px; }
+  .cbox label{ display:flex; flex-wrap:wrap; justify-content:space-between; gap:2px 8px; }
+  .cbox .saved{ text-transform:none; letter-spacing:0; font-weight:500; color:var(--faint); }
+  .cbox .saved.err{ color:var(--danger); }
+  .steprow{ display:flex; flex-wrap:wrap; gap:8px; }
+  .steprow input[type=text]{ flex:1 1 220px; } .steprow input[type=date]{ flex:0 1 170px; }
+  .tlbtns{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .tl{ list-style:none; margin:10px 0 0; padding:0; font-size:13.5px; }
+  .tl li{ display:flex; gap:10px; align-items:baseline; padding:5px 0; border-top:1px dashed var(--line); }
+  .tl li:first-child{ border-top:none; }
+  .tl time{ flex:0 0 132px; color:var(--faint); font-size:12px; }
+  .tl .w{ flex:1; min-width:0; overflow-wrap:anywhere; color:var(--soft); }
+  .tl li.mine .w{ color:var(--ink); font-weight:600; }
+  .tl .x{ flex:none; padding:0 6px; }
   @media (max-width:620px){ .fields > div{ flex-direction:column; gap:0; } .fields i{ flex:none; } }
   @media (max-width:620px){
     .grid{ grid-template-columns:1fr; }
@@ -169,6 +186,8 @@
     #custTable .reach{ gap:8px; }
     #custTable .reach .btn.sm{ min-height:40px; min-width:44px; padding:8px 12px; font-size:14px; justify-content:center; }   /* a thumb, not a cursor */
     .dlg .dhead, .dlg .dbody, .dlg .dfoot{ padding-left:14px; padding-right:14px; }
+    .cacts .btn.sm, .tlbtns .btn.sm{ min-height:40px; padding:8px 12px; font-size:14px; }   /* thumbs, as on the sheet */
+    .tl li{ flex-wrap:wrap; gap:0 10px; } .tl time{ flex-basis:100%; }
   }
 </style>
 </head>
@@ -228,12 +247,10 @@ async function req(path, opts){
 function failToast(res, msg){ if(res.status===403 && authFail(res.d)) return; toast(res.status===0?"Connection error — try again":msg); }
 const badEmail=res=>res.status===400 && !!res.d && res.d.error==="bad_email";
 const BAD_EMAIL="That email address doesn't look right";
-// The customer's address under their name; ✓ once they opened a link sent to it.
-function emailHtml(x){ return x.email?`<div class="muted">✉ ${esc(x.email)}${x.emailVerified?` <span class="vok" title="Confirmed — a link sent to this address was opened">✓</span>`:""}</div>`:""; }
 // "Sent by email" box: the link or key went to the customer, so there is nothing to show here. `title` and `note` are trusted HTML (values escaped).
-// An action fired from the Greek support card answers ON the card: #cpanel and #vpanel live in the Couples and
-// Venues sections, thousands of pixels further down, and for «Νέοι σύνδεσμοι» with mail off that panel is the only
-// place the new link ever appears. The card hands us a detached holder; everything else keeps the two panels.
+// An action fired from a card (the customer card, or a lookup card in Εργαλεία) answers ON that card: it hands us a
+// detached holder, and for «Νέος σύνδεσμος…» with mail off that box is the only place the new link ever appears.
+// Only the «+ Ιδιώτης» dialog still has a panel of its own (#cpanel).
 let panelTarget=null;
 const fromCard=()=>!!panelTarget;
 const T=(en,el)=>fromCard()?el:en;   // the same handler serves the English tables and the Greek card
@@ -281,12 +298,7 @@ const EVW={ wedding:{ one:"wedding", date:"Wedding date", name:"Couple name", wh
             party:{   one:"celebration", date:"Date", name:"Name of the celebration", who:"host", Who:"Host", askName:"Enter the name of the celebration" } };
 const evKind=x=>(x && EVW[x.kind]) ? x.kind : "wedding";   // anything we do not know is a wedding
 const EV=x=>EVW[evKind(x)];
-const kindBadge=x=>{ const k=evKind(x); return k==="wedding" ? "" : ` <span class="badge tpl" title="A ${EVW[k].one} — same licence, same lifecycle, different words">${EVW[k].one}</span>`; };
 
-function licenseText(L){ L=L||{};
-  if(L.type==="per_wedding") return L.quota ? `Per-wedding · quota ${L.quota}` : "Per-wedding · unlimited";
-  const win=(L.seasonStart||L.seasonEnd) ? `${fmtYmd(L.seasonStart)} → ${fmtYmd(L.seasonEnd)}` : "no season dates (never expires)";
-  return `Seasonal · ${win} · ${L.cap?`max ${L.cap} at a time`:"no maximum"}`; }
 // Seasonal licences renew by themselves at seasonEnd + 1 day unless automatic renewal is off — but only for an active venue
 // whose renewal reminder e-mail actually went out; otherwise the server skips it and sets license.renewSkipped = that seasonEnd.
 function renewalHtml(v){ const L=(v&&v.license)||{};
@@ -358,22 +370,30 @@ function readRetention(p, scope){
 }
 
 // ---------------------------------------------------------------- dialog
+// One dialog at a time. A customer card that opens «Επεξεργασία…» or the trash is remembered in dlgBack, and closing that
+// dialog (saved, cancelled or Esc) brings the card back, fresh. Whatever replaces or closes a card first saves its notes.
+let dlgBack=null, cardNotes=null;   // cardNotes: the open card's notes box, {key, el, st, timer, last, …}
 function openDialog(html){
   let d=document.getElementById("dlg");
-  if(!d){ d=document.createElement("dialog"); d.id="dlg"; d.className="dlg"; document.body.appendChild(d); }
+  if(!d){ d=document.createElement("dialog"); d.id="dlg"; d.className="dlg"; document.body.appendChild(d);
+    d.addEventListener("cancel", e=>{ e.preventDefault(); closeDialog(); }); }   // Esc goes the same way as ✕
+  flushNotes(); cardNotes=null;
   delete d.dataset.ctx; d.innerHTML=html; d.scrollTop=0;
   d.querySelectorAll("[data-dclose]").forEach(b=>b.onclick=()=>closeDialog());
   if(!d.open){ try{ d.showModal(); }catch(e){ d.setAttribute("open",""); } }
   return d;
 }
-function closeDialog(){ const d=document.getElementById("dlg"); if(!d) return; if(d.open){ try{ d.close(); }catch(e){ d.removeAttribute("open"); } } delete d.dataset.ctx; d.innerHTML=""; }
+function closeDialog(){ const d=document.getElementById("dlg"); if(!d) return;
+  flushNotes(); cardNotes=null;
+  if(d.open){ try{ d.close(); }catch(e){ d.removeAttribute("open"); } } delete d.dataset.ctx; d.innerHTML="";
+  if(dlgBack){ const k=dlgBack; dlgBack=null; openCustomer(k); } }
 const dlgHead=title=>`<div class="dhead"><h2>${title}</h2><button class="btn sm ghost" data-dclose title="Close">✕</button></div>`;
 // A missing or wrong field: say what is needed and put the cursor there.
 function invalid(el, msg){ toast(msg); if(el){ el.setAttribute("aria-invalid","true"); el.focus();
   el.addEventListener("input",()=>el.removeAttribute("aria-invalid"),{ once:true }); el.addEventListener("change",()=>el.removeAttribute("aria-invalid"),{ once:true }); } }
 
 function renderLogin(err){
-  closeDialog();
+  dlgBack=null; closeDialog();   // signed out: no card to come back to
   app.innerHTML=`<div class="card login">
     <h1>Owner Admin</h1>
     <p class="muted" style="margin:6px 0 16px">Venues, couples and the support invitations they send.</p>
@@ -399,7 +419,7 @@ const MAIL_OFF_MSG=`Email is off on the server — you'll need the key from <spa
 const SENT_MSG="If that address is the confirmed recovery address, a link is on its way. It is valid for one hour.";
 let screenSeq=0;
 // Every signed-out screen lives in the same sign-in card; rendering one also drops an answer still in flight.
-function loginCard(html){ screenSeq++; closeDialog(); app.innerHTML=`<div class="card login">${html}</div>`; return screenSeq; }
+function loginCard(html){ screenSeq++; dlgBack=null; closeDialog(); app.innerHTML=`<div class="card login">${html}</div>`; return screenSeq; }
 const busy=()=>app.querySelectorAll("button").forEach(b=>b.disabled=true);
 function backHtml(){ return `<button class="btn ghost" id="back" style="margin-top:12px;font-size:13px">${getKey()?"← Back to the console":"← Sign in with the key"}</button>`; }
 function bindBack(){ const b=document.getElementById("back"); if(b) b.onclick=()=>{ if(getKey()) load(); else renderLogin(); }; }
@@ -636,11 +656,14 @@ function renderDashboard(venues){
     </div>
     ${mailBarHtml()}
 
-    <!-- «Πελάτες» (OPERATIONS-PLAN.md, phase 1): everyone who bought or signed up, one row each. Read-only: state,
-         dates and contact details — never anything inside a plan. Greek, like every screen he works from. -->
+    <!-- «Πελάτες» (OPERATIONS-PLAN.md, phases 1–2): everyone who bought or signed up, one row each, and the card behind
+         each row where he works: every button of the old lists, his notes, the next step, the timeline. State, dates
+         and contact details — never anything inside a plan. Greek, like every screen he works from. -->
     <div class="section" id="custSection" lang="el">
       <div class="sechead"><h2>Πελάτες <span class="muted" id="custCount"></span></h2>
-        <div class="row acts"><button class="btn sm" id="custCsv" title="Ό,τι βλέπεις, σε αρχείο για το Excel">Excel</button>
+        <div class="row acts"><button class="btn sm primary" id="newVenue" title="Νέο κτήμα, με την άδειά του">+ Κτήμα</button>
+          <button class="btn sm primary" id="newCouple" title="Ζευγάρι ή γονείς που αγόρασαν">+ Ιδιώτης</button>
+          <button class="btn sm" id="custCsv" title="Ό,τι βλέπεις, σε αρχείο για το Excel">Excel</button>
           <button class="btn sm" id="custRefresh">Ανανέωση</button></div></div>
       <div class="card">
         <div class="chips" id="custChips"></div>
@@ -700,60 +723,18 @@ function renderDashboard(venues){
           <div id="twList"><div class="empty">Φορτώνει…</div></div>
         </div>
 
-      </div>
-    </div>
-
-    <div class="section" id="couplesSection">
-      <h2>Direct customers <span class="muted">— couples &amp; parents</span> <span class="muted" id="ccount"></span></h2>
-      <div class="stack">
         <div class="card">
-          <h2>Add a customer</h2>
-          <div class="grid">
-            <div><label for="ckind">Event</label><select id="ckind"><option value="wedding" selected>Wedding</option><option value="baptism">Baptism</option></select></div>
-            <div><label for="cname" id="cnamelbl">Couple name</label><input id="cname" maxlength="120" placeholder="e.g. Μαρία & Νίκος"></div>
-            <div><label for="cemail">Email (optional)</label><input id="cemail" type="email" placeholder="for their link and recovery" autocomplete="off"></div>
-            <div><label for="cdate" id="cdatelbl">Wedding date</label><input id="cdate" type="date" required min="${esc(todayYmd())}"></div>
-            <div><label for="clang">Language</label><select id="clang">${langOptions("el")}</select></div>
-            <div class="full"><label for="ccontact">Private notes <span class="hint">— only you see this</span></label><input id="ccontact" maxlength="200" placeholder="phone, how they found us, anything"></div>
-            <div class="full"><label class="chk"><input type="checkbox" id="cstart" disabled> <span>Start now
-              <span class="muted" style="display:block">Only when the event is less than 3 weeks away and the customer asked for immediate access (they consented that a withdrawal then costs the days used)</span></span></label>
-              <div class="muted" id="cwhen" style="margin-top:6px"></div></div>
-          </div>
-          <div class="row fw" style="margin-top:14px"><button class="btn primary" id="createC">Create</button>
-            ${mailOn()?`<span class="muted">With an email, the link goes straight to the customer — you won't see it.</span>`:""}</div>
-          <div id="cpanel"></div>
+          <h2>Εγγραφές που δεν άνοιξαν</h2>
+          <p class="muted" style="margin:-6px 0 10px">Κτήματα που εγγράφηκαν μόνα τους από τη σελίδα και δεν άνοιξαν ποτέ τον σύνδεσμο ρύθμισης. Λήγουν μόνες τους σε 7 μέρες· αυτό το κουμπί τις σβήνει όλες μαζί από τις 24 ώρες — για την περίπτωση που πλημμυρίσουν ψεύτικες εγγραφές.</p>
+          <button class="btn" id="suPrune">Σβήσε όσες δεν άνοιξαν σε 24 ώρες</button>
         </div>
-        <div class="card tablewrap" id="ctable"><div class="empty">Loading…</div></div>
-      </div>
-    </div>
 
-    <div class="section" id="signupsSection">
-      <div class="sechead"><h2>Signups <span class="muted" id="sucount"></span></h2>
-        <button class="btn sm" id="suPrune">Clear old pending</button>
-        <button class="btn sm" id="suRefresh">Refresh</button></div>
-      <p class="lead" style="margin:0 0 10px">Venues that signed themselves up at <span class="mono">/venue.html#signup</span>. Pending means the setup link has not been opened yet — the free year is only spent for that ΑΦΜ once it is, and an unopened signup expires in 7 days and gives the ΑΦΜ back. You also get one short email per new signup.</p>
-      <div class="card tablewrap" id="sutable"><div class="empty">Loading…</div></div>
-    </div>
-
-    <div class="section" id="venuesSection">
-      <h2>Venues <span class="muted" id="vcount">(${venues.length})</span></h2>
-      <div class="stack">
         <div class="card">
-          <h2>Add a venue</h2>
-          <div class="grid">
-            <div><label for="nname">Venue name</label><input id="nname" maxlength="120" placeholder="e.g. Κτήμα Ηλιοβασίλεμα"></div>
-            <div><label for="nemail">Email (optional)</label><input id="nemail" type="email" placeholder="for the setup link and recovery" autocomplete="off"></div>
-            <div><label for="ncontact">Public contact <span class="hint">— shown to this venue's couples</span></label><input id="ncontact" maxlength="200" placeholder="e.g. 210 123 4567 · info@venue.gr"></div>
-            <div><label for="nlang">Language</label><select id="nlang">${langOptions("el")}</select></div>
-            <div class="full"><label for="nnotes">Private notes <span class="hint">— only you see this</span></label><textarea id="nnotes" maxlength="1000" rows="2" placeholder="price agreed, contact person, invoicing details…"></textarea></div>
-          </div>
-          <div style="margin-top:12px" id="licwrap">${licenseFields("n")}</div>
-          <div class="row fw" style="margin-top:14px"><button class="btn primary" id="createV">Create venue</button>
-            ${mailOn()?`<span class="muted">With an email, the venue gets a setup link and sets its own key — you won't see it.</span>`:""}</div>
-          <div id="newkey"></div>
+          <div class="sechead"><h2>Για τα λογιστικά</h2><button class="btn sm" id="bkGo">Δείξε</button></div>
+          <p class="muted" style="margin:-6px 0 10px">Ό,τι μένει από πελάτες που ξεχάστηκαν, με αίτημά τους ή επειδή πέρασαν τα 5 χρόνια: μόνο το όνομα και οι ημερομηνίες όσων αγόρασαν.</p>
+          <div id="bkOut"></div>
         </div>
-        <div id="vpanel"></div>
-        <div class="card tablewrap" id="vtable">${venuesTableHtml(venues)}</div>
+
       </div>
     </div>
 
@@ -761,7 +742,7 @@ function renderDashboard(venues){
       <h2>After the event</h2>
       <div class="stack">
         <div class="card">
-          <p class="lead" style="margin:0 0 12px">Two rules: one for venue weddings, one for a couple's own plan — unless a venue, a couple or one plan has its own setting («Edit…» on its row, or an exception below).</p>
+          <p class="lead" style="margin:0 0 12px">Two rules: one for venue weddings, one for a couple's own plan — unless a venue, a couple or one plan has its own setting («Επεξεργασία…» on its card in «Πελάτες», or an exception below).</p>
           <div id="gbox"><div class="empty">Loading…</div></div>
         </div>
         <div class="card">
@@ -788,121 +769,62 @@ function renderDashboard(venues){
       <div class="card" id="obox"><div class="empty">Loading…</div></div>
     </div>`;
   document.getElementById("logout").onclick=()=>{ setKey(""); renderLogin(); };
-  wireLicenseToggle("n", document.getElementById("licwrap"));
-  document.getElementById("createV").onclick=createVenue;
-  document.getElementById("createC").onclick=createCouple;
-  ["cname","cemail"].forEach(id=>document.getElementById(id).addEventListener("keydown",e=>{ if(e.key==="Enter") createCouple(); }));
-  ["input","change"].forEach(t=>document.getElementById("cdate").addEventListener(t,syncStartNow));
-  document.getElementById("cstart").addEventListener("change",syncStartNow); syncStartNow();
-  { const k=document.getElementById("ckind");   // the two labels say what is being sold, before it is sold
-    if(k) k.addEventListener("change",()=>{ const K=EVW[k.value==="baptism"?"baptism":"wedding"];
-      document.getElementById("cnamelbl").textContent=K.name; document.getElementById("cdatelbl").textContent=K.date;
-      document.getElementById("cname").placeholder=k.value==="baptism"?"e.g. Ελένη":"e.g. Μαρία & Νίκος"; }); }
+  document.getElementById("newVenue").onclick=openNewVenue;
+  document.getElementById("newCouple").onclick=openNewCouple;
   document.getElementById("supRefresh").onclick=async e=>{ const b=e.currentTarget; b.disabled=true;
     await Promise.all([refreshSupport(), refreshCouples()]); b.disabled=false; };
-  document.getElementById("vtable").addEventListener("click", onRowAction());
-  document.getElementById("sutable").addEventListener("click", onSignupAction);
-  document.getElementById("suRefresh").onclick=async e=>{ const b=e.currentTarget; b.disabled=true; await refreshSignups(); b.disabled=false; };
-  // One press for the whole queue: the answer to a flood, which is the only way 300 pending rows ever appear.
-  document.getElementById("suPrune").onclick=async e=>{
-    const b=e.currentTarget, open=signupsCache.filter(x=>x.status==="pending").length;
-    if(!confirm(`Clear the pending signups older than 24 hours that nobody opened?\n\n`
-      +`${open} pending right now. A row that has a key set, an event or a floor plan is left alone.\n`
-      +`Each ΑΦΜ gets its free year back, so those businesses can sign up again.`)) return;
-    b.disabled=true;
-    const res=await req("/admin/signups/prune",{ method:"POST", body:JSON.stringify({ hours:24 }) });
-    b.disabled=false;
-    if(!res.ok){ failToast(res,"Could not clear them"); return; }
-    toast(res.d&&res.d.dropped?`Cleared ${res.d.dropped}`:"Nothing old enough to clear"); refreshSignups(); refreshVenues();
-  };
-  document.getElementById("ctable").addEventListener("click", onCoupleAction);
+  document.getElementById("suPrune").onclick=e=>pruneSignups(e.currentTarget);
+  document.getElementById("bkGo").onclick=e=>toolsBooks(e.currentTarget);
   wireExceptionForm();
   document.getElementById("xlist").addEventListener("click", onExceptionAction);
   wireTools();
   wireCustomers();
-  refreshCustomers(); refreshSupport(); refreshCouples(); refreshSignups(); refreshSettings(); refreshOwner();
+  refreshCustomers(); refreshSupport(); refreshCouples(); refreshSettings(); refreshOwner();
 }
 
 // ---------------------------------------------------------------- signups (self-service venues)
-// Everything here is read from the signup row plus its venue: whether the setup link has been opened, when the free
-// year ends, and whether a first wedding exists yet — the four things that say if a signup turned into a customer.
-let signupsCache=[];
-// An ΑΦΜ is public — it is on every receipt — so a stranger with a throwaway mailbox can spend a business's one free
-// year before that business has heard of us. Nothing is released automatically (that would be a second free year for
-// a slow but real venue); this is what the squat looks like, so it can be seen and deleted by hand.
-const SIGNUP_IDLE_DAYS=45;
-const idleSignup=su=>su.status==="verified" && !su.weddingCount && su.verifiedAt && Date.now()-su.verifiedAt > SIGNUP_IDLE_DAYS*86400000;
-function signupStatusHtml(su){
-  if(su.status==="pending"){
-    const exp=su.expiresAt||0, over=Date.now()>exp;
-    return `<span class="badge wait">Waiting for the setup link</span>`
-      +(su.mailFailedAt?`<div class="muted" style="color:var(--danger)">⚠ The email failed (${esc(su.mailError||"error")}) — call them</div>`:"")
-      +`<div class="muted"${over?' style="color:var(--danger)"':""}>${over?"Link expired — the sweep will free the ΑΦΜ":`Link valid until ${esc(fmtDate(exp))}`}</div>`
-      +(su.resent?`<div class="muted">Re-sent ${esc(String(su.resent))}×, last ${esc(fmtDate(su.resentAt))}</div>`:"");
-  }
-  if(su.status==="verified") return `<span class="badge per">Opened ${esc(fmtDate(su.verifiedAt))}</span>`
-    +(su.keySet?"":`<div class="muted">No key set yet</div>`)
-    +(idleSignup(su)?`<div class="muted" style="color:var(--danger)">Nothing created in ${SIGNUP_IDLE_DAYS} days — check it is really that business, or delete it to give the ΑΦΜ back</div>`:"")
-    +(su.venueActive===false?`<div><span class="badge off">Disabled</span></div>`:"");
-  if(su.status==="expired") return `<span class="badge off">Expired unopened</span><div class="muted">${esc(fmtDate(su.expiredAt))} · ΑΦΜ free again</div>`;
-  if(su.status==="deleted") return `<span class="badge off">Venue deleted</span><div class="muted">${esc(fmtDate(su.expiredAt))}</div>`;
-  return `<span class="badge off">${esc(su.status||"—")}</span>`;
+// A pending signup is its venue's row in «Πελάτες» (and its card has the buttons); what is left here is the one press
+// for the whole queue: the answer to a flood, which is the only way 300 pending rows ever appear.
+async function pruneSignups(b){
+  b.disabled=true;
+  const list=await req("/admin/signups");
+  b.disabled=false;
+  if(!list.ok || !list.d){ failToast(list, "Οι εγγραφές δεν φόρτωσαν — δοκίμασε ξανά"); return; }
+  const open=(list.d.signups||[]).filter(x=>x.status==="pending").length;
+  if(!open){ toast("Δεν εκκρεμεί καμία εγγραφή"); return; }
+  if(!confirm(`Να σβηστούν οι εγγραφές που δεν άνοιξε κανείς για 24 ώρες και πάνω;\n\n`
+    +`Εκκρεμούν τώρα: ${open}. Όποια έχει ήδη κλειδί, εκδήλωση ή πρότυπο αίθουσας δεν πειράζεται.\n`
+    +`Κάθε ΑΦΜ ξαναπαίρνει τον δωρεάν χρόνο του, οπότε αυτές οι επιχειρήσεις μπορούν να εγγραφούν ξανά.`)) return;
+  b.disabled=true;
+  const res=await req("/admin/signups/prune",{ method:"POST", body:JSON.stringify({ hours:24 }) });
+  b.disabled=false;
+  if(!res.ok){ failToast(res, "Δεν σβήστηκαν"); return; }
+  toast(res.d&&res.d.dropped?`Σβήστηκαν ${res.d.dropped}`:"Καμία δεν είναι τόσο παλιά"); refreshCustomers(); refreshVenues();
 }
-function signupRowHtml(su){
-  const live=!su.venueGone;
-  return `<tr data-sid="${esc(su.id)}">
-    <td><strong>${esc(su.name)}</strong>
-      <div class="muted">ΑΦΜ ${esc(su.afm)}</div>
-      <div class="muted">✉ ${esc(su.email)}</div>
-      <div class="muted">☎ ${esc(su.phone)}</div>
-      <div class="muted">Signed up ${esc(fmtDate(su.createdAt))}</div></td>
-    <td data-l="Status">${signupStatusHtml(su)}</td>
-    <td data-l="Free year">${su.season&&su.season.end?`<div>${esc(fmtYmd(su.season.start))} – ${esc(fmtYmd(su.season.end))}</div>`:`<div class="muted">—</div>`}
-      ${su.trialEndsAt?`<div class="muted">${esc(relTime(su.trialEndsAt))}</div>`:""}</td>
-    <td data-l="Events">${su.firstWeddingAt?`<div>${esc(String(su.weddingCount))}</div><div class="muted">first ${esc(fmtDate(su.firstWeddingAt))}</div>`:`<div class="muted">none yet</div>`}</td>
-    <td class="acts-cell"><div class="row acts">
-      ${live?`<button class="btn sm" data-a="venue">Venue ↓</button>`:""}
-      ${live?`<button class="btn sm" data-a="toggle">${su.venueActive===false?"Enable":"Disable"}</button>`:""}
-      <button class="btn sm danger" data-a="del">Delete</button>
-    </div></td></tr>`;
+// «Για τα λογιστικά»: what is left of a forgotten customer — the name and the dates of what was bought, nothing else.
+const BOOK_WHY={ request:"ξεχάστηκε μετά από αίτημα", clock:"ξεχάστηκε: πέρασαν τα 5 χρόνια" };
+function bookHtml(b){
+  const d=s=>s ? esc(gYmd(s)) : "—";
+  const lines = b.type==="venue" ? [
+      ["Άδεια", b.licence==="per_wedding" ? "ανά εκδήλωση" : "σεζόν"],
+      ["Πελάτης από", d(b.since)],
+      b.paidFrom ? ["Πληρωμένο από", d(b.paidFrom)] : null,
+      (b.season && (b.season.from || b.season.to)) ? ["Τελευταία σεζόν", `${d(b.season.from)} → ${d(b.season.to)}`] : null,
+      (b.renewals||[]).length ? ["Ανανεώσεις", b.renewals.map(r=>`${d(r.at)} (${d(r.from)} → ${d(r.to)})`).join(" · ")] : null,
+    ] : [
+      ["Αγορά", `${d(b.paidAt)} · ${esc(C_KIND[b.kind]||b.kind||"—")}`],
+    ];
+  return `<div class="ccard"><div class="row fw" style="gap:6px;margin-bottom:4px"><strong>${esc(b.name||"—")}</strong><span class="badge tpl">${b.type==="venue" ? "Κτήμα" : "Ιδιώτης"}</span></div>`
+    +fieldsHtml(lines)+`<div class="muted" style="margin-top:4px">${esc(BOOK_WHY[b.why]||"ξεχάστηκε")} · ${esc(gD(b.erasedAt))}</div></div>`;
 }
-function signupsTableHtml(list){
-  return `<table class="cards"><thead><tr><th>Venue</th><th>Status</th><th>Free year</th><th>Events</th><th></th></tr></thead>
-      <tbody>${list.length? list.map(signupRowHtml).join("") : `<tr><td colspan="5" class="empty">No signups yet.</td></tr>`}</tbody></table>`;
-}
-async function refreshSignups(){
-  const res=await req("/admin/signups"); if(!res.ok || !res.d) return;
-  signupsCache=(res.d.signups||[]).slice().sort(byNewest);
-  const t=document.getElementById("sutable"); if(t) t.innerHTML=signupsTableHtml(signupsCache);
-  const n=document.getElementById("sucount"); if(n){ const open=signupsCache.filter(x=>x.status==="pending").length;
-    n.textContent=`(${signupsCache.length}${open?`, ${open} pending`:""})`; }
-}
-async function onSignupAction(e){
-  const btn=e.target.closest("button[data-a]"); if(!btn) return;
-  const sid=btn.closest("tr").dataset.sid, su=signupsCache.find(x=>x.id===sid); if(!su) return;
-  const a=btn.dataset.a;
-  if(a==="venue"){
-    const v=venuesCache.find(x=>x.id===su.venueId);
-    const row=document.querySelector(`#vtable tr[data-id="${CSS.escape(su.venueId||"")}"]`);
-    if(row) row.scrollIntoView({ behavior:"smooth", block:"center" });
-    else if(v) document.getElementById("venuesSection").scrollIntoView({ behavior:"smooth", block:"start" });
-    else toast("That venue is no longer in the list — use Refresh");
-    return;
-  }
-  if(a==="toggle"){
-    const on=su.venueActive===false;
-    const res=await req("/admin/signups/"+encodeURIComponent(sid)+"/active",{ method:"POST", body:JSON.stringify({ active:on }) });
-    if(!res.ok){ failToast(res, res.status===410?"That venue is gone — refreshing":"Could not change it"); refreshSignups(); return; }
-    toast(on?"Console enabled":"Console disabled"); refreshSignups(); refreshVenues(); return;
-  }
-  if(a==="del"){
-    if(!confirm(`Delete the signup of "${su.name}" (ΑΦΜ ${su.afm})?\n\n`
-      +(su.venueGone?"":"Its venue, every event in it and its floor plan are erased for good.\n")
-      +"The ΑΦΜ gets its free year back, so this business can sign up again.")) return;
-    const res=await req("/admin/signups/"+encodeURIComponent(sid),{ method:"DELETE" });
-    if(!res.ok){ failToast(res, "Delete failed"); return; }
-    toast("Signup deleted"); refreshSignups(); refreshVenues();
-  }
+async function toolsBooks(btn){
+  const box=document.getElementById("bkOut"); if(!box) return;
+  btn.disabled=true; box.innerHTML=`<div class="empty">Φορτώνει…</div>`;
+  const res=await req("/admin/books");
+  btn.disabled=false;
+  if(!res.ok || !res.d){ box.innerHTML=""; failToast(res, "Δεν φόρτωσε — δοκίμασε ξανά"); return; }
+  const list=res.d.books||[];
+  box.innerHTML=list.length ? list.map(bookHtml).join("") : `<div class="empty">Τίποτα ακόμη — δεν έχει ξεχαστεί κανείς που αγόρασε.</div>`;
 }
 
 // ---------------------------------------------------------------- support requests
@@ -930,20 +852,9 @@ async function refreshSupport(){
 }
 
 // ---------------------------------------------------------------- couples (direct)
+// The list itself is gone (phase 2: the card in «Πελάτες» has its buttons); its rows stay in couplesCache, because the
+// actions were written for them and they carry what the card leaves out, e.g. an unopened link to copy.
 function coupleGone(c){ return !!(c.deletedAt || c.purgedAt || !c.exists); }
-function coupleStatusHtml(c){
-  if(c.purgedAt && !c.deletedAt) return `<span class="badge off">Deleted after the event</span><div class="muted">${esc(fmtDate(c.purgedAt))}</div>`;
-  if(coupleGone(c)) return `<span class="badge off">Deleted by the couple</span>${c.deletedAt?`<div class="muted">${esc(fmtDate(c.deletedAt))}</div>`:""}`;
-  if(c.pendingClaim){
-    const exp=(c.claimIssuedAt||c.resetAt||c.createdAt||0)+CLAIM_DAYS*86400000, expired=Date.now()>exp;
-    const head=c.resetAt ? `<span class="badge warn">Reset ${esc(fmtDate(c.resetAt))}, waiting</span>` : `<span class="badge wait">Waiting to be opened</span>`;
-    const canSend=mailOn() && !!c.email;
-    return head+(c.mailed?`<div class="muted">✉ Link sent by email</div>`:"")
-      +`<div class="muted"${expired?' style="color:var(--danger)"':""}>${expired?(canSend?"Link expired — «Send link» sends a fresh one":"Link expired — make a new link"):`Link valid until ${esc(fmtDate(exp))}`}</div>`;
-  }
-  if(c.claimedAt) return `<span class="badge per">Opened ${esc(fmtDate(c.claimedAt))}</span>${c.resetAt?`<div class="muted">after a reset on ${esc(fmtDate(c.resetAt))}</div>`:""}`;
-  return "—";
-}
 // A day the server gives as an Athens midnight (ms) or "YYYY-MM-DD" → "01 Nov 2026".
 function fmtDay(x){ if(typeof x==="number"){ try{ return new Date(x).toLocaleDateString("en-GB",{timeZone:"Europe/Athens",day:"2-digit",month:"short",year:"numeric"}); }catch(e){ return fmtDate(x); } }
   return isYmd(x)?fmtYmd(x):"—"; }
@@ -957,54 +868,9 @@ function couplePhaseHtml(L){
   if(P==="locked" && !L.over) return `<span class="badge off">View-only</span>`;
   return "";
 }
-// The event date and what happens after it (the server computes the dates; this only shows them).
-function coupleWeddingHtml(c){
-  const L=c.life||null, out=[];
-  if(c.weddingDate) out.push(`<strong>${esc(fmtYmd(c.weddingDate))}</strong>`);
-  else if(!coupleGone(c)) out.push(`<span class="muted" title="${L&&L.lockAt?esc("Without a date the plan counts as over on "+fmtDate(L.lockAt)):""}">No date yet</span>`);
-  const ph=!coupleGone(c) && couplePhaseHtml(L);
-  if(ph) out.push(`<div style="margin-top:3px">${ph}${c.startNow&&L.phase!=="locked"?` <span class="muted" title="Opened at once (the couple asked for immediate access)">· started at once</span>`:""}</div>`);
-  if(c.purgedAt) out.push(`<div><span class="badge off">Deleted ${esc(fmtDate(c.purgedAt))}</span></div>`);
-  else if(L && L.over && !coupleGone(c)){
-    if(L.keep) out.push(`<div><span class="badge per">Kept</span>${L.locked?` <span class="muted">view-only</span>`:""}</div>`);
-    else out.push(`<div><span class="badge warn long">${L.locked?"View-only":"Over"} — ${L.deleteAt<=Date.now()?"deletion due (next hourly check)":"deleted on "+esc(fmtDate(L.deleteAt))}</span></div>`);
-  }
-  if(c.keepsakeSentAt) out.push(`<div class="muted">🎁 Keepsake sent ${esc(fmtDate(c.keepsakeSentAt))}</div>`);
-  const rt=retentionText(c.retention);
-  if(rt) out.push(`<div class="muted" title="This customer's own after-the-event setting">⚙ ${esc(rt)}</div>`);
-  return out.join("") || `<span class="muted">—</span>`;
-}
-function coupleRowHtml(c){
-  const gone=coupleGone(c);
-  // The plan is stamped when it is created; only a later timestamp is a real edit by the couple.
-  const edited=!gone && c.lastEdit && c.lastEdit > (c.createdAt||0)+5000;
-  return `<tr data-id="${esc(c.id)}">
-    <td><strong>${esc(c.name)}</strong>${kindBadge(c)}${emailHtml(c)}${c.contact?`<div class="muted" title="Private notes — only you see this">📝 ${esc(c.contact)}</div>`:""}<div class="muted">Added ${esc(fmtDate(c.createdAt))}</div></td>
-    <td data-l="Event">${coupleWeddingHtml(c)}</td>
-    <td data-l="Status"><div>${coupleStatusHtml(c)}${c.support?`<div style="margin-top:4px"><span class="badge sup">🛟 support until ${esc(fmtDateTime(c.support.expires))}</span></div>`:""}</div></td>
-    <td data-l="Last edit">${edited?esc(fmtDateTime(c.lastEdit)):`<span class="muted">—</span>`}</td>
-    <td class="acts-cell"><div class="row acts">
-      ${c.pendingClaim&&c.claimToken?`<button class="btn sm" data-a="copy">Copy link</button>`:""}
-      ${!gone&&c.email&&mailOn()?`<button class="btn sm" data-a="send">Send link</button>`:""}
-      ${!gone&&c.life&&c.life.phase==="frozen"?`<button class="btn sm" data-a="unfreeze" title="The couple can edit again at once">Unfreeze…</button>`:""}
-      ${gone?"":`<button class="btn sm" data-a="edit">Edit…</button>`}
-      ${gone?"":`<button class="btn sm" data-a="reset">New link…</button>`}
-      ${gone?"":`<button class="btn sm" data-a="email">Email…</button>`}
-      <button class="btn sm danger" data-a="del">Delete…</button>
-    </div></td></tr>`;
-}
-function couplesTableHtml(list){
-  return `<table class="cards"><thead><tr><th>Customer</th><th>Event</th><th>Status</th><th>Last edit</th><th></th></tr></thead>
-    <tbody>${list.length? list.map(coupleRowHtml).join("") : `<tr><td colspan="5" class="empty">No direct customers yet.</td></tr>`}</tbody></table>`;
-}
 async function refreshCouples(){
-  if(!document.getElementById("ctable")) return;
   const res=await req("/admin/couples");
-  const el=document.getElementById("ctable"); if(!el) return;
-  if(!res.ok || !res.d){ if(res.status!==403) el.innerHTML=`<div class="empty">Could not load the couples — try Refresh.</div>`; return; }
-  couplesCache=(res.d.couples||[]).slice().sort(byNewest);
-  el.innerHTML=couplesTableHtml(couplesCache);
-  document.getElementById("ccount").textContent=`(${couplesCache.length})`;
+  if(res.ok && res.d) couplesCache=(res.d.couples||[]).slice().sort(byNewest);
 }
 // The claim-link box (after creating a couple, after a reset, or «Copy link» on a waiting couple).
 function showClaimPanel(cid, name, token, kind){
@@ -1043,11 +909,6 @@ function showCoupleSent(cid, title, note){
   const box=panelTarget||document.getElementById("cpanel"); if(!box) return;
   box.dataset.cid=cid; showSent(box, title, note);
 }
-function closeClaimPanel(cid){
-  const box=document.getElementById("cpanel"); if(!box) return;
-  if(cid && box.dataset.cid!==cid) return;
-  box.innerHTML=""; delete box.dataset.cid;
-}
 // A couple's planner opens at 00:00 Athens on day 15 after purchase (after their 14-day withdrawal period) — or at once with
 // «Start now», which the server accepts only for an event less than 3 weeks away; a sale whose planner would open only on or
 // after the event day is refused (never_opens). Tables, floor and decor unlock 30 days before the event.
@@ -1066,6 +927,35 @@ function syncStartNow(){
     : n<START_NOW_DAYS ? `The event is in ${n} days — without «Start now» the planner opens only ${daysText(n-OPEN_DAYS)} before it.`
     : n>OPEN_DAYS+30 ? `${OPENS}; tables, floor and decor unlock on ${fmtYmd(ymdPlus(d,-30))}.`
     : OPENS+", with the full editor.";
+}
+// «+ Ιδιώτης» on «Πελάτες»: the old list's form, in a dialog. It stays open after a sale, with the link to hand over.
+function openNewCouple(){
+  const d=openDialog(`${dlgHead("New customer — couple or parents")}
+    <div class="dbody">
+      <div class="grid">
+        <div><label for="ckind">Event</label><select id="ckind"><option value="wedding" selected>Wedding</option><option value="baptism">Baptism</option></select></div>
+        <div><label for="cname" id="cnamelbl">Couple name</label><input id="cname" maxlength="120" placeholder="e.g. Μαρία & Νίκος"></div>
+        <div><label for="cemail">Email (optional)</label><input id="cemail" type="email" placeholder="for their link and recovery" autocomplete="off"></div>
+        <div><label for="cdate" id="cdatelbl">Wedding date</label><input id="cdate" type="date" required min="${esc(todayYmd())}"></div>
+        <div><label for="clang">Language</label><select id="clang">${langOptions("el")}</select></div>
+        <div class="full"><label for="ccontact">Private notes <span class="hint">— only you see this · no health information</span></label><textarea id="ccontact" maxlength="${NOTES_MAX}" rows="2" placeholder="phone, how they found us, anything"></textarea></div>
+        <div class="full"><label class="chk"><input type="checkbox" id="cstart" disabled> <span>Start now
+          <span class="muted" style="display:block">Only when the event is less than 3 weeks away and the customer asked for immediate access (they consented that a withdrawal then costs the days used)</span></span></label>
+          <div class="muted" id="cwhen" style="margin-top:6px"></div></div>
+      </div>
+      <div class="row fw" style="margin-top:14px"><button class="btn primary" id="createC">Create</button>
+        ${mailOn()?`<span class="muted">With an email, the link goes straight to the customer — you won't see it.</span>`:""}</div>
+      <div id="cpanel"></div>
+    </div>`);
+  d.querySelector("#createC").onclick=createCouple;
+  ["cname","cemail"].forEach(id=>d.querySelector("#"+id).addEventListener("keydown",e=>{ if(e.key==="Enter") createCouple(); }));
+  ["input","change"].forEach(t=>d.querySelector("#cdate").addEventListener(t,syncStartNow));
+  d.querySelector("#cstart").addEventListener("change",syncStartNow); syncStartNow();
+  const k=d.querySelector("#ckind");   // the two labels say what is being sold, before it is sold
+  k.addEventListener("change",()=>{ const K=EVW[k.value==="baptism"?"baptism":"wedding"];
+    d.querySelector("#cnamelbl").textContent=K.name; d.querySelector("#cdatelbl").textContent=K.date;
+    d.querySelector("#cname").placeholder=k.value==="baptism"?"e.g. Ελένη":"e.g. Μαρία & Νίκος"; });
+  d.querySelector("#cname").focus();
 }
 async function createCouple(){
   const nameEl=document.getElementById("cname"), btn=document.getElementById("createC");
@@ -1100,15 +990,9 @@ async function createCouple(){
   if(res.d.mailed) showCoupleSent(c.id, `✅ Couple created — link sent to ${esc(c.email||email)}`, CLAIM_NOTE);
   else showClaimPanel(c.id, c.name, res.d.claimToken, "new");
   nameEl.value=""; document.getElementById("ccontact").value=""; document.getElementById("cemail").value=""; dateEl.value=""; startEl.checked=false; syncStartNow();
-  toast(res.d.mailed?"Link sent to "+(c.email||email):"Couple created"); refreshCouples();
+  toast(res.d.mailed?"Link sent to "+(c.email||email):"Couple created"); refreshCouples(); refreshCustomers();
 }
-async function onCoupleAction(e){
-  const btn=e.target.closest("button[data-a]"); if(!btn) return;
-  const tr=btn.closest("tr"); if(!tr) return;
-  const c=couplesCache.find(x=>x.id===tr.dataset.id); if(!c) return;
-  return coupleAction(c, btn.dataset.a, btn);
-}
-// Every admin action on a couple, in one place — the couples table and the support card in «Εργαλεία» both call it.
+// Every admin action on a couple, in one place — the customer card and the support card in «Εργαλεία» both call it.
 async function coupleAction(c, a, btn){
   btn=btn||{};
   const path="/admin/couples/"+encodeURIComponent(c.id);
@@ -1177,18 +1061,10 @@ A real email goes out to the couple, now.`,
     else if(res.d && res.d.couple && res.d.couple.claimToken && c.pendingClaim){ showClaimPanel(c.id, c.name, res.d.couple.claimToken, "link"); toast("Email saved — new link ready"); }
     else toast(email?"Email saved":"Email removed");
     refreshCouples();
-  } else if(a==="del"){
-    if(!confirm(`${c.name}\n\nPermanently delete this couple's plan and history? This cannot be undone.`)) return;
-    btn.disabled=true;
-    const res=await req(path,{ method:"DELETE" });
-    btn.disabled=false;
-    if(!res.ok){ failToast(res, "Delete failed"); return; }
-    forgetLang(c.id); closeClaimPanel(c.id);
-    toast("Deleted"); refreshCouples(); refreshSupport();
   }
 }
 
-// «Edit…» on a customer: the event type, the name, the date (the admin may set any date or clear it), private notes, retention.
+// «Edit…» on a customer: the event type, the name, the date (the admin may set any date or clear it), retention.
 function lifeLineHtml(L){
   if(!L || !L.lockAt) return "";
   const lock=L.locked?"View-only since":L.over?"Over since":"Over on";
@@ -1207,7 +1083,6 @@ function openCoupleEdit(c){
           <div class="muted" style="margin-top:4px">You can set any date, or clear it, as often as needed — your change never freezes the plan and clears any freeze. The customer can change it only once (today up to two years ahead); their plan is then view-only until 14 days before the new date.</div>
           ${couplePhaseHtml(c.life)?`<div class="muted" style="margin-top:6px">Now: ${couplePhaseHtml(c.life)}</div>`:""}
           ${lifeLineHtml(c.life)}</div>
-        <div class="full"><label for="ce_notes">Private notes <span class="hint">— only you see this</span></label><textarea id="ce_notes" maxlength="200" rows="2">${esc(c.contact||"")}</textarea></div>
       </div>
       <div class="subh">After the event <span class="muted">— this customer only</span></div>
       ${retentionFields("ce_", c.retention, false, true)}
@@ -1226,7 +1101,7 @@ async function saveCoupleEdit(c, d){
   const dateEl=q("#ce_date"); if(dateEl.validity && dateEl.validity.badInput){ invalid(dateEl, "That date isn't complete"); return; }
   const date=dateEl.value||"", oldDate=isYmd(c.weddingDate)?c.weddingDate:"";
   const r=readRetention("ce_", d); if(r.error){ invalid(r.el, r.error); return; }
-  const body={ name, contact:q("#ce_notes").value.trim(), retention:r.ret };
+  const body={ name, retention:r.ret };   // the notes are the card's own box, saved as he types
   if(date!==oldDate){
     if(date && date<todayYmd() && !confirm(`${fmtYmd(date)} is in the past.\n\nThe plan becomes view-only and — unless it is kept — may be deleted at the next hourly check. Continue?`)) return;
     if(!date && !confirm(`Clear the event date of "${c.name}"?\n\nWithout a date the plan counts as over 18 months after it was made.`)) return;
@@ -1240,39 +1115,10 @@ async function saveCoupleEdit(c, d){
 }
 
 // ---------------------------------------------------------------- venues
-function venuesTableHtml(venues){
-  return `<table class="cards"><thead><tr><th>Venue</th><th>License</th><th>Weddings</th><th>Status</th><th></th></tr></thead>
-      <tbody>${venues.length? venues.map(rowHtml).join("") : `<tr><td colspan="5" class="empty">No venues yet.</td></tr>`}</tbody></table>`;
-}
+// As with couples, the list is gone and its rows stay in venuesCache for the actions.
 async function refreshVenues(){
   const res=await req("/admin/venues"); if(!res.ok || !res.d) return;
   venuesCache=(res.d.venues||[]).sort(byNewest);
-  const t=document.getElementById("vtable"); if(t) t.innerHTML=venuesTableHtml(venuesCache);
-  const n=document.getElementById("vcount"); if(n) n.textContent=`(${venuesCache.length})`;
-}
-function rowHtml(v){
-  const L=v.license||{};
-  const usage = L.type==="per_wedding" ? `${v.used||0}/${L.quota||"∞"}` : `${v.weddingCount||0}${L.cap?`/${L.cap}`:""}`;
-  const notes=String(v.notes||""), rt=retentionText(v.retention);
-  // A free first year is not a season that renews: it is marked as what it is, with the date it stops covering weddings.
-  const trial=(v.trial&&v.trial.inForce)?`<div class="muted">★ Free first year${isYmd(L.seasonEnd)?` — covers weddings up to ${esc(fmtYmd(L.seasonEnd))}`:""}${v.trial.verifiedAt?"":" (link not opened yet)"}</div>`:"";
-  return `<tr data-id="${esc(v.id)}">
-    <td><strong>${esc(v.name)}</strong>${v.keyRotated?` <span class="mark" title="Only the venue knows its key">🔒</span>`:""}${v.hasTemplate?` <span class="badge tpl" title="The venue has saved a default space">template ✓</span>`:""}${emailHtml(v)}
-      ${v.contact?`<div class="muted" title="Public contact — shown to this venue's couples">☎ ${esc(v.contact)}</div>`:""}
-      ${notes?`<div class="muted" title="${esc(notes)}">📝 ${esc(notes.length>90?notes.slice(0,90)+"…":notes)}</div>`:""}</td>
-    <td data-l="License"><div><span class="badge ${L.type==='per_wedding'?'per':'season'}">${L.type==='per_wedding'?'Per-wedding':'Seasonal'}</span><div class="muted">${esc(licenseText(L))}</div>${renewalHtml(v)}
-      ${L.invoiceDue?`<div class="row fw" style="gap:6px;margin-top:4px"><span class="badge warn long">Renewed ${esc(fmtDate(L.renewedAt))} — invoice due</span><button class="btn sm" data-a="invoiced" title="The renewal invoice has been sent">Invoiced ✓</button></div>`:""}
-      ${trial}${rt?`<div class="muted" title="This venue's own after-the-wedding setting">⚙ After the wedding: ${esc(rt)}</div>`:""}</div></td>
-    <td data-l="Events"><div>${esc(usage)}${v.trashCount>0?`<div><button class="linkbtn" data-a="trash">Deleted events (${esc(v.trashCount)})</button></div>`:""}</div></td>
-    <td data-l="Status">${v.active?`<span class="badge season">Active</span>`:`<span class="badge off">Off</span>`}
-      ${v.selfSignup?`<div><span class="badge tpl" title="This venue signed itself up at /venue.html#signup">signed up</span></div>`:""}
-      ${v.afm?`<div class="muted">ΑΦΜ ${esc(v.afm)}</div>`:""}${v.phone?`<div class="muted">☎ ${esc(v.phone)}</div>`:""}</td>
-    <td class="acts-cell"><div class="row acts">
-      <button class="btn sm" data-a="key">Key</button>
-      <button class="btn sm" data-a="edit">Edit…</button>
-      <button class="btn sm" data-a="toggle">${v.active?"Disable":"Enable"}</button>
-      <button class="btn sm danger" data-a="del">Delete</button>
-    </div></td></tr>`;
 }
 // The console link + key box (after creating a venue, «Key», or «Reset key…»). `title` is trusted HTML (names escaped).
 function venueKeyBoxHtml(title, key, note, withReset){
@@ -1303,11 +1149,12 @@ function showVenuePanel(v, html, key){
   box.dataset.vid=v.id; box.innerHTML=html; wireKeyBox(box, key, v);
   box.scrollIntoView({ behavior:"smooth", block:"nearest" });
 }
+// On a card the box carries no «Reset key…» of its own: the card has «Νέο κλειδί…», whose answer lands on the card.
 function showVenueKey(v, key, kind){
   const html = kind==="reset"
     ? venueKeyBoxHtml(`✅ New key for ${esc(v.name)} — give it to the venue:`, key,
         "The old key and the venue's own planner links stopped working. Couples' links are not affected.", false)
-    : venueKeyBoxHtml(`Key for ${esc(v.name)}`, key, "", true);
+    : venueKeyBoxHtml(`Key for ${esc(v.name)}`, key, "", !fromCard());
   showVenuePanel(v, html, key);
 }
 function showVenueOwnKey(v){
@@ -1315,8 +1162,8 @@ function showVenueOwnKey(v){
     <div class="row between" style="align-items:flex-start"><div style="font-weight:700">🔒 ${esc(v.name)}</div>
       <button class="btn sm ghost" data-close title="Close">✕</button></div>
     <div style="margin:2px 0 10px">Only the venue knows its key — it set it in the console or from an e-mailed link.</div>
-    <div class="row fw"><button class="btn sm danger" data-c="reset">Reset key…</button>
-      <span class="muted">Only if the venue has lost it.${mailOn()&&v.email?` A link to set a new key goes to ${esc(v.email)}.`:""}</span></div>
+    <div class="row fw">${fromCard()?"":`<button class="btn sm danger" data-c="reset">Reset key…</button>`}
+      <span class="muted">${fromCard()?"«Νέο κλειδί…» only if the venue has lost it.":"Only if the venue has lost it."}${mailOn()&&v.email?` A link to set a new key goes to ${esc(v.email)}.`:""}</span></div>
   </div>`, "");
 }
 async function resetVenueKey(v){
@@ -1327,12 +1174,32 @@ async function resetVenueKey(v){
   const res=await req("/admin/venues/"+encodeURIComponent(v.id)+"/reset-key",{ method:"POST", body:"{}" });
   if(!res.ok || !res.d || !(res.d.mailed || res.d.key)){ failToast(res, res.status===404?"This venue no longer exists":res.status===503?"The email could not be sent — nothing was changed; check the mail status above":"Reset failed"); return; }
   if(res.d.mailed){
-    const box=document.getElementById("vpanel"); if(box) box.dataset.vid=v.id;
+    const box=panelTarget||document.getElementById("vpanel"); if(box) box.dataset.vid=v.id;
     showSent(box, `✉ Link sent to ${esc(res.d.to)} — their current key keeps working until they use it.`, "The link is valid 7 days; the venue sets its new key with it.");
     toast("Link sent"); refreshVenues(); return;
   }
   showVenueKey(v, res.d.key, "reset");
   toast("New key ready"); refreshVenues();
+}
+// «+ Κτήμα» on «Πελάτες»: the old list's form, in a dialog. It stays open after a sale, with the key or the sent link.
+function openNewVenue(){
+  const d=openDialog(`${dlgHead("New venue")}
+    <div class="dbody">
+      <div class="grid">
+        <div><label for="nname">Venue name</label><input id="nname" maxlength="120" placeholder="e.g. Κτήμα Ηλιοβασίλεμα"></div>
+        <div><label for="nemail">Email (optional)</label><input id="nemail" type="email" placeholder="for the setup link and recovery" autocomplete="off"></div>
+        <div><label for="ncontact">Public contact <span class="hint">— shown to this venue's couples</span></label><input id="ncontact" maxlength="200" placeholder="e.g. 210 123 4567 · info@venue.gr"></div>
+        <div><label for="nlang">Language</label><select id="nlang">${langOptions("el")}</select></div>
+        <div class="full"><label for="nnotes">Private notes <span class="hint">— only you see this · no health information</span></label><textarea id="nnotes" maxlength="${NOTES_MAX}" rows="2" placeholder="price agreed, contact person, invoicing details…"></textarea></div>
+      </div>
+      <div style="margin-top:12px" id="licwrap">${licenseFields("n")}</div>
+      <div class="row fw" style="margin-top:14px"><button class="btn primary" id="createV">Create venue</button>
+        ${mailOn()?`<span class="muted">With an email, the venue gets a setup link and sets its own key — you won't see it.</span>`:""}</div>
+      <div id="newkey"></div>
+    </div>`);
+  wireLicenseToggle("n", d.querySelector("#licwrap"));
+  d.querySelector("#createV").onclick=createVenue;
+  d.querySelector("#nname").focus();
 }
 async function createVenue(){
   const nameEl=document.getElementById("nname"), name=nameEl.value.trim(); if(!name){ invalid(nameEl, "Enter a venue name"); return; }
@@ -1355,9 +1222,9 @@ async function createVenue(){
   }
   ["nname","ncontact","nemail","nnotes"].forEach(id=>{ document.getElementById(id).value=""; });
   const lw=document.getElementById("licwrap"); lw.innerHTML=licenseFields("n"); wireLicenseToggle("n", lw);   // the next venue starts clean
-  toast(res.d.mailed?"Setup link sent":"Venue created"); refreshVenues();
+  toast(res.d.mailed?"Setup link sent":"Venue created"); refreshVenues(); refreshCustomers();
 }
-// «Edit…» on a venue: everything the admin sets (the email change keeps its confirmation).
+// «Edit…» on a venue: everything the admin sets but the notes, which are the card's own box (the email change keeps its confirmation).
 function renewalsHtml(v){
   const list=(Array.isArray(v.renewals)?v.renewals:[]).slice().reverse();
   if(!list.length) return "";
@@ -1382,7 +1249,6 @@ async function openVenueEdit(v){
         <div><label for="ve_email">Email <span class="hint">— setup and recovery links</span></label><input id="ve_email" type="email" autocomplete="off" value="${esc(fv.email||"")}"></div>
         <div><label for="ve_lang">Language</label><select id="ve_lang">${langOptions(PLANNER_FILE[fv.lang]?fv.lang:"el")}</select></div>
         <div class="full"><label for="ve_contact">Public contact <span class="hint">— shown to this venue's couples</span></label><input id="ve_contact" maxlength="200" value="${esc(fv.contact||"")}" placeholder="e.g. 210 123 4567 · info@venue.gr"></div>
-        <div class="full"><label for="ve_notes">Private notes <span class="hint">— only you see this</span></label><textarea id="ve_notes" maxlength="1000" rows="3">${esc(fv.notes||"")}</textarea></div>
         <div class="full"><label class="chk"><input type="checkbox" id="ve_active"${fv.active?" checked":""}> <span>Active <span class="muted">— when off, the venue can't create new weddings</span></span></label></div>
       </div>
       <div class="subh">License</div>
@@ -1410,7 +1276,6 @@ async function saveVenueEdit(v, d, initial){
   const name=q("#ve_name").value.trim(); if(!name){ invalid(q("#ve_name"), "Enter a venue name"); return; }
   if(name!==(v.name||"")) body.name=name;
   const contact=q("#ve_contact").value.trim(); if(contact!==(v.contact||"")) body.contact=contact;
-  const notes=q("#ve_notes").value.trim(); if(notes!==(v.notes||"")) body.notes=notes;
   const sel=q("#ve_lang").value, lang=PLANNER_FILE[sel]?sel:"el"; if(lang!==(PLANNER_FILE[v.lang]?v.lang:"el")) body.lang=lang;
   const active=q("#ve_active").checked; if(active!==!!v.active) body.active=active;
   if(formState(q("#ve_lic"))!==initial.lic){ const lic=readLicense("ve_", d); if(lic.error){ invalid(lic.el, lic.error); return; } body.license=lic.license; }
@@ -1495,13 +1360,8 @@ async function loadTrash(v, d){
     refreshVenues(); loadTrash(v, d);
   };
 }
-function onRowAction(){ return async e=>{
-  const btn=e.target.closest("button[data-a]"); if(!btn) return;
-  const tr=btn.closest("tr"); if(!tr) return;
-  const v=venuesCache.find(x=>x.id===tr.dataset.id); if(!v) return;
-  return venueAction(v, btn.dataset.a, btn);
-}; }
-// Every admin action on a venue, in one place — the venues table and the support card in «Εργαλεία» both call it.
+// Every admin action on a venue, in one place — the customer card and the support card in «Εργαλεία» both call it.
+// (Erasing a venue is the card's «Ξέχασε τον πελάτη…», which keeps what the books need.)
 async function venueAction(v, a, btn){
   const id=v.id, path="/admin/venues/"+encodeURIComponent(id);
   btn=btn||{};
@@ -1511,6 +1371,7 @@ async function venueAction(v, a, btn){
     if(res.d.key){ showVenueKey(v, res.d.key, "current"); copySilently(res.d.key, "Key copied"); }
     else showVenueOwnKey(v);
   }
+  else if(a==="resetkey"){ btn.disabled=true; try{ await resetVenueKey(v); } finally{ btn.disabled=false; } }
   else if(a==="edit") openVenueEdit(v);
   else if(a==="trash") openTrash(v);
   else if(a==="invoiced"){
@@ -1533,13 +1394,6 @@ It can no longer create weddings; the ones it has keep working. Reversible from 
 Δεν θα μπορεί να δημιουργεί νέους γάμους· οι υπάρχοντες συνεχίζουν. Αναιρείται από το ίδιο κουμπί.`))) return;
     btn.disabled=true; const res=await req(path,{method:"PATCH",body:JSON.stringify({active:!v.active})}); btn.disabled=false;
     if(res.ok){ toast(v.active?T("Disabled","Απενεργοποιήθηκε"):T("Enabled","Ενεργοποιήθηκε")); refreshVenues(); } else failToast(res, T("Failed","Δεν έγινε")); }
-  else if(a==="del"){
-    const n=v.weddingCount||0;
-    if(!confirm(`Permanently delete venue "${v.name}"?\n\nThe venue, all its weddings (${n}) and its template are erased — plans, guest lists and history. Nothing stays and this cannot be undone.`)) return;
-    btn.disabled=true; const res=await req(path,{method:"DELETE"}); btn.disabled=false;
-    if(res.ok){ const p=document.getElementById("vpanel"); if(p && p.dataset.vid===id){ p.innerHTML=""; delete p.dataset.vid; }
-      toast("Deleted"); refreshVenues(); refreshSupport(); }
-    else failToast(res, "Failed"); }
 }
 
 // ---------------------------------------------------------------- after the wedding: global default + plan exceptions
@@ -1850,10 +1704,11 @@ function planFieldsHtml(p){
   ])+`<div style="margin-top:8px"><div class="muted" style="font-weight:700">Τελευταίες κινήσεις</div>${auditHtml(p.audit)}</div>`;
 }
 
-// ---------------------------------------------------------------- «Πελάτες» (OPERATIONS-PLAN.md, phase 1)
+// ---------------------------------------------------------------- «Πελάτες» (OPERATIONS-PLAN.md, phases 1–2)
 // GET /admin/customers: one row per venue, direct customer and signup without a venue; GET /admin/customers/:key: the
 // card behind a row. The server has already left out everything inside a plan (no guest, no plan id, no key, no link,
-// no label of a venue's wedding), so this part hides nothing — it only arranges. Read-only in this phase.
+// no label of a venue's wedding), so this part hides nothing — it only arranges. Phase 2 made the card where he works:
+// the old lists' buttons, his notes, the next step, his contacts on the timeline, and «Ξέχασε τον πελάτη».
 const C_TYPE={ venue:"κτήμα", couple:"ζευγάρι", parents:"γονείς", party:"γιορτή" };
 const C_TYPE_ORDER={ venue:0, couple:1, parents:2, party:3 };
 const C_STAGE={ 4:"Ενεργοποίηση", 5:"Ενεργός", 6:"Ανανέωση", 7:"Ολοκληρώθηκε" };
@@ -1866,7 +1721,8 @@ const C_FLAG={
   invoice_due:["τιμολόγιο ανανέωσης", "Η σεζόν ανανεώθηκε — εκκρεμεί το τιμολόγιο της ανανέωσης."],
   renew_skipped:["δεν ανανεώθηκε", "Η σεζόν έληξε χωρίς ανανέωση — χρειάζεται νέα σεζόν με το χέρι."],
   trial_ending:["λήγει ο δωρεάν χρόνος", "Ο δωρεάν χρόνος λήγει σε λιγότερο από 60 μέρες."],
-  support_open:["ζητά υποστήριξη", "Περιμένει υποστήριξη: η πρόσκληση είναι στα «Support requests», πιο κάτω."] };
+  support_open:["ζητά υποστήριξη", "Περιμένει υποστήριξη: η πρόσκληση είναι στα «Support requests», πιο κάτω."],
+  next_due:["επόμενο βήμα", "Ήρθε η μέρα του επόμενου βήματος που έγραψες."] };
 const C_UNTIL={ season:"τέλος σεζόν", trial:"τέλος δωρεάν χρόνου", plan:"διαγραφή σχεδίου", keep:"κρατιέται" };
 const C_SIGNUP={ pending:"περιμένει να ανοίξει τον σύνδεσμο", verified:"επιβεβαιώθηκε", expired:"έληξε", deleted:"διαγράφηκε" };
 const C_CHIPS=[["all","Όλοι"],["want","Θέλουν εμένα"],["venues","Κτήματα"],["private","Ιδιώτες"],["soon","Εκδήλωση σε 14 ημέρες"],["ending","Λήγουν σε 60 ημέρες"],["archive","Αρχείο"]];
@@ -1933,8 +1789,9 @@ function cRowHtml(c){
   const flags=(c.flags||[]).map(f=>`<span class="badge warn" title="${esc((C_FLAG[f]||[])[1]||f)}">⚑ ${esc((C_FLAG[f]||[])[0]||f)}</span>`).join("");
   const next=c.next ? `<span class="nw">${esc(gYmd(c.next))}</span><div class="muted">${esc(cInDays(c.next))}${c.nextKind && c.nextKind!=="wedding" ? " · "+esc(C_KIND[c.nextKind]||c.nextKind) : ""}${c.nextPct!=null ? ` · ${c.nextPct} % με θέση` : ""}</div>` : `<span class="muted">—</span>`;
   const until=c.until ? `<span class="nw">${esc(gYmd(c.until))}</span><div class="muted">${esc(C_UNTIL[c.untilKind]||"")}</div>` : `<span class="muted">${c.untilKind==="keep" ? C_UNTIL.keep : "—"}</span>`;
+  const st=c.step, step=st ? `<div class="muted cstep${st.due && st.due<=(custData.today||todayYmd()) ? " due" : ""}">→ ${esc(st.text)}${st.due ? ` · ${esc(gYmd(st.due))}` : ""}</div>` : "";
   return `<tr class="crow" data-key="${esc(c.key)}" tabindex="0">
-    <td><div class="cname">${esc(c.name||"—")}</div>${flags ? `<div class="cflags">${flags}</div>` : ""}</td>
+    <td><div class="cname">${esc(c.name||"—")}</div>${flags ? `<div class="cflags">${flags}</div>` : ""}${step}</td>
     <td data-l="Τύπος">${esc(C_TYPE[c.type]||c.type)}</td>
     <td data-l="Στάδιο"><span class="badge st${esc(c.stage)}">${esc(C_STAGE[c.stage]||c.stage)}</span></td>
     <td data-l="Επόμενη"${c.next ? "" : ` class="ce"`}>${next}</td>
@@ -1992,17 +1849,217 @@ function wireCustomers(){
   document.getElementById("custCsv").onclick=exportCustomersCsv;
 }
 
-// ---- the customer card (read-only) ----
-async function openCustomer(key){
-  const d=openDialog(`<div lang="el">${dlgHead("Φορτώνει…")}<div class="dbody"><div class="empty">Φορτώνει…</div></div></div>`);
-  d.dataset.ctx="cust:"+key;
+// ---- the customer card: where he works (phase 2) ----
+const NOTES_MAX=2000, STEP_MAX=200, ACT_TEXT_MAX=300, TL_FIRST=8;   // the server's limits; the timeline shows its newest 8 first
+const C_ACTS=[["call","📞 Τηλεφώνησα"],["viber","💬 Viber"],["email","✉ Email"],["offer","Έστειλα προσφορά"],["meeting","Συνάντηση"],["other","Άλλο"]];
+const C_ACT=Object.fromEntries(C_ACTS);
+const gD=t=>{ if(!t) return "—"; try{ return new Date(t).toLocaleDateString("el-GR",{ timeZone:"Europe/Athens", day:"2-digit", month:"short", year:"numeric" }); }catch(e){ return "—"; } };
+// «σε 4 χρόνια», not «σε 1461 μέρες»
+function cFar(ymd){ const n=cDays(todayYmd(), ymd);
+  return n<60 ? cInDays(ymd) : n<730 ? "σε "+gN(Math.round(n/30.44),"μήνα","μήνες") : "σε "+gN(Math.round(n/365.25),"χρόνο","χρόνια"); }
+
+// Opens a card, or redraws the one on screen in place (same scroll), after his own change or an action.
+async function openCustomer(key, holder){
+  await flushNotes();
+  let d=document.getElementById("dlg");
+  const same=!!(d && d.open && d.dataset.ctx==="cust:"+key), top=same ? d.scrollTop : 0;
+  if(!same){ d=openDialog(`<div lang="el">${dlgHead("Φορτώνει…")}<div class="dbody"><div class="empty">Φορτώνει…</div></div></div>`); d.dataset.ctx="cust:"+key; }
   const res=await req("/admin/customers/"+encodeURIComponent(key));
-  if(d.dataset.ctx!=="cust:"+key) return;   // closed, or another card opened meanwhile
+  if(!d.open || d.dataset.ctx!=="cust:"+key) return;   // closed, or another card opened meanwhile
   if(!res.ok || !res.d || !res.d.customer){
     if(res.status===403 && authFail(res.d)) return;
     d.querySelector(".dbody").innerHTML=`<div class="empty">${res.status===404 ? "Αυτός ο πελάτης δεν υπάρχει πια." : "Η καρτέλα δεν φόρτωσε — δοκίμασε ξανά."}</div>`; return;
   }
-  openDialog(`<div lang="el">${dlgHead(esc(res.d.customer.name||"—"))}<div class="dbody">${customerCardHtml(res.d)}</div></div>`);
+  d=openDialog(`<div lang="el" class="custcard">${dlgHead(esc(res.d.customer.name||"—"))}<div class="dbody">${customerCardHtml(res.d)}</div></div>`);
+  d.dataset.ctx="cust:"+key; d.scrollTop=top;
+  wireCard(d.querySelector(".custcard"), key, res.d, holder);
+}
+const refreshCard=(key, holder)=>{ const d=document.getElementById("dlg");
+  return (d && d.open && d.dataset.ctx==="cust:"+key) ? openCustomer(key, holder) : Promise.resolve(); };
+function wireCard(root, key, x, holder){
+  const q=s=>root.querySelector(s);
+  if(holder){ const slot=q(".cardpanel"); if(slot){ slot.replaceWith(holder); holder.scrollIntoView({ behavior:"smooth", block:"nearest" }); } }
+  const ta=q("#cn_notes");
+  if(ta){
+    const n=cardNotes={ key, el:ta, st:q("#cn_state"), timer:null, last:ta.value, busy:null, pending:null };
+    ta.addEventListener("input", ()=>{ n.st.textContent=""; n.st.classList.remove("err"); clearTimeout(n.timer); n.timer=setTimeout(()=>saveNotes(n), 800); });
+    ta.addEventListener("blur", ()=>{ if(cardNotes===n) flushNotes(); });
+  }
+  const tx=q("#ct_text");
+  if(tx) tx.addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); toast("Τώρα πάτα τι έγινε: «Τηλεφώνησα», «Viber»…"); } });
+  root.addEventListener("click", e=>onCardClick(e, root, key, x));
+}
+// His notes save themselves: 0.8 s after he stops typing, when he leaves the box, and before the card closes or redraws.
+function saveNotes(n){
+  clearTimeout(n.timer); n.timer=null;
+  const val=n.el.value;
+  if(val===n.last) return Promise.resolve();
+  if(n.busy && n.pending===val) return n.busy;
+  n.pending=val; n.st.textContent="αποθηκεύεται…"; n.st.classList.remove("err");
+  const p=n.busy=req("/admin/customers/"+encodeURIComponent(n.key)+"/notes",{ method:"PUT", body:JSON.stringify({ notes:val }) }).then(res=>{
+    if(n.busy===p) n.busy=null;
+    if(res.ok){ n.last=val; if(n.el.value===val) n.st.textContent="αποθηκεύτηκε ✓"; refreshCustomers(); }
+    else { n.st.textContent="δεν αποθηκεύτηκε — γράψε κάτι για να ξαναδοκιμάσει"; n.st.classList.add("err"); failToast(res, "Οι σημειώσεις δεν αποθηκεύτηκαν"); }
+  });
+  return p;
+}
+function flushNotes(){ const n=cardNotes; return n ? saveNotes(n) : Promise.resolve(); }
+async function onCardClick(e, root, key, x){
+  const b=e.target.closest("button[data-k],button[data-a]"); if(!b || b.disabled || !root.contains(b)) return;
+  if(b.dataset.a) return cardAction(key, x, b.dataset.a, b);
+  const k=b.dataset.k, path="/admin/customers/"+encodeURIComponent(key), q=s=>root.querySelector(s);
+  const send=async (url, opts, ok, fail)=>{
+    b.disabled=true; const res=await req(url, opts); b.disabled=false;
+    if(!res.ok){ failToast(res, res.status===404 ? "Αυτός ο πελάτης δεν υπάρχει πια" : fail); return; }
+    toast(ok); refreshCustomers(); await refreshCard(key);
+  };
+  if(k==="act") return send(path+"/timeline", { method:"POST", body:JSON.stringify({ kind:b.dataset.act, text:q("#ct_text").value.trim() }) }, "Γράφτηκε στο ιστορικό", "Δεν γράφτηκε");
+  if(k==="act_del"){
+    if(!confirm("Να σβηστεί αυτή η γραμμή από το ιστορικό;")) return;
+    return send(path+"/timeline/"+encodeURIComponent(b.dataset.id), { method:"DELETE" }, "Σβήστηκε", "Δεν σβήστηκε");
+  }
+  if(k==="step_save"){
+    const t=q("#cs_text"), dEl=q("#cs_due"), text=t.value.trim();
+    if(!text){ invalid(t, "Γράψε ποιο είναι το επόμενο βήμα"); return; }
+    if(dEl.validity && dEl.validity.badInput){ invalid(dEl, "Η ημερομηνία δεν είναι ολόκληρη"); return; }
+    return send(path+"/next", { method:"PUT", body:JSON.stringify({ text, due:dEl.value||null }) }, "Αποθηκεύτηκε", "Δεν αποθηκεύτηκε");
+  }
+  if(k==="step_done") return send(path+"/next/done", { method:"POST", body:"{}" }, "Έγινε — γράφτηκε στο ιστορικό", "Δεν έγινε");
+  if(k==="step_clear"){
+    if(!confirm("Να διαγραφεί το επόμενο βήμα, χωρίς να γραφτεί στο ιστορικό;")) return;
+    return send(path+"/next", { method:"DELETE" }, "Διαγράφηκε", "Δεν διαγράφηκε");
+  }
+  if(k==="tl_all"){ const ul=q("#ct_list"); if(ul) ul.innerHTML=(x.timeline||[]).map(t=>cTlItem(t, key)).join(""); b.remove(); }
+}
+// A card button runs the same admin action the old lists ran, on the old lists' row for this customer (it carries what
+// the card leaves out, e.g. an unopened link to copy). Its answer (a link, a key) lands in a detached holder that the
+// fresh card takes in, so redrawing the card does not wipe it. «Επεξεργασία…» and the trash are dialogs of their own:
+// closing them comes back to the card (dlgBack).
+async function cardAction(key, x, a, btn){
+  if(a==="forget") return cardForget(key, x, btn);
+  const couple=key.slice(0,1)==="c", id=key.slice(2);
+  btn.disabled=true;
+  await (couple ? refreshCouples() : refreshVenues());
+  btn.disabled=false;
+  const rec=(couple ? couplesCache : venuesCache).find(r=>r.id===id);
+  if(!rec){ toast("Ο πελάτης δεν βρέθηκε — πάτα «Ανανέωση»"); return; }
+  if(a==="copy" && !rec.claimToken){ toast("Δεν υπάρχει σύνδεσμος για αντιγραφή — φτιάξε νέο"); return; }
+  const run=()=>couple ? coupleAction(rec, a, btn) : venueAction(rec, a, btn);
+  if(a==="edit" || a==="trash"){ dlgBack=key; return run(); }
+  const holder=document.createElement("div"); holder.className="cardpanel";
+  panelTarget=holder;
+  try{ await run(); } finally { panelTarget=null; }
+  refreshCustomers();
+  await refreshCard(key, holder.innerHTML ? holder : null);
+}
+// «Ξέχασε τον πελάτη»: the plans, the card, the notes and the timeline go; the server keeps only what the books need.
+async function cardForget(key, x, btn){
+  const c=x.customer, t=key.slice(0,1), name=c.name||"—";
+  const msg = t==="c"
+    ? `Να ξεχαστεί ο πελάτης «${name}»;\n\nΣβήνονται για πάντα το σχέδιο με ό,τι έχει μέσα, η καρτέλα, οι σημειώσεις και το ιστορικό. Για τα λογιστικά μένουν μόνο το όνομα και η ημερομηνία αγοράς.\n\nΔεν αναιρείται.`
+    : t==="v"
+    ? `Να ξεχαστεί το κτήμα «${name}»;\n\nΣβήνονται για πάντα όλες οι εκδηλώσεις του (${(x.venue && x.venue.weddingCount)||0}) με τους καλεσμένους τους, ο κάδος, το πρότυπο αίθουσας, η καρτέλα, οι σημειώσεις και το ιστορικό.${c.afm ? " Το ΑΦΜ του μπορεί να ξαναπάρει δωρεάν χρόνο." : ""} Για τα λογιστικά μένουν μόνο η επωνυμία και οι ημερομηνίες όσων αγόρασε.\n\nΔεν αναιρείται.`
+    : `Να διαγραφεί η εγγραφή «${name}»${c.afm ? ` (ΑΦΜ ${c.afm})` : ""};\n\nΤο ΑΦΜ μπορεί να εγγραφεί ξανά. Δεν αναιρείται.`;
+  if(!confirm(msg)) return;
+  if(cardNotes && cardNotes.key===key) clearTimeout(cardNotes.timer);
+  btn.disabled=true;
+  const res=await req("/admin/customers/"+encodeURIComponent(key)+"/forget",{ method:"POST", body:"{}" });
+  btn.disabled=false;
+  if(!res.ok){ failToast(res, res.status===404 ? "Αυτός ο πελάτης δεν υπάρχει πια" : "Δεν έγινε"); return; }
+  if(cardNotes && cardNotes.key===key) cardNotes=null;   // nothing to save for someone forgotten
+  if(t==="c") forgetLang(key.slice(2));
+  closeDialog();
+  toast(res.d && res.d.books ? "Ξεχάστηκε — έμειναν μόνο τα λογιστικά" : "Ξεχάστηκε");
+  refreshCustomers(); refreshCouples(); refreshVenues(); refreshSupport();
+}
+// The timeline in words. The server sends codes, a time, sometimes a kind of event and a date — never a label.
+function cTlWords(e, t){
+  const K=e.kind ? (C_KIND[e.kind]||e.kind) : "", D=e.d ? gYmd(e.d) : "", ev=[K, D].filter(Boolean).join(" · ");
+  const before=e.n!=null ? ` (${gN(e.n, "μέρα", "μέρες")} πριν)` : "";
+  switch(e.code){
+    case "act": return e.act==="done" ? "✓ Έγινε: "+e.text : e.act==="other" ? (e.text||C_ACT.other) : (C_ACT[e.act]||e.act)+(e.text ? " — "+e.text : "");
+    case "created": return "Το καταχώρισες εσύ";
+    case "signup": return "Εγγράφηκε από τη σελίδα";
+    case "setup_resent": return "Ξαναστάλθηκε ο σύνδεσμος ρύθμισης";
+    case "trial_started": return "Άνοιξε τον σύνδεσμο — ξεκίνησε ο δωρεάν χρόνος";
+    case "trial_converted": return "Από τον δωρεάν χρόνο σε συνδρομή";
+    case "key_reset": return t==="v" ? "Νέο κλειδί κονσόλας, από εσένα" : "Νέος σύνδεσμος, από εσένα";
+    case "renewed": return "Η σεζόν ανανεώθηκε"+(D ? ", ως "+D : "");
+    case "trial_mail": return "Email: υπενθύμιση ότι λήγει ο δωρεάν χρόνος"+before;
+    case "renew_mail": return "Email: υπενθύμιση ανανέωσης"+before;
+    case "bought": return "Αγόρασε"+(K ? " — "+K : "");
+    case "claimed": return "Άνοιξε τον σύνδεσμο του σχεδίου";
+    case "keepsake": return "Στάλθηκε το αναμνηστικό";
+    case "mail_failed": return "Ένα email προς τον πελάτη δεν έφυγε";
+    case "event_new": return (e.extra ? "Επιπλέον σχέδιο" : "Νέα εκδήλωση")+(ev ? ": "+ev : "");
+    case "audit": return e.what==="locked" ? "Η εκδήλωση πέρασε — το σχέδιο έμεινε μόνο για προβολή"
+      : `${GR_WHO[e.who]||e.who||"—"}: ${GR_WHAT[e.what]||e.what}${D ? " "+D : ""}${e.n>1 ? ` ×${e.n}` : ""}`;
+    case "plan_gone": return "Το σχέδιο σβήστηκε"+(ev ? ` (${ev})` : "");
+  }
+  return e.code||"—";
+}
+function cTlItem(e, key){
+  const mine=e.code==="act";
+  return `<li class="${mine ? "mine" : "sys"}"><time>${esc(gDT(e.at))}</time><span class="w">${esc(cTlWords(e, key.slice(0,1)))}</span>${mine && e.id
+    ? `<button class="btn sm ghost x" data-k="act_del" data-id="${esc(e.id)}" title="Σβήσε αυτή τη γραμμή" aria-label="Σβήσε αυτή τη γραμμή">✕</button>` : ""}</li>`;
+}
+// Every button of the old lists, on the card (OPERATIONS-PLAN.md §4, phase 2).
+function cardActsHtml(x){
+  const t=x.customer.key.slice(0,1), out=[];
+  const b=(a, label, cls, title)=>`<button class="btn sm${cls ? " "+cls : ""}" data-a="${a}"${title ? ` title="${esc(title)}"` : ""}>${label}</button>`;
+  if(t==="c"){
+    const c=x.couple||{};
+    if(!coupleGone(c)){
+      if(c.email && mailOn()) out.push(b("send", c.pendingClaim ? "Στείλε τον σύνδεσμο" : "Στείλε σύνδεσμο εισόδου", "", "Φεύγει αληθινό email στον πελάτη"));
+      if(c.pendingClaim) out.push(b("copy", "Αντιγραφή συνδέσμου", "", "Ο σύνδεσμος που δεν έχει ανοίξει ακόμη, για να τον στείλεις εσύ"));
+      if(c.life && c.life.phase==="frozen") out.push(b("unfreeze", "Ξεπάγωμα…", "", "Ο πελάτης μπορεί να αλλάζει ξανά αμέσως"));
+      out.push(b("edit", "Επεξεργασία…", "", "Είδος, όνομα, ημερομηνία, διατήρηση"), b("email", "Αλλαγή email…"),
+        b("reset", "Νέος σύνδεσμος…", "", "Οι παλιοί σύνδεσμοι και οι συσκευές του σταματούν"));
+    }
+  } else if(t==="v"){
+    const v=x.venue||{}, L=x.licence||{};
+    out.push(b("key", "Κλειδί κονσόλας"), b("resetkey", "Νέο κλειδί…", "", "Μόνο αν το κτήμα έχασε το κλειδί του"), b("edit", "Επεξεργασία…", "", "Όνομα, email, γλώσσα, άδεια, διατήρηση"));
+    if(v.trashCount) out.push(b("trash", `Κάδος (${esc(v.trashCount)})`));
+    if(L.invoiceDue) out.push(b("invoiced", "Τιμολογήθηκε"));
+    out.push(b("toggle", v.active ? "Απενεργοποίηση…" : "Ενεργοποίηση"));
+  }
+  out.push(b("forget", t==="s" ? "Διαγραφή εγγραφής…" : "Ξέχασε τον πελάτη…", "danger", "Σβήνει τα πάντα· για τα λογιστικά μένουν μόνο το όνομα και οι ημερομηνίες αγορών"));
+  return `<div class="cacts">${out.join("")}</div><div class="cardpanel"></div>`;
+}
+// The buttons, his notes, the next step and the timeline: the top of the card, before the details.
+function cardWorkHtml(x){
+  const key=x.customer.key, st=x.nextStep, today=todayYmd(), tl=x.timeline||[];
+  const due=st && st.due ? (st.due<today ? `<span style="color:var(--danger)">έπρεπε ${esc(cInDays(st.due))}</span>`
+    : st.due===today ? `<strong style="color:var(--amber)">για σήμερα</strong>` : esc(cInDays(st.due))) : "";
+  return cardActsHtml(x)
+    +`<div class="cbox"><label for="cn_notes"><span>Σημειώσεις <span class="hint">— μόνο εσύ τις βλέπεις · χωρίς πληροφορίες υγείας</span></span><span class="saved" id="cn_state" aria-live="polite"></span></label>
+      <textarea id="cn_notes" maxlength="${NOTES_MAX}" rows="3" placeholder="${key.slice(0,1)==="v" ? "υπεύθυνος, τηλέφωνο, τιμή που συμφωνήσατε, στοιχεία τιμολόγησης…" : "τηλέφωνο, πώς μας βρήκε, τι ζήτησε…"}">${esc(x.notes||"")}</textarea></div>`
+    +`<div class="cbox"><label for="cs_text"><span>Επόμενο βήμα <span class="hint">— τη μέρα που ορίζεις μπαίνει στα «Θέλουν εμένα»</span></span>${due ? `<span class="saved">${due}</span>` : ""}</label>
+      <div class="steprow"><input type="text" id="cs_text" maxlength="${STEP_MAX}" value="${esc(st ? st.text : "")}" placeholder="π.χ. να τον πάρω για την προσφορά"><input type="date" id="cs_due" value="${esc(st && st.due ? st.due : "")}" aria-label="Πότε"></div>
+      <div class="row fw" style="margin-top:8px"><button class="btn sm primary" data-k="step_save">Αποθήκευση</button>${st ? `<button class="btn sm" data-k="step_done">✓ Έγινε</button><button class="btn sm ghost" data-k="step_clear">Διαγραφή</button>` : ""}</div></div>`
+    +`<div class="subh">Ιστορικό <span class="muted">— τα πιο πρόσφατα πρώτα</span></div>
+      <input type="text" id="ct_text" maxlength="${ACT_TEXT_MAX}" placeholder="Μια γραμμή, αν θέλεις — και μετά πάτα τι έγινε" aria-label="Μια γραμμή για το ιστορικό">
+      <div class="tlbtns">${C_ACTS.map(([k, l])=>`<button class="btn sm" data-k="act" data-act="${k}">${esc(l)}</button>`).join("")}</div>
+      ${tl.length ? `<ul class="tl" id="ct_list">${tl.slice(0, TL_FIRST).map(e=>cTlItem(e, key)).join("")}</ul>`
+        +(tl.length>TL_FIRST ? `<button class="linkbtn" data-k="tl_all" style="margin-top:6px">Όλο το ιστορικό (${tl.length})</button>` : "")
+        : `<div class="muted" style="margin-top:8px">Τίποτα ακόμη.</div>`}`;
+}
+// What the memory card will do, and when: the clock of OPERATIONS-PLAN.md §2 rule 5.
+function cMemoryHtml(x){
+  const m=x.memory;
+  if(!m) return `<div class="muted">Μια εγγραφή που δεν άνοιξε σβήνεται μόνη της: ο σύνδεσμος λήγει σε 7 μέρες και η γραμμή φεύγει 30 μέρες μετά.</div>`;
+  const after=`μετά, ${m.years} χρόνια από την τελευταία επαφή`;
+  return fieldsHtml([
+    ["Μετράει από", esc(gYmd(m.lastTouch))],
+    ["Ξεχνιέται", m.held==="plans" ? `όχι όσο υπάρχουν σχέδια· ${after}` : m.held==="licence" ? `όχι όσο ισχύει η άδεια του κτήματος· ${after}`
+      : `<strong>${esc(gYmd(m.forgetAt))}</strong> (${esc(cFar(m.forgetAt))})`],
+  ])+`<div class="muted" style="margin-top:6px">Κάθε νέα επαφή, αγορά ή εκδήλωση ξαναμετρά τα ${m.years} χρόνια από την αρχή. Τότε σβήνονται η καρτέλα, οι σημειώσεις και το ιστορικό· για τα λογιστικά μένουν μόνο το όνομα και οι ημερομηνίες όσων αγόρασε.</div>`;
+}
+// Events whose plan the sweep has deleted: only the kind and the dates are remembered.
+function cPastHtml(past){
+  if(!past || !past.length) return "";
+  return `<div class="muted" style="font-weight:700;margin-top:12px">Παλιές εκδηλώσεις — το σχέδιο δεν υπάρχει πια (${past.length})</div>
+    <ul class="tl">${past.map(p=>`<li><time>${esc(p.date ? gYmd(p.date) : "χωρίς ημερομηνία")}</time><span class="w">${esc(C_KIND[p.kind]||p.kind)}${p.extra ? " · επιπλέον σχέδιο" : ""} · το σχέδιο σβήστηκε ${esc(gD(p.goneAt))}</span></li>`).join("")}</ul>`;
 }
 const cFailed=(at, err)=>`<span style="color:var(--danger)">απέτυχε ${esc(gDT(at))}${err ? " — "+esc(err) : ""}</span>`;
 function cEventHtml(e){
@@ -2020,23 +2077,27 @@ function cEventHtml(e){
       e.dateChanges ? ["Αλλαγές ημερομηνίας", esc(e.dateChanges)] : null,
     ])+`<div style="margin-top:6px"><div class="muted" style="font-weight:700">Τελευταίες κινήσεις</div>${auditHtml(e.audit)}</div></div>`;
 }
+function cFlagText(f, c){
+  if(f==="trial_ending" && c.until) return `Ο δωρεάν χρόνος λήγει στις ${gYmd(c.until)} (${cInDays(c.until)}).`;
+  if(f==="next_due" && c.step) return (c.step.due && c.step.due<todayYmd() ? `Επόμενο βήμα, από ${gYmd(c.step.due)}: ` : "Για σήμερα: ")+`«${c.step.text}»`;
+  return (C_FLAG[f]||[])[1]||f;
+}
 function customerCardHtml(x){
   const c=x.customer, v=x.venue, cp=x.couple, s=x.signup, out=[];
-  out.push(`<div class="row fw" style="gap:6px;margin-bottom:12px"><span class="badge tpl">${esc(C_TYPE[c.type]||c.type)}</span><span class="badge st${esc(c.stage)}">${esc(C_STAGE[c.stage]||c.stage)}</span></div>`);
+  out.push(`<div class="row fw" style="gap:6px;margin-bottom:12px"><span class="badge tpl">${esc(C_TYPE[c.type]||c.type)}</span><span class="badge st${esc(c.stage)}">${esc(C_STAGE[c.stage]||c.stage)}</span>${cp && coupleGone(cp) ? `<span class="badge off">χωρίς σχέδιο</span>` : ""}</div>`);
   if((c.flags||[]).length) out.push(`<div class="keybox note" style="margin:0 0 14px"><div style="font-weight:700;margin-bottom:2px">⚑ Θέλουν εμένα</div><ul class="flaglist">${c.flags.map(f=>
-    `<li>${esc(f==="trial_ending" && c.until ? `Ο δωρεάν χρόνος λήγει στις ${gYmd(c.until)} (${cInDays(c.until)}).` : (C_FLAG[f]||[])[1]||f)}</li>`).join("")}</ul></div>`);
+    `<li>${esc(cFlagText(f, c))}</li>`).join("")}</ul></div>`);
   const verified=!!((v && v.emailVerified) || (cp && cp.emailVerified));
   out.push(fieldsHtml([
     ["Email", c.email ? `<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>${verified ? ` <span class="vok" title="Άνοιξε σύνδεσμο που στάλθηκε σε αυτή τη διεύθυνση">✓</span>` : ""}` : "—"],
     ["Τηλέφωνο", c.phone ? cReach({ phone:c.phone }, true) : "—"],
     c.afm ? ["ΑΦΜ", `<span class="mono">${esc(c.afm)}</span>`] : null,
     v && v.contact ? ["Δημόσια επαφή", esc(v.contact)] : null,
-    v && v.notes ? ["Σημειώσεις", esc(v.notes)] : null,
-    cp && cp.contact ? ["Σημειώσεις", esc(cp.contact)] : null,
     ["Γλώσσα", esc(LANG_NAME[(v||cp||s||{}).lang]||LANG_NAME.el)],
     ["Πελάτης από", esc(gDT(c.createdAt))],
     ["Τελευταία κίνηση", esc(gWhen(c.last))],
   ]));
+  out.push(cardWorkHtml(x));
   if(v){
     const L=v.license||{}, lic=x.licence||{}, st=x.setup||{}, trial=v.trial && v.trial.inForce;
     out.push(`<div class="subh">Άδεια</div>`+fieldsHtml([
@@ -2077,9 +2138,11 @@ function customerCardHtml(x){
       s.mailFailedAt ? ["Email", cFailed(s.mailFailedAt, s.mailError)] : null,
     ]));
   }
-  const evs=x.events||[];
+  const evs=x.events||[], past=x.past||[];
   out.push(`<div class="subh">Εκδηλώσεις <span class="muted">(${evs.length})</span></div>`
-    +(evs.length ? evs.map(cEventHtml).join("") : `<div class="muted">Καμία εκδήλωση ακόμη.</div>`));
+    +(evs.length ? evs.map(cEventHtml).join("") : `<div class="muted">${past.length ? "Καμία με σχέδιο." : "Καμία εκδήλωση ακόμη."}</div>`)
+    +cPastHtml(past));
+  out.push(`<div class="subh">Μνήμη <span class="muted">— πόσο τον θυμόμαστε</span></div>`+cMemoryHtml(x));
   return out.join("");
 }
 
@@ -2132,7 +2195,7 @@ function coupleCardHtml(r){
       <button class="btn sm" data-ca="email">Αλλαγή email</button>
       <button class="btn sm" data-ca="edit">Ημερομηνία / διατήρηση…</button>
       ${supBtn(p)}
-      <button class="btn sm danger" data-ca="del">Διαγραφή</button>
+      <button class="btn sm" data-open="c:${esc(c.id)}">Καρτέλα πελάτη →</button>
     </div>
     <div class="cardpanel"></div>
   </div>`;
@@ -2162,10 +2225,12 @@ function venueCardHtml(r){
     ])}
     <div class="row fw acts" style="margin-top:10px">
       <button class="btn sm" data-va="key">Κλειδί κονσόλας</button>
+      <button class="btn sm" data-va="resetkey">Νέο κλειδί…</button>
       <button class="btn sm" data-va="edit">Επεξεργασία…</button>
       <button class="btn sm" data-va="trash">Κάδος (${v.trashCount||0})</button>
       ${L.invoiceDue?`<button class="btn sm" data-va="invoiced">Τιμολογήθηκε</button>`:""}
       <button class="btn sm" data-va="toggle">${v.active?"Απενεργοποίηση":"Ενεργοποίηση"}</button>
+      ${r.test?"":`<button class="btn sm" data-open="v:${esc(v.id)}">Καρτέλα πελάτη →</button>`}
     </div>
     <div class="cardpanel"></div>
     ${weddings?`<div class="subh">Γάμοι <span class="muted">(${r.weddings.length})</span></div>${weddings}`:`<div class="muted" style="margin-top:10px">Κανένας γάμος.</div>`}
@@ -2209,6 +2274,7 @@ async function runFromCard(sel, id, fn){
 }
 async function onLookupAction(e){
   const copyBtn=e.target.closest("button[data-copy]"); if(copyBtn){ copy(copyBtn.dataset.copy); return; }
+  const ob=e.target.closest("button[data-open]"); if(ob){ openCustomer(ob.dataset.open); return; }
   const pb=e.target.closest("button[data-pa]");
   if(pb && pb.dataset.pa==="ret"){ openPlanRetention(pb.dataset.pid, pb.dataset.pname, pb.dataset.pret); return; }
   const cb=e.target.closest("button[data-ca]");

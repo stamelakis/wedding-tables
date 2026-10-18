@@ -100,6 +100,17 @@ await couple({ name: '40ά γενέθλια Κώστα', kind: 'party', contact:
 const c5 = await couple({ name: 'Σοφία & Άρης', email: 'sofia.aris@example.gr', weddingDate: day(10), startNow: true });
 patch('plan:' + raw('couple:' + c5).planId, o => { o.weddingDate = day(-40); });                               // archive: wedding done
 
+// ---- phase 2: his notes, next steps, timeline, and one customer already forgotten (what the books keep) ----
+const C = k => '/admin/customers/' + encodeURIComponent(k);
+await call('PUT', C('v:' + v3) + '/next', { text: 'Να τους πάρω για την πρώτη εκδήλωση', due: day(0) }, OWN);   // ⚑ next step due today
+await call('POST', C('v:' + v3) + '/timeline', { kind: 'call', text: 'Δεν απάντησαν, ξανά την Πέμπτη' }, OWN);
+await call('POST', C('v:' + v3) + '/timeline', { kind: 'offer', text: 'σεζόν 2027, όπως το περσινό' }, OWN);
+await call('PUT', C('v:' + v4) + '/notes', { notes: 'Υπεύθυνη: κα Δήμητρα. Τιμολόγιο στην εταιρεία, όχι στο κτήμα.' }, OWN);
+await call('PUT', C('c:' + c2) + '/next', { text: 'Να δω αν άνοιξαν τον σύνδεσμο', due: day(3) }, OWN);
+await call('POST', C('c:' + c2) + '/timeline', { kind: 'viber', text: 'Τους έστειλα ξανά τον σύνδεσμο' }, OWN);
+const c6 = await couple({ name: 'Δέσποινα & Μάριος', email: 'despoina.m@example.gr', weddingDate: day(60) });
+await call('POST', C('c:' + c6) + '/forget', {}, OWN);                                                         // books: name and purchase date only
+
 db.close();
 console.log('dev-customers: seeded ' + DB);
 process.env.KV_BACKEND = 'sqlite';
