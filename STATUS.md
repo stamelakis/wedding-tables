@@ -9,11 +9,10 @@ review and his yes.
 ## In progress / unfinished
 
 - **Operations phase 1, «Πελάτες» in admin.html** — built 2026-10-18 (`cbcb015` server, `4037e9e` tests,
-  `be84788` screen). Suite 981/981. Checked in the preview at desktop and phone width with
-  `tools/dev-customers.mjs`, which seeds one customer per flag and stage. The Greek review list is in the
-  side-session notes as `customer-sheet-greek-review.md`. It has four open points: «Ενεργός» for a κτήμα, the
-  same flag words for two links, «12:00 π.μ.» against 24-hour time, and «Ανανέωση» meaning both reload and
-  renewal. After his yes: apply his changes, then `/ship`.
+  `be84788` screen, `372f39d` verifier fixes). Suite 981/981. Checked in the preview at desktop and phone
+  width with `tools/dev-customers.mjs`, which seeds one customer per flag and stage. The verifier agent found
+  every brief item met. It stopped at the Greek review (see «Waiting on Andreas»). After his yes: apply his
+  changes, then `/ship`. Not pushed, not deployed.
 - Party plans created before 2026-10-17 keep the label «Τραπέζι της γιορτής» until the customer renames it
   (deliberately not rewritten on load: it could trip a venue's table lock). Converting such a plan to another
   kind still works (LEGACY_HEADS, on both planner and server).
@@ -32,6 +31,11 @@ review and his yes.
 
 ## Waiting on Andreas
 
+- **Greek review of the «Πελάτες» sheet**, then a yes to deploy it. Every new string is in
+  `C:\Users\andre\AppData\Roaming\Claude\side-session-notes\local_3a33f245-9559-429d-a661-6aa2dd65197a\customer-sheet-greek-review.md`.
+  Four points to decide: «Ενεργός» for a κτήμα; the same row words «δεν άνοιξε τον σύνδεσμο» for a venue's
+  setup link and a couple's plan link; midnight shown as «12:00 π.μ.» (24-hour «00:00» instead?); and
+  «Ανανέωση» meaning both the reload button and the renewal stage. Reply «εντάξει» or the lines to change.
 - **Accountant** (€10,000 VAT threshold, and who issues receipts for TakeaSeat sales until the company
   exists; also how many years payment records must be kept), **company registration** — later. The receipt
   question only blocks the receipt-number part of operations phase 5.
@@ -47,6 +51,10 @@ review and his yes.
   node_modules every time. TakeaSeat's own share was 0.1 GB.
 
 ## History
+
+- 2026-10-18 — Operations phase 1 built, not deployed: «Πελάτες» in admin.html. It has one row per customer, the
+  six «Θέλουν εμένα» flags, seating %, a read-only card and Excel. The privacy test proves no guest name, key,
+  token or link leaves the endpoints. Suite now 981.
 
 - 2026-10-18 — `OPERATIONS-PLAN.md` written and approved: seven phases from one customer sheet to online
   payment, a customer memory on a restarting 5-/2-year clock, the venues' own client sheet; all seven
