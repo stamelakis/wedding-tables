@@ -681,7 +681,10 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
   ok(m.has('plan:' + C9.id) && (await call('GET', '/plans/' + C9.id, undefined, HC)).d.life.locked, '… and 365 days after, still there and still view-only');
   patchRaw('plan:' + C9.id, o => { o.weddingDate = day(-367); });
   sw = await mod.sweep(env);
-  ok(!m.has('plan:' + C9.id) && raw('couple:' + K9.id).purgedAt && !raw('couple:' + K9.id).email && !m.has('email:d9@example.com'), "a year after the event the couple's plan is deleted and the address forgotten", sw);
+  { const k9 = raw('couple:' + K9.id), p9 = (k9.past || [])[0] || {};
+    ok(!m.has('plan:' + C9.id) && k9.purgedAt && !m.has('email:d9@example.com') && !k9.claimToken, "a year after the event the couple's plan is deleted, and the address can recover nothing any more", sw);
+    ok(k9.email === 'd9@example.com' && k9.past.length === 1 && p9.date === day(-367) && p9.kind === 'wedding' && !('name' in p9) && !('label' in p9),
+      "… but the memory card keeps the address, and the kind and date of the event (phase 2)", k9); }
   // the admin's exceptions: keep forever / stay editable (the owner's own wedding), per venue, global
   const WB = (await call('POST', '/venues/' + V9.id + '/weddings', { label: 'Δικός μας', date: day(10) }, HV)).d;
   patchRaw('plan:' + WB.planId, o => { o.weddingDate = day(-30); });
@@ -756,7 +759,9 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     patchRaw('plan:' + M.id, o => { o.weddingDate = day(-367); });
     await mod.sweep(env);
     const cp9 = raw('couple:' + K.id);
-    ok(!m.has('plan:' + M.id) && !m.has('plan:' + X.id) && cp9.purgedAt && !JSON.stringify(cp9).includes('x9@example.com') && !cp9.plans.length, 'the main plan takes its extra plans with it; no trace of the address remains', cp9);
+    ok(!m.has('plan:' + M.id) && !m.has('plan:' + X.id) && cp9.purgedAt && !m.has('email:x9@example.com') && !cp9.plans.length && !cp9.claimToken,
+      'the main plan takes its extra plans with it, and the address leaves the recovery index', cp9);
+    ok(cp9.email === 'x9@example.com' && cp9.past.length === 2 && cp9.past.filter(p => p.extra).length === 1, '… the memory card remembers both plans, the extra one marked as such', cp9.past);
     // stays-editable policy still freezes the date
     const WE = (await call('POST', '/venues/' + V9.id + '/weddings', { label: 'Edit', date: day(15) }, HV)).d;
     await call('PUT', '/admin/plans/' + WE.planId + '/retention', { lockAfter: false }, OWN);
@@ -2796,7 +2801,8 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     await sweepAt(lifeC.deleteAt - 3600000);
     ok(m.has('plan:' + AC.id) && raw('couple:' + AK.id).email === 'arch@example.com', 'retention: a couple\'s plan is still there an hour before its year is up');
     sw = await sweepAt(lifeC.deleteAt + 3600000);
-    ok(!m.has('plan:' + AC.id) && raw('couple:' + AK.id).purgedAt && !raw('couple:' + AK.id).email && !(AC.id in (raw('meta:archive').plans || {})), 'retention: a year after the event the couple\'s plan is deleted, the address forgotten, and it leaves the list', sw);
+    ok(!m.has('plan:' + AC.id) && raw('couple:' + AK.id).purgedAt && !m.has('email:arch@example.com') && raw('couple:' + AK.id).email === 'arch@example.com' && !(AC.id in (raw('meta:archive').plans || {})),
+      'retention: a year after the event the couple\'s plan is deleted and leaves the list; the address stays on the memory card only', sw);
     // what the customer is told matches: a year for everyone, and the notes go the day after
     const fs = await import('node:fs'), read = f => fs.readFileSync(path.join(root, f), 'utf8');
     const lands = ['plano-trapezion-gamou.html', 'plano-trapezion-vaptisis.html', 'plano-trapezion-giortis.html'];
@@ -3015,6 +3021,215 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     ok(!/"(planId|guests|tables|seats|editKey|readKey|venueKey|message|label)"/.test(all), 'privacy: no field that could hold one either');
   } finally {
     env.MAIL = keepMail; if (!keepMail) delete env.MAIL;
+  }
+}
+
+// ---------- 22. phase 2: the card is where he works, and it remembers ----------
+{
+  const keepMail = env.MAIL, realNow = Date.now, DAYMS = 86400000;
+  const cardOf = key => call('GET', '/admin/customers/' + encodeURIComponent(key), undefined, OWN);
+  const on = (method, key, sub, body, h = OWN) => call(method, '/admin/customers/' + encodeURIComponent(key) + '/' + sub, body, h);
+  const rowOf = async key => (await call('GET', '/admin/customers', undefined, OWN)).d.customers.find(x => x.key === key);
+  const plus5 = ymd => (+ymd.slice(0, 4) + 5) + ymd.slice(4);
+  const athensYmd = ms => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Athens', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms));
+  const today = athensDay(0), longAgo = realNow() - 6 * 366 * DAYMS, fourYears = realNow() - 4 * 366 * DAYMS;
+  // The nightly pass runs once a day after 04:00 Athens: forget that it ran, and run it at an hour it will.
+  const nightly = async () => {
+    m.delete('meta:memory');
+    const t = realNow(), h = +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Athens', hour: '2-digit', hourCycle: 'h23' }).format(new Date(t));
+    const when = h >= 4 ? t : t + (5 - h) * 3600000;
+    Date.now = () => when; try { return await mod.sweep(env); } finally { Date.now = realNow; }
+  };
+  try {
+    delete env.MAIL;   // the admin hands links over himself, so the fixtures need no mailbox
+    const newCouple = async (name, email, contact, extra) => {
+      const x = await call('POST', '/admin/couples', { name, email, contact, weddingDate: athensDay(30), ...(extra || {}) }, OWN);
+      return { id: x.d.couple.id, token: x.d.claimToken };
+    };
+    const CA = await newCouple('Μνήμη Ζεύγος Α', 'mem-a@example.gr', '6977 111 222');
+    const KA = 'c:' + CA.id;
+
+    // -- the owner only, on every new route --
+    const routes = [['PUT', 'notes', { notes: 'x' }], ['PUT', 'next', { text: 'x', due: today }], ['DELETE', 'next'], ['POST', 'next/done'],
+      ['POST', 'timeline', { kind: 'call' }], ['DELETE', 'timeline/abc'], ['POST', 'forget']];
+    const VX = (await call('POST', '/admin/venues', { name: 'Μνήμη Κτήμα κλειδί' }, OWN)).d;
+    for (const [h, what] of [[{}, 'no key'], [{ 'X-Owner-Key': 'wrong' }, 'a wrong key'], [{ 'X-Venue-Key': VX.key }, "a venue's key"], [{ 'X-Owner-Key': VX.key }, "a venue's key as the owner's"]]) {
+      const st = [];
+      for (const [mth, sub, body] of routes) st.push((await on(mth, KA, sub, body, h)).status);
+      st.push((await call('GET', '/admin/books', undefined, h)).status);
+      ok(st.every(s => s === 403), 'card: notes, next step, timeline, forget and the books all refuse ' + what, st);
+    }
+    ok(m.has('couple:' + CA.id) && !raw('couple:' + CA.id).nextStep && raw('couple:' + CA.id).contact === '6977 111 222', 'card: … and none of those refused calls changed or erased anything');
+    for (const bad of ['c:nope', 'x:' + CA.id, CA.id]) ok((await on('PUT', bad, 'notes', { notes: 'x' })).status === 404, 'card: «' + bad + '» takes no notes');
+    if (m.has('venue:tasdokimi0')) ok((await on('PUT', 'v:tasdokimi0', 'notes', { notes: 'x' })).status === 404, 'card: the test venue is not a customer, so it takes no notes');
+
+    // -- private notes: one box, the field the old lists edited --
+    const NOTE = 'Θέλει προσφορά για τη βάπτιση του 2027 · τηλ. μετά τις 6';
+    let r = await on('PUT', KA, 'notes', { notes: NOTE });
+    ok(r.status === 200 && r.d.notes === NOTE && raw('couple:' + CA.id).contact === NOTE, "card: the notes box saves into the couple's own notes field", r.d);
+    ok((await on('PUT', KA, 'notes', {})).status === 400, 'card: a notes save without notes is refused');
+    r = await on('PUT', KA, 'notes', { notes: 'α'.repeat(2500) });
+    ok(r.d.notes.length === 2000 && raw('couple:' + CA.id).contact.length === 2000, 'card: notes stop at 2000 characters');
+    await on('PUT', KA, 'notes', { notes: NOTE });
+    const VN = (await call('POST', '/admin/venues', { name: 'Μνήμη Κτήμα σημειώσεις', contact: 'Γραμματεία 210 000 0000', license: { type: 'per_wedding', quota: 10 } }, OWN)).d;
+    r = await on('PUT', 'v:' + VN.id, 'notes', { notes: 'Ο κ. Γιάννης αποφασίζει, όχι η γραμματεία' });
+    ok(r.status === 200 && raw('venue:' + VN.id).notes === 'Ο κ. Γιάννης αποφασίζει, όχι η γραμματεία' && raw('venue:' + VN.id).contact === 'Γραμματεία 210 000 0000',
+      "card: a venue's notes go to its private notes, never to the contact line its couples see");
+
+    // -- «Επόμενο βήμα» --
+    r = await on('PUT', KA, 'next', { text: '  Τηλέφωνο για την προσφορά  ', due: athensDay(5) });
+    ok(r.status === 200 && r.d.nextStep.text === 'Τηλέφωνο για την προσφορά' && r.d.nextStep.due === athensDay(5), 'card: a next step is saved, what and when', r.d);
+    let row = await rowOf(KA);
+    ok(row.step && row.step.due === athensDay(5) && !row.flags.includes('next_due'), 'card: the sheet row carries it, and it is not due yet', row);
+    ok((await on('PUT', KA, 'next', { text: '', due: today })).status === 400 && (await on('PUT', KA, 'next', { text: 'x', due: '2026-02-30' })).status === 400,
+      'card: a next step needs words and a real date');
+    await on('PUT', KA, 'next', { text: 'Τηλέφωνο για την προσφορά', due: today });
+    row = await rowOf(KA);
+    let cd = (await cardOf(KA)).d;
+    ok(row.flags.includes('next_due') && cd.customer.flags.includes('next_due') && cd.nextStep.due === today, 'card: on its day the customer joins «Θέλουν εμένα» (next_due), on the row and on the card', row.flags);
+    r = await on('POST', KA, 'next/done');
+    cd = (await cardOf(KA)).d;
+    ok(r.status === 200 && !cd.nextStep && !cd.customer.flags.includes('next_due') && cd.timeline[0].code === 'act' && cd.timeline[0].act === 'done' && cd.timeline[0].text === 'Τηλέφωνο για την προσφορά',
+      'card: «Έγινε» empties the box and puts the step on the timeline', cd.timeline[0]);
+    ok((await on('POST', KA, 'next/done')).status === 409, 'card: «Έγινε» with no step is a 409, not a blank entry');
+    await on('PUT', KA, 'next', { text: 'Στείλε το link ξανά' });
+    ok((await cardOf(KA)).d.nextStep.due === null, 'card: a step without a date is allowed (it just never comes due)');
+    ok((await on('DELETE', KA, 'next')).status === 200 && !raw('couple:' + CA.id).nextStep, 'card: and it can be cleared');
+    await on('PUT', KA, 'next', { text: 'Ρώτα για το 2027', due: athensDay(40) });
+
+    // -- the timeline: his entries --
+    r = await on('POST', KA, 'timeline', { kind: 'call', text: 'Μίλησε η νύφη, όλα καλά' });
+    const E1 = r.d.entry;
+    ok(r.status === 200 && E1.act === 'call' && E1.id && E1.text === 'Μίλησε η νύφη, όλα καλά', 'card: «Τηλεφώνησα» with a line of text, one call', r.d);
+    ok((await on('POST', KA, 'timeline', { kind: 'viber' })).status === 200, 'card: «Viber» needs no text');
+    ok((await on('POST', KA, 'timeline', { kind: 'telepathy' })).status === 400 && (await on('POST', KA, 'timeline', { kind: 'done', text: 'x' })).status === 400,
+      'card: unknown kinds are refused, and «done» comes only from the next step');
+    r = await on('POST', KA, 'timeline', { kind: 'offer', text: 'β'.repeat(400) });
+    ok(r.d.entry.text.length === 300, 'card: an entry stops at 300 characters');
+    ok((await on('DELETE', KA, 'timeline/' + r.d.entry.id)).status === 200 && (await on('DELETE', KA, 'timeline/' + r.d.entry.id)).status === 404,
+      'card: his own entry can be removed, once');
+
+    // -- a note, a next step and an entry survive a reload --
+    cd = (await cardOf(KA)).d;
+    ok(cd.notes === NOTE && cd.nextStep.text === 'Ρώτα για το 2027' && cd.timeline.some(e => e.id === E1.id) && cd.timeline.filter(e => e.code === 'act').length === 3,
+      'card: a fresh read has the note, the next step and the entries', { notes: cd.notes, step: cd.nextStep });
+    ok(cd.timeline.every((e, i, a) => !i || a[i - 1].at >= e.at), 'card: the timeline is newest first');
+
+    // -- system events with the right dates --
+    const cA = raw('couple:' + CA.id);
+    ok(cd.timeline.some(e => e.code === 'bought' && e.at === cA.paidAt && e.kind === 'wedding') && cd.timeline.some(e => e.code === 'event_new' && e.d === athensDay(30)),
+      'card: the purchase shows at its time, and the event with its date', cd.timeline.filter(e => e.code !== 'act'));
+    const claimA = (await call('POST', '/claim', { token: CA.token, nonce: 'mem-a' })).d;
+    await call('PATCH', '/admin/couples/' + CA.id, { weddingDate: athensDay(45) }, OWN);
+    cd = (await cardOf(KA)).d;
+    ok(cd.timeline.some(e => e.code === 'claimed' && e.at === raw('couple:' + CA.id).claimedAt) && cd.timeline.some(e => e.code === 'audit' && e.what === 'date' && e.who === 'admin' && e.d === athensDay(45)),
+      'card: the link opened, and his date change with the new date', cd.timeline.filter(e => e.code !== 'act'));
+    ok(cd.memory && cd.memory.held === 'plans' && cd.memory.lastTouch === today && cd.memory.forgetAt === plus5(today), 'card: a customer with a plan is remembered, the clock waits for the plan', cd.memory);
+    const VW = (await call('POST', '/venues/' + VN.id + '/weddings', { label: 'Οικογένεια Ζαφειρίου', date: athensDay(12) }, { 'X-Venue-Key': VN.key })).d;
+    patchRaw('venue:' + VN.id, v => { v.renewals = [{ at: realNow() - 400 * DAYMS, from: '2025-09-01', to: '2026-08-31' }]; });
+    cd = (await cardOf('v:' + VN.id)).d;
+    ok(cd.timeline.some(e => e.code === 'created' && e.at === raw('venue:' + VN.id).createdAt) && cd.timeline.some(e => e.code === 'event_new' && e.d === athensDay(12) && e.kind === 'wedding')
+      && cd.timeline.some(e => e.code === 'renewed' && e.d === '2026-08-31'),
+      "card: a venue's start, its new event with its date, and a renewal", cd.timeline);
+    ok(!JSON.stringify(cd).includes('Οικογένεια Ζαφειρίου') && !JSON.stringify(cd).includes(VW.planId), "card: the venue's event never carries its label or its plan id");
+
+    // -- a card outlives its deleted plan --
+    patchRaw('plan:' + VW.planId, o => { o.weddingDate = athensDay(-400); });   // past any venue retention the sections above leave behind
+    patchRaw('plan:' + claimA.id, o => { o.weddingDate = athensDay(-367); });
+    await mod.sweep(env);
+    ok(!m.has('plan:' + claimA.id) && !m.has('plan:' + VW.planId), 'memory: a year after the event the plan is deleted (and a venue\'s)');
+    cd = (await cardOf(KA)).d;
+    ok(cd && cd.notes === NOTE && cd.customer.email === 'mem-a@example.gr' && cd.couple.email === 'mem-a@example.gr', 'memory: the card still opens, with the address and his notes', cd && cd.customer);
+    ok(cd.past.length === 1 && cd.past[0].date === athensDay(-367) && cd.past[0].kind === 'wedding' && cd.timeline.some(e => e.code === 'plan_gone' && e.d === athensDay(-367)),
+      'memory: it remembers the kind and date of the event, and when the plan went', cd.past);
+    ok(cd.memory.held === null && cd.memory.forgetAt === plus5(cd.memory.lastTouch), 'memory: now the clock runs: forgotten 5 years after the last contact', cd.memory);
+    cd = (await cardOf('v:' + VN.id)).d;
+    ok(cd.past.length === 1 && cd.past[0].date === athensDay(-400) && !JSON.stringify(cd).includes('Οικογένεια Ζαφειρίου') && cd.memory.held === 'licence',
+      "memory: a venue's past event is kept as a kind and a date; a licence that can still make events holds the clock", cd.memory);
+
+    // -- the clock restarts on a new contact and on a new event --
+    const back = (k, extra) => patchRaw(k, o => { o.createdAt = longAgo; if ('paidAt' in o) o.paidAt = longAgo; if (o.claimedAt) o.claimedAt = longAgo;
+      (o.past || []).forEach(p => { p.createdAt = longAgo; p.date = new Date(longAgo).toISOString().slice(0, 10); }); if (extra) extra(o); });
+    back('couple:' + CA.id);
+    patchRaw('act:' + KA, a => { a.forEach(e => { e.t = longAgo; }); });
+    cd = (await cardOf(KA)).d;
+    ok(cd.memory.forgetAt < today, 'memory: six years without a contact and the date to forget has passed', cd.memory);
+    const call2 = (await on('POST', KA, 'timeline', { kind: 'call', text: 'Ξαναήρθαν, για βάπτιση' })).d.entry;
+    cd = (await cardOf(KA)).d;
+    ok(cd.memory.lastTouch === today && cd.memory.forgetAt === plus5(today), 'memory: a new contact restarts the 5 years', cd.memory);
+    await on('DELETE', KA, 'timeline/' + call2.id);
+    ok((await cardOf(KA)).d.memory.forgetAt < today, 'memory: (that contact removed again, the old date is back)');
+    const VR = (await call('POST', '/admin/venues', { name: 'Μνήμη Κτήμα επιστρέφει', license: { type: 'seasonal', seasonStart: '2020-01-01', seasonEnd: '2020-12-31' } }, OWN)).d;
+    back('venue:' + VR.id);
+    cd = (await cardOf('v:' + VR.id)).d;
+    ok(cd.memory.held === null && cd.memory.forgetAt < today, 'memory: a venue whose season ended years ago has its clock running, and past', cd.memory);
+    await call('PATCH', '/admin/venues/' + VR.id, { license: { type: 'seasonal', seasonStart: athensDay(-1), seasonEnd: athensDay(300) } }, OWN);
+    ok((await call('POST', '/venues/' + VR.id + '/weddings', { label: 'Νέα', date: athensDay(20) }, { 'X-Venue-Key': VR.key })).status === 200, 'memory: (it comes back with a new season and a new event)');
+    cd = (await cardOf('v:' + VR.id)).d;
+    ok(cd.memory.held === 'plans' && cd.memory.lastTouch === today && cd.memory.forgetAt === plus5(today), 'memory: a new event restarts the clock', cd.memory);
+
+    // -- erased on its date, and only then --
+    const CB = await newCouple('Μνήμη Ζεύγος Β', 'mem-b@example.gr', 'Σημείωση για τον Β');
+    const claimB = (await call('POST', '/claim', { token: CB.token, nonce: 'mem-b' })).d;
+    patchRaw('plan:' + claimB.id, o => { o.weddingDate = athensDay(-367); });
+    await mod.sweep(env);
+    back('couple:' + CB.id, o => { o.createdAt = o.paidAt = o.claimedAt = fourYears; });
+    const CL = await newCouple('Μνήμη Ζεύγος με πλάνο', 'mem-l@example.gr', '');
+    back('couple:' + CL.id);
+    const VF = (await call('POST', '/admin/venues', { name: 'Μνήμη Κτήμα πλήρωσε', license: { type: 'seasonal', seasonStart: '2020-01-01', seasonEnd: '2020-12-31' } }, OWN)).d;
+    back('venue:' + VF.id, o => { o.renewals = [{ at: longAgo, from: '2020-01-01', to: '2020-12-31' }]; });
+    const VT = (await call('POST', '/admin/venues', { name: 'Μνήμη Κτήμα δωρεάν χρονιά', license: { type: 'seasonal', seasonStart: '2020-01-01', seasonEnd: '2020-12-31' } }, OWN)).d;
+    back('venue:' + VT.id, o => { o.trial = { startedAt: longAgo, endsAt: longAgo + 366 * DAYMS, seasonEnd: '2020-12-31', verifiedAt: longAgo }; });
+    const VP = (await call('POST', '/admin/venues', { name: 'Μνήμη Κτήμα ανά εκδήλωση', license: { type: 'per_wedding', quota: 5 } }, OWN)).d;
+    back('venue:' + VP.id);
+    m.set('act:c:ghost000001', JSON.stringify([{ id: 'x', t: 1, kind: 'call', text: '' }]));
+    let sw = await nightly();
+    ok(!m.has('couple:' + CA.id) && !m.has('act:' + KA) && (await cardOf(KA)).status === 404, 'memory: the nightly pass forgets a card whose date has come, timeline and all', sw);
+    ok(!m.has('venue:' + VF.id) && !m.has('venue:' + VT.id), 'memory: … and a venue whose season ended and whose date has come, paid or free year');
+    ok(m.has('couple:' + CB.id) && m.has('couple:' + CL.id) && m.has('venue:' + VP.id),
+      'memory: not before its date (4 years), not while a plan is still there, not while a licence can still make events', sw);
+    ok(!m.has('act:c:ghost000001') && sw.forgotten === 3, 'memory: a timeline left without its customer goes too', sw);
+    ok((await nightly()).forgotten === 0, 'memory: (nothing more to forget the second time)');
+
+    // -- the books keep the name and the dates of what was bought, nothing else --
+    const bA = raw('books:c:' + CA.id), bF = raw('books:v:' + VF.id);
+    ok(bA.name === 'Μνήμη Ζεύγος Α' && bA.paidAt === athensYmd(longAgo) && bA.why === 'clock' && bA.kind === 'wedding', 'books: a forgotten couple leaves its name, kind and purchase date', bA);
+    ok(bF.name === 'Μνήμη Κτήμα πλήρωσε' && bF.renewals.length === 1 && bF.renewals[0].to === '2020-12-31' && bF.season.to === '2020-12-31', 'books: a forgotten venue leaves its name and its season and renewal dates', bF);
+    ok(!m.has('books:v:' + VT.id), 'books: a venue that only had its free year bought nothing, so nothing is kept');
+    const allBooks = JSON.stringify([bA, bF]);
+    ok(!/@|6977|Σημείωση|προσφορά|βάπτιση|Ζαφειρίου/.test(allBooks) && !/"(email|contact|notes|phone|past|timeline|afm)"/.test(allBooks), 'books: no address, phone, note, event or timeline in them', allBooks);
+
+    // -- «Ξέχασέ τον» on request --
+    const CF = await newCouple('Μνήμη Ζεύγος ξέχασέ με', 'mem-f@example.gr', 'αλλεργία σημειωμένη κατά λάθος');
+    const claimF = (await call('POST', '/claim', { token: CF.token, nonce: 'mem-f' })).d;
+    await on('POST', 'c:' + CF.id, 'timeline', { kind: 'email', text: 'Ζήτησε να σβηστούν τα στοιχεία του' });
+    r = await on('POST', 'c:' + CF.id, 'forget');
+    ok(r.status === 200 && r.d.books === true && !m.has('couple:' + CF.id) && !m.has('plan:' + claimF.id) && !m.has('act:c:' + CF.id) && !m.has('email:mem-f@example.gr'),
+      '«Ξέχασέ τον»: the couple, its plan, its timeline and its address go at once', r.d);
+    ok((await cardOf('c:' + CF.id)).status === 404 && !(await rowOf('c:' + CF.id)), '«Ξέχασέ τον»: the card and the row are gone');
+    const bFg = raw('books:c:' + CF.id);
+    ok(bFg.name === 'Μνήμη Ζεύγος ξέχασέ με' && bFg.why === 'request' && !JSON.stringify(bFg).includes('mem-f') && !JSON.stringify(bFg).includes('αλλεργία'), '«Ξέχασέ τον»: only what the books need stays', bFg);
+    const VG = (await call('POST', '/admin/venues', { name: 'Μνήμη Κτήμα διαγραφή', license: { type: 'per_wedding', quota: 3 } }, OWN)).d;
+    await on('PUT', 'v:' + VG.id, 'notes', { notes: 'να σβηστεί' });
+    ok((await call('DELETE', '/admin/venues/' + VG.id, undefined, OWN)).status === 200 && raw('books:v:' + VG.id).name === 'Μνήμη Κτήμα διαγραφή' && !m.has('act:v:' + VG.id),
+      "«Ξέχασέ τον»: the old venue delete goes the same way, books kept");
+    await nightly();
+    const bl = (await call('GET', '/admin/books', undefined, OWN)).d.books;
+    ok(m.has('books:c:' + CF.id) && m.has('books:c:' + CA.id) && bl.some(b => b.key === 'c:' + CF.id) && bl.some(b => b.key === 'v:' + VF.id),
+      'books: the records survive the erasure and the nightly passes, and the owner can list them', bl.map(b => b.key));
+    ok(!(await call('GET', '/admin/customers', undefined, OWN)).d.customers.some(x => /Μνήμη Ζεύγος (Α|ξέχασέ)|Μνήμη Κτήμα (πλήρωσε|δωρεάν|διαγραφή)/.test(x.name)),
+      'books: a forgotten customer never comes back as a row');
+
+    // -- what the pages promise is what the server does --
+    const fs = await import('node:fs'), read = f => fs.readFileSync(path.join(root, f), 'utf8');
+    ok(['privacy.html', 'terms.html'].every(f => /5 χρόνια μετά την τελευταία επαφή, αγορά ή εκδήλωση/.test(read(f)) && /5 years after the last contact, purchase or event/.test(read(f))),
+      'pages: privacy and terms say 5 years after the last contact, purchase or event, in Greek and English');
+    ok(!/διαγράφεται μαζί με το σχέδιο|deleted together with the plan/.test(read('privacy.html')) && /δεν διαγράφει την καρτέλα/.test(read('privacy.html')) && /does not delete the card/.test(read('privacy.html')),
+      'pages: privacy no longer promises that the address goes with the plan, and says the card stays');
+    ok(/κρατάμε μόνο το όνομα ή την επωνυμία και τις ημερομηνίες αγοράς και ανανέωσης/.test(read('privacy.html')) && /only the name or business name and the dates of purchase and renewal/.test(read('privacy.html')),
+      'pages: privacy says what the books keep, in both languages');
+  } finally {
+    Date.now = realNow; env.MAIL = keepMail; if (!keepMail) delete env.MAIL;
   }
 }
 
