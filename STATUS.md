@@ -2,8 +2,8 @@
 
 Updated: 2026-10-18
 
-**Status:** Live runs `e1d7098` (deployed 2026-10-17, tag `deploy-2026-10-17-2`), healthy, everything in the
-repo is deployed. A γιορτή now starts with no head table; the toolbar's «Κεντρικό» adds one, named
+**Status:** Live runs `e1d7098` (deployed 2026-10-17, tag `deploy-2026-10-17-2`), healthy. **Not yet deployed:**
+`b1ffe6f`, the guest-notes line in the Excel import (below). A γιορτή now starts with no head table; the toolbar's «Κεντρικό» adds one, named
 «Κεντρικό τραπέζι». Retention (a year per plan, guest notes gone the day after) is live since 2026-10-16.
 
 ## In progress / unfinished
@@ -14,8 +14,10 @@ repo is deployed. A γιορτή now starts with no head table; the toolbar's «
 
 ## Next
 
-1. **Small: tell the planner user that guest notes are erased the day after the event**, next to the note
-   field (el/en/de, Greek reviewed by Andreas). The pages say it; the field itself does not yet.
+1. **Guest-notes line: built, waiting on Andreas's Greek review, then deploy.** The planner has no typed note
+   field — notes come in only through the Excel import's Σημείωση column and Amelie answers — so the line
+   («Οι σημειώσεις σβήνονται αυτόματα την επομένη της εκδήλωσης· τα ονόματα και οι θέσεις μένουν.») sits in the
+   import window, shown only on an online plan (the erasure is the server's; device-only plans keep notes).
 2. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today — checked
    2026-10-18: every plan on the server comes from a purchase (admin), a venue with a licence or free year,
    or a paying couple's extra plan; no free path exists. The free 8-table cap belongs to plans that stay on
