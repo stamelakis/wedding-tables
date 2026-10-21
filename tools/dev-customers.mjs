@@ -1,5 +1,6 @@
 // Local dev server with made-up customers for the «Πελάτες» sheet: one for every stage and every «Θέλουν εμένα» flag.
 //   node tools/dev-customers.mjs   →  http://localhost:8080/admin.html   (owner key: dev-owner-key)
+//                                  and http://localhost:8080/venue.html (venue key: printed at start, ends in .dev-venue-key)
 // Builds a fresh sqlite file in server/data/ (git-ignored) through the real worker — the same calls the API takes —
 // moves a few dates into the past (a link sent 4 days ago, a season that ended), then starts tools/dev.mjs on it.
 // Every name, number and address below is invented.
@@ -72,12 +73,41 @@ const v9r = await call('POST', '/admin/venues', { name: 'Κτήμα Ροδακι
 const v9 = v9r.id, H9 = { 'X-Venue-Key': v9r.key };
 const w1 = await call('POST', '/venues/' + v9 + '/weddings', { label: 'Οικογένεια Α', date: day(6) }, H9);
 const w2 = await call('POST', '/venues/' + v9 + '/weddings', { label: 'Οικογένεια Β', date: day(25), kind: 'baptism' }, H9);
-await call('POST', '/venues/' + v9 + '/weddings', { label: 'Οικογένεια Γ', date: day(70) }, H9);
+const w3 = await call('POST', '/venues/' + v9 + '/weddings', { label: 'Οικογένεια Γ', date: day(70) }, H9);   // link not sent, event far off
 const g1 = people(120, 'a'), ids1 = Object.keys(g1);
 await call('PUT', '/plans/' + w1.planId, { plan: plan(g1, Array.from({ length: 5 }, (_, i) => table(i + 1, ids1.slice(i * 10, i * 10 + 10)))) }, { 'X-Edit-Key': w1.venueKey });   // 50 of 120 seated
 const g2 = people(40, 'b'), ids2 = Object.keys(g2);
 await call('PUT', '/plans/' + w2.planId, { plan: plan(g2, Array.from({ length: 4 }, (_, i) => table(i + 1, ids2.slice(i * 10, i * 10 + 10)))) }, { 'X-Edit-Key': w2.venueKey });   // all 40 seated
 await call('POST', '/plans/' + w1.planId + '/support', { hours: 48, message: 'Δεν βρίσκω πώς μετακινώ τραπέζι' }, H9);   // ⚑ support
+
+// ---- phase 3: the same venue's own sheet (venue.html), signed in with the key printed at the end ----
+// an event at every stage, client cards, a step due today, a past client whose event is gone, and two cards sharing one phone
+sPut.run('meta:clienttrack', JSON.stringify({ since: ago(30) }));                                              // links tracked from a month ago
+const VK = v9 + '.dev-venue-key'; patch('venue:' + v9, o => { o.key = VK; o.keyRotated = true; }); H9['X-Venue-Key'] = VK;
+const W = id => '/venues/' + v9 + '/weddings/' + id;
+const inVenue = (id, fn) => patch('venue:' + v9, o => fn(o.weddings.find(x => x.planId === id)));
+const client = (id, body) => call('PUT', W(id) + '/client', body, H9);
+const opened = id => call('GET', '/plans/' + id, undefined, { 'X-Edit-Key': raw('plan:' + id).editKey });       // the client opens the link
+await call('POST', W(w1.planId) + '/sent', {}, H9); await opened(w1.planId);
+patch('plan:' + w1.planId, o => { o.clientSavedAt = ago(1); });                                                // Α: in 6 days, 50 of 120 seated
+await client(w1.planId, { name: 'Αναστασία Παππά', phone: '6971 234 567', email: 'a.pappa@example.gr',
+  notes: 'Μενού Β, 45 € το άτομο. Προκαταβολή 1.000 € δόθηκε.', next: { text: 'Να τους πάρω για τον τελικό αριθμό', due: day(0) } });   // ⚑ step due today
+await call('POST', W(w2.planId) + '/sent', {}, H9); await opened(w2.planId);                                    // Β: everyone seated
+await client(w2.planId, { name: 'Γιάννης Βλάχος', phone: '6982 223 344' });
+const w4 = await call('POST', '/venues/' + v9 + '/weddings', { label: 'Γενέθλια Ελένης', date: day(40), kind: 'party' }, H9);
+await call('POST', W(w4.planId) + '/sent', {}, H9); inVenue(w4.planId, w => { w.linkAt = ago(9); });            // ⚑ link copied 9 days ago, never opened
+await client(w4.planId, { name: 'Ελένη Καρρά', phone: '6933 334 444' });
+const w5 = await call('POST', '/venues/' + v9 + '/weddings', { label: 'Οικογένεια Δ', date: day(120) }, H9);
+inVenue(w5.planId, w => { w.createdAt = ago(10); });                                                           // ⚑ made 10 days ago, link never copied
+const w6 = await call('POST', '/venues/' + v9 + '/weddings', { label: 'Οικογένεια Ε', date: day(30) }, H9);
+await call('POST', W(w6.planId) + '/sent', {}, H9); await opened(w6.planId);
+await client(w6.planId, { name: 'Ελένη Καρρά', phone: '+30 693 333 4444', email: 'eleni.k@example.gr', notes: 'Πολύ ευχαριστημένοι, θα ξανάρθουν.' });
+patch('plan:' + w6.planId, o => { o.weddingDate = day(-20); }); inVenue(w6.planId, w => { w.date = day(-20); });   // Ε: over; same phone as Γενέθλια Ελένης
+const w7 = await call('POST', '/venues/' + v9 + '/weddings', { label: 'Οικογένεια Ζ', date: day(150) }, H9);
+inVenue(w7.planId, w => { w.createdAt = ago(40); });                                                           // made before tracking began
+const w8 = await call('POST', '/venues/' + v9 + '/weddings', { label: 'Οικογένεια Η', date: day(50) }, H9);
+await client(w8.planId, { name: 'Στέλιος Μαυρίδης', phone: '6944 556 677', notes: 'Ακύρωσαν — ίσως την άνοιξη.' });
+await call('DELETE', W(w8.planId), undefined, H9); await call('DELETE', '/admin/venues/' + v9 + '/trash/' + w8.planId, undefined, OWN);   // a past client: only the card is left
 // a signup nobody confirmed (its venue is its row), and one whose venue went missing
 await call('POST', '/signup/venue', { name: 'Κτήμα Βελανιδιά', afm: '900000005', email: 'velanidia@example.gr', phone: '6981 234 567', terms: true, lang: 'el' }, { 'X-Real-IP': '203.0.113.9' });
 const s1 = raw('afm:900000005');
@@ -113,6 +143,7 @@ await call('POST', C('c:' + c6) + '/forget', {}, OWN);                          
 
 db.close();
 console.log('dev-customers: seeded ' + DB);
+console.log('dev-customers: venue console «Κτήμα Ροδακινιά» at http://localhost:8080/venue.html, key ' + VK);
 process.env.KV_BACKEND = 'sqlite';
 process.env.DB_PATH = DB;
 await import('./dev.mjs');

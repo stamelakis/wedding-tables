@@ -3484,8 +3484,29 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     ok((await call('GET', '/venues/' + V.id + '/clients/..%2F' + CID, undefined, HV)).status === 404 && (await call('GET', '/venues/' + V.id + '/clients/x', undefined, HV)).status === 404,
       'erasure: a card id that is not one opens nothing');
 
+    // -- two first saves at once make one card, not two --
+    const WT = (await call('POST', '/venues/' + V.id + '/weddings', { label: 'Φ3 δύο αποθηκεύσεις', date: athensDay(40) }, HV)).d;
+    const cards = () => [...m.keys()].filter(k => k.startsWith('vcli:' + V.id + ':')).length, nCards = cards();
+    const [t1, t2] = await Promise.all([
+      call('PUT', '/venues/' + V.id + '/weddings/' + WT.planId + '/client', { name: 'Φ3 Ταυτόχρονος' }, HV),
+      call('PUT', '/venues/' + V.id + '/weddings/' + WT.planId + '/client', { notes: 'Φ3 σημείωση ταυτόχρονη' }, HV)]);
+    const tid = raw('venue:' + V.id).weddings.find(x => x.planId === WT.planId).clientId, tc = raw('vcli:' + V.id + ':' + tid);
+    ok(t1.status === 200 && t2.status === 200 && t1.d.client.id === tid && t2.d.client.id === tid && cards() === nCards + 1
+      && tc.name === 'Φ3 Ταυτόχρονος' && tc.notes === 'Φ3 σημείωση ταυτόχρονη', 'card: two first saves at once make one card, with both saves on it', { t1: t1.d, t2: t2.d, tc });
+
+    // -- erased from the trash by the admin (an erasure request): the card keeps the event, as the sweep does --
+    const WE = (await call('POST', '/venues/' + V.id + '/weddings', { label: 'Φ3 ακυρώθηκε', date: athensDay(45), kind: 'party' }, HV)).d;
+    const CE = (await call('PUT', '/venues/' + V.id + '/weddings/' + WE.planId + '/client', { name: 'Φ3 Ακύρωση' }, HV)).d.client.id;
+    await call('DELETE', '/venues/' + V.id + '/weddings/' + WE.planId, undefined, HV);
+    ok((await call('DELETE', '/admin/venues/' + V.id + '/trash/' + WE.planId, undefined, OWN)).status === 200 && !m.has('plan:' + WE.planId), 'memory: the admin erases an event from the trash');
+    r = await call('GET', '/venues/' + V.id + '/clients/' + CE, undefined, HV);
+    mc = (await vget()).clients.find(c => c.id === CE);
+    ok(r.d.client.events.length === 0 && r.d.client.past.length === 1 && r.d.client.past[0].deleted && r.d.client.past[0].kind === 'party' && r.d.client.past[0].label === 'Φ3 ακυρώθηκε'
+      && mc && mc.last && mc.last.deleted === true && mc.last.date === athensDay(45),
+      'memory: … its card keeps the event, marked deleted, and the sheet row shows it when it is all the client had', { c: r.d.client, mc });
+
     // -- no admin endpoint returns a venue's client data --
-    const WA = (await call('POST', '/venues/' + V.id + '/weddings', { label: 'Φ3 έλεγχος διαχειριστή', date: athensDay(30) }, HV)).d;
+    const WA =(await call('POST', '/venues/' + V.id + '/weddings', { label: 'Φ3 έλεγχος διαχειριστή', date: athensDay(30) }, HV)).d;
     const CA = (await call('PUT', '/venues/' + V.id + '/weddings/' + WA.planId + '/client', { name: NAME, phone: PHONE, email: EMAIL, notes: NOTE, next: { text: STEP, due: today } }, HV)).d.client.id;
     await call('POST', '/venues/' + V.id + '/weddings/' + WA.planId + '/sent', {}, HV);
     const adminOut = [];

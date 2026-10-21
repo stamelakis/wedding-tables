@@ -1856,8 +1856,8 @@ function clientMatches(all, c) {
 const clientPast = c => (Array.isArray(c.past) ? c.past : []).map(p => ({ kind: normKind(p.kind), date: ymdOk(p.date) ? p.date : null, label: String(p.label || ""),
   createdAt: p.createdAt || null, goneAt: p.goneAt || null, ...(p.deleted ? { deleted: true } : {}) })).sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
 // The client's most recent event, live or gone: what the sheet shows for a card whose plans are all gone.
-function clientLast(v, c) {
-  const all = [...clientEvents(v, c.id), ...clientPast(c)].filter(e => !e.deleted);
+function clientLast(v, c, withDeleted) {   // withDeleted: the memory row's fallback, when a deleted event is all a past client had
+  const all = [...clientEvents(v, c.id), ...clientPast(c)].filter(e => withDeleted || !e.deleted);
   return all.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))[0] || null;
 }
 function clientOut(v, c, all, today) {
@@ -2711,6 +2711,7 @@ export default {
             if (parts.length === 5 && request.method === "DELETE") {   // erase now (e.g. an erasure request)
               if (t) await purgeVenuePlan(env, v.id, t.planId);
               await kvUpdate(env, "venue:" + v.id, cur => { if (!cur) return null; cur.trash = (cur.trash || []).filter(x => x.planId !== parts[4]); return cur; });
+              if (t) await clientEventGone(env, v.id, t, null, Date.now(), true);   // as the sweep does: the venue's client card keeps the event's kind, date and name
               console.log("admin: erased deleted wedding " + parts[4] + " of venue " + v.id);
               return json({ ok: true });
             }
@@ -3222,7 +3223,7 @@ export default {
               client: c ? clientRow(c) : null, linkAt: w.linkAt || null, seenAt: (p && p.seenAt) || null, savedAt: (p && p.clientSavedAt) || null });
           }
           // Cards whose events are all gone: the venue's memory of its clients, until the years it chose run out.
-          const memory = clients.filter(c => !clientEvents(v, c.id).length).map(c => ({ ...clientRow(c), last: clientLast(v, c), forgetAt: clientMemory(v, c, [], today).forgetAt }));
+          const memory = clients.filter(c => !clientEvents(v, c.id).length).map(c => ({ ...clientRow(c), last: clientLast(v, c) || clientLast(v, c, true), forgetAt: clientMemory(v, c, [], today).forgetAt }));
           return json({ venue: { ...publicVenue(v), email: v.email || "", emailVerified: !!v.emailVerified, mail: mailOn(env) }, template, defaultPerms: normPerms(v.defaultPerms, ALL_OPEN), canCreate: gate.ok, reason: gate.reason,
             weddings: rows, trash: (v.trash || []).map(t => ({ label: t.label, kind: normKind(t.kind), deletedAt: t.deletedAt, purgeAt: t.purgeAt, date: t.date || null })),
             clients: memory, clientYears: clientYears(v), trackSince: await clientTrackSince(env) });
@@ -3399,9 +3400,16 @@ export default {
             const c = { id: rnd(16), venueId: v.id, name: "", phone: "", email: "", notes: "", next: null, past: [], createdAt: Date.now(), ...(isTest(v) ? { test: true } : {}) };
             const err = clientFields(c, b); if (err) return json({ error: err }, 400);
             await env.PLANS.put(vcliKey(v.id, c.id), JSON.stringify(c));
-            await kvUpdate(env, vkey, cur => { if (!cur) return null; const cw = (cur.weddings || []).find(x => x.planId === parts[3]); if (!cw) return null; cw.clientId = c.id; return cur; });
-            const v2 = safeParse(await env.PLANS.get(vkey)) || v, all = await venueClients(env, v.id);
-            return json({ client: clientOut(v2, c, all, today) });
+            const link = await kvUpdate(env, vkey, cur => { if (!cur) return null; const cw = (cur.weddings || []).find(x => x.planId === parts[3]); if (!cw) return null;
+              if (cw.clientId && cw.clientId !== c.id) return { __res: cw.clientId }; cw.clientId = c.id; return { __obj: cur, __res: c.id }; });
+            if (link.res === c.id) {
+              const v2 = safeParse(await env.PLANS.get(vkey)) || v, all = await venueClients(env, v.id);
+              return json({ client: clientOut(v2, c, all, today) });
+            }
+            // Another write made this event's card first (two saves at once): ours goes, and these fields go to that one.
+            await env.PLANS.delete(vcliKey(v.id, c.id));
+            if (!link.res) return json({ error: "not found" }, 404);
+            cid = link.res;
           }
           const r = await kvUpdate(env, vcliKey(v.id, cid), c => { if (!c) return { __res: "gone" }; const err = clientFields(c, b); return err ? { __res: err } : { __obj: c, __res: null }; });
           if (r.res) return json({ error: r.res }, r.res === "gone" ? 404 : 400);
