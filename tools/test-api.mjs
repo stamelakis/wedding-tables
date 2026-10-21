@@ -2874,10 +2874,11 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
       'notes: the Excel import says notes go the day after, in el/en/de, only on an online plan');
     // nothing else here runs the planner, so a stray // that swallows a closing brace passed all 917 checks once
     const vm = await import('node:vm'), unparsed = [];
-    for (const f of ['planner.src.html'])   // the source only: the Docker check stage carries no built page, and --check ties them to it
+    // admin.html too: a line break inside a string once blanked the whole page while every check passed
+    for (const f of ['planner.src.html', 'admin.html'])   // the planner's source only: the Docker check stage carries no built page, and --check ties them to it
       for (const [, attrs = '', code] of read(f).matchAll(/<script(\s[^>]*)?>([\s\S]*?)<\/script>/g))
         if (!/\bsrc=|type="(?!text\/javascript)/.test(attrs)) { try { new vm.Script(code); } catch (e) { unparsed.push(f + ': ' + e.message); } }
-    ok(!unparsed.length, 'planner: every inline script parses' + (unparsed.length ? ' — ' + unparsed.join('; ') : ''));
+    ok(!unparsed.length, 'pages: every inline script of the planner and admin.html parses' + (unparsed.length ? ' — ' + unparsed.join('; ') : ''));
   } finally {
     Date.now = realNow; env.MAIL = keepMail; env.PDF = keepPdf;
     if (!keepMail) delete env.MAIL;
@@ -3685,6 +3686,8 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     cd = (await cardOf(ckey)).d;
     ok(r.status === 200 && cd.timeline[0].act === 'contact' && cd.timeline[0].src === 'viber' && cd.nextStep.text === 'Τιμή βάπτισης' && cd.nextStep.due === athensDay(2)
       && (await call('GET', '/admin/customers', undefined, OWN)).d.customers.length === rows0, 'known: one tap puts the contact and the next step on their card — no new row', cd.timeline[0]);
+    const cAt = raw('couple:' + ckey.slice(2)).contactAt;
+    ok(cAt > 0 && (await rowOf(ckey)).last === cAt, 'known: … and «Τελευταία κίνηση» on the sheet moves to it', { cAt, row: await rowOf(ckey) });
     ok((await on('POST', ckey, 'contact', { source: 'viber', next: { text: 'x', due: 'σύντομα' } })).status === 400, 'known: a bad date is refused');
     r = await on('POST', LB, 'contact', { source: 'email', text: 'Το ξανασκέφτηκαν' });
     ok(r.status === 200 && (await rowOf(LB)).stage === 2 && !raw('lead:' + LB.slice(2)).lost, 'known: a contact that «Δεν προχώρησε» and comes back is «Σε συζήτηση» again');
@@ -3692,7 +3695,8 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     ok((await rowOf(LB)).stage === 3 && (await on('POST', LB, 'contact', { stage: 7 })).status === 400, 'known: … and he may move it on with the same tap, only to 1–3');
 
     // -- «Έγινε πελάτης» --
-    const actsBefore = raw('act:' + LA).length;
+    await on('POST', LA, 'stage', { stage: 3 });
+    const actsBefore = raw('act:' + LA).length, movesBefore = (raw('lead:' + LAid).moves || []).length;
     r = await call('POST', '/admin/couples', { name: 'Μαρία Φ4 Παπαδάκη', email: 'maria-f4@example.gr', kind: 'baptism', weddingDate: athensDay(90), contact: 'τηλ. 697 111 2233', fromLead: LAid }, OWN);
     const CC = r.d.couple;
     ok(r.status === 200 && CC && !m.has('lead:' + LAid) && !m.has('act:' + LA) && !(raw('leads:index') || []).includes(LAid), '«Έγινε πελάτης»: the customer is made and the contact is gone', r.d);
@@ -3700,6 +3704,8 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     ok(cd.source === 'phone' && raw('couple:' + CC.id).fromLead.source === 'phone' && cd.timeline.filter(e => e.code === 'act').length === actsBefore
       && cd.timeline.some(e => e.act === 'contact' && e.text === 'Βάπτιση τον Ιανουάριο, 120 άτομα') && cd.timeline.some(e => e.act === 'call' && e.text === 'Δεν το σήκωσε'),
       '«Έγινε πελάτης»: the history carries over, and how they found us', cd.timeline);
+    ok(movesBefore > 0 && cd.timeline.filter(e => e.code === 'stage').length === movesBefore && cd.timeline.some(e => e.code === 'stage' && e.stage === 3 && !e.id),
+      '«Έγινε πελάτης»: its stage changes carry over as history (not his to delete)', cd.timeline.filter(e => e.code === 'stage'));
     ok(cd.nextStep && cd.nextStep.text === 'Να της στείλω την τιμή' && cd.memory.years === 5 && cd.customer.stage === 4, '«Έγινε πελάτης»: so does the next step; now a buyer, on the 5-year clock', cd.memory);
     ok(!(await rowOf(LA)) && (await cardOf(LA)).status === 404, '«Έγινε πελάτης»: one row, the customer\'s');
     const nCouples = (raw('couples:index') || []).length;

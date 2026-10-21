@@ -145,6 +145,15 @@
   .reach a{ text-decoration:none; }
   .badge.st4{ background:var(--accent-soft); color:var(--accent-ink); } .badge.st5{ background:var(--good-soft); color:var(--good); }
   .badge.st6{ background:var(--amber-soft); color:var(--amber); } .badge.st7{ background:#eee; color:#777; }
+  .badge.st1{ background:var(--sup-soft); color:var(--sup); } .badge.st2{ background:var(--card2); color:var(--soft); box-shadow:inset 0 0 0 1px var(--line); }
+  .badge.st3{ background:var(--amber-soft); color:var(--amber); } .badge.st8{ background:#eee; color:#777; }
+  /* «+ Νέα επαφή» (phase 4): chips to tap instead of menus, «Γνωστός πελάτης» under the fields, the ready replies */
+  .pick{ display:flex; flex-wrap:wrap; gap:6px; }
+  .known{ border:1px solid #e7c98f; background:var(--amber-soft); border-radius:10px; padding:10px 12px; margin-top:4px; }
+  .known .kc{ border-top:1px dashed #e7c98f; padding-top:8px; margin-top:8px; }
+  .known .tl li{ border-top-color:#e7c98f; }
+  .fromlead{ background:var(--sup-soft); color:var(--sup); border-radius:10px; padding:8px 12px; margin-bottom:12px; font-size:13.5px; }
+  .tplbox textarea{ min-height:220px; font-size:13.5px; }
   .flaglist{ margin:0; padding:0 0 0 2px; list-style:none; font-size:13.5px; }
   .flaglist li{ padding:3px 0; color:var(--amber); }
   .cstep{ overflow-wrap:anywhere; } .cstep.due{ color:var(--amber); font-weight:600; }
@@ -188,6 +197,8 @@
     .dlg .dhead, .dlg .dbody, .dlg .dfoot{ padding-left:14px; padding-right:14px; }
     .cacts .btn.sm, .tlbtns .btn.sm, .cbox .btn.sm{ min-height:40px; padding:8px 12px; font-size:14px; }   /* thumbs, as on the sheet */
     .tl .x{ min-width:40px; min-height:36px; }
+    .pick .chip{ min-height:40px; padding:8px 13px; font-size:14px; }
+    .known .btn.sm{ min-height:40px; padding:8px 12px; font-size:14px; }
     .tl li{ flex-wrap:wrap; gap:0 10px; } .tl time{ flex-basis:100%; }
   }
 </style>
@@ -212,7 +223,11 @@ const mailOn=()=>!!(mailInfo && mailInfo.enabled);
 const getKey=()=>{ try{ return sessionStorage.getItem(KEY_STORE)||""; }catch(e){ return ""; } };
 const setKey=k=>{ try{ k?sessionStorage.setItem(KEY_STORE,k):sessionStorage.removeItem(KEY_STORE); }catch(e){} };
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
-function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2400); }
+// A modal dialog sits in the top layer, above everything on the page: while one is open the toast lives inside it.
+function toast(m){ const d=document.getElementById("dlg"), host=(d && d.open) ? d : document.body;
+  let t=document.getElementById("toast"); if(!t){ t=document.createElement("div"); t.id="toast"; }
+  if(t.parentNode!==host) host.appendChild(t);
+  t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2400); }
 function fmtDate(iso){ if(!iso) return "—"; try{ return new Date(iso).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}); }catch(e){ return String(iso); } }
 function fmtDateTime(t){ if(!t) return "—"; try{ return new Date(t).toLocaleString("en-GB",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}); }catch(e){ return String(t); } }
 function relTime(t){ const d=t-Date.now(); if(d<=0) return "expired";
@@ -386,14 +401,18 @@ function openDialog(html){
   if(!d){ d=document.createElement("dialog"); d.id="dlg"; d.className="dlg"; d.lang="el"; document.body.appendChild(d);   // lang: see #toolsSection
     d.addEventListener("cancel", e=>{ e.preventDefault(); closeDialog(); }); }   // Esc goes the same way as ✕
   flushNotes(); cardNotes=null;
+  const t=document.getElementById("toast");
   delete d.dataset.ctx; d.innerHTML=html; d.scrollTop=0;
+  if(t && !t.isConnected) d.appendChild(t);   // a toast said just before a redraw stays on screen
   d.querySelectorAll("[data-dclose]").forEach(b=>b.onclick=()=>closeDialog());
-  if(!d.open){ try{ d.showModal(); }catch(e){ d.setAttribute("open",""); } }
+  if(!d.open){ try{ d.showModal(); }catch(e){ d.setAttribute("open",""); } d.scrollTop=0; }   // a closed dialog kept its old scroll
   return d;
 }
 function closeDialog(){ const d=document.getElementById("dlg"); if(!d) return;
   flushNotes(); cardNotes=null;
-  if(d.open){ try{ d.close(); }catch(e){ d.removeAttribute("open"); } } delete d.dataset.ctx; d.innerHTML="";
+  if(d.open){ try{ d.close(); }catch(e){ d.removeAttribute("open"); } } delete d.dataset.ctx;
+  const t=document.getElementById("toast"); if(t && t.parentNode===d) document.body.appendChild(t);
+  d.innerHTML="";
   if(dlgBack){ const k=dlgBack; dlgBack=null; refreshCustomers(); openCustomer(k); } else cardPanel=null; }   // back from «Επεξεργασία…» / the trash: the row may have changed too
 const dlgHead=title=>`<div class="dhead"><h2>${title}</h2><button class="btn sm ghost" data-dclose title="Κλείσιμο">✕</button></div>`;
 // A missing or wrong field: say what is needed and put the cursor there.
@@ -669,7 +688,8 @@ function renderDashboard(venues){
          and contact details — never anything inside a plan. Greek, like every screen he works from. -->
     <div class="section" id="custSection" lang="el">
       <div class="sechead"><h2>Πελάτες <span class="muted" id="custCount"></span></h2>
-        <div class="row acts"><button class="btn sm primary" id="newVenue" title="Νέο κτήμα, με την άδειά του">+ Κτήμα</button>
+        <div class="row acts"><button class="btn sm primary" id="newLead" title="Κάποιος τηλεφώνησε, έγραψε ή ήρθε από σύσταση">+ Νέα επαφή</button>
+          <button class="btn sm primary" id="newVenue" title="Νέο κτήμα, με την άδειά του">+ Κτήμα</button>
           <button class="btn sm primary" id="newCouple" title="Ζευγάρι ή γονείς που αγόρασαν">+ Ιδιώτης</button>
           <button class="btn sm" id="custCsv" title="Ό,τι βλέπεις, σε αρχείο για το Excel">Excel</button>
           <button class="btn sm" id="custRefresh">Ανανέωση</button></div></div>
@@ -777,8 +797,9 @@ function renderDashboard(venues){
       <div class="card" id="obox"><div class="empty">Loading…</div></div>
     </div>`;
   document.getElementById("logout").onclick=()=>{ setKey(""); renderLogin(); };
-  document.getElementById("newVenue").onclick=openNewVenue;
-  document.getElementById("newCouple").onclick=openNewCouple;
+  document.getElementById("newLead").onclick=()=>openNewLead();
+  document.getElementById("newVenue").onclick=()=>openNewVenue();
+  document.getElementById("newCouple").onclick=()=>openNewCouple();
   document.getElementById("supRefresh").onclick=async e=>{ const b=e.currentTarget; b.disabled=true;
     await Promise.all([refreshSupport(), refreshCouples()]); b.disabled=false; };
   document.getElementById("suPrune").onclick=e=>pruneSignups(e.currentTarget);
@@ -943,10 +964,23 @@ function syncStartNow(){
     : n>OPEN_DAYS+30 ? `${OPENS}· τραπέζια, κάτοψη και διακόσμηση ξεκλειδώνουν στις ${gYmd(ymdPlus(d,-30))}.`
     : OPENS+", με πλήρη επεξεργασία.";
 }
+// «Έγινε πελάτης» on a contact's card opens «+ Ιδιώτης» or «+ Κτήμα» filled in from it, and the create call names the
+// contact (`fromLead`): the server moves its history to the new customer and ends the contact. {lead:id, name} or null.
+let convertFrom=null;
+const fromLeadHtml=pre=>pre ? `<div class="fromlead" id="fromlead">Από την επαφή «${esc(pre.name||"—")}» — το ιστορικό της περνά στον νέο πελάτη.</div>` : "";
+// A create call that named a contact: done, or the contact was already converted or forgotten. → true when it stopped.
+function convertDone(res, key){
+  if(!convertFrom) return false;
+  if(res.status===409 && res.d && res.d.error==="lead_gone"){ convertFrom=null; dlgBack=null; const b=document.getElementById("fromlead"); if(b) b.remove();
+    toast("Αυτή η επαφή έγινε ήδη πελάτης ή σβήστηκε — δεν δημιουργήθηκε τίποτα"); refreshCustomers(); return true; }
+  if(res.ok && key){ convertFrom=null; dlgBack=key; const b=document.getElementById("fromlead"); if(b) b.textContent="✓ Το ιστορικό της επαφής πέρασε στον νέο πελάτη — κλείνοντας, ανοίγει η καρτέλα του."; }
+  return false;
+}
 // «+ Ιδιώτης» on «Πελάτες»: the old list's form, in a dialog. It stays open after a sale, with the link to hand over.
-function openNewCouple(){
+function openNewCouple(pre){
+  convertFrom=pre ? { lead:pre.lead, name:pre.name } : null;
   const d=openDialog(`${dlgHead("Νέος ιδιώτης πελάτης")}
-    <div class="dbody">
+    <div class="dbody">${fromLeadHtml(pre)}
       <div class="grid">
         <div><label for="ckind">Εκδήλωση</label><select id="ckind">${kindOptions("wedding")}</select></div>
         <div><label for="cname" id="cnamelbl">${EVW.wedding.name}</label><input id="cname" maxlength="120" placeholder="${EVW.wedding.ph}"></div>
@@ -970,7 +1004,13 @@ function openNewCouple(){
   k.addEventListener("change",()=>{ const K=EV({ kind:k.value });
     d.querySelector("#cnamelbl").textContent=K.name; d.querySelector("#cdatelbl").textContent=K.date;
     d.querySelector("#cname").placeholder=K.ph; });
-  d.querySelector("#cname").focus();
+  if(pre){
+    k.value=evKind({ kind:pre.kind }); k.dispatchEvent(new Event("change"));
+    d.querySelector("#cname").value=pre.plan||""; d.querySelector("#cemail").value=pre.email||"";
+    d.querySelector("#ccontact").value=pre.notes||"";
+    if(isYmd(pre.date) && pre.date>=todayYmd()){ d.querySelector("#cdate").value=pre.date; syncStartNow(); }
+  }
+  d.querySelector(pre && pre.plan && !d.querySelector("#cdate").value ? "#cdate" : "#cname").focus();
 }
 async function createCouple(){
   const nameEl=document.getElementById("cname"), btn=document.getElementById("createC");
@@ -990,10 +1030,12 @@ async function createCouple(){
   const startNow=!!(startEl.checked && !startEl.disabled);
   if(!startNow && daysUntil(weddingDate)<=OPEN_DAYS){ invalid(dateEl, NEVER_OPENS); return; }
   btn.disabled=true;
-  const res=await req("/admin/couples",{ method:"POST", body:JSON.stringify({ name, contact, email, lang, kind, weddingDate, ...(startNow?{ startNow:true }:{}) }) });
+  const res=await req("/admin/couples",{ method:"POST", body:JSON.stringify({ name, contact, email, lang, kind, weddingDate, ...(startNow?{ startNow:true }:{}),
+    ...(convertFrom?{ fromLead:convertFrom.lead }:{}) }) });
   if(!document.getElementById("createC")) return;
   btn.disabled=false;
   const c=res.d && res.d.couple;
+  if(convertDone(res, c && "c:"+c.id)) return;
   if(!res.ok || !c || !(res.d.mailed || res.d.claimToken)){
     const err=res.d && res.d.error;
     if(err==="past_date"){ invalid(dateEl, PAST_DATE); return; }
@@ -1195,15 +1237,17 @@ async function resetVenueKey(v){
   toast("Το νέο κλειδί είναι έτοιμο"); refreshVenues();
 }
 // «+ Κτήμα» on «Πελάτες»: the old list's form, in a dialog. It stays open after a sale, with the key or the sent link.
-function openNewVenue(){
+function openNewVenue(pre){
+  convertFrom=pre ? { lead:pre.lead, name:pre.name } : null;
   const d=openDialog(`${dlgHead("Νέο κτήμα")}
-    <div class="dbody">
+    <div class="dbody">${fromLeadHtml(pre)}
       <div class="grid">
-        <div><label for="nname">Όνομα κτήματος</label><input id="nname" maxlength="120" placeholder="π.χ. Κτήμα Ηλιοβασίλεμα"></div>
-        <div><label for="nemail">Email <span class="hint">— προαιρετικό</span></label><input id="nemail" type="email" placeholder="για τον σύνδεσμο ρύθμισης και την ανάκτηση" autocomplete="off"></div>
+        <div><label for="nname">Όνομα κτήματος</label><input id="nname" maxlength="120" placeholder="π.χ. Κτήμα Ηλιοβασίλεμα" value="${esc(pre&&pre.name||"")}"></div>
+        <div><label for="nemail">Email <span class="hint">— προαιρετικό</span></label><input id="nemail" type="email" placeholder="για τον σύνδεσμο ρύθμισης και την ανάκτηση" autocomplete="off" value="${esc(pre&&pre.email||"")}"></div>
         <div><label for="ncontact">Δημόσια επικοινωνία <span class="hint">— τη βλέπουν οι πελάτες του κτήματος</span></label><input id="ncontact" maxlength="200" placeholder="π.χ. 210 123 4567 · info@venue.gr"></div>
+        <div><label for="nafm">ΑΦΜ <span class="hint">— προαιρετικό</span></label><input id="nafm" inputmode="numeric" maxlength="9" autocomplete="off" value="${esc(pre&&pre.afm||"")}"></div>
         <div><label for="nlang">Γλώσσα</label><select id="nlang">${langOptions("el")}</select></div>
-        <div class="full"><label for="nnotes">Σημειώσεις <span class="hint">— μόνο εσύ τις βλέπεις · χωρίς πληροφορίες υγείας</span></label><textarea id="nnotes" maxlength="${NOTES_MAX}" rows="2" placeholder="υπεύθυνος, τηλέφωνο, τιμή που συμφωνήσατε, στοιχεία τιμολόγησης…"></textarea></div>
+        <div class="full"><label for="nnotes">Σημειώσεις <span class="hint">— μόνο εσύ τις βλέπεις · χωρίς πληροφορίες υγείας</span></label><textarea id="nnotes" maxlength="${NOTES_MAX}" rows="2" placeholder="υπεύθυνος, τηλέφωνο, τιμή που συμφωνήσατε, στοιχεία τιμολόγησης…">${esc(pre&&pre.notes||"")}</textarea></div>
       </div>
       <div style="margin-top:12px" id="licwrap">${licenseFields("n")}</div>
       <div class="row fw" style="margin-top:14px"><button class="btn primary" id="createV">Δημιουργία κτήματος</button>
@@ -1218,12 +1262,17 @@ async function createVenue(){
   const nameEl=document.getElementById("nname"), name=nameEl.value.trim(); if(!name){ invalid(nameEl, "Γράψε το όνομα του κτήματος"); return; }
   const contact=document.getElementById("ncontact").value.trim(), notes=document.getElementById("nnotes").value.trim();
   const email=document.getElementById("nemail").value.trim(), lang=document.getElementById("nlang").value;
+  const afmEl=document.getElementById("nafm"), afm=afmEl.value.replace(/\s/g,"");
+  if(afm && !/^\d{9}$/.test(afm)){ invalid(afmEl, "Το ΑΦΜ έχει 9 ψηφία"); return; }
   const lic=readLicense("n", document.getElementById("licwrap")); if(lic.error){ invalid(lic.el, lic.error); return; }
   const license=lic.license;
   const btn=document.getElementById("createV"); if(btn.disabled) return; btn.disabled=true;
-  const res=await req("/admin/venues",{method:"POST",body:JSON.stringify({name,contact,notes,email,lang,license})});
+  const res=await req("/admin/venues",{method:"POST",body:JSON.stringify({name,contact,notes,email,lang,license,afm,...(convertFrom?{ fromLead:convertFrom.lead }:{})})});
   if(!document.getElementById("createV")) return;
   btn.disabled=false;
+  const vid=res.d && (res.d.id || (res.d.venue && res.d.venue.id));
+  if(convertDone(res, res.ok && vid && "v:"+vid)) return;
+  if(res.d && res.d.error==="bad_afm"){ invalid(afmEl, "Αυτό το ΑΦΜ δεν είναι έγκυρο"); return; }
   if(!res.ok || !res.d || !(res.d.mailed || res.d.key)){ failToast(res, badEmail(res)?BAD_EMAIL:"Δεν δημιουργήθηκε"); return; }
   const box=document.getElementById("newkey");
   if(res.d.mailed){
@@ -1233,7 +1282,7 @@ async function createVenue(){
     box.innerHTML=venueKeyBoxHtml("✅ Το κτήμα δημιουργήθηκε — δώσε του αυτά τα δύο:", res.d.key, "", false);
     wireKeyBox(box, res.d.key, null);
   }
-  ["nname","ncontact","nemail","nnotes"].forEach(id=>{ document.getElementById(id).value=""; });
+  ["nname","ncontact","nemail","nnotes","nafm"].forEach(id=>{ document.getElementById(id).value=""; });
   const lw=document.getElementById("licwrap"); lw.innerHTML=licenseFields("n"); wireLicenseToggle("n", lw);   // the next venue starts clean
   toast(res.d.mailed?"Ο σύνδεσμος ρύθμισης στάλθηκε":"Το κτήμα δημιουργήθηκε"); refreshVenues(); refreshCustomers();
 }
@@ -1719,7 +1768,8 @@ function planFieldsHtml(p){
 // the old lists' buttons, his notes, the next step, his contacts on the timeline, and «Ξέχασε τον πελάτη».
 const C_TYPE={ venue:"κτήμα", couple:"ζευγάρι", parents:"γονείς", party:"γιορτή" };
 const C_TYPE_ORDER={ venue:0, couple:1, parents:2, party:3 };
-const C_STAGE={ 4:"Ενεργοποίηση", 5:"Ενεργός", 6:"Ανανέωση", 7:"Ολοκληρώθηκε" };
+// 1–3 and 8 are a contact's (phase 4), set by him on its card; 4–7 the system works out for a customer.
+const C_STAGE={ 1:"Νέα επαφή", 2:"Σε συζήτηση", 3:"Αναμένεται πληρωμή", 4:"Ενεργοποίηση", 5:"Ενεργός", 6:"Ανανέωση", 7:"Ολοκληρώθηκε", 8:"Δεν προχώρησε" };
 const C_KIND={ wedding:"γάμος", baptism:"βάπτιση", party:"γιορτή" };
 // Each «Θέλουν εμένα» flag: the few words on the row, and the sentence on the card.
 const C_FLAG={
@@ -1730,10 +1780,11 @@ const C_FLAG={
   renew_skipped:["δεν ανανεώθηκε", "Η σεζόν έληξε χωρίς ανανέωση — χρειάζεται νέα σεζόν με το χέρι."],
   trial_ending:["λήγει ο δωρεάν χρόνος", "Ο δωρεάν χρόνος λήγει σε λιγότερο από 60 μέρες."],
   support_open:["ζητά υποστήριξη", "Περιμένει υποστήριξη: η πρόσκληση είναι στα «Support requests», πιο κάτω."],
-  next_due:["επόμενο βήμα", "Ήρθε η μέρα του επόμενου βήματος που έγραψες."] };
+  next_due:["επόμενο βήμα", "Ήρθε η μέρα του επόμενου βήματος που έγραψες."],
+  lead_new:["περιμένει απάντηση", "Νέα επαφή: δεν έχεις απαντήσει ακόμη. Μόλις απαντήσεις, πάτα «Σε συζήτηση»."] };
 const C_UNTIL={ season:"τέλος σεζόν", trial:"τέλος δωρεάν χρόνου", plan:"διαγραφή σχεδίου", keep:"κρατιέται" };
 const C_SIGNUP={ pending:"περιμένει να ανοίξει τον σύνδεσμο", verified:"επιβεβαιώθηκε", expired:"έληξε", deleted:"διαγράφηκε" };
-const C_CHIPS=[["all","Όλοι"],["want","Θέλουν εμένα"],["venues","Κτήματα"],["private","Ιδιώτες"],["soon","Εκδήλωση σε 14 ημέρες"],["ending","Λήγουν σε 60 ημέρες"],["archive","Αρχείο"]];
+const C_CHIPS=[["all","Όλοι"],["want","Θέλουν εμένα"],["leads","Επαφές"],["venues","Κτήματα"],["private","Ιδιώτες"],["soon","Εκδήλωση σε 14 ημέρες"],["ending","Λήγουν σε 60 ημέρες"],["archive","Αρχείο"]];
 const C_COLS=[["name","Πελάτης",1],["type","Τύπος",1],["stage","Στάδιο",1],["next","Επόμενη εκδήλωση",1],["events","Εκδηλώσεις",-1],
   ["until","Λήξη",1],["last","Τελευταία κίνηση",-1],["reach","Επαφή",1]];   // key, header, the direction a first tap sorts in
 let custData=null, custFilter="all", custSortBy={ col:"next", dir:1 };
@@ -1743,8 +1794,9 @@ function cInDays(ymd){ const n=cDays(todayYmd(), ymd);
 // «Μαρία» finds «ΜΑΡΙΑ» and «Μάρια»: case and accents do not count in the search.
 const cFold=s=>String(s==null?"":s).normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
 function cMatch(c, f, today){
-  const archived=c.stage===7;
+  const archived=c.stage===7 || c.stage===8;   // finished, or a contact that went elsewhere
   if(f==="want") return (c.flags||[]).length>0;
+  if(f==="leads") return c.stage>=1 && c.stage<=3;   // contacts still in play: not yet customers
   if(f==="venues") return !archived && c.type==="venue";
   if(f==="private") return !archived && c.type!=="venue";
   if(f==="soon") return !!c.next && c.next>=today && cDays(today, c.next)<=14;
@@ -1815,7 +1867,7 @@ function renderCustomers(){
   document.getElementById("custChips").innerHTML=C_CHIPS.map(([k, l])=>{ const n=all.filter(c=>cMatch(c, k, today)).length;
     return `<button class="chip${k===custFilter ? " on" : ""}${k==="want" && n ? " hot" : ""}" data-f="${k}" aria-pressed="${k===custFilter}">${esc(l)} <small>${n}</small></button>`; }).join("");
   document.getElementById("custHint").textContent=custFilter!=="all" ? "" : q ? "Η αναζήτηση ψάχνει σε όλους, και στο Αρχείο."
-    : "Όσοι ολοκλήρωσαν είναι στο «Αρχείο» — η αναζήτηση ψάχνει κι εκεί.";
+    : "Όσοι ολοκλήρωσαν ή δεν προχώρησαν είναι στο «Αρχείο» — η αναζήτηση ψάχνει κι εκεί.";
   document.getElementById("custSort").innerHTML=C_COLS.flatMap(([k, l])=>[1, -1].map(d=>
     `<option value="${k}:${d}"${custSortBy.col===k && custSortBy.dir===d ? " selected" : ""}>Ταξινόμηση: ${esc(l)} ${d>0 ? "▲" : "▼"}</option>`)).join("");
   const rows=cVisible();
@@ -1880,6 +1932,7 @@ async function openCustomer(key, holder){
   if(!d.open || d.dataset.ctx!=="cust:"+key) return;   // closed, or another card opened meanwhile
   if(!res.ok || !res.d || !res.d.customer){
     if(res.status===403 && authFail(res.d)) return;
+    d.querySelector(".dhead h2").textContent="Πελάτης";
     d.querySelector(".dbody").innerHTML=`<div class="empty">${res.status===404 ? "Αυτός ο πελάτης δεν υπάρχει πια." : "Η καρτέλα δεν φόρτωσε — δοκίμασε ξανά."}</div>`; return;
   }
   d=openDialog(`<div lang="el" class="custcard">${dlgHead(esc(res.d.customer.name||"—"))}<div class="dbody">${customerCardHtml(res.d)}</div></div>`);
@@ -1941,6 +1994,16 @@ async function onCardClick(e, root, key, x){
     if(!confirm("Να διαγραφεί το επόμενο βήμα, χωρίς να γραφτεί στο ιστορικό;")) return;
     return send(path+"/next", { method:"DELETE" }, "Διαγράφηκε", "Δεν διαγράφηκε");
   }
+  if(k==="lost_save") return send(path+"/stage", { method:"POST", body:JSON.stringify({ stage:8, reason:b.dataset.r, text:(q("#cl_text")||{ value:"" }).value.trim() }) },
+    "Δεν προχώρησε — πήγε στο «Αρχείο»", "Δεν αποθηκεύτηκε");
+  if(k==="panel_close"){ const p=b.closest(".cardpanel"); if(p) p.innerHTML=""; if(cardPanel && cardPanel.el===p) cardPanel=null; return; }
+  if(k==="tpl_copy"){ const ta=q("#tp_text"); if(ta){ copy(ta.value); if(ta.value.includes("[ΣΥΜΠΛΗΡΩΣΕ")) setTimeout(()=>toast("Πρόσεξε: έχει ακόμη κενά «[ΣΥΜΠΛΗΡΩΣΕ…]»"), 1500); } return; }
+  if(k==="tpl_mail"){   // his mail app, with the text in it; the timeline says it was written
+    const ta=q("#tp_text"), r=REPLIES.find(t=>t.id===b.dataset.tpl), to=x.customer.email; if(!ta || !r || !to) return;
+    if(ta.value.includes("[ΣΥΜΠΛΗΡΩΣΕ") && !confirm("Το κείμενο έχει ακόμη κενά «[ΣΥΜΠΛΗΡΩΣΕ…]». Να ανοίξει έτσι το email;")) return;
+    location.href=`mailto:${encodeURIComponent(to).replace(/%40/g,"@")}?subject=${encodeURIComponent(r.subject)}&body=${encodeURIComponent(ta.value)}`;
+    return send(path+"/timeline", { method:"POST", body:JSON.stringify({ kind:"email", text:"«"+r.title+"»" }) }, "Γράφτηκε στο ιστορικό: ✉ Email", "Δεν γράφτηκε στο ιστορικό");
+  }
   if(k==="tl_all"){ const ul=q("#ct_list"); if(ul) ul.innerHTML=(x.timeline||[]).map(t=>cTlItem(t, key)).join(""); b.remove(); }
 }
 // A card button runs the same admin action the old lists ran, on the old lists' row for this customer (it carries what
@@ -1949,6 +2012,8 @@ async function onCardClick(e, root, key, x){
 // closing them comes back to the card (dlgBack).
 async function cardAction(key, x, a, btn){
   if(a==="forget") return cardForget(key, x, btn);
+  if(a==="tpl") return showReply(btn, x);
+  if(key.slice(0,1)==="l") return leadAction(key, x, a, btn);
   const couple=key.slice(0,1)==="c", id=key.slice(2);
   btn.disabled=true;
   await (couple ? refreshCouples() : refreshVenues());
@@ -1969,6 +2034,8 @@ async function cardForget(key, x, btn){
   const c=x.customer, t=key.slice(0,1), name=c.name||"—";
   const msg = t==="c"
     ? `Να ξεχαστεί ο πελάτης «${name}»;\n\nΣβήνονται για πάντα το σχέδιο με ό,τι έχει μέσα, η καρτέλα, οι σημειώσεις και το ιστορικό. Για τα λογιστικά μένουν μόνο το όνομα και η ημερομηνία αγοράς.\n\nΔεν αναιρείται.`
+    : t==="l"
+    ? `Να σβηστεί η επαφή «${name}»;\n\nΣβήνονται για πάντα τα στοιχεία της, οι σημειώσεις και το ιστορικό. Δεν κρατιέται τίποτα — δεν αγόρασε κάτι.\n\nΔεν αναιρείται.`
     : t==="v"
     ? `Να ξεχαστεί το κτήμα «${name}»;\n\nΣβήνονται για πάντα όλες οι εκδηλώσεις του (${(x.venue && x.venue.weddingCount)||0}) με τους καλεσμένους τους, ο κάδος, το πρότυπο αίθουσας, η καρτέλα, οι σημειώσεις και το ιστορικό.${c.afm ? " Το ΑΦΜ του μπορεί να ξαναπάρει δωρεάν χρόνο." : ""} Για τα λογιστικά μένουν μόνο η επωνυμία και οι ημερομηνίες όσων αγόρασε.\n\nΔεν αναιρείται.`
     : `Να διαγραφεί η εγγραφή «${name}»${c.afm ? ` (ΑΦΜ ${c.afm})` : ""};\n\nΤο ΑΦΜ μπορεί να εγγραφεί ξανά. Δεν αναιρείται.`;
@@ -1981,7 +2048,7 @@ async function cardForget(key, x, btn){
   if(cardNotes && cardNotes.key===key) cardNotes=null;   // nothing to save for someone forgotten
   if(t==="c") forgetLang(key.slice(2));
   closeDialog();
-  toast(res.d && res.d.books ? "Ξεχάστηκε — έμειναν μόνο τα λογιστικά" : "Ξεχάστηκε");
+  toast(res.d && res.d.books ? "Ξεχάστηκε — έμειναν μόνο τα λογιστικά" : t==="l" ? "Η επαφή σβήστηκε" : "Ξεχάστηκε");
   refreshCustomers(); refreshCouples(); refreshVenues(); refreshSupport();
 }
 // The timeline in words. The server sends codes, a time, sometimes a kind of event and a date — never a label.
@@ -1989,7 +2056,10 @@ function cTlWords(e, t){
   const K=e.kind ? (C_KIND[e.kind]||e.kind) : "", D=e.d ? gYmd(e.d) : "", ev=[K, D].filter(Boolean).join(" · ");
   const before=e.n!=null ? ` (${gN(e.n, "μέρα", "μέρες")} πριν)` : "";
   switch(e.code){
-    case "act": return e.act==="done" ? "✓ Έγινε: "+e.text : e.act==="other" ? (e.text||C_ACT.other) : (C_ACT[e.act]||e.act)+(e.text ? " — "+e.text : "");
+    case "act": return e.act==="done" ? "✓ Έγινε: "+e.text : e.act==="other" ? (e.text||C_ACT.other)
+      : e.act==="contact" ? "Επαφή · "+(C_SRC[e.src]||C_SRC.other)+(e.text ? " — "+e.text : "")
+      : (C_ACT[e.act]||e.act)+(e.text ? " — "+e.text : "");
+    case "stage": return "Στάδιο: "+(C_STAGE[e.stage]||e.stage)+(e.reason ? " — "+(C_LOST[e.reason]||e.reason) : "");
     case "created": return "Το καταχώρισες εσύ";
     case "signup": return "Εγγράφηκε από τη σελίδα";
     case "setup_resent": return "Ξαναστάλθηκε ο σύνδεσμος ρύθμισης";
@@ -2034,9 +2104,20 @@ function cardActsHtml(x){
     if(v.trashCount) out.push(b("trash", `Κάδος (${esc(v.trashCount)})`));
     if(L.invoiceDue) out.push(b("invoiced", "Τιμολογήθηκε"));
     out.push(b("toggle", v.active ? "Απενεργοποίηση…" : "Ενεργοποίηση"));
+  } else if(t==="l"){   // a contact: where the conversation stands, and the way out either side
+    const st=x.customer.stage;
+    if(st===8) out.push(b("st2", "Ξανά σε συζήτηση"));
+    else { if(st!==2) out.push(b("st2", "Σε συζήτηση")); if(st!==3) out.push(b("st3", "Αναμένεται πληρωμή")); }
+    out.push(b("convert", "Έγινε πελάτης…", "primary", (x.lead||{}).type==="venue" ? "Ανοίγει το «+ Κτήμα» συμπληρωμένο" : "Ανοίγει το «+ Ιδιώτης» συμπληρωμένο"));
+    if(st!==8) out.push(b("lost", "Δεν προχώρησε…"));
+    out.push(b("ledit", "Επεξεργασία…", "", "Πώς ήρθε, τι είναι, στοιχεία, ημερομηνία"));
   }
-  out.push(b("forget", t==="s" ? "Διαγραφή εγγραφής…" : "Ξέχασε τον πελάτη…", "danger", "Σβήνει τα πάντα· για τα λογιστικά μένουν μόνο το όνομα και οι ημερομηνίες αγορών"));
-  return `<div class="cacts">${out.join("")}</div><div class="cardpanel"></div>`;
+  out.push(b("forget", t==="s" ? "Διαγραφή εγγραφής…" : t==="l" ? "Σβήσε την επαφή…" : "Ξέχασε τον πελάτη…", "danger",
+    t==="l" ? "Σβήνει την επαφή, τις σημειώσεις και το ιστορικό" : "Σβήνει τα πάντα· για τα λογιστικά μένουν μόνο το όνομα και οι ημερομηνίες αγορών"));
+  const tpls=t==="l" ? REPLIES.filter(r=>r.venue===((x.lead||{}).type==="venue")) : [];   // the ready replies: for someone still deciding
+  return `<div class="cacts">${out.join("")}</div>`
+    +(tpls.length ? `<div class="tlbtns"><span class="muted" style="align-self:center">Έτοιμο μήνυμα:</span>${tpls.map(r=>`<button class="btn sm" data-a="tpl" data-tpl="${r.id}" title="Το κείμενο, για να το διορθώσεις και να το αντιγράψεις">${esc(r.title)}</button>`).join("")}</div>` : "")
+    +`<div class="cardpanel"></div>`;
 }
 // The buttons, his notes, the next step and the timeline: the top of the card, before the details.
 function cardWorkHtml(x){
@@ -2061,11 +2142,14 @@ function cMemoryHtml(x){
   const m=x.memory;
   if(!m) return `<div class="muted">Μια εγγραφή που δεν άνοιξε σβήνεται μόνη της: ο σύνδεσμος λήγει σε 7 μέρες και η γραμμή φεύγει 30 μέρες μετά.</div>`;
   const after=`μετά, ${m.years} χρόνια από την τελευταία επαφή`;
+  const lead=x.customer.key.slice(0,1)==="l";
   return fieldsHtml([
     ["Μετράει από", esc(gYmd(m.lastTouch))],
     ["Ξεχνιέται", m.held==="plans" ? `όχι όσο υπάρχουν σχέδια· ${after}` : m.held==="licence" ? `όχι όσο ισχύει η άδεια του κτήματος· ${after}`
       : `<strong>${esc(gYmd(m.forgetAt))}</strong> (${esc(cFar(m.forgetAt))})`],
-  ])+`<div class="muted" style="margin-top:6px">Κάθε νέα επαφή, αγορά ή εκδήλωση ξαναμετρά τα ${m.years} χρόνια από την αρχή. Τότε σβήνονται η καρτέλα, οι σημειώσεις και το ιστορικό· για τα λογιστικά μένουν μόνο το όνομα και οι ημερομηνίες όσων αγόρασε.</div>`;
+  ])+(lead
+    ? `<div class="muted" style="margin-top:6px">Δεν αγόρασε, άρα κρατιέται ${m.years} χρόνια από την τελευταία επαφή· κάθε νέα επαφή ή αλλαγή σταδίου τα ξαναμετρά από την αρχή. Τότε σβήνονται όλα, χωρίς να μείνει τίποτα. Αν γίνει πελάτης, το ιστορικό περνά στην καρτέλα του και μετρά όπως όλων των πελατών.</div>`
+    : `<div class="muted" style="margin-top:6px">Κάθε νέα επαφή, αγορά ή εκδήλωση ξαναμετρά τα ${m.years} χρόνια από την αρχή. Τότε σβήνονται η καρτέλα, οι σημειώσεις και το ιστορικό· για τα λογιστικά μένουν μόνο το όνομα και οι ημερομηνίες όσων αγόρασε.</div>`);
 }
 // Events whose plan the sweep has deleted: only the kind and the dates are remembered.
 function cPastHtml(past){
@@ -2099,14 +2183,19 @@ function customerCardHtml(x){
   out.push(`<div class="row fw" style="gap:6px;margin-bottom:12px"><span class="badge tpl">${esc(C_TYPE[c.type]||c.type)}</span><span class="badge st${esc(c.stage)}">${esc(C_STAGE[c.stage]||c.stage)}</span>${cp && coupleGone(cp) ? `<span class="badge off">χωρίς σχέδιο</span>` : ""}</div>`);
   if((c.flags||[]).length) out.push(`<div class="keybox note" style="margin:0 0 14px"><div style="font-weight:700;margin-bottom:2px">⚑ Θέλουν εμένα</div><ul class="flaglist">${c.flags.map(f=>
     `<li>${esc(cFlagText(f, c))}</li>`).join("")}</ul></div>`);
-  const verified=!!((v && v.emailVerified) || (cp && cp.emailVerified));
+  const verified=!!((v && v.emailVerified) || (cp && cp.emailVerified)), l=x.lead;
+  if(l && l.lost) out.push(`<div class="keybox note" style="margin:0 0 14px">Δεν προχώρησε στις ${esc(gD(l.lost.at))} — ${esc(C_LOST[l.lost.reason]||l.lost.reason)}. Αν ξαναέρθει, πάτα «Ξανά σε συζήτηση».</div>`);
+  const lk=l && l.type!=="venue" ? LEAD_KINDS[l.type] : null;
   out.push(fieldsHtml([
     ["Email", c.email ? `<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>${verified ? ` <span class="vok" title="Άνοιξε σύνδεσμο που στάλθηκε σε αυτή τη διεύθυνση">✓</span>` : ""}` : "—"],
     ["Τηλέφωνο", c.phone ? cReach({ phone:c.phone }, true) : "—"],
     c.afm ? ["ΑΦΜ", `<span class="mono">${esc(c.afm)}</span>`] : null,
     v && v.contact ? ["Δημόσια επαφή", esc(v.contact)] : null,
-    ["Γλώσσα", esc(LANG_NAME[(v||cp||s||{}).lang]||LANG_NAME.el)],
-    ["Πελάτης από", esc(gDT(c.createdAt))],
+    lk ? [EVW[lk].date, l.date ? `${esc(gYmd(l.date))} <span class="muted">(${esc(cInDays(l.date))})</span>` : "—"] : null,
+    l && l.place ? [l.type==="venue" ? "Περιοχή" : "Πού γίνεται", esc(l.place)] : null,
+    x.source ? ["Πώς μας βρήκε", esc(C_SRC[x.source]||x.source)] : null,
+    l ? null : ["Γλώσσα", esc(LANG_NAME[(v||cp||s||{}).lang]||LANG_NAME.el)],
+    [l ? "Πρώτη επαφή" : "Πελάτης από", esc(gDT(c.createdAt))],
     ["Τελευταία κίνηση", esc(gWhen(c.last))],
   ]));
   out.push(cardWorkHtml(x));
@@ -2151,11 +2240,260 @@ function customerCardHtml(x){
     ]));
   }
   const evs=x.events||[], past=x.past||[];
-  out.push(`<div class="subh">Εκδηλώσεις <span class="muted">(${evs.length})</span></div>`
+  if(!l) out.push(`<div class="subh">Εκδηλώσεις <span class="muted">(${evs.length})</span></div>`
     +(evs.length ? evs.map(cEventHtml).join("") : `<div class="muted">${past.length ? "Καμία με σχέδιο." : "Καμία εκδήλωση ακόμη."}</div>`)
     +cPastHtml(past));
   out.push(`<div class="subh">Μνήμη <span class="muted">— για πόσο κρατάμε την καρτέλα</span></div>`+cMemoryHtml(x));
   return out.join("");
+}
+
+// ---- phase 4: every contact lands in the sheet (OPERATIONS-PLAN.md §4) ----
+// «+ Νέα επαφή» is made for the phone, mid-call: chips to tap, the fields that matter, one line of what was said. As he
+// types an email, a phone or an ΑΦΜ, «Γνωστός πελάτης» shows whoever already has it, and one tap puts the contact on
+// that card instead of a second row. A contact is a `l:` row, stages 1–3 and 8; «Έγινε πελάτης» opens «+ Ιδιώτης» or
+// «+ Κτήμα» filled in, and the server moves its history over. One that never buys is forgotten 2 years after the last contact.
+const C_SRC={ phone:"Τηλέφωνο", viber:"Viber", whatsapp:"WhatsApp", email:"Email", facebook:"Facebook", instagram:"Instagram", amelie:"Amelie", referral:"Σύσταση", other:"Άλλο" };
+const C_LTYPE=[["couple","Ζευγάρι"],["parents","Γονείς"],["party","Γιορτή"],["venue","Κτήμα"]];
+const LEAD_KINDS={ couple:"wedding", parents:"baptism", party:"party" };   // what a private contact would buy for
+const C_LOST={ price:"η τιμή", no_reply:"δεν απάντησε ξανά", other_tool:"πήγε αλλού", cancelled:"ακυρώθηκε η εκδήλωση", other:"άλλος λόγος" };
+const C_HOW={ email:"ίδιο email", phone:"ίδιο τηλέφωνο", afm:"ίδιο ΑΦΜ" };
+const cap=s=>s ? s[0].toUpperCase()+s.slice(1) : s;
+const LEAD_ERR={ bad_phone:["ld_phone", "Το τηλέφωνο δεν φαίνεται σωστό — ελληνικό με 10 ψηφία, ή ξένο με το + μπροστά"], bad_email:["ld_email", BAD_EMAIL],
+  bad_afm:["ld_afm", "Αυτό το ΑΦΜ δεν είναι έγκυρο"], bad_date:["ld_date", "Η ημερομηνία δεν είναι έγκυρη"], empty:["ld_name", "Γράψε ένα όνομα, ένα τηλέφωνο ή ένα email"] };
+
+function leadFormHtml(l, isNew){
+  l=l||{}; const type=l.type||"couple", src=l.source||"phone";
+  const chip=(g, v, t, on)=>`<button type="button" class="chip${on ? " on" : ""}" data-g="${g}" data-v="${v}" aria-pressed="${on}">${esc(t)}</button>`;
+  const val=k=>esc(l[k]||"");
+  return `<div class="stack">
+    <div><label>Πώς ήρθε</label><div class="pick" data-pick="source">${Object.entries(C_SRC).map(([k, t])=>chip("source", k, t, k===src)).join("")}</div></div>
+    <div><label>Τι είναι</label><div class="pick" data-pick="type">${C_LTYPE.map(([k, t])=>chip("type", k, t, k===type)).join("")}</div></div>
+    ${isNew ? `<div><label>Στάδιο <span class="hint">— «Νέα επαφή»: δεν έχεις απαντήσει ακόμη</span></label><div class="pick" data-pick="stage">${[1, 2, 3].map(s=>chip("stage", s, C_STAGE[s], s===(src==="phone" ? 2 : 1))).join("")}</div></div>` : ""}
+    <div class="grid">
+      <div><label for="ld_name" id="ld_namel">Όνομα</label><input id="ld_name" maxlength="120" autocomplete="off" value="${val("name")}"></div>
+      <div><label for="ld_phone">Τηλέφωνο</label><input id="ld_phone" type="tel" inputmode="tel" autocomplete="off" placeholder="69…" value="${val("phone")}"></div>
+      <div><label for="ld_email">Email</label><input id="ld_email" type="email" autocomplete="off" value="${val("email")}"></div>
+      <div id="ld_afmw"><label for="ld_afm">ΑΦΜ <span class="hint">— αν το έχεις</span></label><input id="ld_afm" inputmode="numeric" maxlength="9" autocomplete="off" value="${val("afm")}"></div>
+      <div id="ld_datew"><label for="ld_date" id="ld_datel"></label><input id="ld_date" type="date" value="${val("date")}"></div>
+      <div><label for="ld_place" id="ld_placel"></label><input id="ld_place" maxlength="120" autocomplete="off" value="${val("place")}"></div>
+      ${isNew ? `<div class="full"><label for="ld_text">Τι είπατε <span class="hint">— μια γραμμή, μπαίνει στο ιστορικό</span></label><input id="ld_text" maxlength="${ACT_TEXT_MAX}" autocomplete="off" placeholder="π.χ. ρώτησε τιμή, 180 άτομα"></div>
+      <div class="full"><label for="ld_next">Επόμενο βήμα <span class="hint">— προαιρετικό</span></label><div class="steprow"><input type="text" id="ld_next" maxlength="${STEP_MAX}" autocomplete="off" placeholder="π.χ. να του στείλω την τιμή"><input type="date" id="ld_due" aria-label="Πότε"></div></div>` : ""}
+    </div>
+    <div id="ld_known" aria-live="polite"></div>
+  </div>`;
+}
+// The chips, the labels that follow «Τι είναι», and «Γνωστός πελάτης». `except`: the contact being edited, never its own match.
+function wireLeadForm(d, except, onKnown){
+  const q=s=>d.querySelector(s); let stageTouched=false, timer=null, seq=0;
+  const pick=g=>{ const b=q(`.pick[data-pick="${g}"] .chip.on`); return b ? b.dataset.v : null; };
+  const set=(g, v)=>d.querySelectorAll(`.pick[data-pick="${g}"] .chip`).forEach(b=>{ const on=b.dataset.v===String(v); b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); });
+  const sync=()=>{ const t=pick("type"), venue=t==="venue";
+    q("#ld_namel").textContent=venue ? "Όνομα κτήματος" : "Όνομα"; q("#ld_name").placeholder=venue ? "π.χ. Κτήμα Ηλιοβασίλεμα" : "π.χ. Μαρία Παπαδάκη";
+    q("#ld_afmw").style.display=venue ? "" : "none"; q("#ld_datew").style.display=venue ? "none" : "";
+    if(!venue) q("#ld_datel").textContent=EVW[LEAD_KINDS[t]].date;
+    q("#ld_placel").innerHTML=venue ? `Περιοχή <span class="hint">— πού είναι το κτήμα</span>` : `Πού γίνεται <span class="hint">— κτήμα ή περιοχή</span>`;
+    q("#ld_place").placeholder=venue ? "π.χ. Μαραθώνας" : "π.χ. Κτήμα Ηλιοβασίλεμα"; };
+  // only what could already be someone's: a whole address, a whole number, nine digits
+  async function look(){
+    const email=q("#ld_email").value.trim(), phone=q("#ld_phone").value.trim(), afm=pick("type")==="venue" ? q("#ld_afm").value.replace(/\s/g,"") : "";
+    const body={ email:/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? email : "", phone:phone.replace(/\D/g,"").length>=10 ? phone : "", afm:/^\d{9}$/.test(afm) ? afm : "", except:except||"" };
+    const box=q("#ld_known"), my=++seq;
+    if(!body.email && !body.phone && !body.afm){ box.innerHTML=""; return; }
+    const res=await req("/admin/match", { method:"POST", body:JSON.stringify(body) });
+    if(my!==seq || !box.isConnected) return;
+    const list=res.ok && res.d && Array.isArray(res.d.matches) ? res.d.matches : [], was=!!box.innerHTML;
+    box.innerHTML=list.length ? knownHtml(list, !except) : "";
+    if(list.length && !was) box.scrollIntoView({ behavior:"smooth", block:"nearest" });   // under the fold otherwise, and easy to miss
+  }
+  const later=()=>{ clearTimeout(timer); timer=setTimeout(look, 450); };
+  ["#ld_email", "#ld_phone", "#ld_afm"].forEach(s=>q(s).addEventListener("input", later));
+  d.addEventListener("click", e=>{
+    const k=e.target.closest("[data-known]"); if(k){ onKnown(k.dataset.known, k.dataset.key, k); return; }
+    const b=e.target.closest(".pick .chip"); if(!b) return;
+    const g=b.dataset.g; set(g, b.dataset.v);
+    if(g==="stage") stageTouched=true;
+    if(g==="source" && !stageTouched && q('.pick[data-pick="stage"]')) set("stage", b.dataset.v==="phone" ? 2 : 1);   // on the phone he has answered already
+    if(g==="type"){ sync(); later(); }
+  });
+  sync(); later();
+  return { pick, stageTouched:()=>stageTouched };
+}
+function knownHtml(list, canAdd){
+  return `<div class="known"><div style="font-weight:700">Γνωστός πελάτης${list.length>1 ? ` <span class="muted">(${list.length})</span>` : ""}</div>
+    ${canAdd ? `<div class="muted">Αν είναι ο ίδιος, πρόσθεσε την επαφή στην καρτέλα του αντί για νέα γραμμή.</div>` : ""}
+    ${list.map(m=>{
+      const evs=(m.events||[]).map(e=>`${C_KIND[e.kind]||e.kind}${e.date ? " "+gYmd(e.date) : ""}${e.gone ? " (πέρασε)" : ""}`).join(" · ");
+      const ask=m.lead ? [m.lead.date ? gYmd(m.lead.date) : "", m.lead.place].filter(Boolean).join(" · ") : "";
+      return `<div class="kc"><div class="row fw" style="gap:6px"><strong>${esc(m.name||"—")}</strong><span class="badge tpl">${esc(C_TYPE[m.type]||m.type)}</span><span class="badge st${esc(m.stage)}">${esc(C_STAGE[m.stage]||m.stage)}</span>
+          <span class="muted">${esc((m.how||[]).map(h=>C_HOW[h]||h).join(" · "))}</span></div>
+        ${fieldsHtml([ m.phone ? ["Τηλέφωνο", esc(m.phone)] : null, m.email ? ["Email", esc(m.email)] : null, evs ? ["Εκδηλώσεις", esc(evs)] : null,
+          ask ? [m.type==="venue" ? "Περιοχή" : "Ζήτησε για", esc(ask)] : null, m.last ? ["Τελευταία κίνηση", esc(gWhen(m.last))] : null, m.notes ? ["Σημειώσεις", esc(m.notes)] : null ])}
+        ${(m.said||[]).length ? `<ul class="tl">${m.said.map(s=>`<li><time>${esc(gDT(s.at))}</time><span class="w">${esc(s.text)}</span></li>`).join("")}</ul>` : ""}
+        <div class="row fw" style="margin-top:8px">${canAdd ? `<button type="button" class="btn sm primary" data-known="add" data-key="${esc(m.key)}">Πρόσθεσε στην καρτέλα του</button>` : ""}
+          <button type="button" class="btn sm" data-known="open" data-key="${esc(m.key)}">Άνοιξε την καρτέλα</button></div></div>`; }).join("")}</div>`;
+}
+// → {lead} or {error, el}
+function readLeadForm(d, f){
+  const v=id=>d.querySelector("#"+id).value.trim(), type=f.pick("type"), venue=type==="venue", dateEl=d.querySelector("#ld_date");
+  if(!venue && dateEl.validity && dateEl.validity.badInput) return { error:"Η ημερομηνία δεν είναι ολόκληρη", el:dateEl };
+  const o={ source:f.pick("source"), type, name:v("ld_name"), phone:v("ld_phone"), email:v("ld_email"), afm:venue ? v("ld_afm").replace(/\s/g,"") : "", date:venue ? "" : dateEl.value, place:v("ld_place") };
+  if(!o.name && !o.phone && !o.email) return { error:LEAD_ERR.empty[1], el:d.querySelector("#ld_name") };
+  if(o.afm && !/^\d{9}$/.test(o.afm)) return { error:"Το ΑΦΜ έχει 9 ψηφία", el:d.querySelector("#ld_afm") };
+  return { lead:o };
+}
+function leadFail(d, res, fallback){
+  const e=LEAD_ERR[res.d && res.d.error];
+  if(e){ invalid(d.querySelector("#"+e[0]), e[1]); return; }
+  failToast(res, res.status===409 && res.d && res.d.error==="full" ? "Οι επαφές έφτασαν τις 3.000 — σβήσε όσες δεν χρειάζεσαι" : fallback);
+}
+// The dialog element is reused, so everything listens on its content: a listener on the dialog would outlive the form.
+function openNewLead(){
+  const d=openDialog(`<div lang="el">${dlgHead("Νέα επαφή")}<div class="dbody">${leadFormHtml(null, true)}</div>
+    <div class="dfoot"><button class="btn" data-dclose>Άκυρο</button><button class="btn primary" id="ld_save">Αποθήκευση</button></div></div>`).firstElementChild;
+  const q=s=>d.querySelector(s);
+  const next=()=>{ const t=q("#ld_next").value.trim(), due=q("#ld_due").value; return t ? { next:{ text:t, due:due||null } } : {}; };
+  const f=wireLeadForm(d, "", async (what, key, btn)=>{
+    if(what==="open") return openCustomer(key);
+    // the same person again: the contact goes on their card, with how it came, and nothing new is made
+    const body={ source:f.pick("source")||"other", text:q("#ld_text").value.trim(), ...next(), ...(key.slice(0,1)==="l" && f.stageTouched() ? { stage:+f.pick("stage") } : {}) };
+    btn.disabled=true; const res=await req("/admin/customers/"+encodeURIComponent(key)+"/contact", { method:"POST", body:JSON.stringify(body) }); btn.disabled=false;
+    if(!res.ok){ failToast(res, res.status===404 ? "Αυτός ο πελάτης δεν υπάρχει πια" : "Δεν γράφτηκε"); return; }
+    toast("Γράφτηκε στην καρτέλα του"); refreshCustomers(); openCustomer(key);
+  });
+  const save=async ()=>{
+    const r=readLeadForm(d, f); if(r.error){ invalid(r.el, r.error); return; }
+    const dueEl=q("#ld_due"); if(dueEl.validity && dueEl.validity.badInput){ invalid(dueEl, "Η ημερομηνία δεν είναι ολόκληρη"); return; }
+    const btn=q("#ld_save"); if(btn.disabled) return; btn.disabled=true;
+    const res=await req("/admin/leads", { method:"POST", body:JSON.stringify({ ...r.lead, stage:+f.pick("stage"), text:q("#ld_text").value.trim(), ...next() }) });
+    if(!d.isConnected) return;
+    btn.disabled=false;
+    if(!res.ok){ leadFail(d, res, "Δεν αποθηκεύτηκε"); return; }
+    closeDialog(); toast("Η επαφή μπήκε στους πελάτες"); refreshCustomers();
+  };
+  q("#ld_save").onclick=save;
+  ["#ld_name", "#ld_phone", "#ld_email", "#ld_text", "#ld_next"].forEach(s=>q(s).addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); save(); } }));
+  q("#ld_name").focus();
+}
+function openLeadEdit(key, l){
+  const d=openDialog(`<div lang="el">${dlgHead("Επεξεργασία επαφής")}<div class="dbody">${leadFormHtml(l, false)}</div>
+    <div class="dfoot"><button class="btn" data-dclose>Άκυρο</button><button class="btn primary" id="ld_save">Αποθήκευση</button></div></div>`).firstElementChild;
+  const f=wireLeadForm(d, key, (what, k)=>{ if(what==="open"){ dlgBack=null; openCustomer(k); } });
+  d.querySelector("#ld_save").onclick=async e=>{
+    const r=readLeadForm(d, f); if(r.error){ invalid(r.el, r.error); return; }
+    const btn=e.currentTarget; btn.disabled=true;
+    const res=await req("/admin/customers/"+encodeURIComponent(key)+"/lead", { method:"PATCH", body:JSON.stringify(r.lead) });
+    if(!d.isConnected) return;
+    btn.disabled=false;
+    if(!res.ok){ leadFail(d, res, res.status===404 ? "Αυτή η επαφή δεν υπάρχει πια" : "Δεν αποθηκεύτηκε"); return; }
+    toast("Αποθηκεύτηκε"); closeDialog();   // back to the card (dlgBack)
+  };
+}
+// The contact's own buttons on its card.
+async function leadAction(key, x, a, btn){
+  const l=x.lead||{}, path="/admin/customers/"+encodeURIComponent(key);
+  if(a==="ledit"){ dlgBack=key; return openLeadEdit(key, l); }
+  if(a==="convert"){
+    await flushNotes();
+    const notes=[[l.phone ? "Τηλ. "+l.phone : "", l.place ? (l.type==="venue" ? "Περιοχή: " : "Πού: ")+l.place : ""].filter(Boolean).join(" · "), x.notes||""]
+      .filter(Boolean).join("\n").slice(0, NOTES_MAX);
+    const pre={ lead:l.id, name:l.name, email:l.email, notes };
+    dlgBack=key;   // cancelled: back to the contact; created: convertDone points it at the new customer
+    if(l.type==="venue") return openNewVenue({ ...pre, afm:l.afm });
+    // a βάπτιση's plan is named after the child and a γιορτή's after the event: the person who called goes in the notes
+    const own=l.type==="couple";
+    return openNewCouple({ ...pre, kind:LEAD_KINDS[l.type]||"wedding", date:l.date, plan:own ? l.name : "",
+      notes:(own || !l.name ? notes : ["Επαφή: "+l.name, notes].filter(Boolean).join("\n")).slice(0, NOTES_MAX) });
+  }
+  if(a==="lost"){
+    const p=btn.closest(".dbody").querySelector(".cardpanel"); if(!p) return;
+    p.innerHTML=`<div class="cbox"><label for="cl_text"><span>Δεν προχώρησε — γιατί;</span></label>
+      <input id="cl_text" maxlength="${ACT_TEXT_MAX}" autocomplete="off" placeholder="Μια γραμμή, αν θέλεις">
+      <div class="tlbtns">${Object.entries(C_LOST).map(([k, t])=>`<button class="btn sm" data-k="lost_save" data-r="${k}">${esc(cap(t))}</button>`).join("")}<button class="btn sm ghost" data-k="panel_close">Άκυρο</button></div>
+      <div class="muted" style="margin-top:6px">Η επαφή πάει στο «Αρχείο». Αν δεν ξαναμιλήσετε, σβήνεται 2 χρόνια μετά την τελευταία επαφή.</div></div>`;
+    p.scrollIntoView({ behavior:"smooth", block:"nearest" }); p.querySelector("#cl_text").focus(); return;
+  }
+  if(/^st[123]$/.test(a)){
+    const stage=+a.slice(2);
+    btn.disabled=true; const res=await req(path+"/stage", { method:"POST", body:JSON.stringify({ stage }) }); btn.disabled=false;
+    if(!res.ok){ failToast(res, res.status===404 ? "Αυτή η επαφή δεν υπάρχει πια" : "Δεν άλλαξε"); return; }
+    toast("Στάδιο: "+C_STAGE[stage]); refreshCustomers(); await refreshCard(key);
+  }
+}
+
+// ---- the ready replies (phase 4): Greek, for Andreas to read before the first one goes out ----
+// A tap shows the text in a box on the card, to correct and copy (or open in his mail app, which writes «✉ Email» in the
+// history). Nothing is sent by the server. The payment details are left as gaps until he gives them once (REPLY_PAY).
+const REPLY_PAY={ holder:"[ΣΥΜΠΛΗΡΩΣΕ: δικαιούχος]", iban:"[ΣΥΜΠΛΗΡΩΣΕ: IBAN]", iris:"[ΣΥΜΠΛΗΡΩΣΕ: IRIS]" };
+const REPLY_SIGN="Ανδρέας — TakeaSeat\n697 735 5378 · takeaseat.gr";
+const REPLY_FOR={ wedding:"τον γάμο σας", baptism:"τη βάπτιση", party:"τη γιορτή σας" };
+const REPLY_LAB=k=>"https://takeaseat.gr/lab.html?ev="+k;
+const REPLIES=[
+  { id:"price", venue:false, title:"Τιμή", subject:"TakeaSeat — το σχέδιο τραπεζιών", text:k=>`Καλησπέρα σας,
+
+ευχαριστώ για το ενδιαφέρον σας για το TakeaSeat.
+
+Το σχέδιο τραπεζιών για ${REPLY_FOR[k]} κοστίζει 25 € (με ΦΠΑ), μία φορά, για μία εκδήλωση: στήνετε τα τραπέζια και την αίθουσα, βάζετε τους καλεσμένους στις θέσεις τους και το μοιράζεστε με όποιον θέλετε.
+
+Μπορείτε πρώτα να το δοκιμάσετε δωρεάν, έως 8 τραπέζια, χωρίς λογαριασμό:
+${REPLY_LAB(k)}
+
+Αν το κτήμα σας δουλεύει ήδη με το TakeaSeat, δεν πληρώνετε τίποτα: ζητήστε τον σύνδεσμο από το κτήμα.
+
+Για οτιδήποτε, είμαι εδώ.
+
+${REPLY_SIGN}` },
+  { id:"pay", venue:false, title:"Στοιχεία πληρωμής", subject:"TakeaSeat — στοιχεία πληρωμής", text:k=>`Καλησπέρα σας,
+
+για το σχέδιο τραπεζιών (25 € με ΦΠΑ) τα στοιχεία πληρωμής είναι:
+
+Δικαιούχος: ${REPLY_PAY.holder}
+IBAN: ${REPLY_PAY.iban}
+IRIS: ${REPLY_PAY.iris}
+Αιτιολογία: το ονοματεπώνυμό σας
+
+Μόλις δω την πληρωμή, σας στέλνω τον σύνδεσμο του σχεδίου σας. Το σχέδιο ανοίγει 14 μέρες μετά την πληρωμή, όσο διαρκεί το δικαίωμα υπαναχώρησης. Αν η εκδήλωση είναι σε λιγότερο από 3 εβδομάδες, μπορεί να ανοίξει αμέσως, αν μου το ζητήσετε.
+
+${REPLY_SIGN}` },
+  { id:"remind", venue:false, title:"Υπενθύμιση", subject:"TakeaSeat — το σχέδιο τραπεζιών", text:k=>`Καλησπέρα σας,
+
+σας είχα γράψει για το σχέδιο τραπεζιών για ${REPLY_FOR[k]} και ήθελα να δω αν μπορώ να σας βοηθήσω σε κάτι.
+
+Αν θέλετε, το δοκιμάζετε δωρεάν, έως 8 τραπέζια:
+${REPLY_LAB(k)}
+
+Κι αν τελικά δεν το χρειάζεστε, κανένα πρόβλημα. Καλή επιτυχία στην εκδήλωσή σας!
+
+${REPLY_SIGN}` },
+  { id:"vprice", venue:true, title:"Τιμή κτήματος", subject:"TakeaSeat για το κτήμα σας", text:()=>`Καλησπέρα σας,
+
+ευχαριστώ για το ενδιαφέρον σας για το TakeaSeat.
+
+Με τη συνδρομή του κτήματος στήνετε μία φορά την αίθουσά σας και φτιάχνετε από εκεί κάθε εκδήλωση: γάμους, βαπτίσεις και γιορτές, χωρίς όριο. Ο κάθε πελάτης σας παίρνει δικό του σύνδεσμο και βάζει τους καλεσμένους του στις θέσεις τους, κι εσείς βλέπετε το πλάνο του.
+
+Ο πρώτος χρόνος είναι δωρεάν· μετά 349 € + ΦΠΑ τον χρόνο, με τιμολόγιο. Ο δωρεάν χρόνος δεν γίνεται μόνος του συνδρομή.
+
+Η εγγραφή του κτήματος γίνεται εδώ:
+https://takeaseat.gr/venue.html#signup
+
+Αν θέλετε, το βλέπουμε και μαζί, όποτε σας βολεύει.
+
+${REPLY_SIGN}` },
+  { id:"vremind", venue:true, title:"Υπενθύμιση κτήματος", subject:"TakeaSeat για το κτήμα σας", text:()=>`Καλησπέρα σας,
+
+σας είχα γράψει για το TakeaSeat και ήθελα να δω αν έχετε κάποια ερώτηση. Ο πρώτος χρόνος είναι δωρεάν, χωρίς δέσμευση, και η εγγραφή γίνεται εδώ:
+https://takeaseat.gr/venue.html#signup
+
+Αν θέλετε να το δούμε μαζί, πείτε μου πότε σας βολεύει.
+
+${REPLY_SIGN}` },
+];
+function showReply(btn, x){
+  const r=REPLIES.find(t=>t.id===btn.dataset.tpl), p=btn.closest(".dbody").querySelector(".cardpanel"); if(!r || !p) return;
+  const l=x.lead||{}, kind=LEAD_KINDS[l.type]||"wedding", to=x.customer.email;
+  p.innerHTML=`<div class="cbox tplbox"><label for="tp_text"><span>${esc(r.title)} <span class="hint">— διόρθωσέ το αν θέλεις, και μετά αντέγραψέ το</span></span></label>
+    <textarea id="tp_text" rows="12">${esc(r.text(kind))}</textarea>
+    <div class="tlbtns"><button class="btn sm primary" data-k="tpl_copy">Αντιγραφή</button>${to ? `<button class="btn sm" data-k="tpl_mail" data-tpl="${r.id}" title="Ανοίγει το email σου με το κείμενο, προς ${esc(to)}">✉ Email</button>` : ""}<button class="btn sm ghost" data-k="panel_close">Κλείσιμο</button></div></div>`;
+  p.scrollIntoView({ behavior:"smooth", block:"nearest" });
 }
 
 // ---- «Excel»: what is on screen, in the order it is on screen ----

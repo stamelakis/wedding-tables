@@ -9,7 +9,7 @@ decisions a future session might undo by mistake. `STATUS.md` says where we are.
 ```bash
 node tools/build-planner.mjs            # regenerate the planner outputs
 node tools/build-planner.mjs --check    # must print "all planner outputs up to date"
-node tools/test-api.mjs                 # the whole suite (1137 checks today)
+node tools/test-api.mjs                 # the whole suite (1196 checks today)
 node tools/dev.mjs                      # local stack on :8080 — never `node server/server.mjs`
 node tools/dev-customers.mjs            # the same, seeded with one customer per «Θέλουν εμένα» flag and stage
 ```
@@ -139,3 +139,10 @@ build runs the full suite), restarts and health-checks; on failure it rolls back
 - **Greek is reviewed by Andreas himself.** Strings a customer reads are written per language and
   cross-checked, never find-replaced: 36 `p_*` strings contain «γιορτ» and name the *event*, while
   only five name the *table*.
+- **Phase 4's ready replies are copied, or opened in Andreas's own mail app; the server never mails them** (2026-10-21).
+  His mail app keeps the thread and the customer's answer lands in his inbox; a server mail would leave no sent copy
+  and add one more route that mails strangers. Opening one writes «✉ Email» to the timeline. Rejected: the plan's
+  "send by mail from the card". The payment text keeps «[ΣΥΜΠΛΗΡΩΣΕ…]» gaps (`REPLY_PAY`) until Andreas gives the details.
+- **A contact that becomes a customer ends** (`adoptLead`): its timeline, source and next step move to the new card and
+  the `lead:` row is erased, so no one is in the sheet twice. Do not keep converted leads "for statistics". A couple's
+  or venue's phone stays in their notes, where `phonesOf` finds it for «Γνωστός πελάτης»; rejected: a new phone field.

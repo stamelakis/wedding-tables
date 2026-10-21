@@ -141,6 +141,15 @@ await call('POST', C('c:' + c2) + '/timeline', { kind: 'viber', text: 'Τους 
 const c6 = await couple({ name: 'Δέσποινα & Μάριος', email: 'despoina.m@example.gr', weddingDate: day(60) });
 await call('POST', C('c:' + c6) + '/forget', {}, OWN);                                                         // books: name and purchase date only
 
+// ---- phase 4: contacts who have not bought (yet), one per stage ----
+const lead = async body => (await call('POST', '/admin/leads', body, OWN)).key;
+await lead({ source: 'instagram', type: 'couple', name: 'Χριστίνα Λαμπράκη', email: 'christina.l@example.gr', date: day(120), place: 'Κτήμα Ελαιώνας', text: 'ρώτησε αν δουλεύει με 220 άτομα' });   // ⚑ waiting for a reply
+const l2 = await lead({ source: 'phone', type: 'parents', name: 'Παύλος Δημητρίου', phone: '6933 444 555', date: day(45), place: 'Χαλάνδρι', stage: 2, text: 'βάπτιση, 90 άτομα', next: { text: 'Να του στείλω την τιμή', due: day(1) } });
+await lead({ source: 'referral', type: 'venue', name: 'Κτήμα Βελανιδιά', phone: '2294 012 345', afm: '800000419', place: 'Μαραθώνας', stage: 3, text: 'τους σύστησε το Κτήμα Πλάτανος' });
+const l4 = await lead({ source: 'viber', type: 'party', name: 'Νίκη Σταύρου', phone: '6977 000 999', date: day(20), stage: 2, text: '50ά γενέθλια' });
+await call('POST', C(l4) + '/stage', { stage: 8, reason: 'price' }, OWN);                                          // archive: did not go ahead
+await call('POST', C(l2) + '/timeline', { kind: 'call', text: 'Θα το συζητήσει με τη γυναίκα του' }, OWN);
+
 db.close();
 console.log('dev-customers: seeded ' + DB);
 console.log('dev-customers: venue console «Κτήμα Ροδακινιά» at http://localhost:8080/venue.html, key ' + VK);

@@ -1573,7 +1573,8 @@ const custEvent = (p, extra) => ({ kind: p.kind, date: p.weddingDate || null, ph
 // The customer's own last move on a plan: a save, or an access-log entry that was not ours or the sweep's.
 const custTouch = e => Math.max(e.updated || 0, ...(e.audit || []).filter(a => a.who !== "admin" && a.who !== "system").map(a => Math.max(a.t || 0, a.last || 0)));
 function custRow(o) {   // the columns that come from the events, worked out the same way for every kind of customer
-  const { events, nextStep, ...rest } = o, mine = events.filter(e => !e.extra), live = mine.filter(e => !e.over);
+  const { events, nextStep, contactAt, ...rest } = o, mine = events.filter(e => !e.extra), live = mine.filter(e => !e.over);
+  rest.last = Math.max(rest.last || 0, contactAt || 0) || null;   // a customer coming to us again (phase 4) is a movement; his own notes are not
   const next = live.filter(e => e.date).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))[0] || null;
   // His «Επόμενο βήμα»: on its day the customer joins «Θέλουν εμένα» (phase 2).
   const step = stepOut(nextStep), flags = (step && step.due && step.due <= todayAthens()) ? [...rest.flags, "next_due"] : rest.flags;
@@ -1604,7 +1605,7 @@ async function venueCustomer(env, v, now, today) {
     until: seasonal ? lic.seasonEnd : null, untilKind: seasonal ? (trial ? "trial" : "season") : null,
     last: Math.max(v.createdAt || 0, (v.trial && v.trial.verifiedAt) || 0, (s && s.createdAt) || 0, (vc.template && vc.template.updated) || 0,
       ...(v.weddings || []).map(w => w.createdAt || 0), ...events.map(custTouch)) || null,
-    email: v.email || "", phone: phoneOf(v.phone, v.contact, v.notes), afm: v.afm || "", createdAt: v.createdAt || null, active: on, nextStep: v.nextStep });
+    email: v.email || "", phone: phoneOf(v.phone, v.contact, v.notes), afm: v.afm || "", createdAt: v.createdAt || null, active: on, nextStep: v.nextStep, contactAt: v.contactAt });
   return { row, card: { venue: vc.venue, setup: vc.setup, licence: vc.licence, signup: s ? await signupCard(env, s) : null,
     template: vc.template ? { updated: vc.template.updated, support: vc.template.support } : null, events } };
 }
@@ -1621,13 +1622,13 @@ async function coupleCustomer(env, c, now) {
   const row = custRow({ key: "c:" + c.id, type: CUST_TYPE[couple.kind] || "couple", name: c.name || "", stage, flags, events,
     until: (main && !main.keep && main.deleteAt) ? ymdOfMs(main.deleteAt - 1) : null, untilKind: main ? (main.keep ? "keep" : "plan") : null,
     last: Math.max(c.createdAt || 0, c.claimedAt || 0, ...events.map(custTouch)) || null,
-    email: c.email || "", phone: phoneOf(c.contact), afm: "", createdAt: c.createdAt || null, active: true, nextStep: c.nextStep });
+    email: c.email || "", phone: phoneOf(c.contact), afm: "", createdAt: c.createdAt || null, active: true, nextStep: c.nextStep, contactAt: c.contactAt });
   return { row, card: { couple, events } };
 }
 async function signupCustomer(env, s, now) {   // only a pending signup whose venue is gone: every other one IS its venue's row
   const flags = now - (s.resentAt || s.createdAt || now) > CUST_LINK_DAYS * DAY ? ["setup_unopened"] : [];
   const row = custRow({ key: "s:" + s.id, type: "venue", name: s.name || "", stage: 4, flags, events: [], until: null, untilKind: null,
-    last: Math.max(s.createdAt || 0, s.resentAt || 0) || null, email: s.email || "", phone: phoneOf(s.phone, s.notes), afm: s.afm || "", createdAt: s.createdAt || null, active: true, nextStep: s.nextStep });
+    last: Math.max(s.createdAt || 0, s.resentAt || 0) || null, email: s.email || "", phone: phoneOf(s.phone, s.notes), afm: s.afm || "", createdAt: s.createdAt || null, active: true, nextStep: s.nextStep, contactAt: s.contactAt });
   return { row, card: { signup: await signupCard(env, s), events: [] } };
 }
 // ---- phase 4: a contact who has not bought (yet) — `lead:<id>`, key l:<id> ----
@@ -1665,7 +1666,7 @@ function leadCustomer(l) {
   const stage = leadStage(l), type = LEAD_TYPES.includes(l.type) ? l.type : "couple", today = todayAthens();
   const row = custRow({ key: "l:" + l.id, type, name: l.name || "", stage, flags: stage === 1 ? ["lead_new"] : [], events: [], until: null, untilKind: null,
     last: Math.max(l.createdAt || 0, ...(l.moves || []).map(mv => (mv && mv.at) || 0)) || null,
-    email: l.email || "", phone: l.phone || "", afm: l.afm || "", createdAt: l.createdAt || null, active: true, nextStep: l.nextStep });
+    email: l.email || "", phone: l.phone || "", afm: l.afm || "", createdAt: l.createdAt || null, active: true, nextStep: l.nextStep, contactAt: l.contactAt });
   // the date they named is the row's next event, while there is still a chance of one
   if (stage !== 8 && ymdOk(l.date) && l.date >= today) { row.next = l.date; row.nextKind = LEAD_KIND[type] || null; }
   return { row, card: { lead: leadOut(l), events: [] } };
@@ -1687,10 +1688,12 @@ const leadToAdopt = async (env, b) => {
 async function adoptLead(env, id, key, recKey) {
   const l = safeParse(await env.PLANS.get("lead:" + id));
   if (!l) return false;
-  const acts = await actsOf(env, "l:" + id);
+  // its stage moves come along as entries of their own: on the customer's card they are history, not a stage
+  const acts = [...await actsOf(env, "l:" + id), ...(l.moves || []).filter(mv => mv && mv.at).map(mv => ({ id: rnd(10), t: mv.at, kind: "stage", stage: mv.stage, ...(mv.reason ? { reason: mv.reason } : {}) }))];
   if (acts.length) await kvUpdate(env, "act:" + key, a => [...acts, ...(Array.isArray(a) ? a : [])].sort((x, y) => (x.t || 0) - (y.t || 0)).slice(-ACT_MAX));
   await kvUpdate(env, recKey, cur => { if (!cur) return null;
     cur.fromLead = { source: l.source || "other", at: l.createdAt || null };
+    const met = Math.max(l.createdAt || 0, l.contactAt || 0); if (met > (cur.contactAt || 0)) cur.contactAt = met;
     if (!cur.nextStep && stepOut(l.nextStep)) cur.nextStep = l.nextStep;
     return cur; });
   await eraseLead(env, id, "converted");
@@ -1814,7 +1817,10 @@ function timelineOf(t, rec, x, acts) {
     for (const [k, at] of Object.entries(marks || {})) { const n = +String(k).split(":").pop(); if (at && (!by.has(at) || n < by.get(at))) by.set(at, n); }
     for (const [at, n] of by) add(at, code, { n: Number.isFinite(n) ? n : null });
   };
-  for (const a of acts) add(a.t, "act", { id: a.id, act: a.kind, text: String(a.text || ""), ...(a.source ? { src: a.source } : {}) });
+  for (const a of acts) {
+    if (a.kind === "stage") add(a.t, "stage", { stage: a.stage, reason: a.reason || null });   // a converted contact's moves (adoptLead)
+    else add(a.t, "act", { id: a.id, act: a.kind, text: String(a.text || ""), ...(a.source ? { src: a.source } : {}) });
+  }
   if (t === "l") {
     for (const mv of (rec.moves || [])) if (mv) add(mv.at, "stage", { stage: mv.stage, reason: mv.reason || null });
   } else if (t === "v") {
@@ -3113,13 +3119,13 @@ export default {
             const entry = { id: rnd(10), t: now, kind: "contact", source, text };
             await kvUpdate(env, "act:" + k.key, a => [...(Array.isArray(a) ? a : []), entry].slice(-ACT_MAX));
             await onRec(cur => {
-              let dirty = false;
-              if (st) { cur.nextStep = { text: st, due: b.next.due || null, at: now }; dirty = true; }
+              cur.contactAt = now;   // the sheet's «Τελευταία κίνηση» (custRow)
+              if (st) cur.nextStep = { text: st, due: b.next.due || null, at: now };
               if (k.t === "l") {
                 const to = LEAD_STAGES.includes(b.stage) ? b.stage : cur.lost ? 2 : null;
-                if (to && to !== leadStage(cur)) { delete cur.lost; cur.stage = to; cur.moves = [...(cur.moves || []), { at: now, stage: to }].slice(-MOVES_MAX); dirty = true; }
+                if (to && to !== leadStage(cur)) { delete cur.lost; cur.stage = to; cur.moves = [...(cur.moves || []), { at: now, stage: to }].slice(-MOVES_MAX); }
               }
-              return dirty ? cur : null;
+              return cur;
             });
             return json({ ok: true, entry: { at: entry.t, code: "act", id: entry.id, act: entry.kind, text: entry.text, src: source } });
           }

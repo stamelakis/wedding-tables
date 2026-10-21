@@ -325,6 +325,27 @@ options (HANDOFF §8.6).
   `redrawCard` never redraws the notes; writes go one at a time through `cardWrite`; notes flush on any dialog
   change). Test data: `node tools/dev-customers.mjs` also seeds «Κτήμα Ροδακινιά» and prints its console key
   (`<id>.dev-venue-key`).
+- **Phase 4 as built (part A: everything but the site's form).** A contact is `lead:<id>` `{id, name, source, type
+  (venue|couple|parents|party), date, place, email, phone, afm (venue only), stage 1|2|3, lost {reason, at}?, notes,
+  nextStep, moves [{at, stage, reason?}], createdAt, updatedAt}`, listed in `leads:index` (cap 3000), its timeline in
+  `act:l:<id>`; customer key `l:<id>`. Stages 1 Νέα επαφή, 2 Σε συζήτηση, 3 Αναμένεται πληρωμή, 8 Δεν προχώρησε
+  (= `lost`; archived with 7). Flag `lead_new` while at stage 1. Routes (owner key): `POST /admin/leads`;
+  `POST /admin/match {email, phone, afm, except}` → up to 5 cards (POST so a typed number never sits in a URL; it
+  never reads `vcli:`); `POST /admin/customers/:key/contact {source, text, stage?, next?}` on any card (a lost contact
+  goes back to 2); `PATCH /admin/customers/l:<id>/lead`; `POST /admin/customers/l:<id>/stage {stage, reason?, text?}`.
+  «Έγινε πελάτης»: `POST /admin/couples` and `POST /admin/venues` take `fromLead` (409 `lead_gone`); after the create,
+  `adoptLead` merges the acts into the customer's `act:` row, sets `fromLead {source, at}` (the card's «Πώς μας
+  βρήκε»), copies the next step if the customer has none, turns the lead's `moves` into `{kind:"stage"}` acts (shown as
+  `stage` on the timeline, not deletable), and erases the lead. A new contact on any card stamps `contactAt`, which
+  `custRow` folds into «Τελευταία κίνηση» (his own «Τηλεφώνησα» lines still do not move it). The lead's notes go across through
+  the prefilled form's notes field. Venues now keep `afm` (shown and matched only; the free-year fence is still the
+  signup's `afm:` row). A couple's or venue's phone stays in the notes, where `phonesOf` finds it. Memory: 2 years
+  after the latest of creation, moves and acts; the nightly pass erases, keeping no books. admin.html: `openNewLead`,
+  `leadFormHtml` / `wireLeadForm` (chips; stage default follows «Τηλέφωνο»), `knownHtml`, `leadAction`, `REPLIES`
+  (five texts; `REPLY_PAY` holds the IBAN/IRIS gaps), `showReply`. The replies are copied, or opened in his mail
+  app (`mailto:`), which writes «✉ Email» to the timeline — nothing is mailed by the server, unlike the plan's
+  "send by mail from the card". Part B (the site's contact form, the automatic reply, spam limits, decision 6's
+  line) is the next session.
 
 ## 8. Phase status
 
@@ -333,7 +354,7 @@ options (HANDOFF §8.6).
 | 1 «Πελάτες» sheet | live 2026-10-18 (`33a84df`, tag `deploy-2026-10-18-2`); Greek approved by Andreas; his own look on his phone still to come |
 | 2 Customer card + memory | live 2026-10-18 (`aed530c`, tag `deploy-2026-10-18-3`); Greek approved by Andreas; his own look on his phone still to come |
 | 3 The venue's own sheet | live 2026-10-21 (`1bcc6ae`, `cf5788d`; deployed as `23e0ad0`, tag `deploy-2026-10-21-3`) after Andreas read the Greek |
-| 4 Contacts | — |
+| 4 Contacts | part A (admin: «+ Νέα επαφή», «Γνωστός πελάτης», «Έγινε πελάτης», «Δεν προχώρησε», replies) built 2026-10-21, not deployed — waits on Andreas reading the Greek; part B (the site's form) next |
 | 5 Payments | — |
 | 6 «Σήμερα» | — |
 | 7 Online payment | not scheduled |
