@@ -2,9 +2,9 @@
 
 Updated: 2026-10-21
 
-**Status:** Live runs `1560286` (deployed 2026-10-21, tag `deploy-2026-10-21-5`), healthy. Operations phases 1–3
-are live; terms, privacy, the home page and the venue console now name the γιορτή wherever they list kinds, after
-Andreas read the Greek.
+**Status:** Live runs `45071e7` (deployed 2026-10-21, tag `deploy-2026-10-21-6`), healthy. Operations phases 1–3
+are live; terms, privacy, the home page, the venue console and the βάπτιση guide now name the γιορτή wherever they
+list kinds, after Andreas read the Greek.
 
 ## In progress / unfinished
 
@@ -17,11 +17,7 @@ Andreas read the Greek.
 1. **Operations phase 4: every contact lands in your sheet** (`OPERATIONS-PLAN.md` §4). Phases 5–6 follow; phase 7
    (online payment) waits on the company, accountant and lawyer. The page's remaining English sections move to
    Greek as each is touched.
-2. **Small: the βάπτιση guide still says the venue's subscription covers «τους γάμους και τις βαπτίσεις το ίδιο»**,
-   three times (`plano-trapezion-vaptisis.html` ~42 in the FAQ data, ~256, ~409). True but leaves out the γιορτή;
-   same per-sentence fix, and the two-kind check in `tools/test-api.mjs` can take the page into its list. The γιορτή
-   guide's «Οργανώνετε γάμο ή βάπτιση;» (~398) is fine: it points to the other two kinds.
-3. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today (checked
+2. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today (checked
    2026-10-18): every plan on the server comes from a purchase, a venue licence or free year, or a paying couple.
 
 ## Waiting on Andreas
@@ -60,6 +56,12 @@ Andreas read the Greek.
 
 ## History
 
+- 2026-10-21 — the βάπτιση guide names the γιορτή, deployed (`45071e7`, tag `deploy-2026-10-21-6`) after Andreas read
+  the Greek: its three «η συνδρομή … καλύπτει τους γάμους και τις βαπτίσεις το ίδιο» (FAQ data, FAQ, top note) now say
+  «καλύπτει εξίσου γάμους, βαπτίσεις και γιορτές», as in the console. The two-kind check reads this page too; the
+  γιορτή guide stays out, because its «Οργανώνετε γάμο ή βάπτιση;» rightly points to the other two kinds. 1137 checks,
+  healthy after 3 s, pre-deploy backup `takeaseat-20261021-183415.db.gz.age`; on the live page both visible lines show,
+  the FAQ data parses, no console errors; /, venue and the γιορτή guide still 200 with no two-kind list.
 - 2026-10-21 — index.html and venue.html name the γιορτή, deployed (`1560286`, tag `deploy-2026-10-21-5`) after
   Andreas read the Greek. About twenty two-kind lists, not the eight first counted: on the home page the link-preview
   title and text, the search-engine data (description, audience, both priced offers), the venue section («νέος
