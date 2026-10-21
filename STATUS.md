@@ -2,8 +2,8 @@
 
 Updated: 2026-10-21
 
-**Status:** Live runs `23e0ad0` (deployed 2026-10-21, tag `deploy-2026-10-21-3`), healthy. Operations phases 1–3
-are live; phase 3 (the venue's own sheet and event card) went out today after Andreas read the Greek.
+**Status:** Live runs `ce16a3e` (deployed 2026-10-21, tag `deploy-2026-10-21-4`), healthy. Operations phases 1–3
+are live; terms.html and privacy.html now name the γιορτή in §0 and everywhere else, after Andreas read the Greek.
 
 ## In progress / unfinished
 
@@ -13,13 +13,15 @@ are live; phase 3 (the venue's own sheet and event card) went out today after An
 
 ## Next
 
-1. **terms.html and privacy.html §0 still define «εκδήλωση» as only «γάμος ή βάπτιση»** (both languages; found by
-   the smoke test after the phase 3 deploy). The γιορτή has been live since 2026-10-17, and dpa.html already names
-   it. privacy.html's children paragraph (English line ~322, and its Greek twin) says «wedding or baptism» too.
-   *Done when:* both pages name the γιορτή and who «the couple» means there, Andreas has read the Greek, and it is deployed.
-2. **Operations phase 4: every contact lands in your sheet** (`OPERATIONS-PLAN.md` §4). Phases 5–6 follow; phase 7
+1. **Operations phase 4: every contact lands in your sheet** (`OPERATIONS-PLAN.md` §4). Phases 5–6 follow; phase 7
    (online payment) waits on the company, accountant and lawyer. The page's remaining English sections move to
    Greek as each is touched.
+2. **venue.html and index.html still list only γάμους και βαπτίσεις in eight strings customers read** (found by the
+   smoke test after the terms/privacy deploy). venue.html: the intro (~458), the free-year notes (~375, ~583) and
+   «Η συνδρομή σας καλύπτει γάμους και βαπτίσεις το ίδιο» (~976). index.html: the subscription and 25 € offers in the
+   search-engine data (~31, ~36), «καλύπτει γάμους και βαπτίσεις χωρίς διάκριση» (~418) and «μία εκδήλωση — γάμο ή
+   βάπτιση» (~456). Same fix as terms.html, written per sentence. *Done when:* both pages name the γιορτή wherever they
+   list kinds, Andreas has read the Greek, and it is deployed.
 3. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today (checked
    2026-10-18): every plan on the server comes from a purchase, a venue licence or free year, or a paying couple.
 
@@ -46,7 +48,9 @@ are live; phase 3 (the venue's own sheet and event card) went out today after An
 - **Lawyer review** of terms — later. Add to the list: the customer-memory periods (5 years after the last
   contact for buyers, 2 for non-buyers, venues' client cards 1–5 years, default 5) and the «say no to related
   mails» line under ν. 3471/2006 άρθρο 11 §3 (`OPERATIONS-PLAN.md` §2.5 and §6). Both are built before the review;
-  the review may change the numbers.
+  the review may change the numbers. Also: the terms' opening calls direct buyers «ιδιώτες», but a company that
+  buys a γιορτή for its own company dinner is a business, and §8 gives every direct buyer the consumer-law 14-day
+  withdrawal (ν. 2251/1994), with the planner opening only after it, a business included.
 
 ## Known problems
 
@@ -57,6 +61,14 @@ are live; phase 3 (the venue's own sheet and event card) went out today after An
 
 ## History
 
+- 2026-10-21 — terms.html and privacy.html name the γιορτή, deployed (`ce16a3e`, tag `deploy-2026-10-21-4`) after
+  Andreas read the Greek. Both §0s define «γιορτή» (γενέθλια, ονομαστική εορτή, επέτειος, εταιρικό δείπνο) and say
+  «το ζευγάρι» there is whoever organises it; privacy §12 names it and a child's birthday; seven two-kind lists in
+  terms.html (opening, §1, §4, §7 ×3 incl. the free year, the 25 € price in §8) name all three kinds. terms.html
+  version 18 → 21 October 2026 (privacy was already 21). Two new checks: both §0s name it in both languages, and no
+  two-kind list is left on either page (it finds 15 on the old pages). 1135 checks on the box, healthy after 3 s,
+  pre-deploy backup `takeaseat-20261021-173926.db.gz.age`; live pages carry the new date and wording. Verifier smoke
+  test of seven live pages (/, terms, privacy, dpa, venue, lab?ev=party, the γιορτή guide) passed, no console errors.
 - 2026-10-21 — Operations phase 3 deployed (`23e0ad0`, tag `deploy-2026-10-21-3`) after Andreas read the Greek:
   1133 checks on the box, healthy after 3 s, pre-deploy backup `takeaseat-20261021-171711.db.gz.age`; live
   dpa/privacy show version 21 October 2026 and the new lines; verifier smoke test of seven live pages passed,
