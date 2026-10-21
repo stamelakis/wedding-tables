@@ -223,10 +223,19 @@ function plannerUrl(lang){ return new URL(PLANNER_FILE[lang]||PLANNER_FILE.el, l
 // Keys and tokens only ever go in the fragment (never the query string), so they stay out of server logs.
 function claimLink(token, lang){ return plannerUrl(lang)+"#claim="+encodeURIComponent(token); }
 function supportLink(planId, key){ const u=new URL(PLANNER_FILE.el, location.href); u.search="?plan="+encodeURIComponent(planId); return u.href+"#support="+encodeURIComponent(key); }
-function claimMessage(link, ev){
-  return "Γεια σας! Ο σύνδεσμος για το τραπεζολόγιό σας: "+link+"\n"
-    +"Ανοίξτε τον στο Chrome ή στο Safari (όχι μέσα από Viber/Messenger/Instagram) και πατήστε «Άνοιγμα του σχεδίου μου». "
-    +"Ο σύνδεσμος ανοίγει μία φορά· μετά θα δείτε τον προσωπικό σας σύνδεσμο — κρατήστε τον και "+EV({ kind:ev }).share+".";
+// The message behind «Αντιγραφή μηνύματος». The customer reads it, so it speaks the link's language with the planner's
+// own words (its button, christening/Taufe, celebration/Feier), and `share` says who else gets the personal link:
+// only a wedding has a partner.
+const CLAIM_MSG={
+  el:{ text:"Γεια σας! Ο σύνδεσμος για το τραπεζολόγιό σας: {link}\nΑνοίξτε τον στο Chrome ή στο Safari (όχι μέσα από Viber/Messenger/Instagram) και πατήστε «Άνοιγμα του σχεδίου μου». Ο σύνδεσμος ανοίγει μία φορά· μετά θα δείτε τον προσωπικό σας σύνδεσμο — κρατήστε τον και {share}.",
+       share:{ wedding:"στείλτε τον στον/στη σύντροφό σας", baptism:"στείλτε τον σε όποιον ετοιμάζει μαζί σας τη βάπτιση", party:"στείλτε τον σε όποιον ετοιμάζει μαζί σας τη γιορτή" } },
+  en:{ text:"Hello! Here is the link to your seating plan: {link}\nOpen it in Chrome or Safari (not inside Viber/Messenger/Instagram) and press “Open my plan”. The link opens once; after that you will see your personal link — keep it and {share}.",
+       share:{ wedding:"send it to your partner", baptism:"send it to whoever is planning the christening with you", party:"send it to whoever is planning the celebration with you" } },
+  de:{ text:"Hallo! Hier ist der Link zu Ihrem Sitzplan: {link}\nÖffnen Sie ihn in Chrome oder Safari (nicht in Viber/Messenger/Instagram) und tippen Sie auf „Meinen Plan öffnen“. Der Link öffnet einmal; danach sehen Sie Ihren persönlichen Link — bewahren Sie ihn auf und {share}.",
+       share:{ wedding:"schicken Sie ihn Ihrem Partner oder Ihrer Partnerin", baptism:"schicken Sie ihn an alle, die die Taufe mit Ihnen vorbereiten", party:"schicken Sie ihn an alle, die die Feier mit Ihnen vorbereiten" } } };
+function claimMessage(link, lang, ev){
+  const M=CLAIM_MSG[lang]||CLAIM_MSG.el;
+  return M.text.replace("{link}", ()=>link).replace("{share}", ()=>M.share[evKind({ kind:ev })]);
 }
 function langMap(){ try{ const m=JSON.parse(localStorage.getItem(LANG_STORE)||"{}"); return m&&typeof m==="object"?m:{}; }catch(e){ return {}; } }
 function coupleLang(cid){ const l=langMap()[cid]; if(PLANNER_FILE[l]) return l;
@@ -293,13 +302,9 @@ const todayYmd=()=>{ try{ const s=new Intl.DateTimeFormat("en-CA",{ timeZone:"Eu
 const MAX_KEEP_DAYS=3650;   // the server's limit for "delete N days after the event"
 // ---- what a customer bought for: a wedding, a baptism or a γιορτή. One field (`kind`) on the plan; everything else
 // about the sale — the price, the 14-day wait, the phases, the retention — is identical, so only labels read it.
-// `share` ends the copied link message, which the customer reads: only a wedding has a «σύντροφο» to send the link to.
-const EVW={ wedding:{ date:"Ημερομηνία γάμου",    name:"Όνομα ζευγαριού",   ph:"π.χ. Μαρία & Νίκος",     askName:"Γράψε το όνομα του ζευγαριού",
-                      share:"στείλτε τον στον/στη σύντροφό σας" },
-            baptism:{ date:"Ημερομηνία βάπτισης", name:"Όνομα παιδιού",     ph:"π.χ. Ελένη",             askName:"Γράψε το όνομα του παιδιού",
-                      share:"στείλτε τον σε όποιον ετοιμάζει μαζί σας τη βάπτιση" },
-            party:{   date:"Ημερομηνία γιορτής",  name:"Όνομα της γιορτής", ph:"π.χ. 40ά γενέθλια Κώστα", askName:"Γράψε το όνομα της γιορτής",
-                      share:"στείλτε τον σε όποιον ετοιμάζει μαζί σας τη γιορτή" } };
+const EVW={ wedding:{ date:"Ημερομηνία γάμου",    name:"Όνομα ζευγαριού",   ph:"π.χ. Μαρία & Νίκος",     askName:"Γράψε το όνομα του ζευγαριού" },
+            baptism:{ date:"Ημερομηνία βάπτισης", name:"Όνομα παιδιού",     ph:"π.χ. Ελένη",             askName:"Γράψε το όνομα του παιδιού" },
+            party:{   date:"Ημερομηνία γιορτής",  name:"Όνομα της γιορτής", ph:"π.χ. 40ά γενέθλια Κώστα", askName:"Γράψε το όνομα της γιορτής" } };
 const kindOptions=sel=>[["wedding","Γάμος"],["baptism","Βάπτιση"],["party","Γιορτή"]]
   .map(([k,l])=>`<option value="${k}"${k===sel?" selected":""}>${l}</option>`).join("");
 const evKind=x=>(x && EVW[x.kind]) ? x.kind : "wedding";   // anything we do not know is a wedding
@@ -875,7 +880,7 @@ async function refreshCouples(){
   if(res.ok && res.d) couplesCache=(res.d.couples||[]).slice().sort(byNewest);
 }
 // The claim-link box (after creating a couple, after a reset, or «Copy link» on a waiting couple). `kind` is why the box
-// opened; `ev` is what the customer bought for (wedding, baptism, party), which words the copied message.
+// opened; `ev` is what the customer bought for (wedding, baptism, party), which words the copied message with the language.
 function showClaimPanel(cid, name, token, kind, ev){
   const box=panelTarget||document.getElementById("cpanel"); if(!box || !token) return;
   let lang=coupleLang(cid);
@@ -899,7 +904,7 @@ function showClaimPanel(cid, name, token, kind, ev){
   upd();
   sel.onchange=()=>{ lang=PLANNER_FILE[sel.value]?sel.value:"el"; rememberLang(cid, lang); upd(); saveCoupleLang(cid, lang); };
   box.querySelector('[data-c="link"]').onclick=()=>copy(claimLink(token, lang));
-  box.querySelector('[data-c="msg"]').onclick=()=>copy(claimMessage(claimLink(token, lang), ev));
+  box.querySelector('[data-c="msg"]').onclick=()=>copy(claimMessage(claimLink(token, lang), lang, ev));
   box.querySelector("[data-close]").onclick=()=>{ box.innerHTML=""; delete box.dataset.cid; };   // clears THIS box, wherever it hangs
   box.scrollIntoView({ behavior:"smooth", block:"nearest" });
 }

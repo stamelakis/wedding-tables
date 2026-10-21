@@ -2707,14 +2707,23 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
   {
     const fs = await import('node:fs');
     const asrc = fs.readFileSync(path.join(root, 'admin.html'), 'utf8');
-    let EVW = null;
-    try { EVW = new Function(asrc.slice(asrc.indexOf('const EVW={'), asrc.indexOf('const kindOptions=')) + '; return EVW;')(); } catch (e) {}
-    ok(EVW && ['wedding', 'baptism', 'party'].every(k => EVW[k] && typeof EVW[k].share === 'string' && EVW[k].share.length > 10),
-      'admin: every kind words the end of the copied link message (EVW.share)');
-    ok(EVW && !/σύντροφ/.test(EVW.baptism.share + EVW.party.share),
-      'admin: a baptism or a γιορτή is never told to send its link to a «σύντροφο»');
-    const cm = asrc.slice(asrc.indexOf('function claimMessage('), asrc.indexOf('function langMap('));
-    ok(/\.share\b/.test(cm) && !/σύντροφ/.test(cm), 'admin: claimMessage takes its last words from the kind, never a literal «σύντροφο»', cm);
+    // the real claimMessage, run: its dictionary, plus EVW/evKind for the kind
+    let CM = null;
+    try { CM = new Function(asrc.slice(asrc.indexOf('const CLAIM_MSG='), asrc.indexOf('function langMap('))
+      + asrc.slice(asrc.indexOf('const EVW={'), asrc.indexOf('const EV=')) + '; return { CLAIM_MSG, claimMessage };')(); } catch (e) {}
+    const LANGS = ['el', 'en', 'de'], KINDS = ['wedding', 'baptism', 'party'];
+    ok(CM && LANGS.every(l => KINDS.every(k => { const m = CM.claimMessage('https://x/#claim=T', l, k);
+        return m.includes('https://x/#claim=T') && !m.includes('{') && m.endsWith(CM.CLAIM_MSG[l].share[k] + '.'); })),
+      'admin: the copied link message exists in every link language and for every kind, link and ending filled in');
+    ok(CM && LANGS.every(l => !/σύντροφ|partner/i.test(CM.CLAIM_MSG[l].share.baptism + CM.CLAIM_MSG[l].share.party)),
+      'admin: a baptism or a γιορτή is never told to send its link to a partner, in any language');
+    ok(CM && CM.claimMessage('L', 'xx', 'nope') === CM.claimMessage('L', 'el', 'wedding'),
+      'admin: an unknown language or kind falls back to the Greek wedding message');
+    // the message names the planner's own button, in the planner's own words (claimGo: el, en, de in file order)
+    const gos = [...fs.readFileSync(path.join(root, 'planner.src.html'), 'utf8').matchAll(/claimGo:"([^"]+)"/g)].map(m => m[1]);
+    ok(CM && gos.length === 3 && LANGS.every((l, i) => CM.CLAIM_MSG[l].text.includes(gos[i])),
+      "admin: the copied link message names the planner's claim button as the planner writes it", gos.join(' | '));
+    ok(/copy\(claimMessage\(claimLink\(token, lang\), lang, ev\)\)/.test(asrc), 'admin: the copied message follows the language picked in the box');
     const calls = asrc.match(/showClaimPanel\(c\.id[^)]*\)/g) || [];
     ok(calls.length >= 4 && calls.every(s => /kind\)$/.test(s)), "admin: every claim-link box is given the customer's kind", calls.join(' | '));
     const vsrc = fs.readFileSync(path.join(root, 'venue.html'), 'utf8');
