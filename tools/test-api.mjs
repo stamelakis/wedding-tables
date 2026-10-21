@@ -3506,6 +3506,18 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
       'pages: terms and privacy §0 name the γιορτή, and who «the couple» is at one, in Greek and English', sec0s.map(s => ({ f: s.f, el: s.el.slice(0, 80), en: s.en.slice(0, 80) })));
     ok(sec0s.every(s => !/γάμ(ο|ος) ή βάπτιση|γάμους και βαπτίσεις|wedding or (a )?baptism|weddings and baptisms|wedding and baptism/.test(s.t)),
       'pages: no two-kind list (γάμος ή βάπτιση, weddings and baptisms) is left on terms or privacy');
+    // the home page and the venue console said «γάμους και βαπτίσεις» in some twenty places for days after the γιορτή went live,
+    // in tags (Γάμοι <i>και</i> βαπτίσεις), in the mailto bodies (percent-encoded) and in the search-engine data
+    // read twice: as it stands (meta content and hrefs are attributes) and with the tags taken out (a list split by <i> or <b>)
+    const visible = t => { t = t.replace(/<!--[\s\S]*?-->/g, '').replace(/(^|\s)\/\/\s.*$/gm, '')
+      .replace(/(%[0-9A-F]{2})+/gi, s => { try { return decodeURIComponent(s); } catch { return s; } }).replace(/&amp;/g, '&');
+      return t + '\n' + t.replace(/<[^>]+>/g, ''); };
+    const TWO_KINDS = /γάμ(ος|ο|ου) (ή|&) βάπτισ|γάμ(οι|ους) και (για |οι |τις )?βαπτίσ|γάμος» ή «νέα βάπτισ|wedding or (a )?baptism|weddings and baptisms|wedding and baptism/i;
+    const homeVenue = ['index.html', 'venue.html'].map(f => ({ f, hit: (visible(page(f)).match(TWO_KINDS) || [])[0] }));
+    ok(homeVenue.every(p => !p.hit), 'pages: no two-kind list is left on the home page or the venue console, comments aside', homeVenue);
+    const ld = JSON.parse(page('index.html').split('<script type="application/ld+json">')[1].split('</script>')[0]);
+    ok(/γιορτ/.test(ld.description) && /γιορτ/.test(ld.audience.audienceType) && ld.offers.filter(o => o.price !== '0').every(o => /γιορτ/.test(o.name + o.description)),
+      'pages: the home page\'s search-engine data still parses, and it and both priced offers name the γιορτή');
 
     // -- two first saves at once make one card, not two --
     const WT = (await call('POST', '/venues/' + V.id + '/weddings', { label: 'Φ3 δύο αποθηκεύσεις', date: athensDay(40) }, HV)).d;
