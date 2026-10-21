@@ -9,7 +9,7 @@ decisions a future session might undo by mistake. `STATUS.md` says where we are.
 ```bash
 node tools/build-planner.mjs            # regenerate the planner outputs
 node tools/build-planner.mjs --check    # must print "all planner outputs up to date"
-node tools/test-api.mjs                 # the whole suite (1057 checks today)
+node tools/test-api.mjs                 # the whole suite (1133 checks today)
 node tools/dev.mjs                      # local stack on :8080 — never `node server/server.mjs`
 node tools/dev-customers.mjs            # the same, seeded with one customer per «Θέλουν εμένα» flag and stage
 ```
@@ -132,6 +132,10 @@ build runs the full suite), restarts and health-checks; on failure it rolls back
 - **Text Andreas copies to a customer speaks the customer's words, not admin.html's** (2026-10-21). The copied
   link message follows the link's language and the kind (`CLAIM_MSG`); the venue's copied key says «Κωδικός
   κτήματος», venue.html's own field, though the admin box calls it «Κλειδί κονσόλας». Rejected: copying the box's word.
+- **A venue's client card lives in its own `vcli:` row, never in the plan** (phase 3, 2026-10-21): the client opens the plan
+  and must never read the venue's notes, and the card must outlive the plan (1–5 years, the venue's choice in `dpa.html` §4).
+  A link counts as sent at the venue's first copy (the console cannot see Viber or mail), and events made before
+  `meta:clienttrack` never claim «δεν στάλθηκε» / «δεν έχει ανοίξει». Rejected: client fields on the plan or the wedding row.
 - **Greek is reviewed by Andreas himself.** Strings a customer reads are written per language and
   cross-checked, never find-replaced: 36 `p_*` strings contain «γιορτ» and name the *event*, while
   only five name the *table*.

@@ -306,6 +306,25 @@ options (HANDOFF §8.6).
   signup prune and «Για τα λογιστικά» are in Εργαλεία, and every action runs from the card (`cardAction` reuses
   `coupleAction` / `venueAction` on the `couplesCache` / `venuesCache` row; answers land in a holder kept across
   redraws). Still English: the create, edit and trash dialogs and the key/link boxes.
+- **Phase 3 as built.** A venue client card is `vcli:<venueId>:<clientId>` `{id, venueId, name, phone, email, notes,
+  next {text,due,at}, past [{kind,date,label,createdAt,goneAt,deleted?}], createdAt, updatedAt}`; the venue's wedding
+  row carries `clientId` and `linkAt` (first copy of the client's link), the plan `seenAt` (the client's first open)
+  and `clientSavedAt` (the client's last save) — couple role on a venue plan only. A new client link clears `linkAt`
+  and `seenAt`. `meta:clienttrack {since}`: events made before it never show «δεν στάλθηκε» / «δεν έχει ανοίξει»
+  (we cannot know). The venue's `clientYears` (1–5, default 5). Routes (venue key only): `GET /venues/:id` rows add
+  `client`, `linkAt`, `seenAt`, `savedAt`, and the answer adds `clients` (cards whose events are all gone, with
+  `last` — a real event first, a deleted one only when that is all), `clientYears`, `trackSince`;
+  `POST …/weddings/:pid/sent`; `GET …/weddings/:pid/card` → `{client, timeline}` (codes `created`, `sent`, `seen`,
+  `saved`, `notes_gone`, `audit` + `what`; worded in venue.html `tlWords`); `PUT …/weddings/:pid/client` (makes the
+  card on the first write; two first writes at once end on one card); `GET|PUT|PATCH|DELETE /venues/:id/clients/:cid`;
+  `POST …/clients/:cid/join {from}`; `PUT /venues/:id/memory {years}`. Memory: `lastTouch` = the latest of the
+  card's creation and its events' dates (a future date counts as today); held while an event exists, the trash
+  included; the nightly pass erases. Whenever an event's plan goes (a year after, the trash emptied by the sweep or
+  by the admin's «erase now»), `clientEventGone` writes it into `past`. venue.html: the sheet (`stageOf`, `flagsOf`,
+  `sheetItems`, `FILTERS`, `sheetVisible`, `exportSheetCsv`) and the card (`eventCard` / `clientCard` → `drawCard`;
+  `redrawCard` never redraws the notes; writes go one at a time through `cardWrite`; notes flush on any dialog
+  change). Test data: `node tools/dev-customers.mjs` also seeds «Κτήμα Ροδακινιά» and prints its console key
+  (`<id>.dev-venue-key`).
 
 ## 8. Phase status
 
@@ -313,7 +332,7 @@ options (HANDOFF §8.6).
 |---|---|
 | 1 «Πελάτες» sheet | live 2026-10-18 (`33a84df`, tag `deploy-2026-10-18-2`); Greek approved by Andreas; his own look on his phone still to come |
 | 2 Customer card + memory | live 2026-10-18 (`aed530c`, tag `deploy-2026-10-18-3`); Greek approved by Andreas; his own look on his phone still to come |
-| 3 The venue's own sheet | — |
+| 3 The venue's own sheet | built 2026-10-21 (`1bcc6ae`, `cf5788d`), not deployed; waiting on Andreas: the Greek of venue.html, dpa.html and privacy.html, and the deploy OK |
 | 4 Contacts | — |
 | 5 Payments | — |
 | 6 «Σήμερα» | — |
