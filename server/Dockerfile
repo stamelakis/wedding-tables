@@ -47,7 +47,7 @@ COPY server/rate.mjs ./server/
 COPY server/pdf.mjs ./server/
 COPY tools/test-api.mjs ./tools/
 # the tests also read files of the product itself and assert on what is in them (the retention promises among them)
-COPY planner.src.html venue.html sitemap.xml index.html privacy.html terms.html dpa.html plano-trapezion-gamou.html plano-trapezion-vaptisis.html plano-trapezion-giortis.html ./
+COPY planner.src.html venue.html admin.html sitemap.xml index.html privacy.html terms.html dpa.html plano-trapezion-gamou.html plano-trapezion-vaptisis.html plano-trapezion-giortis.html ./
 COPY tools/build-planner.mjs ./tools/
 RUN ln -s /app/node_modules /t/node_modules \
     && { node tools/test-api.mjs > /t/test.log 2>&1 || { cat /t/test.log; echo "API TESTS FAILED — image not built"; exit 1; }; } \

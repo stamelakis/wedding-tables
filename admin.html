@@ -223,10 +223,10 @@ function plannerUrl(lang){ return new URL(PLANNER_FILE[lang]||PLANNER_FILE.el, l
 // Keys and tokens only ever go in the fragment (never the query string), so they stay out of server logs.
 function claimLink(token, lang){ return plannerUrl(lang)+"#claim="+encodeURIComponent(token); }
 function supportLink(planId, key){ const u=new URL(PLANNER_FILE.el, location.href); u.search="?plan="+encodeURIComponent(planId); return u.href+"#support="+encodeURIComponent(key); }
-function claimMessage(link){
+function claimMessage(link, ev){
   return "Γεια σας! Ο σύνδεσμος για το τραπεζολόγιό σας: "+link+"\n"
     +"Ανοίξτε τον στο Chrome ή στο Safari (όχι μέσα από Viber/Messenger/Instagram) και πατήστε «Άνοιγμα του σχεδίου μου». "
-    +"Ο σύνδεσμος ανοίγει μία φορά· μετά θα δείτε τον προσωπικό σας σύνδεσμο — κρατήστε τον και στείλτε τον στον/στη σύντροφό σας.";
+    +"Ο σύνδεσμος ανοίγει μία φορά· μετά θα δείτε τον προσωπικό σας σύνδεσμο — κρατήστε τον και "+EV({ kind:ev }).share+".";
 }
 function langMap(){ try{ const m=JSON.parse(localStorage.getItem(LANG_STORE)||"{}"); return m&&typeof m==="object"?m:{}; }catch(e){ return {}; } }
 function coupleLang(cid){ const l=langMap()[cid]; if(PLANNER_FILE[l]) return l;
@@ -293,9 +293,13 @@ const todayYmd=()=>{ try{ const s=new Intl.DateTimeFormat("en-CA",{ timeZone:"Eu
 const MAX_KEEP_DAYS=3650;   // the server's limit for "delete N days after the event"
 // ---- what a customer bought for: a wedding, a baptism or a γιορτή. One field (`kind`) on the plan; everything else
 // about the sale — the price, the 14-day wait, the phases, the retention — is identical, so only labels read it.
-const EVW={ wedding:{ date:"Ημερομηνία γάμου",    name:"Όνομα ζευγαριού",   ph:"π.χ. Μαρία & Νίκος",     askName:"Γράψε το όνομα του ζευγαριού" },
-            baptism:{ date:"Ημερομηνία βάπτισης", name:"Όνομα παιδιού",     ph:"π.χ. Ελένη",             askName:"Γράψε το όνομα του παιδιού" },
-            party:{   date:"Ημερομηνία γιορτής",  name:"Όνομα της γιορτής", ph:"π.χ. 40ά γενέθλια Κώστα", askName:"Γράψε το όνομα της γιορτής" } };
+// `share` ends the copied link message, which the customer reads: only a wedding has a «σύντροφο» to send the link to.
+const EVW={ wedding:{ date:"Ημερομηνία γάμου",    name:"Όνομα ζευγαριού",   ph:"π.χ. Μαρία & Νίκος",     askName:"Γράψε το όνομα του ζευγαριού",
+                      share:"στείλτε τον στον/στη σύντροφό σας" },
+            baptism:{ date:"Ημερομηνία βάπτισης", name:"Όνομα παιδιού",     ph:"π.χ. Ελένη",             askName:"Γράψε το όνομα του παιδιού",
+                      share:"στείλτε τον σε όποιον ετοιμάζει μαζί σας τη βάπτιση" },
+            party:{   date:"Ημερομηνία γιορτής",  name:"Όνομα της γιορτής", ph:"π.χ. 40ά γενέθλια Κώστα", askName:"Γράψε το όνομα της γιορτής",
+                      share:"στείλτε τον σε όποιον ετοιμάζει μαζί σας τη γιορτή" } };
 const kindOptions=sel=>[["wedding","Γάμος"],["baptism","Βάπτιση"],["party","Γιορτή"]]
   .map(([k,l])=>`<option value="${k}"${k===sel?" selected":""}>${l}</option>`).join("");
 const evKind=x=>(x && EVW[x.kind]) ? x.kind : "wedding";   // anything we do not know is a wedding
@@ -870,8 +874,9 @@ async function refreshCouples(){
   const res=await req("/admin/couples");
   if(res.ok && res.d) couplesCache=(res.d.couples||[]).slice().sort(byNewest);
 }
-// The claim-link box (after creating a couple, after a reset, or «Copy link» on a waiting couple).
-function showClaimPanel(cid, name, token, kind){
+// The claim-link box (after creating a couple, after a reset, or «Copy link» on a waiting couple). `kind` is why the box
+// opened; `ev` is what the customer bought for (wedding, baptism, party), which words the copied message.
+function showClaimPanel(cid, name, token, kind, ev){
   const box=panelTarget||document.getElementById("cpanel"); if(!box || !token) return;
   let lang=coupleLang(cid);
   const title = kind==="new" ? "✅ Ο πελάτης δημιουργήθηκε — ο σύνδεσμος, για να του τον στείλεις:"
@@ -894,7 +899,7 @@ function showClaimPanel(cid, name, token, kind){
   upd();
   sel.onchange=()=>{ lang=PLANNER_FILE[sel.value]?sel.value:"el"; rememberLang(cid, lang); upd(); saveCoupleLang(cid, lang); };
   box.querySelector('[data-c="link"]').onclick=()=>copy(claimLink(token, lang));
-  box.querySelector('[data-c="msg"]').onclick=()=>copy(claimMessage(claimLink(token, lang)));
+  box.querySelector('[data-c="msg"]').onclick=()=>copy(claimMessage(claimLink(token, lang), ev));
   box.querySelector("[data-close]").onclick=()=>{ box.innerHTML=""; delete box.dataset.cid; };   // clears THIS box, wherever it hangs
   box.scrollIntoView({ behavior:"smooth", block:"nearest" });
 }
@@ -986,7 +991,7 @@ async function createCouple(){
     failToast(res, badEmail(res)?BAD_EMAIL:err==="bad_date"?"Η ημερομηνία δεν είναι έγκυρη":"Δεν δημιουργήθηκε"); return; }
   rememberLang(c.id, lang);
   if(res.d.mailed) showCoupleSent(c.id, `✅ Ο πελάτης δημιουργήθηκε — ο σύνδεσμος στάλθηκε στο ${esc(c.email||email)}`, CLAIM_NOTE);
-  else showClaimPanel(c.id, c.name, res.d.claimToken, "new");
+  else showClaimPanel(c.id, c.name, res.d.claimToken, "new", c.kind||kind);
   nameEl.value=""; document.getElementById("ccontact").value=""; document.getElementById("cemail").value=""; dateEl.value=""; startEl.checked=false; syncStartNow();
   toast(res.d.mailed?"Ο σύνδεσμος στάλθηκε στο "+(c.email||email):"Ο πελάτης δημιουργήθηκε"); refreshCouples(); refreshCustomers();
 }
@@ -996,7 +1001,7 @@ async function coupleAction(c, a, btn){
   const path="/admin/couples/"+encodeURIComponent(c.id);
   if(a==="copy"){
     if(!c.claimToken) return;
-    showClaimPanel(c.id, c.name, c.claimToken, "link");
+    showClaimPanel(c.id, c.name, c.claimToken, "link", c.kind);
     copy(claimLink(c.claimToken, coupleLang(c.id)));
   } else if(a==="edit"){
     openCoupleEdit(c);
@@ -1036,7 +1041,7 @@ async function coupleAction(c, a, btn){
       if(res.status!==403) refreshCouples();
       return; }
     if(res.d.mailed){ showCoupleSent(c.id, `✅ Ο νέος σύνδεσμος για «${esc(c.name)}» στάλθηκε στο ${esc(res.d.to)}`, CLAIM_NOTE+RESET_NOTE); toast("Ο νέος σύνδεσμος στάλθηκε στο "+res.d.to); }
-    else { showClaimPanel(c.id, c.name, res.d.claimToken, "reset"); toast("Ο νέος σύνδεσμος είναι έτοιμος"); }
+    else { showClaimPanel(c.id, c.name, res.d.claimToken, "reset", c.kind); toast("Ο νέος σύνδεσμος είναι έτοιμος"); }
     refreshCouples(); refreshSupport();
   } else if(a==="email"){
     const next=prompt(`Email του «${c.name}» — εκεί πηγαίνουν οι σύνδεσμοί του και η ανάκτηση (άφησέ το κενό για να αφαιρεθεί):`, c.email||"");
@@ -1053,7 +1058,7 @@ async function coupleAction(c, a, btn){
     btn.disabled=false;
     if(!res.ok){ failToast(res, badEmail(res)?BAD_EMAIL:res.status===404?"Αυτός ο πελάτης δεν υπάρχει πια — ανανεώνω":"Δεν άλλαξε το email"); if(res.status===404) refreshCouples(); return; }
     if(res.d && res.d.mailed) toast("Το email αποθηκεύτηκε — ο νέος σύνδεσμος στάλθηκε στο "+email);
-    else if(res.d && res.d.couple && res.d.couple.claimToken && c.pendingClaim){ showClaimPanel(c.id, c.name, res.d.couple.claimToken, "link"); toast("Το email αποθηκεύτηκε — ο νέος σύνδεσμος είναι έτοιμος"); }
+    else if(res.d && res.d.couple && res.d.couple.claimToken && c.pendingClaim){ showClaimPanel(c.id, c.name, res.d.couple.claimToken, "link", c.kind); toast("Το email αποθηκεύτηκε — ο νέος σύνδεσμος είναι έτοιμος"); }
     else toast(email?"Το email αποθηκεύτηκε":"Το email αφαιρέθηκε");
     refreshCouples();
   }
@@ -1123,7 +1128,7 @@ function venueKeyBoxHtml(title, key, note, withReset){
     <div class="row between" style="align-items:flex-start"><div style="font-weight:700;margin-bottom:6px">${title}</div>
       <button class="btn sm ghost" data-close title="Κλείσιμο">✕</button></div>
     <div class="muted">Σύνδεσμος κονσόλας</div><div class="k">${esc(link)}</div>
-    <div class="muted" style="margin-top:8px">Κλειδί κονσόλας</div><div class="k">${esc(key)}</div>
+    <div class="muted" style="margin-top:8px">Κλειδί κονσόλας · στη σελίδα του κτήματος λέγεται «Κωδικός κτήματος»</div><div class="k">${esc(key)}</div>
     <div class="row fw" style="margin-top:10px">
       <button class="btn sm" data-c="key">Αντιγραφή κλειδιού</button>
       <button class="btn sm" data-c="both">Αντιγραφή συνδέσμου + κλειδιού</button>
@@ -1136,7 +1141,7 @@ function wireKeyBox(box, key, v){
   const link=venueConsoleLink();
   const q=s=>box.querySelector(s);
   if(q('[data-c="key"]')) q('[data-c="key"]').onclick=()=>copy(key);
-  if(q('[data-c="both"]')) q('[data-c="both"]').onclick=()=>copy("Κονσόλα: "+link+"\nΚωδικός: "+key);
+  if(q('[data-c="both"]')) q('[data-c="both"]').onclick=()=>copy("Κονσόλα: "+link+"\nΚωδικός κτήματος: "+key);   // the venue's own word: venue.html's sign-in field
   if(q('[data-c="reset"]') && v) q('[data-c="reset"]').onclick=()=>resetVenueKey(v);
   if(q("[data-close]")) q("[data-close]").onclick=()=>{ box.innerHTML=""; delete box.dataset.vid; };
 }

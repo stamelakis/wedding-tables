@@ -2703,6 +2703,25 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
       "venue: venue-wide copy does not speak of «the couples'» links in a console that also holds baptisms");
   }
 
+  // ---- admin.html: the texts Andreas copies and pastes to a customer speak that customer's words ----
+  {
+    const fs = await import('node:fs');
+    const asrc = fs.readFileSync(path.join(root, 'admin.html'), 'utf8');
+    let EVW = null;
+    try { EVW = new Function(asrc.slice(asrc.indexOf('const EVW={'), asrc.indexOf('const kindOptions=')) + '; return EVW;')(); } catch (e) {}
+    ok(EVW && ['wedding', 'baptism', 'party'].every(k => EVW[k] && typeof EVW[k].share === 'string' && EVW[k].share.length > 10),
+      'admin: every kind words the end of the copied link message (EVW.share)');
+    ok(EVW && !/σύντροφ/.test(EVW.baptism.share + EVW.party.share),
+      'admin: a baptism or a γιορτή is never told to send its link to a «σύντροφο»');
+    const cm = asrc.slice(asrc.indexOf('function claimMessage('), asrc.indexOf('function langMap('));
+    ok(/\.share\b/.test(cm) && !/σύντροφ/.test(cm), 'admin: claimMessage takes its last words from the kind, never a literal «σύντροφο»', cm);
+    const calls = asrc.match(/showClaimPanel\(c\.id[^)]*\)/g) || [];
+    ok(calls.length >= 4 && calls.every(s => /kind\)$/.test(s)), "admin: every claim-link box is given the customer's kind", calls.join(' | '));
+    const vsrc = fs.readFileSync(path.join(root, 'venue.html'), 'utf8');
+    ok(/placeholder="Κωδικός κτήματος"/.test(vsrc) && asrc.includes('"\\nΚωδικός κτήματος: "'),
+      "admin: the venue's copied link + key says «Κωδικός κτήματος», the word on venue.html's sign-in field");
+  }
+
   env.MAIL = keepMail; env.PDF = keepPdf;
   if (!keepMail) delete env.MAIL;
   if (!keepPdf) delete env.PDF;
