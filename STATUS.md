@@ -2,28 +2,21 @@
 
 Updated: 2026-10-21
 
-**Status:** Live runs `e51c05a` (deployed 2026-10-21, tag `deploy-2026-10-21-2`), healthy. **Operations phase 3 (the
-venue's own sheet) is built and committed but NOT deployed** (`04074ec`…`1e2e1fa`, 5 commits ahead of origin): it
-waits for Andreas's Greek review and his deploy OK. Phases 1 and 2 are live.
+**Status:** Live runs `23e0ad0` (deployed 2026-10-21, tag `deploy-2026-10-21-3`), healthy. Operations phases 1–3
+are live; phase 3 (the venue's own sheet and event card) went out today after Andreas read the Greek.
 
 ## In progress / unfinished
 
-- **Phase 3, built, not live.** venue.html's «Εκδηλώσεις» is now a sheet: stages (σύνδεσμος δεν στάλθηκε · δεν τον
-  έχει ανοίξει · τραπεζοθεσία % · όλοι έχουν θέση · ολοκληρώθηκε), the filters Επερχόμενες · Αυτόν τον μήνα · Θέλουν
-  προσοχή · Παλιές, search, sort, Excel, and cards on a phone. Each row opens the event card: the client's contact
-  (call, Viber, mail), the venue's private notes, next step, timeline, «Ο ίδιος πελάτης», erase, and every action
-  of the old ⋯ menu (gone). Server: `vcli:` client cards, three dates per event, the venue's 1–5 year memory.
-  dpa.html and privacy.html carry the new lines (version 21 October 2026 — change it to the deploy date if later).
-  1133 checks pass; `/security-review` found nothing; checked on screen at desktop and phone width (verifier).
+- Nothing half-done.
 - Party plans created before 2026-10-17 keep the label «Τραπέζι της γιορτής» until the customer renames it
   (deliberately not rewritten on load). Converting such a plan to another kind still works (LEGACY_HEADS).
 
 ## Next
 
-1. **Deploy phase 3** once Andreas has read the Greek and says go. *Done when:* live health check passes, the one
-   real venue's console opens on the sheet, and dpa.html/privacy.html show version 21 October 2026 (or the deploy
-   date). The new dates start being recorded only from the deploy (`meta:clienttrack` is set on first use), so
-   existing events show stages without «δεν στάλθηκε / δεν έχει ανοίξει» — by design.
+1. **terms.html and privacy.html §0 still define «εκδήλωση» as only «γάμος ή βάπτιση»** (both languages; found by
+   the smoke test after the phase 3 deploy). The γιορτή has been live since 2026-10-17, and dpa.html already names
+   it. privacy.html's children paragraph (English line ~322, and its Greek twin) says «wedding or baptism» too.
+   *Done when:* both pages name the γιορτή and who «the couple» means there, Andreas has read the Greek, and it is deployed.
 2. **Operations phase 4: every contact lands in your sheet** (`OPERATIONS-PLAN.md` §4). Phases 5–6 follow; phase 7
    (online payment) waits on the company, accountant and lawyer. The page's remaining English sections move to
    Greek as each is touched.
@@ -32,12 +25,10 @@ waits for Andreas's Greek review and his deploy OK. Phases 1 and 2 are live.
 
 ## Waiting on Andreas
 
-- **Read the phase 3 Greek** (nothing is live yet). Say «δείξε μου» in a session in this folder and the agent opens
-  the local copy with test data in the browser pane, signed in (preview «takeaseat-customers», the venue key is
-  printed at start). Look at the sheet, tap «Οικογένεια Α» for the card, «Παλιές» for a past client, and
-  «Μνήμη πελατών» under the sheet. Then read the new lines in dpa.html (§1–§4: «Καρτέλα πελάτη», the three dates,
-  «από 1 έως 5 έτη…») and privacy.html (§2, §3 «Πελάτες ενός κτήματος», §7, §9). Note: dpa.html §1 now also says
-  «γάμους, βαπτίσεις και γιορτές» — it said only weddings and baptisms before. Reply with fixes, or «ok, deploy».
+- **Nothing to do for phase 3.** Not checked after the deploy: the one real venue's console on the new sheet (that
+  needs the venue's own key). The same code was checked on the local copy. The three new dates are recorded from
+  today only, so the venue's existing events show their stage without «δεν στάλθηκε / δεν έχει ανοίξει» (by design).
+  If the venue says anything about the new screen, pass it on.
 - **A look at «Πελάτες» and the card on your phone** (phases 1–2, live): open https://takeaseat.gr/admin.html, sign
   in with the owner key, tap the one real venue. Try a note, an «Επόμενο βήμα» and a «📞 Τηλεφώνησα» line, and look
   at «Μνήμη» at the bottom. Also open «+ Ιδιώτης» and, on the venue, «Επεξεργασία…» (close both without saving):
@@ -66,6 +57,10 @@ waits for Andreas's Greek review and his deploy OK. Phases 1 and 2 are live.
 
 ## History
 
+- 2026-10-21 — Operations phase 3 deployed (`23e0ad0`, tag `deploy-2026-10-21-3`) after Andreas read the Greek:
+  1133 checks on the box, healthy after 3 s, pre-deploy backup `takeaseat-20261021-171711.db.gz.age`; live
+  dpa/privacy show version 21 October 2026 and the new lines; verifier smoke test of seven live pages passed,
+  no console errors (nothing behind a sign-in was opened).
 - 2026-10-21 — Operations phase 3 built (not deployed): venue.html sheet and event card, `vcli:` client cards, the
   three dates, the venue's 1–5 year memory, dpa/privacy lines. 1133 checks; security review clean; verifier passed
   desktop and phone. Commits `04074ec`, `1bcc6ae`, `cf5788d`, `53305a8`, `1e2e1fa`.

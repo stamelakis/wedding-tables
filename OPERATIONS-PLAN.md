@@ -332,7 +332,7 @@ options (HANDOFF §8.6).
 |---|---|
 | 1 «Πελάτες» sheet | live 2026-10-18 (`33a84df`, tag `deploy-2026-10-18-2`); Greek approved by Andreas; his own look on his phone still to come |
 | 2 Customer card + memory | live 2026-10-18 (`aed530c`, tag `deploy-2026-10-18-3`); Greek approved by Andreas; his own look on his phone still to come |
-| 3 The venue's own sheet | built 2026-10-21 (`1bcc6ae`, `cf5788d`), not deployed; waiting on Andreas: the Greek of venue.html, dpa.html and privacy.html, and the deploy OK |
+| 3 The venue's own sheet | live 2026-10-21 (`1bcc6ae`, `cf5788d`; deployed as `23e0ad0`, tag `deploy-2026-10-21-3`) after Andreas read the Greek |
 | 4 Contacts | — |
 | 5 Payments | — |
 | 6 «Σήμερα» | — |
