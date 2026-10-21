@@ -3484,6 +3484,20 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     ok((await call('GET', '/venues/' + V.id + '/clients/..%2F' + CID, undefined, HV)).status === 404 && (await call('GET', '/venues/' + V.id + '/clients/x', undefined, HV)).status === 404,
       'erasure: a card id that is not one opens nothing');
 
+    // -- what dpa.html and privacy.html promise is what the server does --
+    const fs3 = await import('node:fs'), page = f => fs3.readFileSync(path.join(root, f), 'utf8');
+    const dpa = page('dpa.html'), priv = page('privacy.html');
+    ok((await vget(HV2, V2.id)).clientYears === 5 && /<b>από 1 έως 5 έτη μετά την τελευταία εκδήλωση του πελάτη<\/b> \(προεπιλογή: 5 έτη\)/.test(dpa)
+      && /<b>1 to 5 years after the client's last event<\/b> \(default: 5 years\)/.test(dpa),
+      'pages: dpa §4 says 1 to 5 years after the last event, 5 by default — the default a venue gets — in Greek and English');
+    ok(/<b>από 1 έως 5 χρόνια μετά την τελευταία του εκδήλωση<\/b>/.test(priv) && /<b>1 to 5 years after the client's last event<\/b>/.test(priv),
+      'pages: privacy says the same period, in both languages');
+    ok([dpa, priv].every(t => /πότε το Κτήμα αντέγραψε τον σύνδεσμο του πελάτη|πότε το κτήμα αντέγραψε τον σύνδεσμο του πελάτη/.test(t) && /άνοιξε για πρώτη φορά/.test(t)
+      && /when the [Vv]enue copied the client's link/.test(t) && /first opened it/.test(t)), 'pages: both name the three dates, in both languages');
+    ok(/τη βλέπει μόνο το Κτήμα, ποτέ ο πελάτης/.test(dpa) && /seen only by the Venue, never by the client/.test(dpa) && /Την καρτέλα τη βλέπει μόνο το κτήμα, ποτέ ο πελάτης/.test(priv)
+      && /Only the venue sees the card, never the client/.test(priv), 'pages: both say the client never sees the card');
+    ok(/γάμους, βαπτίσεις και γιορτές/.test(dpa) && /weddings, baptisms and parties/.test(dpa), 'pages: the DPA covers all three kinds');
+
     // -- two first saves at once make one card, not two --
     const WT = (await call('POST', '/venues/' + V.id + '/weddings', { label: 'Φ3 δύο αποθηκεύσεις', date: athensDay(40) }, HV)).d;
     const cards = () => [...m.keys()].filter(k => k.startsWith('vcli:' + V.id + ':')).length, nCards = cards();
