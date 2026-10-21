@@ -2,9 +2,10 @@
 
 Updated: 2026-10-21
 
-**Status:** Live runs `6e30131` (deployed 2026-10-21, tag `deploy-2026-10-21-1`), healthy, everything in the
+**Status:** Live runs `e51c05a` (deployed 2026-10-21, tag `deploy-2026-10-21-2`), healthy, everything in the
 repo is deployed. Operations phases 1 and 2 are live: the «Πελάτες» sheet, and the customer card as the place
-where Andreas works, with the 5-year memory clock. Every dialog the card opens is now Greek.
+where Andreas works, with the 5-year memory clock. Every dialog the card opens is now Greek. The copied link
+message follows the customer's kind and the link's language (el/en/de); the venue's copied key says «Κωδικός κτήματος».
 
 ## In progress / unfinished
 
@@ -14,15 +15,11 @@ where Andreas works, with the 5-year memory clock. Every dialog the card opens i
 
 ## Next
 
-1. **The copied link message names a «σύντροφο» for every kind.** `claimMessage()` in admin.html (the text behind
-   «Αντιγραφή μηνύματος», which the customer reads) ends «στείλτε τον στον/στη σύντροφό σας», also for a βάπτιση
-   or a γιορτή. Small; it needs the couple's kind passed in and Andreas's review of the per-kind wording. While
-   there: the venue's «Αντιγραφή συνδέσμου + κλειδιού» text says «Κωδικός:» where the box says «Κλειδί κονσόλας».
-2. **Operations phase 3: the venue's own sheet** (`OPERATIONS-PLAN.md` §4). *Done when:* §4's phase 3 line.
+1. **Operations phase 3: the venue's own sheet** (`OPERATIONS-PLAN.md` §4). *Done when:* §4's phase 3 line.
    Phases 4–6 follow in order; phase 7 (online payment) waits on the company, accountant and lawyer. The page's
    remaining English sections (Support requests, After the event, Admin access, the login) move to Greek as
    each is touched.
-3. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today — checked
+2. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today — checked
    2026-10-18: every plan on the server comes from a purchase (admin), a venue with a licence or free year,
    or a paying couple's extra plan; no free path exists. The free 8-table cap belongs to plans that stay on
    a device (the lab, unsaved plans), and the planner enforces it. Build the server check together with a
@@ -34,7 +31,9 @@ where Andreas works, with the 5-year memory clock. Every dialog the card opens i
   https://takeaseat.gr/admin.html, sign in with the owner key, tap the one real venue. Try a note, an «Επόμενο
   βήμα» and a «📞 Τηλεφώνησα» line, and look at «Μνήμη» at the bottom. Since 2026-10-21 also open «+ Ιδιώτης» and,
   on the venue, «Επεξεργασία…» (close both without saving): they are now Greek and were only checked on a local copy.
-  Tell the next session anything that looks off.
+  Tell the next session anything that looks off. Next time a customer is waiting on a link, paste «Αντιγραφή
+  μηνύματος» to yourself first: the βάπτιση/γιορτή endings («…σε όποιον ετοιμάζει μαζί σας τη βάπτιση/γιορτή») and the
+  English and German texts (written 2026-10-21, `CLAIM_MSG` in admin.html) have not been read by a native speaker.
 - **Accountant, add:** how long the «Για τα λογιστικά» records (name and purchase dates of a forgotten customer)
   must be kept. Today they have no end date and no delete button.
 - **Accountant** (€10,000 VAT threshold, and who issues receipts for TakeaSeat sales until the company
@@ -53,6 +52,10 @@ where Andreas works, with the 5-year memory clock. Every dialog the card opens i
 
 ## History
 
+- 2026-10-21 — Deployed `e51c05a` (tag `deploy-2026-10-21-2`): «Αντιγραφή μηνύματος» ends per kind (σύντροφο only for a
+  γάμο) and speaks the link's language (el/en/de, the planner's own words); the venue's copied key says «Κωδικός
+  κτήματος»; a quick change of link language no longer leaves the customer on the wrong one. 1057 checks; all 9
+  messages and 3 quick-switch runs checked on a local copy; live pages smoke-tested.
 - 2026-10-21 — Deployed `6e30131` (tag `deploy-2026-10-21-1`): admin.html's dialogs in Greek — «+ Ιδιώτης»,
   «+ Κτήμα», «Επεξεργασία…» of a customer and a venue, the «Κάδος», the key and link boxes and all their
   confirms and toasts, with Greek dates and `lang="el"` on the dialog. Fixed on the way: the trash showed a
