@@ -212,6 +212,7 @@
   #toast.show{ opacity:1; }
   /* on a phone the sheet's rows become cards: a label before each field, thumbs for buttons */
   @media (max-width:700px){
+    .chip{ padding:9px 13px; }
     table.sheet thead{ display:none; }
     table.sheet, table.sheet tbody, table.sheet tr, table.sheet td{ display:block; width:100%; }
     table.sheet tr{ padding:12px 14px; border-top:1px solid var(--line); }
@@ -1112,12 +1113,12 @@ const cardHTML=(st,w)=>`<div id="card"><div id="cHead">${cardHeadHTML(st,w)}</di
 function cardHeadHTML(st, w){
   if(!w){   // a past client, its events all gone
     const c=st.client||{}, m=c.memory||{};
-    return `<h3 id="mTitle">${esc(c.name||c.phone||c.email||"Πελάτης")}</h3><div class="msub">Παλιός πελάτης · διαγράφεται στις ${esc(fmtYMD(m.forgetAt))}</div>`;
+    return `<h3 id="mTitle" tabindex="-1" data-focus>${esc(c.name||c.phone||c.email||"Πελάτης")}</h3><div class="msub">Παλιός πελάτης · διαγράφεται στις ${esc(fmtYMD(m.forgetAt))}</div>`;
   }
   const S=w.stats, s=stageOf(w), fl=flagsOf(w,w.client,s), past=isPast(w), L=w.life||{};
   const b=(a,label,title,cls)=>`<button class="btn${cls?" "+cls:""}" data-a="${a}"${title?` title="${esc(title)}"`:""}>${label}</button>`;
   const prog=!S?"":S.guests?`<span class="nw"><span class="bar" aria-hidden="true"><i style="width:${seatPct(S)}%"></i></span>${S.seated}/${S.guests} καλεσμένοι με θέση · ${esc(tablesText(S.tables))}</span>`
-    :`<span>${S.tables?esc(tablesText(S.tables)):"Χωρίς τραπέζια ακόμη"}</span>`;
+    :`<span>${S.tables?esc(tablesText(S.tables)):past?"Χωρίς τραπέζια":"Χωρίς τραπέζια ακόμη"}</span>`;
   const extra=(past?lockChip(w):"")+(w.supportExpires?supBadge(w.supportExpires):"")+(!w.layoutSet && !past?ownBadge(w):"")+flagBadges(fl);
   return `<h3 id="mTitle">${esc(w.label)}</h3>
     <div class="msub">${EVNAME[evKind(w)]} · ${w.date?esc(fmtYMD(w.date,true))+(past?"":" · "+esc(untilText(w.date))):"χωρίς ημερομηνία"}</div>
@@ -1134,7 +1135,7 @@ function cardHeadHTML(st, w){
 const sameDigits=(a,b)=>{ const d=x=>String(x||"").replace(/\D/g,"").slice(-10); return d(a).length>=10 && d(a)===d(b); };
 function clientBoxHTML(st){
   const c=st.client||{};
-  const matches=(c.matches||[]).map(m=>`<div class="match"><span>${sameDigits(m.phone,c.phone)?"Το ίδιο τηλέφωνο":"Το ίδιο email"} υπάρχει και στην καρτέλα <b>${esc(m.name||m.phone||m.email)}</b>${m.last?` · ${EVNAME[m.last.kind]||""} εδώ${m.last.date?", "+esc(fmtYMD(m.last.date)):""}`:""}.</span>
+  const matches=(c.matches||[]).map(m=>`<div class="match"><span>${sameDigits(m.phone,c.phone)?"Το ίδιο τηλέφωνο":"Το ίδιο email"} υπάρχει και στην καρτέλα «<b>${esc(m.name||m.phone||m.email)}</b>»${m.last?` (${(EVNAME[m.last.kind]||"").toLowerCase()}${m.last.date?", "+esc(fmtYMD(m.last.date)):""})`:""}.</span>
       <button class="btn sm" data-k="join" data-from="${esc(m.id)}">Ο ίδιος πελάτης</button></div>`).join("");
   return `<div class="clbl"><span>Πελάτης <span class="hint">— μόνο εσείς βλέπετε αυτά τα στοιχεία</span></span><span class="saved" id="cCliSt" aria-live="polite"></span></div>
     <div class="cgrid">
