@@ -909,9 +909,16 @@ function showClaimPanel(cid, name, token, kind, ev){
   box.scrollIntoView({ behavior:"smooth", block:"nearest" });
 }
 // The server's language also picks the e-mails and recovery links, so keep it in step with the link language chosen here.
+// Picks go out one at a time, and each is compared with the last one SENT (c.lang changes only when a save comes back),
+// so a quick en → de → el leaves the server on el.
+const langSent={};   // cid → { lang: the last pick sent, done: its save }
 function saveCoupleLang(cid, lang){
-  const c=couplesCache.find(x=>x.id===cid); if(c && c.lang===lang) return;
-  req("/admin/couples/"+encodeURIComponent(cid),{ method:"PATCH", body:JSON.stringify({ lang }) }).then(res=>{ if(res.ok && c) c.lang=lang; });
+  const c=couplesCache.find(x=>x.id===cid), s=langSent[cid];
+  if(s ? s.lang===lang : (c && c.lang===lang)) return;
+  const done=(s?s.done:Promise.resolve()).then(()=>req("/admin/couples/"+encodeURIComponent(cid),{ method:"PATCH", body:JSON.stringify({ lang }) }))
+    .then(res=>{ const x=couplesCache.find(y=>y.id===cid); if(res.ok && x) x.lang=lang;
+      if(!res.ok && langSent[cid] && langSent[cid].lang===lang) delete langSent[cid]; });   // failed: the next pick goes out, whatever it is
+  langSent[cid]={ lang, done };
 }
 function showCoupleSent(cid, title, note){
   const box=panelTarget||document.getElementById("cpanel"); if(!box) return;

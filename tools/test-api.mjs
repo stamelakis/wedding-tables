@@ -2726,6 +2726,29 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     ok(/copy\(claimMessage\(claimLink\(token, lang\), lang, ev\)\)/.test(asrc), 'admin: the copied message follows the language picked in the box');
     const calls = asrc.match(/showClaimPanel\(c\.id[^)]*\)/g) || [];
     ok(calls.length >= 4 && calls.every(s => /kind\)$/.test(s)), "admin: every claim-link box is given the customer's kind", calls.join(' | '));
+    // The link language picked in the box is saved on the customer (it also picks their e-mails). Picking quickly used to
+    // compare each pick with the last one the SERVER confirmed: en → de → el skipped the el and left the customer on de.
+    const langPicks = async (picks, fail = []) => {
+      const sent = []; let busy = 0, overlap = false;
+      const req = (p, o) => { const lang = JSON.parse(o.body).lang; sent.push(lang); if (++busy > 1) overlap = true;
+        return new Promise(r => setTimeout(() => { busy--; r(fail.includes(lang) ? { ok: false, status: 0, d: null } : { ok: true, status: 200, d: {} }); }, 3)); };
+      const cache = [{ id: 'c1', lang: 'el' }];
+      let S = null;
+      try { S = new Function('req', 'couplesCache', asrc.slice(asrc.indexOf('const langSent={};'), asrc.indexOf('function showCoupleSent(')) + '; return { saveCoupleLang, langSent };')(req, cache); } catch (e) {}
+      if (!S) return { sent: null };
+      for (const l of picks) { if (l === '|') await (S.langSent.c1 ? S.langSent.c1.done : null); else S.saveCoupleLang('c1', l); }   // '|' = wait for the saves
+      await (S.langSent.c1 ? S.langSent.c1.done : null);
+      return { sent, overlap, cached: cache[0].lang };
+    };
+    let L = await langPicks(['en', 'de', 'el']);
+    ok(L.sent && L.sent.at(-1) === 'el' && !L.overlap && L.cached === 'el',
+      'admin: a quick en → de → el leaves the customer on el, one save at a time', JSON.stringify(L));
+    L = await langPicks(['el']);
+    ok(L.sent && L.sent.length === 0, 'admin: picking the language the customer already has sends nothing', JSON.stringify(L));
+    L = await langPicks(['en', 'en']);
+    ok(L.sent && L.sent.join() === 'en', 'admin: the same pick twice is saved once', JSON.stringify(L));
+    L = await langPicks(['en', '|', 'en'], ['en']);
+    ok(L.sent && L.sent.join() === 'en,en' && L.cached === 'el', 'admin: a language save that failed is sent again on the next pick', JSON.stringify(L));
     const vsrc = fs.readFileSync(path.join(root, 'venue.html'), 'utf8');
     ok(/placeholder="Κωδικός κτήματος"/.test(vsrc) && asrc.includes('"\\nΚωδικός κτήματος: "'),
       "admin: the venue's copied link + key says «Κωδικός κτήματος», the word on venue.html's sign-in field");
