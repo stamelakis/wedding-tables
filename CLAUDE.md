@@ -126,6 +126,9 @@ build runs the full suite), restarts and health-checks; on failure it rolls back
 - **In «Πελάτες», «Όλοι» leaves out the archive, but a search on «Όλοι» looks there too**, and a pending
   signup is its venue's row, not a second one (only a signup whose venue is gone gets its own `s:` row).
   Rejected: an archive in «Όλοι» (the finished ones bury the live ones), and a row per signup (counted twice).
+- **admin.html's dialogs are Greek only** (2026-10-21). The bilingual `T(en, el)` helper is gone: every dialog and
+  card action runs from a Greek screen, so its English half was never shown. Rejected: keeping both languages
+  "in case". The page's remaining English sections move to Greek as each is touched — never back.
 - **Greek is reviewed by Andreas himself.** Strings a customer reads are written per language and
   cross-checked, never find-replaced: 36 `p_*` strings contain «γιορτ» and name the *event*, while
   only five name the *table*.

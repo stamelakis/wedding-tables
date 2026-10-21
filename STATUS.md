@@ -32,7 +32,9 @@ where Andreas works, with the 5-year memory clock. Every dialog the card opens i
 
 - **A look at «Πελάτες» and the card on your phone** (each phase ends checked on your phone): open
   https://takeaseat.gr/admin.html, sign in with the owner key, tap the one real venue. Try a note, an «Επόμενο
-  βήμα» and a «📞 Τηλεφώνησα» line, and look at «Μνήμη» at the bottom. Tell the next session anything that looks off.
+  βήμα» and a «📞 Τηλεφώνησα» line, and look at «Μνήμη» at the bottom. Since 2026-10-21 also open «+ Ιδιώτης» and,
+  on the venue, «Επεξεργασία…» (close both without saving): they are now Greek and were only checked on a local copy.
+  Tell the next session anything that looks off.
 - **Accountant, add:** how long the «Για τα λογιστικά» records (name and purchase dates of a forgotten customer)
   must be kept. Today they have no end date and no delete button.
 - **Accountant** (€10,000 VAT threshold, and who issues receipts for TakeaSeat sales until the company
