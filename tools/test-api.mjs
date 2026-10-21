@@ -3566,4 +3566,181 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
   }
 }
 
+// ---------- 24. phase 4: every contact lands in his sheet — «+ Νέα επαφή», «Γνωστός πελάτης», «Έγινε πελάτης», the 2 years ----------
+{
+  const keepMail = env.MAIL, realNow = Date.now, DAYMS = 86400000;
+  const today = athensDay(0), plusY = (ymd, n) => (+ymd.slice(0, 4) + n) + ymd.slice(4);
+  const same = (a, b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sort());
+  const cardOf = key => call('GET', '/admin/customers/' + encodeURIComponent(key), undefined, OWN);
+  const on = (method, key, sub, body, h = OWN) => call(method, '/admin/customers/' + encodeURIComponent(key) + '/' + sub, body, h);
+  const rowOf = async key => (await call('GET', '/admin/customers', undefined, OWN)).d.customers.find(x => x.key === key);
+  const lead = (b, h = OWN) => call('POST', '/admin/leads', b, h);
+  const match = (b, h = OWN) => call('POST', '/admin/match', b, h);
+  const nightly = async () => {   // the nightly pass, at an hour it runs (section 22)
+    m.delete('meta:memory');
+    const t = realNow(), hr = +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Athens', hour: '2-digit', hourCycle: 'h23' }).format(new Date(t));
+    Date.now = () => (hr >= 4 ? t : t + (5 - hr) * 3600000); try { return await mod.sweep(env); } finally { Date.now = realNow; }
+  };
+  try {
+    delete env.MAIL;
+    // -- the owner only --
+    const VX = (await call('POST', '/admin/venues', { name: 'Φ4 Κτήμα κλειδί' }, OWN)).d;
+    const L0 = (await lead({ name: 'Φ4 Έλεγχος κλειδιού', phone: '6900000001', source: 'phone' })).d;
+    for (const [h, what] of [[{}, 'no key'], [{ 'X-Owner-Key': 'wrong' }, 'a wrong key'], [{ 'X-Venue-Key': VX.key }, "a venue's key"]]) {
+      const st = [(await lead({ name: 'x' }, h)).status, (await match({ phone: '6900000001' }, h)).status,
+        (await on('POST', L0.key, 'contact', { source: 'phone' }, h)).status, (await on('PATCH', L0.key, 'lead', { name: 'y' }, h)).status,
+        (await on('POST', L0.key, 'stage', { stage: 2 }, h)).status, (await on('POST', L0.key, 'forget', {}, h)).status];
+      ok(st.every(s => s === 403), 'contacts: create, «Γνωστός πελάτης», a contact, edit, stage and forget all refuse ' + what, st);
+    }
+    ok(raw('lead:' + L0.lead.id).name === 'Φ4 Έλεγχος κλειδιού' && leadStageOf(raw('lead:' + L0.lead.id)) === 1, 'contacts: … and none of them changed anything');
+
+    // -- «+ Νέα επαφή»: what he types, checked --
+    const bad = [[{}, 'empty'], [{ source: 'phone', text: 'μόνο μια γραμμή' }, 'empty'], [{ name: 'x', email: 'όχι-email' }, 'bad_email'],
+      [{ name: 'x', phone: '12345' }, 'bad_phone'], [{ name: 'x', phone: '0044 7700 900123' }, 'bad_phone'], [{ name: 'x', type: 'venue', afm: '123456789' }, 'bad_afm'],
+      [{ name: 'x', date: '2027-02-30' }, 'bad_date'], [{ name: 'x', next: { text: 'κάτι', due: 'αύριο' } }, 'bad_date']];
+    for (const [b, err] of bad) { const r = await lead(b); ok(r.status === 400 && r.d.error === err, 'contacts: «' + JSON.stringify(b) + '» is refused (' + err + ')', r.d); }
+    let r = await lead({ name: '  Μαρία Φ4 Παπαδάκη  ', phone: '697 111 2233', source: 'phone', type: 'parents', date: athensDay(90), place: 'Κτήμα Ελιά',
+      text: 'Βάπτιση τον Ιανουάριο, 120 άτομα', stage: 2, next: { text: 'Να της στείλω την τιμή', due: athensDay(1) } });
+    const LA = r.d.key, LAid = LA.slice(2);
+    ok(r.status === 200 && /^l:[A-Za-z0-9]{12}$/.test(LA) && r.d.lead.name === 'Μαρία Φ4 Παπαδάκη' && r.d.lead.phone === '+306971112233' && r.d.lead.type === 'parents' && r.d.lead.stage === 2,
+      'contacts: a phone contact: name, number (as one we can ring), what they are, the stage he picked', r.d);
+    let row = await rowOf(LA);
+    ok(row && row.stage === 2 && row.type === 'parents' && row.next === athensDay(90) && row.nextKind === 'baptism' && row.phone === '+306971112233' && row.step.text === 'Να της στείλω την τιμή'
+      && !row.flags.length && row.upcoming === 0 && row.total === 0, 'contacts: it is on the sheet: Σε συζήτηση, the date they named as its next event, the next step', row);
+    r = await lead({ email: 'f4-new@example.gr', source: 'instagram', type: 'couple' });
+    const LB = r.d.key;
+    row = await rowOf(LB);
+    ok(r.status === 200 && row.stage === 1 && row.flags.includes('lead_new') && row.name === '' && row.email === 'f4-new@example.gr', 'contacts: one not answered yet is «Νέα επαφή» and joins «Θέλουν εμένα»; an address alone is enough', row);
+    r = await lead({ name: 'Φ4 Ξένος', phone: '+44 7700 900123', type: 'couple', afm: '800000419', source: 'telepathy', stage: 9 });
+    ok(r.status === 200 && r.d.lead.phone === '+447700900123' && r.d.lead.afm === '' && r.d.lead.source === 'other' && r.d.lead.stage === 1,
+      'contacts: a foreign number with its +; no ΑΦΜ for a couple; an unknown source is «άλλο», an unknown stage «Νέα επαφή»', r.d);
+
+    // -- the card --
+    let cd = (await cardOf(LA)).d;
+    ok(cd.customer.key === LA && cd.lead.place === 'Κτήμα Ελιά' && cd.lead.date === athensDay(90) && cd.source === 'phone' && cd.notes === '' && cd.events.length === 0,
+      'card: a contact\'s card: where, when, how it came', cd);
+    ok(cd.timeline.length === 1 && cd.timeline[0].code === 'act' && cd.timeline[0].act === 'contact' && cd.timeline[0].src === 'phone' && cd.timeline[0].text === 'Βάπτιση τον Ιανουάριο, 120 άτομα',
+      'card: the first contact is on its timeline, with how it came and the line he wrote', cd.timeline);
+    ok(cd.memory.years === 2 && cd.memory.held === null && cd.memory.lastTouch === today && cd.memory.forgetAt === plusY(today, 2), 'card: a contact is remembered 2 years after the last contact', cd.memory);
+    ok((await on('PUT', LA, 'notes', { notes: 'Θέλει και candy bar' })).status === 200 && raw('lead:' + LAid).notes === 'Θέλει και candy bar'
+      && (await on('POST', LA, 'timeline', { kind: 'call', text: 'Δεν το σήκωσε' })).status === 200, 'card: notes and «Τηλεφώνησα» work on a contact as on any card');
+
+    // -- the stages he sets --
+    r = await on('POST', LA, 'stage', { stage: 3 });
+    ok(r.status === 200 && r.d.lead.stage === 3 && (await rowOf(LA)).stage === 3, 'stage: «Αναμένεται πληρωμή»', r.d);
+    ok((await on('POST', LA, 'stage', { stage: 5 })).status === 400 && (await on('POST', LA, 'stage', { stage: 8 })).status === 400 && (await on('POST', LA, 'stage', { stage: 8, reason: 'bored' })).status === 400,
+      'stage: only 1–3, or 8 with a reason from the list; 4–7 are the system\'s');
+    ok((await on('POST', 'c:' + 'nope', 'stage', { stage: 2 })).status === 404, 'stage: … and only on a contact');
+    r = await on('POST', LB, 'stage', { stage: 8, reason: 'price', text: 'Βρήκαν κάτι δωρεάν' });
+    cd = (await cardOf(LB)).d;
+    ok(r.status === 200 && cd.customer.stage === 8 && cd.lead.lost.reason === 'price' && !cd.customer.flags.length && cd.customer.next === null
+      && cd.timeline.some(e => e.code === 'stage' && e.stage === 8 && e.reason === 'price') && cd.timeline.some(e => e.code === 'act' && e.text === 'Βρήκαν κάτι δωρεάν'),
+      '«Δεν προχώρησε»: stage 8 with the reason and his line on the timeline, out of «Θέλουν εμένα»', cd);
+    await on('PUT', LB, 'next', { text: 'x', due: today });
+    await on('POST', LB, 'stage', { stage: 8, reason: 'no_reply' });
+    ok(!raw('lead:' + LB.slice(2)).nextStep && raw('lead:' + LB.slice(2)).lost.reason === 'no_reply', '«Δεν προχώρησε» clears the next step');
+    ok(cd.memory.years === 2, '«Δεν προχώρησε»: still the 2-year clock');
+
+    // -- «Επεξεργασία…» --
+    r = await on('PATCH', LA, 'lead', { place: 'Κτήμα Ελιά Νέα', email: 'maria-f4@example.gr' });
+    ok(r.status === 200 && r.d.lead.place === 'Κτήμα Ελιά Νέα' && r.d.lead.email === 'maria-f4@example.gr' && r.d.lead.phone === '+306971112233' && r.d.lead.stage === 3,
+      'edit: what he changes changes, the rest stays (the stage too)', r.d);
+    ok((await on('PATCH', LA, 'lead', { email: 'κακό' })).status === 400 && (await on('PATCH', LA, 'lead', { name: '', email: '', phone: '' })).status === 400
+      && raw('lead:' + LAid).email === 'maria-f4@example.gr', 'edit: a bad address, or nothing left to find them by, is refused and changes nothing');
+
+    // -- «Γνωστός πελάτης» --
+    const CK = (await call('POST', '/admin/couples', { name: 'Φ4 Ζεύγος γνωστό', email: 'known-f4@example.gr', contact: 'τηλ. 6944 55 66 77 · ήρθε από την Amelie', weddingDate: athensDay(40) }, OWN)).d;
+    const ckey = 'c:' + CK.couple.id;
+    const claimK = (await call('POST', '/claim', { token: CK.claimToken, nonce: 'f4k' })).d;
+    await call('PUT', '/plans/' + claimK.id, { plan: layout({ guests: { g1: { name: 'Καλεσμένη Φ4Μυστική', note: 'Φ4 αλλεργία σε ξηρούς καρπούς' } } }) }, { 'X-Edit-Key': claimK.editKey });
+    await on('POST', ckey, 'timeline', { kind: 'offer', text: 'Τους έστειλα την τιμή για βάπτιση' });
+    const VK = (await call('POST', '/admin/venues', { name: 'Φ4 Κτήμα γνωστό', email: 'venue-f4@example.gr', afm: '800000419', notes: 'κ. Νίκος 210 555 9876' }, OWN)).d;
+    ok(raw('venue:' + VK.id).afm === '800000419' && (await call('POST', '/admin/venues', { name: 'x', afm: '123' }, OWN)).d.error === 'bad_afm', 'venue: «+ Κτήμα» takes an ΑΦΜ, checked');
+    r = await match({ email: '  KNOWN-f4@Example.gr ' });
+    ok(r.status === 200 && r.d.matches.length === 1 && r.d.matches[0].key === ckey && same(r.d.matches[0].how, ['email']), 'match: an address, whatever its case', r.d);
+    const mk = r.d.matches[0];
+    ok(mk.name === 'Φ4 Ζεύγος γνωστό' && mk.events.length === 1 && mk.events[0].kind === 'wedding' && mk.events[0].date === athensDay(40) && /Amelie/.test(mk.notes)
+      && mk.said.some(s => s.text === 'Τους έστειλα την τιμή για βάπτιση'), 'match: … with what they had, when, his notes and what was said', mk);
+    r = await match({ phone: '+30 694 455 6677' });
+    ok(r.d.matches.length === 1 && r.d.matches[0].key === ckey && same(r.d.matches[0].how, ['phone']), 'match: a phone written another way, found inside his notes', r.d);
+    r = await match({ afm: '800000419', phone: '2105559876' });
+    ok(r.d.matches.length === 1 && r.d.matches[0].key === 'v:' + VK.id && same(r.d.matches[0].how.sort(), ['afm', 'phone']), 'match: a venue by ΑΦΜ and by the phone in its notes, one card', r.d);
+    r = await match({ phone: '6971112233' });
+    ok(r.d.matches.length === 1 && r.d.matches[0].key === LA && r.d.matches[0].lead.place === 'Κτήμα Ελιά Νέα', 'match: a contact too', r.d);
+    ok((await match({ phone: '6971112233', except: LA })).d.matches.length === 0, 'match: … but not the contact being edited');
+    ok((await match({ email: 'nobody-f4@example.gr' })).d.matches.length === 0 && (await match({})).d.matches.length === 0 && (await match({ phone: '123', afm: '1' })).d.matches.length === 0,
+      'match: nothing for someone new, or for half a number');
+    const VC = (await call('POST', '/admin/venues', { name: 'Φ4 Κτήμα με πελάτες', license: { type: 'per_wedding', quota: 5 } }, OWN)).d, HVC = { 'X-Venue-Key': VC.key };
+    const WC = (await call('POST', '/venues/' + VC.id + '/weddings', { label: 'Φ4 Οικογένεια Κτήματος', date: athensDay(50) }, HVC)).d;
+    await call('PUT', '/venues/' + VC.id + '/weddings/' + WC.planId + '/client', { name: 'Φ4 Πελάτης Κτήματος', phone: '6933 222 111', email: 'venue-client-f4@example.gr' }, HVC);
+    ok((await match({ phone: '6933222111' })).d.matches.length === 0 && (await match({ email: 'venue-client-f4@example.gr' })).d.matches.length === 0,
+      "match: a venue's own client is never found — what a venue keeps about its clients is not his to see");
+    const outs = JSON.stringify([(await match({ email: 'known-f4@example.gr' })).d, (await match({ afm: '800000419' })).d]);
+    ok(!/Φ4Μυστική|ξηρούς καρπούς|Φ4 Οικογένεια Κτήματος/.test(outs) && !outs.includes(claimK.id) && !outs.includes(claimK.editKey) && !outs.includes(VK.key || 'none') && !/"(planId|editKey|readKey|claimToken|key)":/.test(outs.replace(/"key":"[vcsl]:[A-Za-z0-9]+"/g, '')),
+      'match: no guest, note, plan id, key or token in it', outs.slice(0, 300));
+
+    // -- a known customer: the contact goes on their card, not on a new row --
+    const rows0 = (await call('GET', '/admin/customers', undefined, OWN)).d.customers.length;
+    r = await on('POST', ckey, 'contact', { source: 'viber', text: 'Ξανά, για τη βάπτιση του μικρού', next: { text: 'Τιμή βάπτισης', due: athensDay(2) } });
+    cd = (await cardOf(ckey)).d;
+    ok(r.status === 200 && cd.timeline[0].act === 'contact' && cd.timeline[0].src === 'viber' && cd.nextStep.text === 'Τιμή βάπτισης' && cd.nextStep.due === athensDay(2)
+      && (await call('GET', '/admin/customers', undefined, OWN)).d.customers.length === rows0, 'known: one tap puts the contact and the next step on their card — no new row', cd.timeline[0]);
+    ok((await on('POST', ckey, 'contact', { source: 'viber', next: { text: 'x', due: 'σύντομα' } })).status === 400, 'known: a bad date is refused');
+    r = await on('POST', LB, 'contact', { source: 'email', text: 'Το ξανασκέφτηκαν' });
+    ok(r.status === 200 && (await rowOf(LB)).stage === 2 && !raw('lead:' + LB.slice(2)).lost, 'known: a contact that «Δεν προχώρησε» and comes back is «Σε συζήτηση» again');
+    await on('POST', LB, 'contact', { source: 'phone', stage: 3 });
+    ok((await rowOf(LB)).stage === 3 && (await on('POST', LB, 'contact', { stage: 7 })).status === 400, 'known: … and he may move it on with the same tap, only to 1–3');
+
+    // -- «Έγινε πελάτης» --
+    const actsBefore = raw('act:' + LA).length;
+    r = await call('POST', '/admin/couples', { name: 'Μαρία Φ4 Παπαδάκη', email: 'maria-f4@example.gr', kind: 'baptism', weddingDate: athensDay(90), contact: 'τηλ. 697 111 2233', fromLead: LAid }, OWN);
+    const CC = r.d.couple;
+    ok(r.status === 200 && CC && !m.has('lead:' + LAid) && !m.has('act:' + LA) && !(raw('leads:index') || []).includes(LAid), '«Έγινε πελάτης»: the customer is made and the contact is gone', r.d);
+    cd = (await cardOf('c:' + CC.id)).d;
+    ok(cd.source === 'phone' && raw('couple:' + CC.id).fromLead.source === 'phone' && cd.timeline.filter(e => e.code === 'act').length === actsBefore
+      && cd.timeline.some(e => e.act === 'contact' && e.text === 'Βάπτιση τον Ιανουάριο, 120 άτομα') && cd.timeline.some(e => e.act === 'call' && e.text === 'Δεν το σήκωσε'),
+      '«Έγινε πελάτης»: the history carries over, and how they found us', cd.timeline);
+    ok(cd.nextStep && cd.nextStep.text === 'Να της στείλω την τιμή' && cd.memory.years === 5 && cd.customer.stage === 4, '«Έγινε πελάτης»: so does the next step; now a buyer, on the 5-year clock', cd.memory);
+    ok(!(await rowOf(LA)) && (await cardOf(LA)).status === 404, '«Έγινε πελάτης»: one row, the customer\'s');
+    const nCouples = (raw('couples:index') || []).length;
+    r = await call('POST', '/admin/couples', { name: 'Δεύτερη φορά', weddingDate: athensDay(90), fromLead: LAid }, OWN);
+    ok(r.status === 409 && r.d.error === 'lead_gone' && (raw('couples:index') || []).length === nCouples, '«Έγινε πελάτης» twice (a double tap): refused, and no second customer', r.d);
+    ok((await call('POST', '/admin/couples', { name: 'x', weddingDate: athensDay(90), fromLead: '../venue:x' }, OWN)).status === 409, '«Έγινε πελάτης»: a made-up contact id is refused too');
+    const LV = (await lead({ name: 'Φ4 Κτήμα Πλάτανος', type: 'venue', afm: '800000420', phone: '2310 123 456', source: 'referral', text: 'Τους σύστησε ο Ηλίας' })).d;
+    ok(LV.lead.afm === '800000420', 'contacts: a venue with its ΑΦΜ', LV);
+    r = await call('POST', '/admin/venues', { name: 'Φ4 Κτήμα Πλάτανος', afm: '800000420', notes: 'τηλ. 2310 123 456', fromLead: LV.lead.id }, OWN);
+    cd = (await cardOf('v:' + r.d.id)).d;
+    ok(r.status === 200 && !m.has('lead:' + LV.lead.id) && cd.source === 'referral' && cd.customer.afm === '800000420' && cd.customer.phone === '+302310123456'
+      && cd.timeline.some(e => e.act === 'contact' && e.src === 'referral' && e.text === 'Τους σύστησε ο Ηλίας'), '«Έγινε πελάτης» as a venue: ΑΦΜ, phone and history', cd);
+
+    // -- the 2 years, and «Ξέχασέ τον» --
+    const LOld = (await lead({ name: 'Φ4 Παλιά επαφή', phone: '6900000077' })).d.lead.id, LYoung = (await lead({ name: 'Φ4 Πρόσφατη επαφή', phone: '6900000078' })).d.lead.id;
+    const ago = days => realNow() - days * DAYMS;
+    patchRaw('lead:' + LOld, o => { o.createdAt = ago(800); o.moves = [{ at: ago(760), stage: 2 }]; });
+    patchRaw('act:l:' + LOld, a => { a.forEach(e => { e.t = ago(750); }); });
+    patchRaw('lead:' + LYoung, o => { o.createdAt = ago(800); });
+    patchRaw('act:l:' + LYoung, a => { a.forEach(e => { e.t = ago(800); }); a.push({ id: 'recent', t: ago(400), kind: 'call', text: '' }); });
+    ok((await cardOf('l:' + LOld)).d.memory.forgetAt < today && (await cardOf('l:' + LYoung)).d.memory.forgetAt > today, 'clock: two years after the last contact; a later call restarts it');
+    m.set('act:l:ghostlead0001', JSON.stringify([{ id: 'g', t: 1, kind: 'contact', text: '' }]));
+    const sw = await nightly();
+    ok(!m.has('lead:' + LOld) && !m.has('act:l:' + LOld) && !(raw('leads:index') || []).includes(LOld) && m.has('lead:' + LYoung), 'clock: the nightly pass forgets a contact whose 2 years are up, and only that one', sw);
+    ok(!m.has('act:l:ghostlead0001') && !m.has('books:l:' + LOld), 'clock: a timeline left without its contact goes too; the books keep nothing of someone who never bought');
+    r = await on('POST', 'l:' + LYoung, 'forget', {});
+    ok(r.status === 200 && r.d.books === false && !m.has('lead:' + LYoung) && !m.has('act:l:' + LYoung) && (await cardOf('l:' + LYoung)).status === 404, '«Ξέχασέ τον»: a contact goes at once, nothing kept');
+
+    // -- a full sheet --
+    const idx = raw('leads:index'); m.set('leads:index', JSON.stringify([...idx, ...Array.from({ length: 3000 }, (_, i) => 'pad' + i)]));
+    ok((await lead({ name: 'Φ4 Μία ακόμη' })).status === 409, 'contacts: no more than 3000 open contacts');
+    m.set('leads:index', JSON.stringify(idx));
+    ok((await call('GET', '/admin/customers', undefined, OWN)).status === 200, 'contacts: (the sheet still loads)');
+
+    // -- the pages say it --
+    const fs = await import('node:fs'), read = f => fs.readFileSync(path.join(root, f), 'utf8');
+    ok(/2 χρόνια μετά την τελευταία επαφή/.test(read('privacy.html')) && /2 years after the last contact/.test(read('privacy.html')), 'pages: privacy says a contact who did not buy is kept 2 years after the last contact, in both languages');
+  } finally {
+    Date.now = realNow; env.MAIL = keepMail; if (!keepMail) delete env.MAIL;
+  }
+}
+function leadStageOf(l) { return l.lost ? 8 : l.stage || 1; }
+
 console.log(`\nall ${n} checks passed`);

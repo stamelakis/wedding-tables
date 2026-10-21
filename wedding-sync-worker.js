@@ -1546,22 +1546,25 @@ async function venueCard(env, v, focus) {
 // πελάτη». State, dates, counts and the seating percentage only: never a guest, a plan id, a key, a token, a link, a
 // support message, or the label of a venue's wedding (that label is the venue's client, and what a venue keeps about
 // its clients is not ours to see). Stages are the four the system works out by itself (§3: 4 Ενεργοποίηση · 5 Ενεργός ·
-// 6 Ανανέωση · 7 Ολοκληρώθηκε); phase 4 adds the ones he sets by hand. Keys: v:<venueId> · c:<coupleId> · s:<signupId>.
+// 6 Ανανέωση · 7 Ολοκληρώθηκε); a contact of phase 4 has the ones he sets by hand (1–3, 8). Keys: v:<venueId> · c:<coupleId>
+// · s:<signupId> · l:<leadId>.
 const CUST_LINK_DAYS = 3, CUST_FIRST_EVENT_DAYS = 14, CUST_ENDING_DAYS = 60;
 const CUST_TYPE = { wedding: "couple", baptism: "parents", party: "party" };
 const ymdOfMs = t => t ? normYmd(new Date(t).toISOString()) : null;
 const daysTo = (from, to) => Math.round((Date.parse(to + "T00:00:00Z") - Date.parse(from + "T00:00:00Z")) / DAY);
 // A number to call, from a field or from free text («τηλ. 697 735 5378 · info@…»): a Greek number as +30 and ten digits,
 // a foreign one as typed with its +; "" when nothing in it is clearly a phone number (a wrong number is worse than none).
-function phoneOf(...xs) {
+function phonesOf(...xs) {   // every such number, in order: «Γνωστός πελάτης» looks at all of them, the sheet shows the first
+  const out = [];
   for (const x of xs) for (const mm of String(x || "").matchAll(/\+?\d[\d\s.()-]{7,}\d/g)) {
     let d = mm[0].replace(/\D/g, "");
     if (d.startsWith("0030")) d = d.slice(4); else if (d.length === 12 && d.startsWith("30")) d = d.slice(2);
-    if (d.length === 10 && /^(2|69)/.test(d)) return "+30" + d;
-    if (mm[0].startsWith("+") && d.length >= 8 && d.length <= 15) return "+" + d;
+    const p = (d.length === 10 && /^(2|69)/.test(d)) ? "+30" + d : (mm[0].startsWith("+") && d.length >= 8 && d.length <= 15) ? "+" + d : "";
+    if (p && !out.includes(p)) out.push(p);
   }
-  return "";
+  return out;
 }
+const phoneOf = (...xs) => phonesOf(...xs)[0] || "";
 // The part of a plan card the sheet may carry. Picked field by field, so nothing added to planCard later leaks here.
 const custEvent = (p, extra) => ({ kind: p.kind, date: p.weddingDate || null, phase: p.phase, over: !!p.over, locked: !!p.locked,
   opensAt: p.opensAt, fullAt: p.fullAt, frozenUntil: p.frozenUntil, lockAt: p.lockAt, deleteAt: p.deleteAt, keep: !!p.keep, fallback: !!p.fallback,
@@ -1627,6 +1630,114 @@ async function signupCustomer(env, s, now) {   // only a pending signup whose ve
     last: Math.max(s.createdAt || 0, s.resentAt || 0) || null, email: s.email || "", phone: phoneOf(s.phone, s.notes), afm: s.afm || "", createdAt: s.createdAt || null, active: true, nextStep: s.nextStep });
   return { row, card: { signup: await signupCard(env, s), events: [] } };
 }
+// ---- phase 4: a contact who has not bought (yet) — `lead:<id>`, key l:<id> ----
+// Someone who called, wrote or was sent by someone: what he typed in «+ Νέα επαφή», nothing else. The stages are the ones
+// he sets by hand (§3: 1 Νέα επαφή · 2 Σε συζήτηση · 3 Αναμένεται πληρωμή · 8 Δεν προχώρησε, with a reason). «Έγινε
+// πελάτης» turns it into a direct customer or a venue (the create routes' `fromLead`), which takes its history with it
+// and ends the lead. Never bought, so forgotten LEAD_YEARS after the last contact (§2 rule 5), each contact restarting it.
+const LEAD_YEARS = 2, LEAD_MAX = 3000, LEAD_NAME_MAX = 120, LEAD_PLACE_MAX = 120, MOVES_MAX = 50;
+const LEAD_SOURCES = ["phone", "email", "viber", "whatsapp", "facebook", "instagram", "amelie", "referral", "other"];
+const LEAD_TYPES = ["venue", "couple", "parents", "party"], LEAD_STAGES = [1, 2, 3], LEAD_LOST = ["price", "no_reply", "other_tool", "cancelled", "other"];
+const LEAD_KIND = { couple: "wedding", parents: "baptism", party: "party" };
+const LEAD_ID = /^[A-Za-z0-9]{1,64}$/;
+const leadStage = l => l.lost ? 8 : LEAD_STAGES.includes(l.stage) ? l.stage : 1;
+// The fields of «+ Νέα επαφή» and its «Επεξεργασία…», checked; `cur` is the lead being edited (a field left out stays).
+// → {lead} or {error}. A phone must be one we can ring back: a Greek number, or a foreign one written with its +.
+function leadFields(b, cur) {
+  const has = k => b[k] !== undefined && b[k] !== null, str = (k, max) => String(b[k]).trim().slice(0, max);
+  const o = { ...(cur || {}) };
+  if (has("name")) o.name = str("name", LEAD_NAME_MAX);
+  if (has("source") || !cur) o.source = LEAD_SOURCES.includes(b.source) ? b.source : "other";
+  if (has("type") || !cur) o.type = LEAD_TYPES.includes(b.type) ? b.type : "couple";
+  if (has("date")) { if (b.date !== "" && !ymdOk(b.date)) return { error: "bad_date" }; o.date = b.date || null; }
+  if (has("place")) o.place = str("place", LEAD_PLACE_MAX);
+  if (has("email")) { const e = normEmail(b.email); if (String(b.email).trim() && !e) return { error: "bad_email" }; o.email = e; }
+  if (has("phone")) { const p = String(b.phone).trim() ? phoneOf(b.phone) : ""; if (String(b.phone).trim() && !p) return { error: "bad_phone" }; o.phone = p; }
+  if (has("afm")) { const a = String(b.afm).trim() ? validAfm(b.afm) : ""; if (String(b.afm).trim() && !a) return { error: "bad_afm" }; o.afm = a; }
+  if (o.type !== "venue") o.afm = "";   // an ΑΦΜ is a business's: a couple's would only be a number nobody asked for
+  if (!o.name && !o.email && !o.phone) return { error: "empty" };   // someone he can find again: a name, a phone or an address
+  return { lead: o };
+}
+const leadOut = l => ({ id: l.id, name: l.name || "", source: l.source || "other", type: l.type || "couple", date: l.date || null, place: l.place || "",
+  email: l.email || "", phone: l.phone || "", afm: l.afm || "", stage: leadStage(l), lost: l.lost ? { reason: l.lost.reason, at: l.lost.at || null } : null,
+  createdAt: l.createdAt || null });
+function leadCustomer(l) {
+  const stage = leadStage(l), type = LEAD_TYPES.includes(l.type) ? l.type : "couple", today = todayAthens();
+  const row = custRow({ key: "l:" + l.id, type, name: l.name || "", stage, flags: stage === 1 ? ["lead_new"] : [], events: [], until: null, untilKind: null,
+    last: Math.max(l.createdAt || 0, ...(l.moves || []).map(mv => (mv && mv.at) || 0)) || null,
+    email: l.email || "", phone: l.phone || "", afm: l.afm || "", createdAt: l.createdAt || null, active: true, nextStep: l.nextStep });
+  // the date they named is the row's next event, while there is still a chance of one
+  if (stage !== 8 && ymdOk(l.date) && l.date >= today) { row.next = l.date; row.nextKind = LEAD_KIND[type] || null; }
+  return { row, card: { lead: leadOut(l), events: [] } };
+}
+async function eraseLead(env, id, why) {
+  if (await env.PLANS.get("lead:" + id)) console.log("admin: erased a contact (" + why + ")");
+  await env.PLANS.delete("lead:" + id);
+  await env.PLANS.delete("act:l:" + id);
+  await removeIndex(env, "leads:index", id);
+}
+// The create routes' `fromLead`: → the lead, null when none was named, false when it is gone (converted twice, forgotten).
+const leadToAdopt = async (env, b) => {
+  if (b.fromLead == null || b.fromLead === "") return null;
+  const id = String(b.fromLead);
+  return (LEAD_ID.test(id) && safeParse(await env.PLANS.get("lead:" + id))) || false;
+};
+// «Έγινε πελάτης»: the new customer takes the contact's timeline, its next step if it has none, and how it found us; the
+// lead then goes. Called after the customer was created, so a failure here leaves a lead to convert again, never a hole.
+async function adoptLead(env, id, key, recKey) {
+  const l = safeParse(await env.PLANS.get("lead:" + id));
+  if (!l) return false;
+  const acts = await actsOf(env, "l:" + id);
+  if (acts.length) await kvUpdate(env, "act:" + key, a => [...acts, ...(Array.isArray(a) ? a : [])].sort((x, y) => (x.t || 0) - (y.t || 0)).slice(-ACT_MAX));
+  await kvUpdate(env, recKey, cur => { if (!cur) return null;
+    cur.fromLead = { source: l.source || "other", at: l.createdAt || null };
+    if (!cur.nextStep && stepOut(l.nextStep)) cur.nextStep = l.nextStep;
+    return cur; });
+  await eraseLead(env, id, "converted");
+  return true;
+}
+// «Γνωστός πελάτης»: every card with this email, phone or ΑΦΜ — the venue for a pending signup of its own, a signup row only
+// when its venue is gone, the same as the sheet. → up to 5 cards, each with what he needs to recognise them.
+async function knownCustomers(env, q, except) {
+  const email = normEmail(q.email), phone = String(q.phone || "").trim() ? phoneOf(q.phone) : "", afm = String(q.afm || "").trim() ? validAfm(q.afm) : "";
+  if (!email && !phone && !afm) return [];
+  const hits = new Map();
+  const hit = (key, how) => { if (key === except) return; const h = hits.get(key) || new Set(); h.add(how); hits.set(key, h); };
+  const test = (key, emails, phones, afms) => {
+    if (email && emails.some(e => normEmail(e) === email)) hit(key, "email");
+    if (phone && phones.includes(phone)) hit(key, "phone");
+    if (afm && afms.includes(afm)) hit(key, "afm");
+  };
+  for (const vid of (safeParse(await env.PLANS.get("venues:index")) || [])) {
+    const v = safeParse(await env.PLANS.get("venue:" + vid));
+    if (v && !isTest(v)) test("v:" + v.id, [v.email], phonesOf(v.phone, v.contact, v.notes), [v.afm || ""]);
+  }
+  for (const cid of (safeParse(await env.PLANS.get("couples:index")) || [])) {
+    const c = safeParse(await env.PLANS.get("couple:" + cid));
+    if (c) test("c:" + c.id, [c.email], phonesOf(c.contact), []);
+  }
+  for (const sid of (safeParse(await env.PLANS.get("signups:index")) || [])) {
+    const s = safeParse(await env.PLANS.get("signup:" + sid));
+    if (!s || s.status !== "pending") continue;
+    const own = s.venueId && await env.PLANS.get("venue:" + s.venueId);
+    test(own ? "v:" + s.venueId : "s:" + s.id, [s.email], phonesOf(s.phone, s.notes), [s.afm || ""]);
+  }
+  for (const lid of (safeParse(await env.PLANS.get("leads:index")) || [])) {
+    const l = safeParse(await env.PLANS.get("lead:" + lid));
+    if (l) test("l:" + l.id, [l.email], phonesOf(l.phone, l.notes), [l.afm || ""]);
+  }
+  const out = [];
+  for (const [key, how] of [...hits].slice(0, 5)) {
+    const cd = await customerCard(env, key);
+    if (!cd) continue;
+    const c = cd.customer, said = (cd.timeline || []).filter(e => e.code === "act" && e.text).slice(0, 3).map(e => ({ at: e.at, act: e.act, text: e.text }));
+    out.push({ key, how: [...how], name: c.name, type: c.type, stage: c.stage, last: c.last, email: c.email, phone: c.phone,
+      events: [...cd.events.map(e => ({ kind: e.kind, date: e.date })), ...(cd.past || []).map(p => ({ kind: p.kind, date: p.date, gone: true }))].slice(0, 6),
+      lead: cd.lead ? { date: cd.lead.date, place: cd.lead.place, source: cd.lead.source } : null,
+      notes: String(cd.notes || "").slice(0, 200), said });
+  }
+  return out;
+}
 async function customerList(env) {
   const now = Date.now(), today = todayAthens(), out = [], seen = new Set();
   for (const vid of (safeParse(await env.PLANS.get("venues:index")) || [])) {
@@ -1644,6 +1755,11 @@ async function customerList(env) {
     if (!s || s.status !== "pending" || (s.venueId && seen.has("v:" + s.venueId)) || seen.has("s:" + s.id)) continue;
     seen.add("s:" + s.id); out.push((await signupCustomer(env, s, now)).row);
   }
+  for (const lid of (safeParse(await env.PLANS.get("leads:index")) || [])) {
+    const l = safeParse(await env.PLANS.get("lead:" + lid));
+    if (!l || seen.has("l:" + l.id)) continue;
+    seen.add("l:" + l.id); out.push(leadCustomer(l).row);
+  }
   return { at: now, today, customers: out };
 }
 // ---- phase 2: the card becomes where he works, and remembers (OPERATIONS-PLAN.md §4) ----
@@ -1653,14 +1769,14 @@ async function customerList(env) {
 // reads them from the records and the plans each time, and from `past` once a plan is gone (kind and dates only, never
 // the label: a venue's event label is its client's name).
 const NOTES_MAX = 2000, STEP_MAX = 200, ACT_TEXT_MAX = 300, ACT_MAX = 500, PAST_MAX = 300, TIMELINE_MAX = 200;
-const ACT_KINDS = ["call", "viber", "email", "offer", "meeting", "other"];
+const ACT_KINDS = ["call", "viber", "email", "offer", "meeting", "other"];   // «contact» (a new contact, with how it came) is written by its own route
 // The memory card (§2 rule 5): forgotten MEMORY_YEARS after the last contact, purchase or event, each one restarting the
 // clock. Andreas chose 5 years for every customer of this phase, the venue that only had its free year included
 // (2026-10-18; the plan's 2 years are for phase 4's contacts who never bought). The clock never runs while a plan is
 // still there, nor for a venue whose licence can still make one: only once nothing is left but the memory.
 const MEMORY_YEARS = 5, MEMORY_KEY = "meta:memory";
-const CUST_REC = { v: "venue:", c: "couple:", s: "signup:" }, NOTES_FIELD = { v: "notes", c: "contact", s: "notes" };
-const custKeyOf = key => { const mm = /^([vcs]):([A-Za-z0-9_-]{1,64})$/.exec(key || ""); return mm ? { key: mm[0], t: mm[1], id: mm[2], rec: CUST_REC[mm[1]] + mm[2] } : null; };
+const CUST_REC = { v: "venue:", c: "couple:", s: "signup:", l: "lead:" }, NOTES_FIELD = { v: "notes", c: "contact", s: "notes", l: "notes" };
+const custKeyOf = key => { const mm = /^([vcsl]):([A-Za-z0-9_-]{1,64})$/.exec(key || ""); return mm ? { key: mm[0], t: mm[1], id: mm[2], rec: CUST_REC[mm[1]] + mm[2] } : null; };
 const stepOut = s => (s && typeof s.text === "string" && s.text) ? { text: s.text, due: ymdOk(s.due) ? s.due : null, at: s.at || null } : null;
 const actsOf = async (env, key) => { const a = safeParse(await env.PLANS.get("act:" + key)); return Array.isArray(a) ? a : []; };
 // What stays of a plan once the sweep deletes it: the kind of event and its dates, for the memory card.
@@ -1672,6 +1788,11 @@ const pastOut = rec => (Array.isArray(rec.past) ? rec.past : []).map(p => ({ kin
 // When the card will be forgotten, and why its clock is not running yet ("plans" · "licence" · null = it is running).
 function memoryOf(t, rec, x, acts, now) {
   if (t === "s") return null;   // a pending signup whose venue is gone leaves by itself within a month (signupSweep)
+  if (t === "l") {   // a contact who never bought: only contacts count (the date they named is not one), and nothing holds the clock
+    const last = Math.max(rec.createdAt || 0, ...(rec.moves || []).map(mv => (mv && mv.at) || 0), ...acts.map(a => a.t || 0)) || now;
+    const lastTouch = ymdOfMs(Math.min(last, now));
+    return { lastTouch, forgetAt: addYears(lastTouch, LEAD_YEARS), years: LEAD_YEARS, held: null };
+  }
   const today = ymdOfMs(now);
   const dayMs = ymd => ymdOk(ymd) ? Date.parse((ymd <= today ? ymd : today) + "T12:00:00Z") : 0;   // an event still ahead counts as today
   const last = Math.max(x.row.last || 0, rec.createdAt || 0, rec.paidAt || 0, rec.claimedAt || 0,
@@ -1693,8 +1814,10 @@ function timelineOf(t, rec, x, acts) {
     for (const [k, at] of Object.entries(marks || {})) { const n = +String(k).split(":").pop(); if (at && (!by.has(at) || n < by.get(at))) by.set(at, n); }
     for (const [at, n] of by) add(at, code, { n: Number.isFinite(n) ? n : null });
   };
-  for (const a of acts) add(a.t, "act", { id: a.id, act: a.kind, text: String(a.text || "") });
-  if (t === "v") {
+  for (const a of acts) add(a.t, "act", { id: a.id, act: a.kind, text: String(a.text || ""), ...(a.source ? { src: a.source } : {}) });
+  if (t === "l") {
+    for (const mv of (rec.moves || [])) if (mv) add(mv.at, "stage", { stage: mv.stage, reason: mv.reason || null });
+  } else if (t === "v") {
     const s = x.card.signup;
     add(rec.selfSignup ? ((s && s.createdAt) || rec.createdAt) : rec.createdAt, rec.selfSignup ? "signup" : "created");
     if (s) add(s.resentAt, "setup_resent");
@@ -1731,10 +1854,12 @@ async function customerCard(env, key) {   // → {customer, …details} or null
   const now = Date.now(), rec = safeParse(await env.PLANS.get(k.rec));
   if (!rec) return null;
   const x = k.t === "v" ? (isTest(rec) ? null : await venueCustomer(env, rec, now, todayAthens()))
-    : k.t === "c" ? await coupleCustomer(env, rec, now) : await signupCustomer(env, rec, now);
+    : k.t === "c" ? await coupleCustomer(env, rec, now) : k.t === "l" ? leadCustomer(rec) : await signupCustomer(env, rec, now);
   if (!x) return null;
   const acts = await actsOf(env, k.key);
-  return { customer: x.row, ...x.card, notes: String(rec[NOTES_FIELD[k.t]] || ""), nextStep: stepOut(rec.nextStep),
+  // how they found us: a contact's own answer, or the one a customer brought with it from «Έγινε πελάτης»
+  const source = k.t === "l" ? (rec.source || "other") : (rec.fromLead && rec.fromLead.source) || null;
+  return { customer: x.row, ...x.card, source, notes: String(rec[NOTES_FIELD[k.t]] || ""), nextStep: stepOut(rec.nextStep),
     past: pastOut(rec), memory: memoryOf(k.t, rec, x, acts, now), timeline: timelineOf(k.t, rec, x, acts) };
 }
 // Only what the books need outlives «Ξέχασέ τον» and the clock (Andreas, 2026-10-18): the name and the dates of what was
@@ -1778,6 +1903,7 @@ async function eraseSignup(env, s, why) {   // the venue, everything in it, and 
 async function forgetCustomer(env, k, why) {
   if (k.t === "v") await eraseVenue(env, k.id, why);
   else if (k.t === "c") await eraseCouple(env, k.id, why);
+  else if (k.t === "l") await eraseLead(env, k.id, why);   // bought nothing, so the books keep nothing
   else { const s = safeParse(await env.PLANS.get(k.rec)); if (s) await eraseSignup(env, s, why); }
   return { books: !!(await env.PLANS.get("books:" + k.key)) };
 }
@@ -1801,6 +1927,12 @@ async function memorySweep(env, now) {
     if (live) continue;
     const x = await coupleCustomer(env, c, now), mem = memoryOf("c", c, x, await actsOf(env, "c:" + c.id), now);
     if (mem && !mem.held && mem.forgetAt <= day) { await eraseCouple(env, c.id, "clock"); out.forgotten++; console.log("memory: forgot a direct customer, " + MEMORY_YEARS + " years after the last contact"); }
+  }
+  for (const lid of (safeParse(await env.PLANS.get("leads:index")) || [])) {
+    const l = safeParse(await env.PLANS.get("lead:" + lid));
+    if (!l) { await removeIndex(env, "leads:index", lid); continue; }
+    const mem = memoryOf("l", l, leadCustomer(l), await actsOf(env, "l:" + l.id), now);
+    if (mem.forgetAt <= day) { await eraseLead(env, l.id, "clock"); out.forgotten++; console.log("memory: forgot a contact, " + LEAD_YEARS + " years after the last contact"); }
   }
   for (const k of (await env.PLANS.list("act:")) || []) {
     const ck = custKeyOf(k.slice(4));
@@ -2645,8 +2777,13 @@ export default {
             const b = await readBody(request);
             const id = rnd(10), key = id + "." + rnd(28), email = normEmail(b.email), lang = langOf(b.lang);
             if (b.email && !email) return json({ error: "bad_email" }, 400);
+            const afm = String(b.afm || "").trim() ? validAfm(b.afm) : "";
+            if (String(b.afm || "").trim() && !afm) return json({ error: "bad_afm" }, 400);
+            const lead = await leadToAdopt(env, b);
+            if (lead === false) return json({ error: "lead_gone" }, 409);
             const v = { id, name: String(b.name || "Venue").slice(0, 120), contact: String(b.contact || "").slice(0, 200), notes: String(b.notes || "").slice(0, NOTES_MAX), email, lang,
-              key, keyRotated: false, license: normLicense(b.license), used: 0, weddings: [], active: true, createdAt: Date.now(), defaultPerms: { ...VENUE_DEFAULT } };
+              key, keyRotated: false, license: normLicense(b.license), used: 0, weddings: [], active: true, createdAt: Date.now(), defaultPerms: { ...VENUE_DEFAULT },
+              ...(afm ? { afm } : {}) };   // shown and matched («Γνωστός πελάτης»); the free-year fence is the signup's own `afm:` row, not this
             // With mail and an address, the venue sets its own key from the e-mailed link: the admin never sees one.
             let mailed = false;
             if (email && mailOn(env)) {
@@ -2658,6 +2795,7 @@ export default {
             await env.PLANS.put("venue:" + id, JSON.stringify(v));
             await addIndex(env, "venues:index", id);
             await indexEmail(env, email, "venue", id, true);
+            if (lead) await adoptLead(env, lead.id, "v:" + id, "venue:" + id);
             return json(mailed ? { id, venue: adminVenue(v), mailed: true } : { id, key, venue: adminVenue(v), mailed: false });
           }
           if (parts.length === 2 && request.method === "GET") {
@@ -2808,6 +2946,8 @@ export default {
             if (startNow && b.weddingDate >= addDays(todayAthens(), START_NOW_MAX_DAYS)) return json({ error: "start_now_too_early" }, 400);
             const paidAt = Date.now(), opensAt = startNow ? null : athensMidnight(addDays(todayAthens(), OPEN_DELAY_DAYS));
             if (opensAt && opensAt >= athensMidnight(b.weddingDate)) return json({ error: "never_opens" }, 400);   // it would open only after the wedding: "start now" or check the date
+            const lead = await leadToAdopt(env, b);
+            if (lead === false) return json({ error: "lead_gone" }, 409);
             const cid = rnd(10), planId = rnd(22), token = rnd(32);
             const kind = normKind(b.kind);   // a parent buying for a baptism buys exactly what a couple buys
             const name = String(b.name || (kind === "baptism" ? "Baptism" : "Wedding")).slice(0, 120);
@@ -2821,6 +2961,7 @@ export default {
             await env.PLANS.put("claim:" + token, JSON.stringify({ cid, planId, createdAt: Date.now(), gen: 0 }));
             await addIndex(env, "couples:index", cid);
             await indexEmail(env, email, "couple", cid, true);
+            if (lead) await adoptLead(env, lead.id, "c:" + cid, "couple:" + cid);
             return json(mailed ? { couple: await adminCouple(env, c), mailed: true } : { couple: await adminCouple(env, c), claimToken: token, mailed: false });
           }
           if (parts.length === 2 && request.method === "GET") {
@@ -2959,12 +3100,82 @@ export default {
             const r = await kvUpdate(env, "act:" + k.key, a => (Array.isArray(a) && a.some(e => e && e.id === parts[4])) ? { __obj: a.filter(e => e && e.id !== parts[4]), __res: true } : null);
             return r.res ? json({ ok: true }) : json({ error: "not found" }, 404);
           }
+          // Phase 4. A new contact from someone already on a card («Γνωστός πελάτης»): it lands on that card's timeline with
+          // how it came, restarting its clock, instead of a second row. On a contact it may also move the stage; one that
+          // «Δεν προχώρησε» and calls again is back in play.
+          if (sub === "contact" && M === "POST") {
+            const b = await readBody(request);
+            const source = LEAD_SOURCES.includes(b.source) ? b.source : "other";
+            const text = typeof b.text === "string" ? b.text.trim().slice(0, ACT_TEXT_MAX) : "";
+            const st = b.next && typeof b.next.text === "string" ? b.next.text.trim().slice(0, STEP_MAX) : "";
+            if (st && b.next.due != null && b.next.due !== "" && !ymdOk(b.next.due)) return json({ error: "bad_date" }, 400);
+            if (k.t === "l" && b.stage != null && !LEAD_STAGES.includes(b.stage)) return json({ error: "bad_stage" }, 400);
+            const entry = { id: rnd(10), t: now, kind: "contact", source, text };
+            await kvUpdate(env, "act:" + k.key, a => [...(Array.isArray(a) ? a : []), entry].slice(-ACT_MAX));
+            await onRec(cur => {
+              let dirty = false;
+              if (st) { cur.nextStep = { text: st, due: b.next.due || null, at: now }; dirty = true; }
+              if (k.t === "l") {
+                const to = LEAD_STAGES.includes(b.stage) ? b.stage : cur.lost ? 2 : null;
+                if (to && to !== leadStage(cur)) { delete cur.lost; cur.stage = to; cur.moves = [...(cur.moves || []), { at: now, stage: to }].slice(-MOVES_MAX); dirty = true; }
+              }
+              return dirty ? cur : null;
+            });
+            return json({ ok: true, entry: { at: entry.t, code: "act", id: entry.id, act: entry.kind, text: entry.text, src: source } });
+          }
+          if (k.t === "l" && sub === "lead" && (M === "PATCH" || M === "PUT")) {   // «Επεξεργασία…» of a contact
+            const b = await readBody(request);
+            const f = leadFields(b, cur0);
+            if (f.error) return json({ error: f.error }, 400);
+            const r = await onRec(cur => { const g = leadFields(b, cur); if (g.error) return null; g.lead.updatedAt = now; return g.lead; });
+            if (!r.obj) return json({ error: "not found" }, 404);
+            return json({ ok: true, lead: leadOut(r.obj) });
+          }
+          if (k.t === "l" && sub === "stage" && M === "POST") {   // Σε συζήτηση · Αναμένεται πληρωμή · back to Νέα επαφή · Δεν προχώρησε + why
+            const b = await readBody(request);
+            const lost = b.stage === 8;
+            if (!lost && !LEAD_STAGES.includes(b.stage)) return json({ error: "bad_stage" }, 400);
+            if (lost && !LEAD_LOST.includes(b.reason)) return json({ error: "bad_reason" }, 400);
+            const text = typeof b.text === "string" ? b.text.trim().slice(0, ACT_TEXT_MAX) : "";
+            const r = await onRec(cur => {
+              if (lost) { cur.lost = { reason: b.reason, at: now }; delete cur.nextStep; }   // nothing is next for someone who went elsewhere
+              else { delete cur.lost; cur.stage = b.stage; }
+              cur.moves = [...(cur.moves || []), { at: now, stage: b.stage, ...(lost ? { reason: b.reason } : {}) }].slice(-MOVES_MAX);
+              return cur;
+            });
+            if (!r.obj) return json({ error: "not found" }, 404);
+            if (text) await kvUpdate(env, "act:" + k.key, a => [...(Array.isArray(a) ? a : []), { id: rnd(10), t: now, kind: "other", text }].slice(-ACT_MAX));
+            return json({ ok: true, lead: leadOut(r.obj) });
+          }
           if (sub === "forget" && M === "POST") {   // «Ξέχασέ τον»: everything goes but what the books need
             const r = await forgetCustomer(env, k, "request");
             console.log("admin: a customer was forgotten on request" + (r.books ? " (books kept)" : ""));
             return json({ ok: true, books: r.books });
           }
           return json({ error: "not found" }, 404);
+        }
+        // Phase 4: «+ Νέα επαφή», and «Γνωστός πελάτης» as he types an email, a phone or an ΑΦΜ. The lookup is a POST so the
+        // address or number he types never sits in a URL (or an access log).
+        if (parts[1] === "leads" && parts.length === 2 && request.method === "POST") {
+          const b = await readBody(request);
+          const f = leadFields(b, null);
+          if (f.error) return json({ error: f.error }, 400);
+          const stage = LEAD_STAGES.includes(b.stage) ? b.stage : 1;
+          const st = b.next && typeof b.next.text === "string" ? b.next.text.trim().slice(0, STEP_MAX) : "";
+          if (st && b.next.due != null && b.next.due !== "" && !ymdOk(b.next.due)) return json({ error: "bad_date" }, 400);
+          if ((safeParse(await env.PLANS.get("leads:index")) || []).length >= LEAD_MAX) return json({ error: "full" }, 409);
+          const now = Date.now(), id = rnd(12);
+          const lead = { ...f.lead, id, stage, notes: "", createdAt: now, updatedAt: now, moves: [],
+            ...(st ? { nextStep: { text: st, due: b.next.due || null, at: now } } : {}) };
+          const text = typeof b.text === "string" ? b.text.trim().slice(0, ACT_TEXT_MAX) : "";
+          await env.PLANS.put("lead:" + id, JSON.stringify(lead));
+          await env.PLANS.put("act:l:" + id, JSON.stringify([{ id: rnd(10), t: now, kind: "contact", source: lead.source, text }]));
+          await addIndex(env, "leads:index", id);
+          return json({ ok: true, key: "l:" + id, lead: leadOut(lead) });
+        }
+        if (parts[1] === "match" && parts.length === 2 && request.method === "POST") {
+          const b = await readBody(request);
+          return json({ matches: await knownCustomers(env, b, typeof b.except === "string" ? b.except : "") });
         }
         if (parts[1] === "books" && parts.length === 2 && request.method === "GET") {   // what the books keep of forgotten customers
           const out = [];
