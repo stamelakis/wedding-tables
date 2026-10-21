@@ -344,8 +344,22 @@ options (HANDOFF §8.6).
   `leadFormHtml` / `wireLeadForm` (chips; stage default follows «Τηλέφωνο»), `knownHtml`, `leadAction`, `REPLIES`
   (five texts; `REPLY_PAY` holds the IBAN/IRIS gaps), `showReply`. The replies are copied, or opened in his mail
   app (`mailto:`), which writes «✉ Email» to the timeline — nothing is mailed by the server, unlike the plan's
-  "send by mail from the card". Part B (the site's contact form, the automatic reply, spam limits, decision 6's
-  line) is the next session.
+  "send by mail from the card".
+- **Phase 4 as built (part B: the site's form).** One page, `epikoinonia.html` (Greek, `?lang=en` for English;
+  `?kind=wedding|baptism|party|venue&q=start|ask|demo|other` preselects), replaces every `mailto:…?subject=` on
+  index.html and the three guides; the plain info@ address stays in the help lines. It posts JSON to the public
+  `POST /contact` {kind, topic, name, email, phone?, date?, place?, message?, nomail?, lang, website}. Only those fields
+  are read (`contactFields`): one-line fields stripped of control characters and capped at 120, the message at 1000,
+  a date from today up to 5 years ahead and never for a venue. Limits: 5 a day per IP (plus server.mjs's 5 an hour
+  and 20 mails an hour per IP), 50 a day in total (then one `ownerContactFull` mail a day and 503 `busy`), a honeypot
+  `website` that answers ok and writes nothing, JSON-only + own origin, `LEAD_MAX`. A known email (newest `lead:`
+  with that address) joins that contact: empty fields are filled, a lost one goes back to stage 1, an opt-out sticks.
+  Otherwise a new lead with `source:"form"` (a source only this route writes; shown as «Φόρμα σελίδας», not a chip),
+  `lang`, and `noMail` when ticked; the act is `{kind:"contact", source:"form", text: topic — message}` and stamps
+  `contactAt`. Mails: `contactAck` (el/en, fixed text that echoes nothing, 3 a day per address) and `ownerContact` to
+  the verified owner address with the message, «Γνωστός πελάτης» matches and `replyTo` the sender (no hourly cap,
+  only the 50-a-day ceiling, so a real message is never dropped). `noMail` shows on the card and carries over in
+  `adoptLead`; a contact's card also gets `known` (added at route level, since `knownCustomers` calls `customerCard`).
 
 ## 8. Phase status
 
@@ -354,7 +368,7 @@ options (HANDOFF §8.6).
 | 1 «Πελάτες» sheet | live 2026-10-18 (`33a84df`, tag `deploy-2026-10-18-2`); Greek approved by Andreas; his own look on his phone still to come |
 | 2 Customer card + memory | live 2026-10-18 (`aed530c`, tag `deploy-2026-10-18-3`); Greek approved by Andreas; his own look on his phone still to come |
 | 3 The venue's own sheet | live 2026-10-21 (`1bcc6ae`, `cf5788d`; deployed as `23e0ad0`, tag `deploy-2026-10-21-3`) after Andreas read the Greek |
-| 4 Contacts | part A (admin: «+ Νέα επαφή», «Γνωστός πελάτης», «Έγινε πελάτης», «Δεν προχώρησε», replies) built 2026-10-21, not deployed — waits on Andreas reading the Greek; part B (the site's form) next |
+| 4 Contacts | part A live 2026-10-21 (`373419e`, tag `deploy-2026-10-21-7`) with Andreas's Greek fixes; part B (the site's form, `epikoinonia.html`) built 2026-10-22 (`5262ee2`), not deployed — waits on Andreas reading the new Greek |
 | 5 Payments | — |
 | 6 «Σήμερα» | — |
 | 7 Online payment | not scheduled |

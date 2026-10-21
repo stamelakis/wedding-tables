@@ -9,7 +9,7 @@ decisions a future session might undo by mistake. `STATUS.md` says where we are.
 ```bash
 node tools/build-planner.mjs            # regenerate the planner outputs
 node tools/build-planner.mjs --check    # must print "all planner outputs up to date"
-node tools/test-api.mjs                 # the whole suite (1196 checks today)
+node tools/test-api.mjs                 # the whole suite (1241 checks today)
 node tools/dev.mjs                      # local stack on :8080 — never `node server/server.mjs`
 node tools/dev-customers.mjs            # the same, seeded with one customer per «Θέλουν εμένα» flag and stage
 ```
@@ -143,6 +143,17 @@ build runs the full suite), restarts and health-checks; on failure it rolls back
   His mail app keeps the thread and the customer's answer lands in his inbox; a server mail would leave no sent copy
   and add one more route that mails strangers. Opening one writes «✉ Email» to the timeline. Rejected: the plan's
   "send by mail from the card". The payment text keeps «[ΣΥΜΠΛΗΡΩΣΕ…]» gaps (`REPLY_PAY`) until Andreas gives the details.
+- **The site has one contact page, `epikoinonia.html`, not a form on each page** (phase 4 part B, 2026-10-22). Every
+  «γράψτε μας» / «ζητήστε demo» link opens it with `?kind=…&q=…` preselected; venues use it too (Andreas). Rejected: a form
+  pasted into index.html and the three guides (four copies of one form to keep in step).
+- **The form's "no related mails" is an opt-out tick, stored as `noMail`, that sticks** (decision 6, 2026-10-22). ν. 3471/2006
+  άρθρο 11 §3 lets us write to *buyers* about similar things only if they could say no when we took the address; a form
+  sender is not a buyer yet, so the no is asked at the form, kept on the lead, never undone by a later form, and carried to
+  the customer by `adoptLead`. Do not drop the tick or default it to "no mails" silently.
+- **A form from a known email joins that contact; the mail to Andreas has Reply-To the sender and no hourly cap** (2026-10-22).
+  Rejected: a new row per message (the same person twice in the sheet), and the per-address hourly mail cap on the owner
+  mail (it would drop a real customer's second message). Only the 50-a-day ceiling bounds it. The "we got it" mail echoes
+  nothing the sender typed, so the form cannot be used to send our mail with someone else's words.
 - **A contact that becomes a customer ends** (`adoptLead`): its timeline, source and next step move to the new card and
   the `lead:` row is erased, so no one is in the sheet twice. Do not keep converted leads "for statistics". A couple's
   or venue's phone stays in their notes, where `phonesOf` finds it for «Γνωστός πελάτης»; rejected: a new phone field.
