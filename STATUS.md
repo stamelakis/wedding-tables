@@ -3,25 +3,39 @@
 Updated: 2026-10-21
 
 **Status:** Live runs `45071e7` (deployed 2026-10-21, tag `deploy-2026-10-21-6`), healthy. Operations phases 1–3
-are live; terms, privacy, the home page, the venue console and the βάπτιση guide now name the γιορτή wherever they
-list kinds, after Andreas read the Greek.
+are live. Phase 4 part A (contacts in admin.html) is built and committed (`70ba96e`), **not deployed**: it waits on
+Andreas reading its Greek.
 
 ## In progress / unfinished
 
-- Nothing half-done.
+- **Phase 4 part A, built, not deployed** (`67a99e6` server + `70ba96e` admin.html). Done when Andreas has read the
+  Greek below; then deploy (ask first). Part B is not started.
 - Party plans created before 2026-10-17 keep the label «Τραπέζι της γιορτής» until the customer renames it
   (deliberately not rewritten on load). Converting such a plan to another kind still works (LEGACY_HEADS).
 
 ## Next
 
-1. **Operations phase 4: every contact lands in your sheet** (`OPERATIONS-PLAN.md` §4). Phases 5–6 follow; phase 7
-   (online payment) waits on the company, accountant and lawyer. The page's remaining English sections move to
-   Greek as each is touched.
-2. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today (checked
+1. **Deploy phase 4 part A** once Andreas has read the Greek (below). Done when live and «+ Νέα επαφή» works on his phone.
+2. **Phase 4 part B: the site's contact form** (`OPERATIONS-PLAN.md` §4): a form replacing the couples' mailto links on
+   index.html and the three plano-trapezion-*.html guides, writing a `lead:` row; the automatic "we got it" reply
+   (el/en); spam limits; a fixed field list and a length cap per field on the public input (security review note);
+   the decision-6 line, with privacy updated. Done when a test form sent locally lands as «Νέα επαφή» in the sheet,
+   with tests, a screen check and `/security-review`. Phases 5–6 follow; phase 7 (online payment) waits on the
+   company, accountant and lawyer. The page's remaining English sections move to Greek as each is touched.
+3. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today (checked
    2026-10-18): every plan on the server comes from a purchase, a venue licence or free year, or a paying couple.
 
 ## Waiting on Andreas
 
+- **Read phase 4's Greek before it goes live** (local copy: `node tools/dev-customers.mjs`, admin.html, key
+  `dev-owner-key`, or ask the next session to show it):
+  1. the five ready replies on a contact's card («Έτοιμο μήνυμα:»): price, payment, reminder, and the venue's price
+     and reminder (`REPLIES` in admin.html);
+  2. the new privacy.html lines about contacts and the 2-year period (both languages);
+  3. the «+ Νέα επαφή» form and the card's buttons («Σε συζήτηση», «Αναμένεται πληρωμή», «Δεν προχώρησε…» and its
+     reasons, «Έγινε πελάτης…»).
+  Also send **the bank details for the payment text**: δικαιούχος, IBAN and IRIS number (put them in chat; they are
+  not secret, they go on every payment message). Until then the payment reply shows «[ΣΥΜΠΛΗΡΩΣΕ…]» and warns on copy.
 - **Nothing to do for phase 3.** Not checked after the deploy: the one real venue's console on the new sheet (that
   needs the venue's own key). The same code was checked on the local copy. The three new dates are recorded from
   today only, so the venue's existing events show their stage without «δεν στάλθηκε / δεν έχει ανοίξει» (by design).
@@ -56,6 +70,12 @@ list kinds, after Andreas read the Greek.
 
 ## History
 
+- 2026-10-21 — operations phase 4 part A built, not deployed (`67a99e6`, `70ba96e`): contacts (`lead:` rows) on
+  «Πελάτες» with «+ Νέα επαφή», a live «Γνωστός πελάτης» match (email, phone, ΑΦΜ), «Έγινε πελάτης» carrying the
+  history (stage moves included), «Δεν προχώρησε» + reason and the 2-year clock, five ready replies (copied or opened
+  in his mail app, never mailed by the server). Changed from the plan: "send by mail from the card" became mailto.
+  1196 checks (new: owner-key-only, 2-year clock, no guest names or keys in answers, admin.html scripts parse);
+  verifier on desktop and 375 px, its eight findings fixed and rechecked; `/security-review` found nothing.
 - 2026-10-21 — the βάπτιση guide names the γιορτή, deployed (`45071e7`, tag `deploy-2026-10-21-6`) after Andreas read
   the Greek: its three «η συνδρομή … καλύπτει τους γάμους και τις βαπτίσεις το ίδιο» (FAQ data, FAQ, top note) now say
   «καλύπτει εξίσου γάμους, βαπτίσεις και γιορτές», as in the console. The two-kind check reads this page too; the
