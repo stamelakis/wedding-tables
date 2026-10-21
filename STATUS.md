@@ -1,10 +1,10 @@
 # TakeaSeat — STATUS
 
-Updated: 2026-10-18
+Updated: 2026-10-21
 
-**Status:** Live runs `aed530c` (deployed 2026-10-18, tag `deploy-2026-10-18-3`), healthy, everything in the
+**Status:** Live runs `6e30131` (deployed 2026-10-21, tag `deploy-2026-10-21-1`), healthy, everything in the
 repo is deployed. Operations phases 1 and 2 are live: the «Πελάτες» sheet, and the customer card as the place
-where Andreas works, with the 5-year memory clock.
+where Andreas works, with the 5-year memory clock. Every dialog the card opens is now Greek.
 
 ## In progress / unfinished
 
@@ -14,11 +14,14 @@ where Andreas works, with the 5-year memory clock.
 
 ## Next
 
-1. **Admin dialogs in Greek**: the create, edit and trash dialogs and the key/link boxes the card opens are still
-   English (plan §7: "admin.html's existing English labels move to Greek as each part is touched"). Small,
-   self-contained; Andreas reviews the strings.
+1. **The copied link message names a «σύντροφο» for every kind.** `claimMessage()` in admin.html (the text behind
+   «Αντιγραφή μηνύματος», which the customer reads) ends «στείλτε τον στον/στη σύντροφό σας», also for a βάπτιση
+   or a γιορτή. Small; it needs the couple's kind passed in and Andreas's review of the per-kind wording. While
+   there: the venue's «Αντιγραφή συνδέσμου + κλειδιού» text says «Κωδικός:» where the box says «Κλειδί κονσόλας».
 2. **Operations phase 3: the venue's own sheet** (`OPERATIONS-PLAN.md` §4). *Done when:* §4's phase 3 line.
-   Phases 4–6 follow in order; phase 7 (online payment) waits on the company, accountant and lawyer.
+   Phases 4–6 follow in order; phase 7 (online payment) waits on the company, accountant and lawyer. The page's
+   remaining English sections (Support requests, After the event, Admin access, the login) move to Greek as
+   each is touched.
 3. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today — checked
    2026-10-18: every plan on the server comes from a purchase (admin), a venue with a licence or free year,
    or a paying couple's extra plan; no free path exists. The free 8-table cap belongs to plans that stay on
@@ -48,6 +51,11 @@ where Andreas works, with the 5-year memory clock.
 
 ## History
 
+- 2026-10-21 — Deployed `6e30131` (tag `deploy-2026-10-21-1`): admin.html's dialogs in Greek — «+ Ιδιώτης»,
+  «+ Κτήμα», «Επεξεργασία…» of a customer and a venue, the «Κάδος», the key and link boxes and all their
+  confirms and toasts, with Greek dates and `lang="el"` on the dialog. Fixed on the way: the trash showed a
+  γιορτή as "Wedding"; «Μετά τον γάμο» became «Μετά την εκδήλωση». Andreas approved the Greek. Suite 1046;
+  every dialog checked on screen locally (also at 375 px); live smoke test after the deploy.
 - 2026-10-18 — Deployed `aed530c` (tag `deploy-2026-10-18-3`): operations phase 2. `4e329ac` server (notes,
   next step, timeline, memory clock, «Ξέχασέ τον», books), `83bcd96` (a forgotten self-signup venue takes its
   signup row at once), and the admin card; the old lists are gone. Andreas decided: free-year venues remembered
