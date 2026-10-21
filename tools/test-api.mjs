@@ -3513,8 +3513,9 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
       .replace(/(%[0-9A-F]{2})+/gi, s => { try { return decodeURIComponent(s); } catch { return s; } }).replace(/&amp;/g, '&');
       return t + '\n' + t.replace(/<[^>]+>/g, ''); };
     const TWO_KINDS = /γάμ(ος|ο|ου) (ή|&) βάπτισ|γάμ(οι|ους) και (για |οι |τις )?βαπτίσ|γάμος» ή «νέα βάπτισ|wedding or (a )?baptism|weddings and baptisms|wedding and baptism/i;
-    const homeVenue = ['index.html', 'venue.html'].map(f => ({ f, hit: (visible(page(f)).match(TWO_KINDS) || [])[0] }));
-    ok(homeVenue.every(p => !p.hit), 'pages: no two-kind list is left on the home page or the venue console, comments aside', homeVenue);
+    // not the γιορτή guide: its «Οργανώνετε γάμο ή βάπτιση;» rightly points to the other two kinds
+    const homeVenue = ['index.html', 'venue.html', 'plano-trapezion-vaptisis.html'].map(f => ({ f, hit: (visible(page(f)).match(TWO_KINDS) || [])[0] }));
+    ok(homeVenue.every(p => !p.hit), 'pages: no two-kind list is left on the home page, the venue console or the βάπτιση guide, comments aside', homeVenue);
     const ld = JSON.parse(page('index.html').split('<script type="application/ld+json">')[1].split('</script>')[0]);
     ok(/γιορτ/.test(ld.description) && /γιορτ/.test(ld.audience.audienceType) && ld.offers.filter(o => o.price !== '0').every(o => /γιορτ/.test(o.name + o.description)),
       'pages: the home page\'s search-engine data still parses, and it and both priced offers name the γιορτή');
