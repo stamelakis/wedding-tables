@@ -67,6 +67,9 @@ Not checked live: the contacts screen itself, which needs the owner key (checked
 
 ## History
 
+- 2026-10-21 — phase 4 part A deployed (`373419e`, `deploy-2026-10-21-7`) after Andreas read its Greek; his fixes
+  A–D in the ready replies (closing line, «Δεν υπάρχει αυτόματη χρέωση», «Κάθε πελάτης σας», immediate start asked
+  «γραπτώς»). 1196 checks; replies checked on the local copy at 375 px; live smoke test of five pages passed.
 - 2026-10-21 — operations phase 4 part A built, not deployed (`67a99e6`, `70ba96e`): contacts (`lead:` rows) on
   «Πελάτες» with «+ Νέα επαφή», a live «Γνωστός πελάτης» match (email, phone, ΑΦΜ), «Έγινε πελάτης» carrying the
   history (stage moves included), «Δεν προχώρησε» + reason and the 2-year clock, five ready replies (copied or opened
