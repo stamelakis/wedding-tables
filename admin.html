@@ -202,8 +202,8 @@ const LANG_STORE="tasCoupleLinkLang";   // this browser remembers the link langu
 const PLANNER_FILE={ el:"seating-planner-el.html", en:"seating-planner.html", de:"seating-planner-de.html" };
 const LANG_NAME={ el:"Ελληνικά", en:"English", de:"Deutsch" };
 const CLAIM_DAYS=30;    // the server's CLAIM_TTL: an unused claim link expires 30 days after it was issued
-const CLAIM_NOTE=`It opens once; then the couple gets their own personal link. An unused link expires ${CLAIM_DAYS} days after it was made.`;
-const RESET_NOTE=" The couple's old links and devices have already stopped working.";
+const CLAIM_NOTE=`Ανοίγει μία φορά· μετά ο πελάτης παίρνει τον δικό του προσωπικό σύνδεσμο. Αν δεν χρησιμοποιηθεί, λήγει ${CLAIM_DAYS} μέρες αφότου φτιάχτηκε.`;
+const RESET_NOTE=" Οι παλιοί σύνδεσμοι και οι συσκευές του πελάτη έχουν ήδη σταματήσει να δουλεύουν.";
 const app=document.getElementById("app");
 let venuesCache=[], couplesCache=[], supportCache=[];
 // GET /admin/mail: with mail on, claim links and venue keys go to the customer's address and the API never returns them.
@@ -245,21 +245,20 @@ async function req(path, opts){
   if(r.status===403 && authFail(d)){ setKey(""); renderLogin("Wrong owner key."); }
   return { ok:r.ok, status:r.status, d };
 }
-function failToast(res, msg){ if(res.status===403 && authFail(res.d)) return; toast(res.status===0?"Connection error — try again":msg); }
+function failToast(res, msg){ if(res.status===403 && authFail(res.d)) return; toast(res.status===0?"Δεν υπάρχει σύνδεση — δοκίμασε ξανά":msg); }
 const badEmail=res=>res.status===400 && !!res.d && res.d.error==="bad_email";
-const BAD_EMAIL="That email address doesn't look right";
+const BAD_EMAIL="Αυτό το email δεν φαίνεται σωστό";
 // "Sent by email" box: the link or key went to the customer, so there is nothing to show here. `title` and `note` are trusted HTML (values escaped).
 // An action fired from a card (the customer card, or a lookup card in Εργαλεία) answers ON that card: it hands us a
 // detached holder, and for «Νέος σύνδεσμος…» with mail off that box is the only place the new link ever appears.
-// Only the «+ Ιδιώτης» dialog still has a panel of its own (#cpanel).
+// Only the «+ Ιδιώτης» and «+ Κτήμα» dialogs still have a panel of their own (#cpanel, #newkey). All of it is Greek.
 let panelTarget=null;
 const fromCard=()=>!!panelTarget;
-const T=(en,el)=>fromCard()?el:en;   // the same handler serves the English tables and the Greek card
 function showSent(box, title, note){
   if(!box) return;
   box.innerHTML=`<div class="keybox">
     <div class="row between" style="align-items:flex-start"><div style="font-weight:700">${title}</div>
-      <button class="btn sm ghost" data-close title="Close">✕</button></div>
+      <button class="btn sm ghost" data-close title="Κλείσιμο">✕</button></div>
     ${note?`<div class="muted" style="margin-top:4px">${note}</div>`:""}
   </div>`;
   box.querySelector("[data-close]").onclick=()=>{ box.innerHTML=""; delete box.dataset.cid; delete box.dataset.vid; };
@@ -278,7 +277,7 @@ async function fetchMail(){
     return { enabled:!!d.enabled, from:String(d.from||""), sent:+d.sent||0, failed:+d.failed||0, lastOkAt:d.lastOkAt||null, lastError:(d.lastError&&typeof d.lastError==="object")?d.lastError:null }; }
   catch(e){ return null; }
 }
-function copy(t){ (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast("Copied")).catch(()=>prompt("Copy:",t)); }
+function copy(t){ (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast("Αντιγράφηκε")).catch(()=>prompt("Αντιγραφή:",t)); }
 function copySilently(t, msg){ try{ if(navigator.clipboard) navigator.clipboard.writeText(t).then(()=>toast(msg)).catch(()=>{}); }catch(e){} }
 const byNewest=(a,b)=>(b.createdAt||0)-(a.createdAt||0);
 
@@ -292,11 +291,13 @@ const isYmd=s=>/^\d{4}-\d{2}-\d{2}$/.test(String(s||""));
 const todayYmd=()=>{ try{ const s=new Intl.DateTimeFormat("en-CA",{ timeZone:"Europe/Athens", year:"numeric", month:"2-digit", day:"2-digit" }).format(new Date()); if(isYmd(s)) return s; }catch(e){}
   const t=new Date(); return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`; };
 const MAX_KEEP_DAYS=3650;   // the server's limit for "delete N days after the event"
-// ---- what a customer bought for: a wedding or a baptism. One field (`kind`) on the plan; everything else about
-// the sale — the price, the 14-day wait, the phases, the retention — is identical, so only labels read it.
-const EVW={ wedding:{ one:"wedding", date:"Wedding date", name:"Couple name", who:"couple", Who:"Couple", askName:"Enter the couple's name" },
-            baptism:{ one:"baptism",  date:"Baptism date", name:"Child's name", who:"parents", Who:"Parents", askName:"Enter the child's name" },
-            party:{   one:"celebration", date:"Date", name:"Name of the celebration", who:"host", Who:"Host", askName:"Enter the name of the celebration" } };
+// ---- what a customer bought for: a wedding, a baptism or a γιορτή. One field (`kind`) on the plan; everything else
+// about the sale — the price, the 14-day wait, the phases, the retention — is identical, so only labels read it.
+const EVW={ wedding:{ date:"Ημερομηνία γάμου",    name:"Όνομα ζευγαριού",   ph:"π.χ. Μαρία & Νίκος",     askName:"Γράψε το όνομα του ζευγαριού" },
+            baptism:{ date:"Ημερομηνία βάπτισης", name:"Όνομα παιδιού",     ph:"π.χ. Ελένη",             askName:"Γράψε το όνομα του παιδιού" },
+            party:{   date:"Ημερομηνία γιορτής",  name:"Όνομα της γιορτής", ph:"π.χ. 40ά γενέθλια Κώστα", askName:"Γράψε το όνομα της γιορτής" } };
+const kindOptions=sel=>[["wedding","Γάμος"],["baptism","Βάπτιση"],["party","Γιορτή"]]
+  .map(([k,l])=>`<option value="${k}"${k===sel?" selected":""}>${l}</option>`).join("");
 const evKind=x=>(x && EVW[x.kind]) ? x.kind : "wedding";   // anything we do not know is a wedding
 const EV=x=>EVW[evKind(x)];
 
@@ -305,14 +306,14 @@ const EV=x=>EVW[evKind(x)];
 function renewalHtml(v){ const L=(v&&v.license)||{};
   if(L.type==="per_wedding") return "";
   if(v&&v.trial&&v.trial.inForce) return "";   // a free year never renews itself; its own line says what happens instead
-  if(L.renewSkipped) return `<div style="margin-top:4px"><span class="badge warn long">Season ended ${esc(fmtYmd(L.renewSkipped))} — not renewed automatically (no reminder could be sent). Renew by editing the licence.</span></div>`;
+  if(L.renewSkipped) return `<div style="margin-top:4px"><span class="badge warn long">Η σεζόν έληξε ${esc(gYmd(L.renewSkipped))} — δεν ανανεώθηκε αυτόματα (δεν στάλθηκε υπενθύμιση). Ανανέωσέ την αλλάζοντας την άδεια.</span></div>`;
   if(!isYmd(L.seasonEnd)) return "";
-  if(L.autoRenew===false) return `<div class="muted">renewal off</div>`;
-  const at=ymdPlus(L.seasonEnd,1), when=esc(fmtYmd(at));
-  if(!v.active) return `<div class="muted">auto-renews ${when} — not while the venue is disabled</div>`;
-  if(!v.email) return `<div class="muted">auto-renews ${when} — only once a reminder is e-mailed: add the venue's email</div>`;
-  if(mailInfo && !mailInfo.enabled) return `<div class="muted">auto-renews ${when} — only once a reminder is e-mailed: email is off</div>`;
-  return at<todayYmd() ? `<div class="muted">season ended — the renewal is checked within the hour</div>` : `<div class="muted">auto-renews ${when}</div>`; }
+  if(L.autoRenew===false) return `<div class="muted">η αυτόματη ανανέωση είναι κλειστή</div>`;
+  const at=ymdPlus(L.seasonEnd,1), when=esc(gYmd(at));
+  if(!v.active) return `<div class="muted">ανανεώνεται αυτόματα στις ${when} — όχι όσο το κτήμα είναι απενεργοποιημένο</div>`;
+  if(!v.email) return `<div class="muted">ανανεώνεται αυτόματα στις ${when} — μόνο αφού σταλεί υπενθύμιση με email: πρόσθεσε το email του κτήματος</div>`;
+  if(mailInfo && !mailInfo.enabled) return `<div class="muted">ανανεώνεται αυτόματα στις ${when} — μόνο αφού σταλεί υπενθύμιση με email: η αποστολή email είναι κλειστή</div>`;
+  return at<todayYmd() ? `<div class="muted">η σεζόν έληξε — η ανανέωση ελέγχεται μέσα στην ώρα</div>` : `<div class="muted">ανανεώνεται αυτόματα στις ${when}</div>`; }
 
 // ---------------------------------------------------------------- after the event (retention)
 let settingsCache=null;   // GET /admin/settings → {retention:{keepDays, lockAfter}, coupleRetention:{…}, planExceptions:[…]}
@@ -330,15 +331,12 @@ function retentionText(r){ if(!r) return "";
   if(r.lockAfter===false) p.push("stays editable"); else if(r.lockAfter===true) p.push("view-only after");
   return p.join(" · "); }
 // Two choices, each "same as everyone" or its own value: view-only after the event, and when the plan is deleted.
-// `el` renders the same two fields in Greek, for the support card's «Διατήρηση…» — the rest of the console is English.
-function retentionFields(p, r, el, couple){ r=r||{}; const g=couple?coupleRet():globalRet();
+// Greek, like every dialog: «Επεξεργασία…» of a customer or a venue, and the support card's «Διατήρηση…».
+function retentionFields(p, r, couple){ r=r||{}; const g=couple?coupleRet():globalRet();
   const lock=r.lockAfter===true?"1":r.lockAfter===false?"0":"";
   const del=r.keep===true?"keep":r.keepDays!=null?"days":"";
-  const W = el
-    ? { after:"Μετά τον γάμο", defLock:`Ως συνήθως (${g.lockAfter?"μόνο προβολή":"μένει ανοιχτό"})`, lockOn:"Μόνο προβολή από την επομένη", lockOff:"Μένει ανοιχτό",
-        del:"Διαγραφή", defDel:`Ως συνήθως (${gN(g.keepDays,"μέρα","μέρες")} μετά τον γάμο)`, days:"Μετά από τόσες μέρες…", keep:"Δεν σβήνεται ποτέ", unit:"μέρες μετά τον γάμο" }
-    : { after:"After the event", defLock:`Default (${g.lockAfter?"view-only":"stays editable"})`, lockOn:"View-only from the day after", lockOff:"Stays editable",
-        del:"Deletion", defDel:`Default (${daysText(g.keepDays)} after the event)`, days:"After a number of days…", keep:"Keep forever", unit:"days after the event" };
+  const W={ after:"Μετά την εκδήλωση", defLock:`Ως συνήθως (${g.lockAfter?"μόνο προβολή":"μένει ανοιχτό"})`, lockOn:"Μόνο προβολή από την επομένη", lockOff:"Μένει ανοιχτό",
+    del:"Διαγραφή", defDel:`Ως συνήθως (${gN(g.keepDays,"μέρα","μέρες")} μετά την εκδήλωση)`, days:"Μετά από τόσες μέρες…", keep:"Δεν σβήνεται ποτέ", unit:"μέρες μετά την εκδήλωση" };
   return `<div class="grid">
     <div><label for="${p}lock">${esc(W.after)}</label>
       <select id="${p}lock">
@@ -365,7 +363,7 @@ function readRetention(p, scope){
   if(lock) o.lockAfter=lock==="1";
   if(del==="keep") o.keep=true;
   if(del==="days"){ const el=scope.querySelector("#"+p+"days"), n=el.value.trim()===""?NaN:Number(el.value);
-    if(!Number.isInteger(n) || n<0 || n>MAX_KEEP_DAYS) return { error:`Enter the number of days (0–${MAX_KEEP_DAYS})`, el };
+    if(!Number.isInteger(n) || n<0 || n>MAX_KEEP_DAYS) return { error:`Γράψε τον αριθμό των ημερών (0–${MAX_KEEP_DAYS})`, el };
     o.keepDays=n; }
   return { ret:Object.keys(o).length?o:null };
 }
@@ -376,7 +374,7 @@ function readRetention(p, scope){
 let dlgBack=null, cardNotes=null;   // cardNotes: the open card's notes box, {key, el, st, timer, last, …}
 function openDialog(html){
   let d=document.getElementById("dlg");
-  if(!d){ d=document.createElement("dialog"); d.id="dlg"; d.className="dlg"; document.body.appendChild(d);
+  if(!d){ d=document.createElement("dialog"); d.id="dlg"; d.className="dlg"; d.lang="el"; document.body.appendChild(d);   // lang: see #toolsSection
     d.addEventListener("cancel", e=>{ e.preventDefault(); closeDialog(); }); }   // Esc goes the same way as ✕
   flushNotes(); cardNotes=null;
   delete d.dataset.ctx; d.innerHTML=html; d.scrollTop=0;
@@ -388,7 +386,7 @@ function closeDialog(){ const d=document.getElementById("dlg"); if(!d) return;
   flushNotes(); cardNotes=null;
   if(d.open){ try{ d.close(); }catch(e){ d.removeAttribute("open"); } } delete d.dataset.ctx; d.innerHTML="";
   if(dlgBack){ const k=dlgBack; dlgBack=null; refreshCustomers(); openCustomer(k); } else cardPanel=null; }   // back from «Επεξεργασία…» / the trash: the row may have changed too
-const dlgHead=title=>`<div class="dhead"><h2>${title}</h2><button class="btn sm ghost" data-dclose title="Close">✕</button></div>`;
+const dlgHead=title=>`<div class="dhead"><h2>${title}</h2><button class="btn sm ghost" data-dclose title="Κλείσιμο">✕</button></div>`;
 // A missing or wrong field: say what is needed and put the cursor there.
 function invalid(el, msg){ toast(msg); if(el){ el.setAttribute("aria-invalid","true"); el.focus();
   el.addEventListener("input",()=>el.removeAttribute("aria-invalid"),{ once:true }); el.addEventListener("change",()=>el.removeAttribute("aria-invalid"),{ once:true }); } }
@@ -582,29 +580,29 @@ function showNewOwnerKey(key){
   document.getElementById("toDash").onclick=()=>load();
 }
 
-// Licence fields (create form and «Edit…»). Only seasonal licences are sold now: the type picker appears only for a venue that
-// still has a per-wedding licence (it keeps working, or is converted here). An empty field never means "unlimited": the season
-// dates (seasonal) or the quota (per-wedding) are required unless «Unlimited» is ticked, and a seasonal maximum is a number
-// unless «No maximum» is ticked.
+// Licence fields (create form and «Επεξεργασία…»). Only seasonal licences are sold now: the type picker appears only for a venue
+// that still has a per-wedding licence (it keeps working, or is converted here). An empty field never means "unlimited": the
+// season dates (seasonal) or the quota (per-wedding) are required unless «Απεριόριστη» is ticked, and a seasonal maximum is a
+// number unless «Χωρίς μέγιστο» is ticked.
 function licenseFields(prefix, L){
-  const isNew=!L;   // a new venue starts with nothing ticked except «No maximum» and «Renews automatically»
+  const isNew=!L;   // a new venue starts with nothing ticked except «Χωρίς μέγιστο» and «Ανανεώνεται αυτόματα»
   L=L||{ type:"seasonal", autoRenew:true };
   const per=L.type==="per_wedding", unl=per ? !L.quota : !(L.seasonStart||L.seasonEnd);
   return `<div class="grid">
-    ${per?`<div class="full"><label for="${prefix}type">License type</label>
+    ${per?`<div class="full"><label for="${prefix}type">Είδος άδειας</label>
       <select id="${prefix}type">
-        <option value="per_wedding" selected>Per-wedding (old licence — no longer sold)</option>
-        <option value="seasonal">Seasonal — convert to the season deal</option>
+        <option value="per_wedding" selected>Ανά εκδήλωση (παλιά άδεια — δεν πουλιέται πια)</option>
+        <option value="seasonal">Σεζόν — μετατροπή στη συμφωνία σεζόν</option>
       </select></div>`:`<input type="hidden" id="${prefix}type" value="seasonal">`}
-    <div class="seasonal lim"><label for="${prefix}start">Season start</label><input type="date" id="${prefix}start" value="${esc(isYmd(L.seasonStart)?L.seasonStart:"")}"></div>
-    <div class="seasonal lim"><label for="${prefix}end">Season end</label><input type="date" id="${prefix}end" value="${esc(isYmd(L.seasonEnd)?L.seasonEnd:"")}"></div>
-    <div class="perw lim"><label for="${prefix}quota">Event quota</label><input type="number" id="${prefix}quota" min="1" placeholder="e.g. 20" value="${per&&L.quota?esc(L.quota):""}"></div>
-    <div class="full"><label class="chk"><input type="checkbox" id="${prefix}unl"${unl&&!isNew?" checked":""}> <span>Unlimited — <span data-unltxt></span></span></label></div>
-    <div class="seasonal"><label for="${prefix}cap">Max events at a time</label><input type="number" id="${prefix}cap" min="1" placeholder="e.g. 40" value="${!per&&L.cap?esc(L.cap):""}">
-      <label class="chk sm"><input type="checkbox" id="${prefix}nocap"${!per&&L.cap?"":" checked"}> No maximum</label></div>
-    <div class="seasonal renew"><label>Renewal</label>
-      <label class="chk"><input type="checkbox" id="${prefix}renew"${L.autoRenew===false?"":" checked"}> Renews automatically</label>
-      <div class="muted" style="margin-top:4px">The day after the season ends it runs again for the same dates next year; it then shows «invoice due» here. The venue can turn this off in its console.</div></div>
+    <div class="seasonal lim"><label for="${prefix}start">Αρχή σεζόν</label><input type="date" id="${prefix}start" value="${esc(isYmd(L.seasonStart)?L.seasonStart:"")}"></div>
+    <div class="seasonal lim"><label for="${prefix}end">Τέλος σεζόν</label><input type="date" id="${prefix}end" value="${esc(isYmd(L.seasonEnd)?L.seasonEnd:"")}"></div>
+    <div class="perw lim"><label for="${prefix}quota">Όριο εκδηλώσεων</label><input type="number" id="${prefix}quota" min="1" placeholder="π.χ. 20" value="${per&&L.quota?esc(L.quota):""}"></div>
+    <div class="full"><label class="chk"><input type="checkbox" id="${prefix}unl"${unl&&!isNew?" checked":""}> <span>Απεριόριστη — <span data-unltxt></span></span></label></div>
+    <div class="seasonal"><label for="${prefix}cap">Μέγιστες εκδηλώσεις ταυτόχρονα</label><input type="number" id="${prefix}cap" min="1" placeholder="π.χ. 40" value="${!per&&L.cap?esc(L.cap):""}">
+      <label class="chk sm"><input type="checkbox" id="${prefix}nocap"${!per&&L.cap?"":" checked"}> Χωρίς μέγιστο</label></div>
+    <div class="seasonal renew"><label>Ανανέωση</label>
+      <label class="chk"><input type="checkbox" id="${prefix}renew"${L.autoRenew===false?"":" checked"}> Ανανεώνεται αυτόματα</label>
+      <div class="muted" style="margin-top:4px">Την επομένη του τέλους της σεζόν ξεκινά ξανά, με τις ίδιες ημερομηνίες του επόμενου χρόνου· τότε η καρτέλα του δείχνει «εκκρεμεί τιμολόγιο». Το κτήμα μπορεί να την κλείσει από την κονσόλα του.</div></div>
   </div>`;
 }
 function wireLicenseToggle(prefix, scope){
@@ -615,7 +613,7 @@ function wireLicenseToggle(prefix, scope){
     scope.querySelectorAll(".perw").forEach(e=>e.style.display=per?"":"none");
     scope.querySelectorAll(".lim").forEach(e=>{ if(u) e.style.display="none"; });
     scope.querySelectorAll(".renew").forEach(e=>e.style.display=(per||u)?"none":"");
-    scope.querySelector("[data-unltxt]").textContent=per?"no quota, any number of events":"no season dates, the licence never expires";
+    scope.querySelector("[data-unltxt]").textContent=per?"χωρίς όριο, όσες εκδηλώσεις θέλει":"χωρίς ημερομηνίες σεζόν, η άδεια δεν λήγει ποτέ";
     q("cap").disabled=nocap.checked; if(nocap.checked) q("cap").removeAttribute("aria-invalid"); };
   sel.addEventListener("change",upd); unl.addEventListener("change",upd);
   nocap.addEventListener("change",()=>{ upd(); if(!nocap.checked) q("cap").focus(); });
@@ -630,18 +628,18 @@ function readLicense(prefix, scope){
   if(type==="per_wedding"){
     if(unl) return { license:{ type, quota:0, seasonStart:null, seasonEnd:null, cap:0, autoRenew } };
     const n=num(q("quota"));
-    if(!Number.isInteger(n) || n<1) return { error:"Enter the event quota — or tick «Unlimited»", el:q("quota") };
+    if(!Number.isInteger(n) || n<1) return { error:"Γράψε το όριο εκδηλώσεων — ή σημείωσε «Απεριόριστη»", el:q("quota") };
     return { license:{ type, quota:n, seasonStart:null, seasonEnd:null, cap:0, autoRenew } };
   }
   let seasonStart=null, seasonEnd=null, cap=0;
   if(!unl){
     seasonStart=q("start").value||null; seasonEnd=q("end").value||null;
-    if(!isYmd(seasonStart)) return { error:"Enter the season start — or tick «Unlimited»", el:q("start") };
-    if(!isYmd(seasonEnd)) return { error:"Enter the season end — or tick «Unlimited»", el:q("end") };
-    if(seasonEnd<seasonStart) return { error:"The season ends before it starts", el:q("end") };
+    if(!isYmd(seasonStart)) return { error:"Γράψε πότε αρχίζει η σεζόν — ή σημείωσε «Απεριόριστη»", el:q("start") };
+    if(!isYmd(seasonEnd)) return { error:"Γράψε πότε τελειώνει η σεζόν — ή σημείωσε «Απεριόριστη»", el:q("end") };
+    if(seasonEnd<seasonStart) return { error:"Η σεζόν τελειώνει πριν αρχίσει", el:q("end") };
   }
   if(!q("nocap").checked){ const n=num(q("cap"));
-    if(!Number.isInteger(n) || n<1) return { error:"Enter the maximum number of events — or tick «No maximum»", el:q("cap") };
+    if(!Number.isInteger(n) || n<1) return { error:"Γράψε τον μέγιστο αριθμό εκδηλώσεων — ή σημείωσε «Χωρίς μέγιστο»", el:q("cap") };
     cap=n; }
   return { license:{ type, seasonStart, seasonEnd, quota:0, cap, autoRenew } };
 }
@@ -857,16 +855,15 @@ async function refreshSupport(){
 // actions were written for them and they carry what the card leaves out, e.g. an unopened link to copy.
 function coupleGone(c){ return !!(c.deletedAt || c.purgedAt || !c.exists); }
 // A day the server gives as an Athens midnight (ms) or "YYYY-MM-DD" → "01 Nov 2026".
-function fmtDay(x){ if(typeof x==="number"){ try{ return new Date(x).toLocaleDateString("en-GB",{timeZone:"Europe/Athens",day:"2-digit",month:"short",year:"numeric"}); }catch(e){ return fmtDate(x); } }
-  return isYmd(x)?fmtYmd(x):"—"; }
+function fmtDay(x){ return typeof x==="number" ? gD(x) : isYmd(x) ? gYmd(x) : "—"; }   // Athens calendar, in Greek
 // What the COUPLE can do now (life.phase; the admin and venues are never limited by it). "locked" is the after-the-wedding badge.
 function couplePhaseHtml(L){
   const P=L && L.phase;
-  if(P==="waiting") return `<span class="badge wait" title="Withdrawal period: the planner is view-only until then">Opens ${esc(fmtDay(L.opensAt))}</span>`;
-  if(P==="names") return `<span class="badge tpl" title="Guests, names and seats on the existing tables; tables, floor and decor unlock then">Names until ${esc(fmtDay(L.fullAt))}</span>`;
-  if(P==="full") return `<span class="badge per">Full editor</span>`;
-  if(P==="frozen") return `<span class="badge warn long" title="The couple changed the date: view-only until 14 days before the new date">Frozen until ${esc(fmtDay(L.frozenUntil))} (date changed)</span>`;
-  if(P==="locked" && !L.over) return `<span class="badge off">View-only</span>`;
+  if(P==="waiting") return `<span class="badge wait" title="Περίοδος υπαναχώρησης: ως τότε το σχέδιο είναι μόνο για προβολή">Ανοίγει ${esc(fmtDay(L.opensAt))}</span>`;
+  if(P==="names") return `<span class="badge tpl" title="Καλεσμένοι, ονόματα και θέσεις στα τραπέζια που υπάρχουν· τραπέζια, κάτοψη και διακόσμηση ξεκλειδώνουν τότε">Ονόματα ως ${esc(fmtDay(L.fullAt))}</span>`;
+  if(P==="full") return `<span class="badge per">Πλήρης επεξεργασία</span>`;
+  if(P==="frozen") return `<span class="badge warn long" title="Ο πελάτης άλλαξε την ημερομηνία: μόνο προβολή ως 14 μέρες πριν από τη νέα">Παγωμένο ως ${esc(fmtDay(L.frozenUntil))} (άλλαξε η ημερομηνία)</span>`;
+  if(P==="locked" && !L.over) return `<span class="badge off">Μόνο προβολή</span>`;
   return "";
 }
 async function refreshCouples(){
@@ -877,18 +874,18 @@ async function refreshCouples(){
 function showClaimPanel(cid, name, token, kind){
   const box=panelTarget||document.getElementById("cpanel"); if(!box || !token) return;
   let lang=coupleLang(cid);
-  const title = kind==="new" ? "✅ Couple created — send them this link:"
-    : kind==="reset" ? `✅ New link for ${esc(name)} — send it to the couple:`
-    : `Link for ${esc(name)} (not opened yet):`;
+  const title = kind==="new" ? "✅ Ο πελάτης δημιουργήθηκε — ο σύνδεσμος, για να του τον στείλεις:"
+    : kind==="reset" ? `✅ Νέος σύνδεσμος για «${esc(name)}», για να τον στείλεις:`
+    : `Σύνδεσμος για «${esc(name)}» (δεν έχει ανοίξει ακόμη):`;
   box.dataset.cid=cid;
   box.innerHTML=`<div class="keybox">
     <div class="row between" style="align-items:flex-start"><div style="font-weight:700">${title}</div>
-      <button class="btn sm ghost" data-close title="Close">✕</button></div>
-    <div class="row fw" style="margin:4px 0 8px"><span class="muted">Link language</span><select>${langOptions(lang)}</select></div>
+      <button class="btn sm ghost" data-close title="Κλείσιμο">✕</button></div>
+    <div class="row fw" style="margin:4px 0 8px"><span class="muted">Γλώσσα συνδέσμου</span><select aria-label="Γλώσσα συνδέσμου">${langOptions(lang)}</select></div>
     <div class="k"></div>
     <div class="row fw" style="margin-top:10px">
-      <button class="btn sm" data-c="link">Copy link</button>
-      <button class="btn sm" data-c="msg">Copy message</button>
+      <button class="btn sm" data-c="link">Αντιγραφή συνδέσμου</button>
+      <button class="btn sm" data-c="msg">Αντιγραφή μηνύματος</button>
     </div>
     <div class="muted" style="margin-top:8px">${CLAIM_NOTE}${kind==="reset"?RESET_NOTE:""}</div>
   </div>`;
@@ -911,41 +908,41 @@ function showCoupleSent(cid, title, note){
   box.dataset.cid=cid; showSent(box, title, note);
 }
 // A couple's planner opens at 00:00 Athens on day 15 after purchase (after their 14-day withdrawal period) — or at once with
-// «Start now», which the server accepts only for an event less than 3 weeks away; a sale whose planner would open only on or
-// after the event day is refused (never_opens). Tables, floor and decor unlock 30 days before the event.
+// «Άμεση έναρξη», which the server accepts only for an event less than 3 weeks away; a sale whose planner would open only on
+// or after the event day is refused (never_opens). Tables, floor and decor unlock 30 days before the event.
 const START_NOW_DAYS=21, OPEN_DAYS=15;
-const NEVER_OPENS="The planner would only open after the event — tick Start now (the event must be less than 3 weeks away) or check the date.";
+const NEVER_OPENS="Το σχέδιο θα άνοιγε μετά την εκδήλωση. Διάλεξε «Άμεση έναρξη» (μόνο για εκδήλωση σε λιγότερο από 3 εβδομάδες) ή έλεγξε την ημερομηνία.";
 const daysUntil=s=>isYmd(s)?Math.round((Date.parse(s+"T00:00:00Z")-Date.parse(todayYmd()+"T00:00:00Z"))/86400000):NaN;
 function syncStartNow(){
   const dateEl=document.getElementById("cdate"), box=document.getElementById("cstart"), when=document.getElementById("cwhen"); if(!dateEl || !box || !when) return;
   const d=dateEl.value, n=daysUntil(d), ok=n>=0 && n<START_NOW_DAYS;
   box.disabled=!ok; if(!ok) box.checked=false;
-  const OPENS="The planner opens on day 15 after purchase (after the couple's 14-day withdrawal period)";
+  const OPENS="Το σχέδιο ανοίγει τη 15η μέρα μετά την αγορά (μετά τις 14 μέρες υπαναχώρησης του πελάτη)";
   when.style.color=n>=0 && !box.checked && n<=OPEN_DAYS ? "var(--danger)" : "";
-  when.textContent=!(n>=0) ? OPENS+"; tables, floor and decor unlock 30 days before the event."
-    : box.checked ? "The planner opens at once, with the full editor."
-    : n<=OPEN_DAYS ? `The event is ${n===0?"today":n===1?"tomorrow":`in ${n} days`} — without «Start now» the planner would not open before it.`
-    : n<START_NOW_DAYS ? `The event is in ${n} days — without «Start now» the planner opens only ${daysText(n-OPEN_DAYS)} before it.`
-    : n>OPEN_DAYS+30 ? `${OPENS}; tables, floor and decor unlock on ${fmtYmd(ymdPlus(d,-30))}.`
-    : OPENS+", with the full editor.";
+  when.textContent=!(n>=0) ? OPENS+"· τραπέζια, κάτοψη και διακόσμηση ξεκλειδώνουν 30 μέρες πριν από την εκδήλωση."
+    : box.checked ? "Το σχέδιο ανοίγει αμέσως, με πλήρη επεξεργασία."
+    : n<=OPEN_DAYS ? `Η εκδήλωση είναι ${n===0?"σήμερα":n===1?"αύριο":`σε ${n} μέρες`} — χωρίς «Άμεση έναρξη» το σχέδιο δεν προλαβαίνει να ανοίξει.`
+    : n<START_NOW_DAYS ? `Η εκδήλωση είναι σε ${n} μέρες — χωρίς «Άμεση έναρξη» το σχέδιο ανοίγει μόλις ${gN(n-OPEN_DAYS,"μέρα","μέρες")} πριν.`
+    : n>OPEN_DAYS+30 ? `${OPENS}· τραπέζια, κάτοψη και διακόσμηση ξεκλειδώνουν στις ${gYmd(ymdPlus(d,-30))}.`
+    : OPENS+", με πλήρη επεξεργασία.";
 }
 // «+ Ιδιώτης» on «Πελάτες»: the old list's form, in a dialog. It stays open after a sale, with the link to hand over.
 function openNewCouple(){
-  const d=openDialog(`${dlgHead("New customer — couple or parents")}
+  const d=openDialog(`${dlgHead("Νέος ιδιώτης πελάτης")}
     <div class="dbody">
       <div class="grid">
-        <div><label for="ckind">Event</label><select id="ckind"><option value="wedding" selected>Wedding</option><option value="baptism">Baptism</option><option value="party">Celebration (γιορτή)</option></select></div>
-        <div><label for="cname" id="cnamelbl">Couple name</label><input id="cname" maxlength="120" placeholder="e.g. Μαρία & Νίκος"></div>
-        <div><label for="cemail">Email (optional)</label><input id="cemail" type="email" placeholder="for their link and recovery" autocomplete="off"></div>
-        <div><label for="cdate" id="cdatelbl">Wedding date</label><input id="cdate" type="date" required min="${esc(todayYmd())}"></div>
-        <div><label for="clang">Language</label><select id="clang">${langOptions("el")}</select></div>
-        <div class="full"><label for="ccontact">Private notes <span class="hint">— only you see this · no health information</span></label><textarea id="ccontact" maxlength="${NOTES_MAX}" rows="2" placeholder="phone, how they found us, anything"></textarea></div>
-        <div class="full"><label class="chk"><input type="checkbox" id="cstart" disabled> <span>Start now
-          <span class="muted" style="display:block">Only when the event is less than 3 weeks away and the customer asked for immediate access (they consented that a withdrawal then costs the days used)</span></span></label>
+        <div><label for="ckind">Εκδήλωση</label><select id="ckind">${kindOptions("wedding")}</select></div>
+        <div><label for="cname" id="cnamelbl">${EVW.wedding.name}</label><input id="cname" maxlength="120" placeholder="${EVW.wedding.ph}"></div>
+        <div><label for="cemail">Email <span class="hint">— προαιρετικό</span></label><input id="cemail" type="email" placeholder="για τον σύνδεσμό του και την ανάκτηση" autocomplete="off"></div>
+        <div><label for="cdate" id="cdatelbl">${EVW.wedding.date}</label><input id="cdate" type="date" required min="${esc(todayYmd())}"></div>
+        <div><label for="clang">Γλώσσα</label><select id="clang">${langOptions("el")}</select></div>
+        <div class="full"><label for="ccontact">Σημειώσεις <span class="hint">— μόνο εσύ τις βλέπεις · χωρίς πληροφορίες υγείας</span></label><textarea id="ccontact" maxlength="${NOTES_MAX}" rows="2" placeholder="τηλέφωνο, πώς μας βρήκε, τι ζήτησε…"></textarea></div>
+        <div class="full"><label class="chk"><input type="checkbox" id="cstart" disabled> <span>Άμεση έναρξη
+          <span class="muted" style="display:block">Μόνο όταν η εκδήλωση απέχει λιγότερο από 3 εβδομάδες και ο πελάτης ζήτησε πρόσβαση αμέσως (έχει δεχτεί ότι, αν υπαναχωρήσει, πληρώνει τις μέρες που χρησιμοποίησε)</span></span></label>
           <div class="muted" id="cwhen" style="margin-top:6px"></div></div>
       </div>
-      <div class="row fw" style="margin-top:14px"><button class="btn primary" id="createC">Create</button>
-        ${mailOn()?`<span class="muted">With an email, the link goes straight to the customer — you won't see it.</span>`:""}</div>
+      <div class="row fw" style="margin-top:14px"><button class="btn primary" id="createC">Δημιουργία</button>
+        ${mailOn()?`<span class="muted">Αν έχει email, ο σύνδεσμος πάει κατευθείαν στον πελάτη — εσύ δεν τον βλέπεις.</span>`:""}</div>
       <div id="cpanel"></div>
     </div>`);
   d.querySelector("#createC").onclick=createCouple;
@@ -955,22 +952,22 @@ function openNewCouple(){
   const k=d.querySelector("#ckind");   // the two labels say what is being sold, before it is sold
   k.addEventListener("change",()=>{ const K=EV({ kind:k.value });
     d.querySelector("#cnamelbl").textContent=K.name; d.querySelector("#cdatelbl").textContent=K.date;
-    d.querySelector("#cname").placeholder={ baptism:"e.g. Ελένη", party:"e.g. 40ά γενέθλια Κώστα" }[k.value]||"e.g. Μαρία & Νίκος"; });
+    d.querySelector("#cname").placeholder=K.ph; });
   d.querySelector("#cname").focus();
 }
 async function createCouple(){
   const nameEl=document.getElementById("cname"), btn=document.getElementById("createC");
-  const name=nameEl.value.trim(); if(!name){ toast("Enter the couple's name"); nameEl.focus(); return; }
+  const kindEl=document.getElementById("ckind"), kind=evKind({ kind:kindEl&&kindEl.value });
+  const name=nameEl.value.trim(); if(!name){ invalid(nameEl, EVW[kind].askName); return; }
   if(btn.disabled) return;
   const contact=document.getElementById("ccontact").value.trim();
   const email=document.getElementById("cemail").value.trim();
   const sel=document.getElementById("clang").value, lang=PLANNER_FILE[sel]?sel:"el";
-  const kindEl=document.getElementById("ckind"), kind=evKind({ kind:kindEl&&kindEl.value });
   const dateEl=document.getElementById("cdate"), weddingDate=dateEl.value||"", startEl=document.getElementById("cstart");
-  if(dateEl.validity && dateEl.validity.badInput){ invalid(dateEl, "That date isn't complete"); return; }
-  const PAST_DATE="The event date can't be in the past — a new customer's plan would be deleted at once";
-  const NO_DATE="Enter the event date — it decides when the customer can arrange the tables";
-  const TOO_EARLY="«Start now» is only for an event less than 3 weeks away";
+  if(dateEl.validity && dateEl.validity.badInput){ invalid(dateEl, "Η ημερομηνία δεν είναι πλήρης"); return; }
+  const PAST_DATE="Η ημερομηνία δεν μπορεί να είναι στο παρελθόν — το σχέδιο ενός νέου πελάτη θα σβηνόταν αμέσως";
+  const NO_DATE="Γράψε την ημερομηνία της εκδήλωσης — από αυτήν εξαρτάται πότε ο πελάτης στήνει τα τραπέζια";
+  const TOO_EARLY="Άμεση έναρξη μόνο για εκδήλωση σε λιγότερο από 3 εβδομάδες";
   if(!weddingDate){ invalid(dateEl, NO_DATE); return; }
   if(weddingDate<todayYmd()){ invalid(dateEl, PAST_DATE); return; }
   const startNow=!!(startEl.checked && !startEl.disabled);
@@ -986,12 +983,12 @@ async function createCouple(){
     if(err==="missing_date"){ invalid(dateEl, NO_DATE); return; }
     if(err==="start_now_too_early"){ syncStartNow(); invalid(dateEl, TOO_EARLY); return; }
     if(err==="never_opens"){ syncStartNow(); invalid(dateEl, NEVER_OPENS); return; }
-    failToast(res, badEmail(res)?BAD_EMAIL:err==="bad_date"?"That event date isn't valid":"Create failed"); return; }
+    failToast(res, badEmail(res)?BAD_EMAIL:err==="bad_date"?"Η ημερομηνία δεν είναι έγκυρη":"Δεν δημιουργήθηκε"); return; }
   rememberLang(c.id, lang);
-  if(res.d.mailed) showCoupleSent(c.id, `✅ Couple created — link sent to ${esc(c.email||email)}`, CLAIM_NOTE);
+  if(res.d.mailed) showCoupleSent(c.id, `✅ Ο πελάτης δημιουργήθηκε — ο σύνδεσμος στάλθηκε στο ${esc(c.email||email)}`, CLAIM_NOTE);
   else showClaimPanel(c.id, c.name, res.d.claimToken, "new");
   nameEl.value=""; document.getElementById("ccontact").value=""; document.getElementById("cemail").value=""; dateEl.value=""; startEl.checked=false; syncStartNow();
-  toast(res.d.mailed?"Link sent to "+(c.email||email):"Couple created"); refreshCouples(); refreshCustomers();
+  toast(res.d.mailed?"Ο σύνδεσμος στάλθηκε στο "+(c.email||email):"Ο πελάτης δημιουργήθηκε"); refreshCouples(); refreshCustomers();
 }
 // Every admin action on a couple, in one place — the customer card and the support card in «Εργαλεία» both call it.
 async function coupleAction(c, a, btn){
@@ -1004,91 +1001,88 @@ async function coupleAction(c, a, btn){
   } else if(a==="edit"){
     openCoupleEdit(c);
   } else if(a==="unfreeze"){
-    const until=c.life&&c.life.frozenUntil?` (frozen until ${fmtDay(c.life.frozenUntil)})`:"";
-    if(!confirm(`Unfreeze "${c.name}"${until}?\n\nThe couple can edit again at once; what they can change follows their event date. The unfreeze is logged.`)) return;
+    const until=c.life&&c.life.frozenUntil?` (παγωμένο ως ${fmtDay(c.life.frozenUntil)})`:"";
+    if(!confirm(`Ξεπάγωμα του «${c.name}»${until};\n\nΟ πελάτης μπορεί να αλλάζει ξανά αμέσως· τι μπορεί να αλλάξει εξαρτάται από την ημερομηνία της εκδήλωσης. Το ξεπάγωμα καταγράφεται.`)) return;
     btn.disabled=true;
     const res=await req(path,{ method:"PATCH", body:JSON.stringify({ unfreeze:true }) });
     btn.disabled=false;
-    if(!res.ok){ failToast(res, res.status===404?"This couple no longer exists — refreshing":"Could not unfreeze"); if(res.status===404) refreshCouples(); return; }
-    toast("Unfrozen"); refreshCouples();
+    if(!res.ok){ failToast(res, res.status===404?"Αυτός ο πελάτης δεν υπάρχει πια — ανανεώνω":"Δεν ξεπάγωσε"); if(res.status===404) refreshCouples(); return; }
+    toast("Ξεπάγωσε"); refreshCouples();
   } else if(a==="send"){
-    if(!confirm(T(`Send the link to ${c.email}?
+    if(!confirm(`Να σταλεί ο σύνδεσμος στο ${c.email};
 
-A real email goes out to the couple, now.`,
-                  `Να σταλεί ο σύνδεσμος στο ${c.email};
-
-Φεύγει ένα αληθινό email στο ζευγάρι, τώρα.`))) return;
+Φεύγει ένα αληθινό email στον πελάτη, τώρα.`)) return;
     btn.disabled=true;
     const res=await req(path+"/send",{ method:"POST", body:"{}" });
     btn.disabled=false;
     if(!res.ok || !res.d || !res.d.mailed){
-      if(res.status===410) toast("The couple has deleted their plan — there is nothing to send.");
-      else if(res.status===503) toast(res.d&&res.d.error==="mail_failed"?"The mail server refused the email — check the mail status above and try again":"Email is off, or this couple has no email");
-      else failToast(res, res.status===404?"This couple no longer exists — refreshing":"Could not send the email");
+      if(res.status===410) toast("Ο πελάτης έχει σβήσει το σχέδιό του — δεν υπάρχει τίποτα να σταλεί.");
+      else if(res.status===503) toast(res.d&&res.d.error==="mail_failed"?"Ο διακομιστής email αρνήθηκε το μήνυμα — δες την κατάσταση του email στην κορυφή της σελίδας και δοκίμασε ξανά":"Η αποστολή email είναι κλειστή ή ο πελάτης δεν έχει email");
+      else failToast(res, res.status===404?"Αυτός ο πελάτης δεν υπάρχει πια — ανανεώνω":"Δεν στάλθηκε το email");
       if(res.status!==403) refreshCouples();
       return; }
-    showCoupleSent(c.id, `✉ Link for ${esc(c.name)} sent to ${esc(res.d.to)}`,
-      c.pendingClaim ? "Their link to open the plan (a fresh one if the old link had expired)." : "A link to get back into their plan (valid 7 days).");
-    toast(T("Sent to "+res.d.to, "Στάλθηκε στο "+res.d.to)); refreshCouples();
+    showCoupleSent(c.id, `✉ Ο σύνδεσμος για «${esc(c.name)}» στάλθηκε στο ${esc(res.d.to)}`,
+      c.pendingClaim ? "Ο σύνδεσμος για να ανοίξει το σχέδιο (καινούργιος, αν ο παλιός είχε λήξει)." : "Σύνδεσμος για να ξαναμπεί στο σχέδιό του (ισχύει 7 μέρες).");
+    toast("Στάλθηκε στο "+res.d.to); refreshCouples();
   } else if(a==="reset"){
-    const byMail=mailOn() && c.email ? ` The new link is e-mailed to ${c.email}.` : "";
-    if(!confirm(`New link for "${c.name}"?\n\nEvery link and device the couple has stops working and any open support access ends. The couple will see that TakeaSeat reset their access.${byMail} Continue?`)) return;
+    const byMail=mailOn() && c.email ? ` Ο νέος σύνδεσμος πάει με email στο ${c.email}.` : "";
+    if(!confirm(`Νέος σύνδεσμος για «${c.name}»;\n\nΚάθε σύνδεσμος και κάθε συσκευή του πελάτη σταματούν να δουλεύουν, και κλείνει όποια πρόσβαση υποστήριξης είναι ανοιχτή. Ο πελάτης θα δει ότι το TakeaSeat ανανέωσε την πρόσβασή του.${byMail} Συνέχεια;`)) return;
     btn.disabled=true;
     const res=await req(path+"/reset",{ method:"POST", body:"{}" });
     btn.disabled=false;
     if(!res.ok || !res.d || !(res.d.mailed || res.d.claimToken)){
-      if(res.status===410) toast("The couple has deleted their plan — there is nothing to reset.");
-      else failToast(res, res.status===404?"This couple no longer exists — refreshing":"Reset failed");
+      if(res.status===410) toast("Ο πελάτης έχει σβήσει το σχέδιό του — δεν υπάρχει πρόσβαση να ανανεωθεί.");
+      else failToast(res, res.status===404?"Αυτός ο πελάτης δεν υπάρχει πια — ανανεώνω":"Δεν έγινε");
       if(res.status!==403) refreshCouples();
       return; }
-    if(res.d.mailed){ showCoupleSent(c.id, `✅ New link for ${esc(c.name)} sent to ${esc(res.d.to)}`, CLAIM_NOTE+RESET_NOTE); toast("New link sent to "+res.d.to); }
-    else { showClaimPanel(c.id, c.name, res.d.claimToken, "reset"); toast("New link ready"); }
+    if(res.d.mailed){ showCoupleSent(c.id, `✅ Ο νέος σύνδεσμος για «${esc(c.name)}» στάλθηκε στο ${esc(res.d.to)}`, CLAIM_NOTE+RESET_NOTE); toast("Ο νέος σύνδεσμος στάλθηκε στο "+res.d.to); }
+    else { showClaimPanel(c.id, c.name, res.d.claimToken, "reset"); toast("Ο νέος σύνδεσμος είναι έτοιμος"); }
     refreshCouples(); refreshSupport();
   } else if(a==="email"){
-    const next=prompt(`Email for "${c.name}" — their links and recovery go here (leave empty to remove):`, c.email||"");
+    const next=prompt(`Email του «${c.name}» — εκεί πηγαίνουν οι σύνδεσμοί του και η ανάκτηση (άφησέ το κενό για να αφαιρεθεί):`, c.email||"");
     if(next==null) return;
     const email=next.trim();
     if(email.toLowerCase()===(c.email||"")) return;
-    const lines=[`Change the email of "${c.name}"?`, "", `From: ${c.email||"(none)"}`, `To: ${email||"(none)"}`, ""];
-    if(c.email && mailOn()) lines.push("The old address gets an email saying TakeaSeat changed it.");
-    lines.push("The change is written in the couple's access log — they will see it.");
-    if(c.pendingClaim) lines.push("", "Their unopened link stops working; a new one "+(email && mailOn()?"is e-mailed to the new address.":"is made for you to send."));
+    const lines=[`Αλλαγή του email του «${c.name}»;`, "", `Παλιό: ${c.email||"(κανένα)"}`, `Νέο: ${email||"(κανένα)"}`, ""];
+    if(c.email && mailOn()) lines.push("Στην παλιά διεύθυνση πάει ένα email ότι το TakeaSeat την άλλαξε.");
+    lines.push("Η αλλαγή γράφεται στο ιστορικό πρόσβασης του πελάτη — θα τη δει.");
+    if(c.pendingClaim) lines.push("", "Ο σύνδεσμος που δεν έχει ανοίξει σταματά· ένας καινούργιος "+(email && mailOn()?"πάει με email στη νέα διεύθυνση.":"φτιάχνεται για να τον στείλεις εσύ."));
     if(!confirm(lines.join("\n"))) return;
     btn.disabled=true;
     const res=await req(path,{ method:"PATCH", body:JSON.stringify({ email }) });
     btn.disabled=false;
-    if(!res.ok){ failToast(res, badEmail(res)?BAD_EMAIL:res.status===404?"This couple no longer exists — refreshing":"Could not change the email"); if(res.status===404) refreshCouples(); return; }
-    if(res.d && res.d.mailed) toast("Email saved — new link sent to "+email);
-    else if(res.d && res.d.couple && res.d.couple.claimToken && c.pendingClaim){ showClaimPanel(c.id, c.name, res.d.couple.claimToken, "link"); toast("Email saved — new link ready"); }
-    else toast(email?"Email saved":"Email removed");
+    if(!res.ok){ failToast(res, badEmail(res)?BAD_EMAIL:res.status===404?"Αυτός ο πελάτης δεν υπάρχει πια — ανανεώνω":"Δεν άλλαξε το email"); if(res.status===404) refreshCouples(); return; }
+    if(res.d && res.d.mailed) toast("Το email αποθηκεύτηκε — ο νέος σύνδεσμος στάλθηκε στο "+email);
+    else if(res.d && res.d.couple && res.d.couple.claimToken && c.pendingClaim){ showClaimPanel(c.id, c.name, res.d.couple.claimToken, "link"); toast("Το email αποθηκεύτηκε — ο νέος σύνδεσμος είναι έτοιμος"); }
+    else toast(email?"Το email αποθηκεύτηκε":"Το email αφαιρέθηκε");
     refreshCouples();
   }
 }
 
-// «Edit…» on a customer: the event type, the name, the date (the admin may set any date or clear it), retention.
+// «Επεξεργασία…» on a customer: the event type, the name, the date (the admin may set any date or clear it), retention.
 function lifeLineHtml(L){
   if(!L || !L.lockAt) return "";
-  const lock=L.locked?"View-only since":L.over?"Over since":"Over on";
-  return `<div class="muted" style="margin-top:6px">${lock} ${esc(fmtDate(L.lockAt))}${L.fallback?" (no date — 18 months after it was made)":""} · ${L.keep?"kept, never deleted":"deleted on "+esc(fmtDate(L.deleteAt))}</div>`;
+  const lock=L.locked?"Μόνο προβολή από τις":L.over?"Τελείωσε στις":"Τελειώνει στις";
+  return `<div class="muted" style="margin-top:6px">${lock} ${esc(gD(L.lockAt))}${L.fallback?" (χωρίς ημερομηνία — 18 μήνες αφότου φτιάχτηκε)":""} · ${L.keep?"κρατιέται, δεν σβήνεται ποτέ":"σβήνεται στις "+esc(gD(L.deleteAt))}</div>`;
 }
 function openCoupleEdit(c){
-  const d=openDialog(`${dlgHead("Edit customer")}
+  const d=openDialog(`${dlgHead("Επεξεργασία πελάτη")}
     <div class="dbody">
       <div class="grid">
-        <div class="full"><label for="ce_kind">Event</label>
-          <select id="ce_kind" style="max-width:220px"><option value="wedding" ${evKind(c)==="wedding"?"selected":""}>Wedding</option><option value="baptism" ${evKind(c)==="baptism"?"selected":""}>Baptism</option><option value="party" ${evKind(c)==="party"?"selected":""}>Celebration (γιορτή)</option></select>
-          <div class="muted" style="margin-top:4px">Entered wrongly? Correct it here — only the words change, never the dates or the phases.</div></div>
+        <div class="full"><label for="ce_kind">Εκδήλωση</label>
+          <select id="ce_kind" style="max-width:220px">${kindOptions(evKind(c))}</select>
+          <div class="muted" style="margin-top:4px">Μπήκε λάθος; Διόρθωσέ το εδώ — αλλάζουν μόνο οι λέξεις, ποτέ οι ημερομηνίες ή οι φάσεις.</div></div>
         <div class="full"><label for="ce_name" id="ce_namelbl">${esc(EV(c).name)}</label><input id="ce_name" maxlength="120" value="${esc(c.name)}"></div>
         <div class="full"><label for="ce_date" id="ce_datelbl">${esc(EV(c).date)}</label>
-          <div class="row"><input type="date" id="ce_date" value="${esc(isYmd(c.weddingDate)?c.weddingDate:"")}" style="max-width:220px"><button type="button" class="linkbtn" id="ce_clear">Clear date</button></div>
-          <div class="muted" style="margin-top:4px">You can set any date, or clear it, as often as needed — your change never freezes the plan and clears any freeze. The customer can change it only once (today up to two years ahead); their plan is then view-only until 14 days before the new date.</div>
-          ${couplePhaseHtml(c.life)?`<div class="muted" style="margin-top:6px">Now: ${couplePhaseHtml(c.life)}</div>`:""}
+          <div class="row"><input type="date" id="ce_date" value="${esc(isYmd(c.weddingDate)?c.weddingDate:"")}" style="max-width:220px"><button type="button" class="linkbtn" id="ce_clear">Χωρίς ημερομηνία</button></div>
+          <div class="muted" style="margin-top:4px">Μπορείς να βάλεις όποια ημερομηνία θέλεις ή να τη σβήσεις, όσες φορές χρειαστεί — η δική σου αλλαγή δεν παγώνει ποτέ το σχέδιο και ξεπαγώνει όποιο πάγωμα υπάρχει. Ο πελάτης μπορεί να την αλλάξει μόνο μία φορά (από σήμερα ως δύο χρόνια μπροστά)· μετά το σχέδιό του μένει μόνο για προβολή ως 14 μέρες πριν από τη νέα ημερομηνία.</div>
+          ${couplePhaseHtml(c.life)?`<div class="muted" style="margin-top:6px">Τώρα: ${couplePhaseHtml(c.life)}</div>`:""}
           ${lifeLineHtml(c.life)}</div>
       </div>
-      <div class="subh">After the event <span class="muted">— this customer only</span></div>
-      ${retentionFields("ce_", c.retention, false, true)}
+      <div class="subh">Μετά την εκδήλωση <span class="muted">— μόνο για αυτόν τον πελάτη</span></div>
+      ${retentionFields("ce_", c.retention, true)}
     </div>
-    <div class="dfoot"><button class="btn" data-dclose>Cancel</button><button class="btn primary" id="ce_save">Save</button></div>`);
+    <div class="dfoot"><button class="btn" data-dclose>Άκυρο</button><button class="btn primary" id="ce_save">Αποθήκευση</button></div>`);
   wireRetention("ce_", d);
   d.querySelector("#ce_clear").onclick=()=>{ d.querySelector("#ce_date").value=""; };
   d.querySelector("#ce_kind").onchange=e=>{ const K=EV({ kind:e.target.value });   // the labels follow the pick
@@ -1099,21 +1093,21 @@ async function saveCoupleEdit(c, d){
   const q=s=>d.querySelector(s), btn=q("#ce_save"); if(btn.disabled) return;
   const kind=evKind({ kind:q("#ce_kind").value });
   const name=q("#ce_name").value.trim(); if(!name){ invalid(q("#ce_name"), EVW[kind].askName); return; }
-  const dateEl=q("#ce_date"); if(dateEl.validity && dateEl.validity.badInput){ invalid(dateEl, "That date isn't complete"); return; }
+  const dateEl=q("#ce_date"); if(dateEl.validity && dateEl.validity.badInput){ invalid(dateEl, "Η ημερομηνία δεν είναι πλήρης"); return; }
   const date=dateEl.value||"", oldDate=isYmd(c.weddingDate)?c.weddingDate:"";
   const r=readRetention("ce_", d); if(r.error){ invalid(r.el, r.error); return; }
   const body={ name, retention:r.ret };   // the notes are the card's own box, saved as he types
   if(kind!==evKind(c)) body.kind=kind;    // the type, corrected (it was picked here but never sent, until phase 2)
   if(date!==oldDate){
-    if(date && date<todayYmd() && !confirm(`${fmtYmd(date)} is in the past.\n\nThe plan becomes view-only and — unless it is kept — may be deleted at the next hourly check. Continue?`)) return;
-    if(!date && !confirm(`Clear the event date of "${c.name}"?\n\nWithout a date the plan counts as over 18 months after it was made.`)) return;
+    if(date && date<todayYmd() && !confirm(`Η ${gYmd(date)} είναι στο παρελθόν.\n\nΤο σχέδιο γίνεται μόνο για προβολή και — αν δεν κρατιέται — μπορεί να σβηστεί στον επόμενο ωριαίο έλεγχο. Συνέχεια;`)) return;
+    if(!date && !confirm(`Να σβηστεί η ημερομηνία της εκδήλωσης του «${c.name}»;\n\nΧωρίς ημερομηνία, το σχέδιο θεωρείται ότι τελείωσε 18 μήνες αφότου φτιάχτηκε.`)) return;
     body.weddingDate=date||null;
   }
   btn.disabled=true;
   const res=await req("/admin/couples/"+encodeURIComponent(c.id),{ method:"PATCH", body:JSON.stringify(body) });
   btn.disabled=false;
-  if(!res.ok){ failToast(res, res.d&&res.d.error==="bad_date"?"That event date isn't valid":res.status===404?"This couple no longer exists — refreshing":"Could not save"); if(res.status===404){ closeDialog(); refreshCouples(); } return; }
-  closeDialog(); toast("Saved"); refreshCouples();
+  if(!res.ok){ failToast(res, res.d&&res.d.error==="bad_date"?"Η ημερομηνία δεν είναι έγκυρη":res.status===404?"Αυτός ο πελάτης δεν υπάρχει πια — ανανεώνω":"Δεν αποθηκεύτηκε"); if(res.status===404){ closeDialog(); refreshCouples(); } return; }
+  closeDialog(); toast("Αποθηκεύτηκε"); refreshCouples();
 }
 
 // ---------------------------------------------------------------- venues
@@ -1122,18 +1116,18 @@ async function refreshVenues(){
   const res=await req("/admin/venues"); if(!res.ok || !res.d) return;
   venuesCache=(res.d.venues||[]).sort(byNewest);
 }
-// The console link + key box (after creating a venue, «Key», or «Reset key…»). `title` is trusted HTML (names escaped).
+// The console link + key box (after creating a venue, «Κλειδί κονσόλας», or «Νέο κλειδί…»). `title` is trusted HTML (names escaped).
 function venueKeyBoxHtml(title, key, note, withReset){
   const link=venueConsoleLink();
   return `<div class="keybox">
     <div class="row between" style="align-items:flex-start"><div style="font-weight:700;margin-bottom:6px">${title}</div>
-      <button class="btn sm ghost" data-close title="Close">✕</button></div>
-    <div class="muted">Console link</div><div class="k">${esc(link)}</div>
-    <div class="muted" style="margin-top:8px">Venue key</div><div class="k">${esc(key)}</div>
+      <button class="btn sm ghost" data-close title="Κλείσιμο">✕</button></div>
+    <div class="muted">Σύνδεσμος κονσόλας</div><div class="k">${esc(link)}</div>
+    <div class="muted" style="margin-top:8px">Κλειδί κονσόλας</div><div class="k">${esc(key)}</div>
     <div class="row fw" style="margin-top:10px">
-      <button class="btn sm" data-c="key">Copy key</button>
-      <button class="btn sm" data-c="both">Copy link + key</button>
-      ${withReset?`<button class="btn sm danger" data-c="reset">Reset key…</button>`:""}
+      <button class="btn sm" data-c="key">Αντιγραφή κλειδιού</button>
+      <button class="btn sm" data-c="both">Αντιγραφή συνδέσμου + κλειδιού</button>
+      ${withReset?`<button class="btn sm danger" data-c="reset">Νέο κλειδί…</button>`:""}
     </div>
     ${note?`<div class="muted" style="margin-top:8px">${note}</div>`:""}
   </div>`;
@@ -1154,49 +1148,49 @@ function showVenuePanel(v, html, key){
 // On a card the box carries no «Reset key…» of its own: the card has «Νέο κλειδί…», whose answer lands on the card.
 function showVenueKey(v, key, kind){
   const html = kind==="reset"
-    ? venueKeyBoxHtml(`✅ New key for ${esc(v.name)} — give it to the venue:`, key,
-        "The old key and the venue's own planner links stopped working. Couples' links are not affected.", false)
-    : venueKeyBoxHtml(`Key for ${esc(v.name)}`, key, "", !fromCard());
+    ? venueKeyBoxHtml(`✅ Νέο κλειδί για «${esc(v.name)}», για να το δώσεις στο κτήμα:`, key,
+        "Το παλιό κλειδί και οι δικοί του σύνδεσμοι στα σχέδια σταμάτησαν να δουλεύουν. Οι σύνδεσμοι που έχει δώσει στους πελάτες του δεν επηρεάζονται.", false)
+    : venueKeyBoxHtml(`Κλειδί του «${esc(v.name)}»`, key, "", !fromCard());
   showVenuePanel(v, html, key);
 }
 function showVenueOwnKey(v){
   showVenuePanel(v, `<div class="keybox note">
     <div class="row between" style="align-items:flex-start"><div style="font-weight:700">🔒 ${esc(v.name)}</div>
-      <button class="btn sm ghost" data-close title="Close">✕</button></div>
-    <div style="margin:2px 0 10px">Only the venue knows its key — it set it in the console or from an e-mailed link.</div>
-    <div class="row fw">${fromCard()?"":`<button class="btn sm danger" data-c="reset">Reset key…</button>`}
-      <span class="muted">${fromCard()?"«Νέο κλειδί…» only if the venue has lost it.":"Only if the venue has lost it."}${mailOn()&&v.email?` A link to set a new key goes to ${esc(v.email)}.`:""}</span></div>
+      <button class="btn sm ghost" data-close title="Κλείσιμο">✕</button></div>
+    <div style="margin:2px 0 10px">Μόνο το κτήμα ξέρει το κλειδί του — το όρισε στην κονσόλα ή από σύνδεσμο που του ήρθε με email.</div>
+    <div class="row fw">${fromCard()?"":`<button class="btn sm danger" data-c="reset">Νέο κλειδί…</button>`}
+      <span class="muted">${fromCard()?"«Νέο κλειδί…» μόνο αν το κτήμα το έχασε.":"Μόνο αν το κτήμα το έχασε."}${mailOn()&&v.email?` Ο σύνδεσμος για νέο κλειδί πάει στο ${esc(v.email)}.`:""}</span></div>
   </div>`, "");
 }
 async function resetVenueKey(v){
   const byMail=mailOn() && v.email;
   if(!confirm(byMail
-    ? `Send "${v.name}" a link to set a new key?\n\nIt goes to ${v.email}. The venue's current key keeps working until they use the link.`
-    : `Reset the key of "${v.name}"?\n\nThe venue's current key stops working; give them the new one.`)) return;
+    ? `Να σταλεί στο «${v.name}» σύνδεσμος για νέο κλειδί;\n\nΠάει στο ${v.email}. Το τωρινό κλειδί του κτήματος δουλεύει μέχρι να χρησιμοποιήσει τον σύνδεσμο.`
+    : `Νέο κλειδί για το «${v.name}»;\n\nΤο τωρινό κλειδί του κτήματος σταματά να δουλεύει· δώσε του το καινούργιο.`)) return;
   const res=await req("/admin/venues/"+encodeURIComponent(v.id)+"/reset-key",{ method:"POST", body:"{}" });
-  if(!res.ok || !res.d || !(res.d.mailed || res.d.key)){ failToast(res, res.status===404?"This venue no longer exists":res.status===503?"The email could not be sent — nothing was changed; check the mail status above":"Reset failed"); return; }
+  if(!res.ok || !res.d || !(res.d.mailed || res.d.key)){ failToast(res, res.status===404?"Αυτό το κτήμα δεν υπάρχει πια":res.status===503?"Το email δεν στάλθηκε και δεν άλλαξε τίποτα — δες την κατάσταση του email στην κορυφή της σελίδας":"Δεν έγινε"); return; }
   if(res.d.mailed){
     const box=panelTarget||document.getElementById("vpanel"); if(box) box.dataset.vid=v.id;
-    showSent(box, `✉ Link sent to ${esc(res.d.to)} — their current key keeps working until they use it.`, "The link is valid 7 days; the venue sets its new key with it.");
-    toast("Link sent"); refreshVenues(); return;
+    showSent(box, `✉ Ο σύνδεσμος στάλθηκε στο ${esc(res.d.to)} — το τωρινό κλειδί δουλεύει μέχρι να τον χρησιμοποιήσει.`, "Ο σύνδεσμος ισχύει 7 μέρες· με αυτόν το κτήμα ορίζει το νέο του κλειδί.");
+    toast("Ο σύνδεσμος στάλθηκε"); refreshVenues(); return;
   }
   showVenueKey(v, res.d.key, "reset");
-  toast("New key ready"); refreshVenues();
+  toast("Το νέο κλειδί είναι έτοιμο"); refreshVenues();
 }
 // «+ Κτήμα» on «Πελάτες»: the old list's form, in a dialog. It stays open after a sale, with the key or the sent link.
 function openNewVenue(){
-  const d=openDialog(`${dlgHead("New venue")}
+  const d=openDialog(`${dlgHead("Νέο κτήμα")}
     <div class="dbody">
       <div class="grid">
-        <div><label for="nname">Venue name</label><input id="nname" maxlength="120" placeholder="e.g. Κτήμα Ηλιοβασίλεμα"></div>
-        <div><label for="nemail">Email (optional)</label><input id="nemail" type="email" placeholder="for the setup link and recovery" autocomplete="off"></div>
-        <div><label for="ncontact">Public contact <span class="hint">— shown to this venue's couples</span></label><input id="ncontact" maxlength="200" placeholder="e.g. 210 123 4567 · info@venue.gr"></div>
-        <div><label for="nlang">Language</label><select id="nlang">${langOptions("el")}</select></div>
-        <div class="full"><label for="nnotes">Private notes <span class="hint">— only you see this · no health information</span></label><textarea id="nnotes" maxlength="${NOTES_MAX}" rows="2" placeholder="price agreed, contact person, invoicing details…"></textarea></div>
+        <div><label for="nname">Όνομα κτήματος</label><input id="nname" maxlength="120" placeholder="π.χ. Κτήμα Ηλιοβασίλεμα"></div>
+        <div><label for="nemail">Email <span class="hint">— προαιρετικό</span></label><input id="nemail" type="email" placeholder="για τον σύνδεσμο ρύθμισης και την ανάκτηση" autocomplete="off"></div>
+        <div><label for="ncontact">Δημόσια επικοινωνία <span class="hint">— τη βλέπουν οι πελάτες του κτήματος</span></label><input id="ncontact" maxlength="200" placeholder="π.χ. 210 123 4567 · info@venue.gr"></div>
+        <div><label for="nlang">Γλώσσα</label><select id="nlang">${langOptions("el")}</select></div>
+        <div class="full"><label for="nnotes">Σημειώσεις <span class="hint">— μόνο εσύ τις βλέπεις · χωρίς πληροφορίες υγείας</span></label><textarea id="nnotes" maxlength="${NOTES_MAX}" rows="2" placeholder="υπεύθυνος, τηλέφωνο, τιμή που συμφωνήσατε, στοιχεία τιμολόγησης…"></textarea></div>
       </div>
       <div style="margin-top:12px" id="licwrap">${licenseFields("n")}</div>
-      <div class="row fw" style="margin-top:14px"><button class="btn primary" id="createV">Create venue</button>
-        ${mailOn()?`<span class="muted">With an email, the venue gets a setup link and sets its own key — you won't see it.</span>`:""}</div>
+      <div class="row fw" style="margin-top:14px"><button class="btn primary" id="createV">Δημιουργία κτήματος</button>
+        ${mailOn()?`<span class="muted">Αν έχει email, το κτήμα παίρνει σύνδεσμο ρύθμισης και ορίζει μόνο του το κλειδί — εσύ δεν το βλέπεις.</span>`:""}</div>
       <div id="newkey"></div>
     </div>`);
   wireLicenseToggle("n", d.querySelector("#licwrap"));
@@ -1204,7 +1198,7 @@ function openNewVenue(){
   d.querySelector("#nname").focus();
 }
 async function createVenue(){
-  const nameEl=document.getElementById("nname"), name=nameEl.value.trim(); if(!name){ invalid(nameEl, "Enter a venue name"); return; }
+  const nameEl=document.getElementById("nname"), name=nameEl.value.trim(); if(!name){ invalid(nameEl, "Γράψε το όνομα του κτήματος"); return; }
   const contact=document.getElementById("ncontact").value.trim(), notes=document.getElementById("nnotes").value.trim();
   const email=document.getElementById("nemail").value.trim(), lang=document.getElementById("nlang").value;
   const lic=readLicense("n", document.getElementById("licwrap")); if(lic.error){ invalid(lic.el, lic.error); return; }
@@ -1213,59 +1207,59 @@ async function createVenue(){
   const res=await req("/admin/venues",{method:"POST",body:JSON.stringify({name,contact,notes,email,lang,license})});
   if(!document.getElementById("createV")) return;
   btn.disabled=false;
-  if(!res.ok || !res.d || !(res.d.mailed || res.d.key)){ failToast(res, badEmail(res)?BAD_EMAIL:"Create failed"); return; }
+  if(!res.ok || !res.d || !(res.d.mailed || res.d.key)){ failToast(res, badEmail(res)?BAD_EMAIL:"Δεν δημιουργήθηκε"); return; }
   const box=document.getElementById("newkey");
   if(res.d.mailed){
     const to=(res.d.venue && res.d.venue.email) || email;
-    showSent(box, `✅ Venue created — setup link sent to ${esc(to)}`, "The venue sets its own key with it (the link is valid 7 days). You won't see the key.");
+    showSent(box, `✅ Το κτήμα δημιουργήθηκε — ο σύνδεσμος ρύθμισης στάλθηκε στο ${esc(to)}`, "Με αυτόν το κτήμα ορίζει το δικό του κλειδί (ο σύνδεσμος ισχύει 7 μέρες). Εσύ δεν βλέπεις το κλειδί.");
   } else {
-    box.innerHTML=venueKeyBoxHtml("✅ Venue created — give this to the venue:", res.d.key, "", false);
+    box.innerHTML=venueKeyBoxHtml("✅ Το κτήμα δημιουργήθηκε — δώσε του αυτά τα δύο:", res.d.key, "", false);
     wireKeyBox(box, res.d.key, null);
   }
   ["nname","ncontact","nemail","nnotes"].forEach(id=>{ document.getElementById(id).value=""; });
   const lw=document.getElementById("licwrap"); lw.innerHTML=licenseFields("n"); wireLicenseToggle("n", lw);   // the next venue starts clean
-  toast(res.d.mailed?"Setup link sent":"Venue created"); refreshVenues(); refreshCustomers();
+  toast(res.d.mailed?"Ο σύνδεσμος ρύθμισης στάλθηκε":"Το κτήμα δημιουργήθηκε"); refreshVenues(); refreshCustomers();
 }
-// «Edit…» on a venue: everything the admin sets but the notes, which are the card's own box (the email change keeps its confirmation).
+// «Επεξεργασία…» on a venue: everything the admin sets but the notes, which are the card's own box (the email change keeps its confirmation).
 function renewalsHtml(v){
   const list=(Array.isArray(v.renewals)?v.renewals:[]).slice().reverse();
   if(!list.length) return "";
-  return `<div class="muted" style="margin-top:10px">Renewed automatically: ${list.map(x=>`${esc(fmtDate(x.at))} (→ ${esc(fmtYmd(x.from))} – ${esc(fmtYmd(x.to))})`).join(" · ")}</div>`;
+  return `<div class="muted" style="margin-top:10px">Ανανεώθηκε αυτόματα: ${list.map(x=>`${esc(gD(x.at))} (→ ${esc(gYmd(x.from))} – ${esc(gYmd(x.to))})`).join(" · ")}</div>`;
 }
 // The form's current values (checkboxes as ticked/unticked) — to tell which parts the admin actually changed.
 function formState(box){ return box ? JSON.stringify([...box.querySelectorAll("input,select,textarea")].map(e=>e.type==="checkbox"?e.checked:e.value)) : ""; }
 // The dialog is filled from a fresh GET, not the cached list: the venue may have changed things since (e.g. cancelled its renewal).
 async function openVenueEdit(v){
   const ctx="venue:"+v.id;
-  let d=openDialog(`${dlgHead(`Edit venue — ${esc(v.name)}`)}<div class="dbody"><div class="empty">Loading…</div></div>
-    <div class="dfoot"><button class="btn" data-dclose>Cancel</button></div>`);
+  let d=openDialog(`${dlgHead(`Επεξεργασία κτήματος — ${esc(v.name)}`)}<div class="dbody"><div class="empty">Φορτώνει…</div></div>
+    <div class="dfoot"><button class="btn" data-dclose>Άκυρο</button></div>`);
   d.dataset.ctx=ctx;
   const res=await req("/admin/venues/"+encodeURIComponent(v.id));
   if(!d.open || d.dataset.ctx!==ctx) return;
   const fv=res.ok && res.d && res.d.venue;
-  if(!fv){ if(res.status!==403){ closeDialog(); failToast(res, res.status===404?"This venue no longer exists — refreshing":"Could not load the venue — try again"); if(res.status===404) refreshVenues(); } return; }
-  d=openDialog(`${dlgHead("Edit venue")}
+  if(!fv){ if(res.status!==403){ closeDialog(); failToast(res, res.status===404?"Αυτό το κτήμα δεν υπάρχει πια — ανανεώνω":"Δεν φορτώθηκε το κτήμα — δοκίμασε ξανά"); if(res.status===404) refreshVenues(); } return; }
+  d=openDialog(`${dlgHead(`Επεξεργασία κτήματος — ${esc(fv.name)}`)}
     <div class="dbody">
       <div class="grid">
-        <div class="full"><label for="ve_name">Venue name</label><input id="ve_name" maxlength="120" value="${esc(fv.name)}"></div>
-        <div><label for="ve_email">Email <span class="hint">— setup and recovery links</span></label><input id="ve_email" type="email" autocomplete="off" value="${esc(fv.email||"")}"></div>
-        <div><label for="ve_lang">Language</label><select id="ve_lang">${langOptions(PLANNER_FILE[fv.lang]?fv.lang:"el")}</select></div>
-        <div class="full"><label for="ve_contact">Public contact <span class="hint">— shown to this venue's couples</span></label><input id="ve_contact" maxlength="200" value="${esc(fv.contact||"")}" placeholder="e.g. 210 123 4567 · info@venue.gr"></div>
-        <div class="full"><label class="chk"><input type="checkbox" id="ve_active"${fv.active?" checked":""}> <span>Active <span class="muted">— when off, the venue can't create new weddings</span></span></label></div>
+        <div class="full"><label for="ve_name">Όνομα κτήματος</label><input id="ve_name" maxlength="120" value="${esc(fv.name)}"></div>
+        <div><label for="ve_email">Email <span class="hint">— σύνδεσμοι ρύθμισης και ανάκτησης</span></label><input id="ve_email" type="email" autocomplete="off" value="${esc(fv.email||"")}"></div>
+        <div><label for="ve_lang">Γλώσσα</label><select id="ve_lang">${langOptions(PLANNER_FILE[fv.lang]?fv.lang:"el")}</select></div>
+        <div class="full"><label for="ve_contact">Δημόσια επικοινωνία <span class="hint">— τη βλέπουν οι πελάτες του κτήματος</span></label><input id="ve_contact" maxlength="200" value="${esc(fv.contact||"")}" placeholder="π.χ. 210 123 4567 · info@venue.gr"></div>
+        <div class="full"><label class="chk"><input type="checkbox" id="ve_active"${fv.active?" checked":""}> <span>Ενεργό <span class="muted">— όταν δεν είναι, το κτήμα δεν μπορεί να φτιάξει νέες εκδηλώσεις</span></span></label></div>
       </div>
-      <div class="subh">License</div>
+      <div class="subh">Άδεια</div>
       ${(fv.trial&&fv.trial.inForce)?`<div class="keybox note" style="margin:0 0 10px">
-        <div style="font-weight:700">★ On its free first year${isYmd(fv.license&&fv.license.seasonEnd)?` — to ${esc(fmtYmd(fv.license.seasonEnd))}`:""}</div>
-        <div class="muted" style="margin-top:4px">Changing the season dates below moves the free year; it does not renew itself, and it only covers weddings dated inside it. Tick this once they are paying:</div>
-        <label class="chk" style="margin-top:6px"><input type="checkbox" id="ve_endtrial"> <span>This is a paid subscription now — drop the free-year marker (the dates below then behave like any other season)</span></label>
+        <div style="font-weight:700">★ Στον δωρεάν πρώτο χρόνο${isYmd(fv.license&&fv.license.seasonEnd)?` — ως ${esc(gYmd(fv.license.seasonEnd))}`:""}</div>
+        <div class="muted" style="margin-top:4px">Αν αλλάξεις τις ημερομηνίες της σεζόν πιο κάτω, μετακινείται ο δωρεάν χρόνος· δεν ανανεώνεται μόνος του και καλύπτει μόνο εκδηλώσεις με ημερομηνία μέσα σε αυτόν. Σημείωσέ το μόλις αρχίσει να πληρώνει:</div>
+        <label class="chk" style="margin-top:6px"><input type="checkbox" id="ve_endtrial"> <span>Πληρώνει πια συνδρομή — να φύγει η ένδειξη του δωρεάν χρόνου (οι ημερομηνίες πιο κάτω λειτουργούν μετά όπως σε κάθε σεζόν)</span></label>
       </div>`:""}
       ${renewalHtml(fv)}
       <div id="ve_lic" style="margin-top:8px">${licenseFields("ve_", fv.license||{ type:"seasonal", autoRenew:true })}</div>
       ${renewalsHtml(fv)}
-      <div class="subh">After the wedding <span class="muted">— this venue's weddings</span></div>
+      <div class="subh">Μετά την εκδήλωση <span class="muted">— οι εκδηλώσεις αυτού του κτήματος</span></div>
       <div id="vr_box">${retentionFields("vr_", fv.retention)}</div>
     </div>
-    <div class="dfoot"><button class="btn" data-dclose>Cancel</button><button class="btn primary" id="ve_save">Save</button></div>`);
+    <div class="dfoot"><button class="btn" data-dclose>Άκυρο</button><button class="btn primary" id="ve_save">Αποθήκευση</button></div>`);
   d.dataset.ctx=ctx;
   wireLicenseToggle("ve_", d); wireRetention("vr_", d);
   const initial={ lic:formState(d.querySelector("#ve_lic")), ret:formState(d.querySelector("#vr_box")) };
@@ -1275,7 +1269,7 @@ async function openVenueEdit(v){
 async function saveVenueEdit(v, d, initial){
   const q=s=>d.querySelector(s), btn=q("#ve_save"); if(btn.disabled) return;
   const body={};
-  const name=q("#ve_name").value.trim(); if(!name){ invalid(q("#ve_name"), "Enter a venue name"); return; }
+  const name=q("#ve_name").value.trim(); if(!name){ invalid(q("#ve_name"), "Γράψε το όνομα του κτήματος"); return; }
   if(name!==(v.name||"")) body.name=name;
   const contact=q("#ve_contact").value.trim(); if(contact!==(v.contact||"")) body.contact=contact;
   const sel=q("#ve_lang").value, lang=PLANNER_FILE[sel]?sel:"el"; if(lang!==(PLANNER_FILE[v.lang]?v.lang:"el")) body.lang=lang;
@@ -1285,34 +1279,34 @@ async function saveVenueEdit(v, d, initial){
   if(formState(q("#vr_box"))!==initial.ret){ const r=readRetention("vr_", d); if(r.error){ invalid(r.el, r.error); return; } body.retention=r.ret; }
   const email=q("#ve_email").value.trim(), emailChanged=email.toLowerCase()!==(v.email||"").toLowerCase();
   if(emailChanged){
-    if(v.email && !confirm(`Change the email of "${v.name}"?\n\nFrom: ${v.email}\nTo: ${email||"(none)"}${mailOn()?"\n\nThe old address gets an email saying TakeaSeat changed it.":""}`)) return;
+    if(v.email && !confirm(`Αλλαγή του email του «${v.name}»;\n\nΠαλιό: ${v.email}\nΝέο: ${email||"(κανένα)"}${mailOn()?"\n\nΣτην παλιά διεύθυνση πάει ένα email ότι το TakeaSeat την άλλαξε.":""}`)) return;
     body.email=email;
   }
-  if(!Object.keys(body).length){ closeDialog(); toast("Nothing changed"); return; }
+  if(!Object.keys(body).length){ closeDialog(); toast("Δεν άλλαξε τίποτα"); return; }
   btn.disabled=true;
   const res=await req("/admin/venues/"+encodeURIComponent(v.id),{ method:"PATCH", body:JSON.stringify(body) });
   btn.disabled=false;
   if(!res.ok){
     if(badEmail(res)){ invalid(q("#ve_email"), BAD_EMAIL); return; }
-    failToast(res, res.status===404?"This venue no longer exists — refreshing":"Could not save");
+    failToast(res, res.status===404?"Αυτό το κτήμα δεν υπάρχει πια — ανανεώνω":"Δεν αποθηκεύτηκε");
     if(res.status===404){ closeDialog(); refreshVenues(); }
     return; }
   closeDialog();
-  toast(emailChanged?(email?"Saved — email changed":"Saved — email removed"):"Saved"); refreshVenues();
+  toast(emailChanged?(email?"Αποθηκεύτηκε — το email άλλαξε":"Αποθηκεύτηκε — το email αφαιρέθηκε"):"Αποθηκεύτηκε"); refreshVenues();
 }
 // Restore refused (409 past_retention): the wedding's own deletion date has passed, so it would be erased again at once.
 function showPastRetention(item, t, deleteAt){
   if(!item) return;
   let box=item.querySelector("[data-past]");
   if(!box){ box=document.createElement("div"); box.dataset.past=""; box.className="keybox note"; box.style.marginTop="8px"; item.querySelector(".grow").appendChild(box); }
-  box.innerHTML=`<div>This wedding is past its deletion date${deleteAt?` (${esc(fmtDate(deleteAt))})`:""}. To bring it back, first add an exception for plan <span class="mono" style="word-break:break-all">${esc(t.planId)}</span> (Keep forever or extra days) in «After the wedding», then restore.</div>
-    <div class="row fw" style="margin-top:8px"><button class="btn sm primary" data-t="keeprestore">Add keep-forever exception and restore</button></div>`;
+  box.innerHTML=`<div>Η εκδήλωση έχει περάσει την ημερομηνία διαγραφής της${deleteAt?` (${esc(gD(deleteAt))})`:""}, οπότε θα σβηνόταν ξανά αμέσως. Για να επανέλθει χρειάζεται πρώτα εξαίρεση για το σχέδιο <span class="mono" style="word-break:break-all">${esc(t.planId)}</span>: το κουμπί από κάτω βάζει «δεν σβήνεται ποτέ» και την επαναφέρει. Για επιπλέον μέρες αντί γι' αυτό, βάλε την εξαίρεση στο «After the event» → «Exceptions» και ξαναπάτα «Επαναφορά…».</div>
+    <div class="row fw" style="margin-top:8px"><button class="btn sm primary" data-t="keeprestore">Να μη σβηστεί ποτέ, και επαναφορά</button></div>`;
 }
 // Events the venue deleted: 14 days in the trash; only the admin restores (when the venue asks) or erases them now.
 function openTrash(v){
-  const d=openDialog(`${dlgHead(`Deleted events — ${esc(v.name)}`)}
-    <div class="dbody"><div class="empty">Loading…</div></div>
-    <div class="dfoot"><button class="btn" data-dclose>Close</button></div>`);
+  const d=openDialog(`${dlgHead(`Κάδος — ${esc(v.name)}`)}
+    <div class="dbody"><div class="empty">Φορτώνει…</div></div>
+    <div class="dfoot"><button class="btn" data-dclose>Κλείσιμο</button></div>`);
   d.dataset.ctx="trash:"+v.id;
   loadTrash(v, d);
 }
@@ -1321,43 +1315,44 @@ async function loadTrash(v, d){
   const res=await req("/admin/venues/"+encodeURIComponent(v.id)+"/trash");
   if(!d.open || d.dataset.ctx!==ctx) return;
   const body=d.querySelector(".dbody"); if(!body) return;
-  if(!res.ok || !res.d){ if(res.status!==403) body.innerHTML=`<div class="empty">${res.status===404?"This venue no longer exists.":"Could not load the deleted events — try again."}</div>`; return; }
+  if(!res.ok || !res.d){ if(res.status!==403) body.innerHTML=`<div class="empty">${res.status===404?"Αυτό το κτήμα δεν υπάρχει πια.":"Δεν φορτώθηκε ο κάδος — δοκίμασε ξανά."}</div>`; return; }
   const list=(res.d.trash||[]).slice().sort((a,b)=>(b.deletedAt||0)-(a.deletedAt||0));
-  body.innerHTML=`<p class="muted" style="margin:0 0 14px">The venue deleted these events. Each is erased for good 14 days after it was deleted. Only you can bring one back — and only when the venue asks.</p>`
+  const kindWord=t=>{ const k=C_KIND[evKind(t)]; return k.charAt(0).toUpperCase()+k.slice(1); };   // «Γιορτή», not a third kind shown as a wedding
+  body.innerHTML=`<p class="muted" style="margin:0 0 14px">Αυτές τις εκδηλώσεις τις έσβησε το κτήμα. Η καθεμία σβήνεται οριστικά 14 μέρες μετά τη διαγραφή της. Μόνο εσύ μπορείς να φέρεις πίσω κάποια — και μόνο όταν το ζητήσει το κτήμα.</p>`
     +(list.length ? list.map(t=>`<div class="titem" data-pid="${esc(t.planId)}">
-        <div class="grow"><strong>${esc(t.label||"Untitled")}</strong>
-          <div class="muted">${t.kind==="baptism"?"Baptism":"Wedding"}: ${t.date?esc(fmtYmd(t.date)):"no date"} · deleted ${esc(fmtDateTime(t.deletedAt))}</div>
-          <div class="muted">Erased for good on ${esc(fmtDate(t.purgeAt))} (${esc(relTime(t.purgeAt))})</div></div>
-        <div class="row acts"><button class="btn sm" data-t="restore">Restore…</button><button class="btn sm danger" data-t="erase">Erase now…</button></div>
-      </div>`).join("") : `<div class="empty">No deleted events.</div>`);
+        <div class="grow"><strong>${esc(t.label||"Χωρίς τίτλο")}</strong>
+          <div class="muted">${kindWord(t)}: ${t.date?esc(gYmd(t.date)):"χωρίς ημερομηνία"} · διαγράφηκε ${esc(gDT(t.deletedAt))}</div>
+          <div class="muted">Σβήνεται οριστικά στις ${esc(gD(t.purgeAt))} (${esc(gAgo(t.purgeAt))})</div></div>
+        <div class="row acts"><button class="btn sm" data-t="restore">Επαναφορά…</button><button class="btn sm danger" data-t="erase">Οριστική διαγραφή…</button></div>
+      </div>`).join("") : `<div class="empty">Ο κάδος είναι άδειος.</div>`);
   body.onclick=async e=>{
     const btn=e.target.closest("button[data-t]"); if(!btn) return;
     const item=btn.closest("[data-pid]"), t=list.find(x=>x.planId===(item&&item.dataset.pid)); if(!t) return;
     const path="/admin/venues/"+encodeURIComponent(v.id)+"/trash/"+encodeURIComponent(t.planId);
-    const label=t.label||"Untitled";
+    const label=t.label||"Χωρίς τίτλο";
     if(btn.dataset.t==="restore"){
-      if(!confirm(`Only restore when the venue asked you to.\n\nRestore "${label}"? It goes back into the console of ${v.name}.`)) return;
+      if(!confirm(`Κάνε επαναφορά μόνο όταν σου το ζήτησε το κτήμα.\n\nΕπαναφορά του «${label}»; Γυρίζει στην κονσόλα του «${v.name}».`)) return;
       btn.disabled=true; const r=await req(path+"/restore",{ method:"POST", body:"{}" }); btn.disabled=false;
       if(r.status===409 && r.d && r.d.error==="past_retention"){ showPastRetention(item, t, r.d.deleteAt); return; }
-      if(!r.ok){ failToast(r, r.status===410?"It can no longer be restored":r.status===404?"It is no longer in the trash":"Restore failed"); }
-      else toast(`"${label}" restored`);
+      if(!r.ok){ failToast(r, r.status===410?"Δεν μπορεί πια να επανέλθει":r.status===404?"Δεν είναι πια στον κάδο":"Η επαναφορά δεν έγινε"); }
+      else toast(`Το «${label}» επανήλθε`);
     } else if(btn.dataset.t==="keeprestore"){
       // The wedding is past its after-the-wedding deletion date: keep it forever first (an existing exception keeps its other parts), then restore.
-      if(!confirm(`Keep "${label}" forever and restore it?\n\nThis adds a «Keep forever» exception for plan ${t.planId}; you can remove it later under «After the wedding».`)) return;
+      if(!confirm(`Να μη σβηστεί ποτέ το «${label}» και να επανέλθει;\n\nΜπαίνει εξαίρεση «δεν σβήνεται ποτέ» για το σχέδιο ${t.planId}· μπορείς να τη βγάλεις αργότερα από το «After the event» → «Exceptions».`)) return;
       btn.disabled=true;
       const ex=((settingsCache&&settingsCache.planExceptions)||[]).find(x=>x.planId===t.planId)||{};
       const ret={ ...(ex.lockAfter!=null?{ lockAfter:ex.lockAfter }:{}), keep:true };
       const p=await req("/admin/plans/"+encodeURIComponent(t.planId)+"/retention",{ method:"PUT", body:JSON.stringify(ret) });
-      if(!p.ok){ btn.disabled=false; failToast(p, p.status===404?"It is no longer in the trash":"Could not add the exception — nothing was restored"); if(p.status!==403){ refreshVenues(); loadTrash(v, d); } return; }
+      if(!p.ok){ btn.disabled=false; failToast(p, p.status===404?"Δεν είναι πια στον κάδο":"Δεν μπήκε η εξαίρεση — δεν επανήλθε τίποτα"); if(p.status!==403){ refreshVenues(); loadTrash(v, d); } return; }
       refreshSettings();
       const r=await req(path+"/restore",{ method:"POST", body:"{}" }); btn.disabled=false;
-      if(!r.ok){ failToast(r, r.status===410?"It can no longer be restored (the keep-forever exception was added)":r.status===404?"It is no longer in the trash":"The exception was added, but the restore failed — try «Restore…» again"); }
-      else toast(`"${label}" kept forever and restored`);
+      if(!r.ok){ failToast(r, r.status===410?"Δεν μπορεί πια να επανέλθει (η εξαίρεση μπήκε)":r.status===404?"Δεν είναι πια στον κάδο":"Η εξαίρεση μπήκε, αλλά η επαναφορά δεν έγινε — πάτα ξανά «Επαναφορά…»"); }
+      else toast(`Το «${label}» επανήλθε και δεν θα σβηστεί`);
     } else if(btn.dataset.t==="erase"){
-      if(!confirm(`Erase "${label}" now?\n\nThe plan, its guest list and its history are deleted for good. This cannot be undone.`)) return;
+      if(!confirm(`Οριστική διαγραφή του «${label}» τώρα;\n\nΤο σχέδιο, η λίστα καλεσμένων και το ιστορικό του σβήνονται για πάντα. Δεν αναιρείται.`)) return;
       btn.disabled=true; const r=await req(path,{ method:"DELETE" }); btn.disabled=false;
-      if(!r.ok){ failToast(r, "Erase failed"); }
-      else toast(`"${label}" erased`);
+      if(!r.ok){ failToast(r, "Η διαγραφή δεν έγινε"); }
+      else toast(`Το «${label}» σβήστηκε`);
     }
     refreshVenues(); loadTrash(v, d);
   };
@@ -1369,33 +1364,27 @@ async function venueAction(v, a, btn){
   btn=btn||{};
   if(a==="key"){
     btn.disabled=true; const res=await req(path); btn.disabled=false;
-    if(!res.ok || !res.d){ failToast(res, "Failed"); return; }
-    if(res.d.key){ showVenueKey(v, res.d.key, "current"); copySilently(res.d.key, "Key copied"); }
+    if(!res.ok || !res.d){ failToast(res, "Δεν έγινε"); return; }
+    if(res.d.key){ showVenueKey(v, res.d.key, "current"); copySilently(res.d.key, "Το κλειδί αντιγράφηκε"); }
     else showVenueOwnKey(v);
   }
   else if(a==="resetkey"){ btn.disabled=true; try{ await resetVenueKey(v); } finally{ btn.disabled=false; } }
   else if(a==="edit") openVenueEdit(v);
   else if(a==="trash") openTrash(v);
   else if(a==="invoiced"){
-    if(!confirm(T(`Mark the renewal of "${v.name}" as invoiced?
+    if(!confirm(`Να σημειωθεί η ανανέωση του «${v.name}» ως τιμολογημένη;
 
-The «invoice due» reminder goes away — nothing else changes, and nothing is sent.`,
-                  `Να σημειωθεί η ανανέωση του «${v.name}» ως τιμολογημένη;
-
-Φεύγει η υπενθύμιση «εκκρεμεί τιμολόγιο» — τίποτε άλλο δεν αλλάζει και τίποτα δεν στέλνεται.`))) return;
+Φεύγει η υπενθύμιση «εκκρεμεί τιμολόγιο» — τίποτε άλλο δεν αλλάζει και τίποτα δεν στέλνεται.`)) return;
     btn.disabled=true; const res=await req(path+"/invoiced",{method:"POST",body:"{}"}); btn.disabled=false;
-    if(res.ok){ toast(T("Marked as invoiced","Σημειώθηκε ως τιμολογημένο")); refreshVenues(); }
-    else failToast(res, T("Failed","Δεν έγινε")); }
+    if(res.ok){ toast("Σημειώθηκε ως τιμολογημένο"); refreshVenues(); }
+    else failToast(res, "Δεν έγινε"); }
   else if(a==="toggle"){
-    // Deactivating stops the venue creating weddings the moment it is pressed; activating only gives that back.
-    if(v.active && !confirm(T(`Deactivate "${v.name}"?
+    // Deactivating stops the venue creating events the moment it is pressed; activating only gives that back.
+    if(v.active && !confirm(`Απενεργοποίηση του «${v.name}»;
 
-It can no longer create weddings; the ones it has keep working. Reversible from this same button.`,
-                              `Απενεργοποίηση του «${v.name}»;
-
-Δεν θα μπορεί να δημιουργεί νέους γάμους· οι υπάρχοντες συνεχίζουν. Αναιρείται από το ίδιο κουμπί.`))) return;
+Δεν θα μπορεί να δημιουργεί νέες εκδηλώσεις· οι υπάρχουσες συνεχίζουν. Αναιρείται από το ίδιο κουμπί.`)) return;
     btn.disabled=true; const res=await req(path,{method:"PATCH",body:JSON.stringify({active:!v.active})}); btn.disabled=false;
-    if(res.ok){ toast(v.active?T("Disabled","Απενεργοποιήθηκε"):T("Enabled","Ενεργοποιήθηκε")); refreshVenues(); } else failToast(res, T("Failed","Δεν έγινε")); }
+    if(res.ok){ toast(v.active?"Απενεργοποιήθηκε":"Ενεργοποιήθηκε"); refreshVenues(); } else failToast(res, "Δεν έγινε"); }
 }
 
 // ---------------------------------------------------------------- after the wedding: global default + plan exceptions
@@ -2307,7 +2296,7 @@ async function openPlanRetention(pid, name, pret){
   const d=openDialog(`${dlgHead("Διατήρηση — " + esc(name))}
     <div class="dbody" lang="el">
       <p class="muted" style="margin-top:0">Ισχύει μόνο για αυτόν τον γάμο. Χωρίς εξαίρεση ακολουθεί τον γενικό κανόνα.</p>
-      ${retentionFields("pr_", cur, true)}
+      ${retentionFields("pr_", cur)}
       <div class="muted" style="margin-top:8px">Σχέδιο <span class="mono">${esc(pid)}</span></div>
     </div>
     <div class="dfoot"><button class="btn" data-dclose>Άκυρο</button>${cur?`<button class="btn danger" id="pr_drop">Κατάργηση εξαίρεσης</button>`:""}<button class="btn primary" id="pr_save">Αποθήκευση</button></div>`);
