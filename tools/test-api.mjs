@@ -3747,6 +3747,149 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     Date.now = realNow; env.MAIL = keepMail; if (!keepMail) delete env.MAIL;
   }
 }
+// ---------- 25. phase 4 part B: the site's contact form — a stranger's message becomes a «Νέα επαφή» ----------
+{
+  const keepMail = env.MAIL, keepOwner = m.get('meta:owner');
+  const mails = [];
+  env.MAIL = { enabled: true, from: 'TakeaSeat <hello@takeaseat.gr>', send: msg => { mails.push(msg); return true; } };
+  m.set('meta:owner', JSON.stringify({ email: 'andreas@example.gr', emailVerified: true, lang: 'el' }));
+  const today = athensDay(0);
+  let ipN = 0;
+  const send = (b, ip) => call('POST', '/contact', b, { 'X-Real-IP': ip || ('192.0.2.' + (++ipN)) });
+  const GOOD = { kind: 'baptism', topic: 'start', name: 'Φ4Β Ελένη Μαυρίδου', email: 'eleni-f4b@example.gr', phone: '697 222 3344', date: athensDay(60),
+    place: 'Κτήμα Πλάτανος', message: 'Θέλουμε το πλάνο για τη βάπτιση.\nΠερίπου 120 άτομα.', lang: 'el' };
+  const leadsBy = e => (raw('leads:index') || []).map(id => m.get('lead:' + id) && raw('lead:' + id)).filter(l => l && l.email === e);
+  const cardOf = key => call('GET', '/admin/customers/' + encodeURIComponent(key), undefined, OWN);
+  const toOwner = () => mails.filter(x => x.to === 'andreas@example.gr');
+  const toThem = e => mails.filter(x => x.to === e);
+  const clearRl = () => { for (const k of [...m.keys()]) if (k.startsWith('rl:contact:') || k.startsWith('rlmail:contact') || k.startsWith('rlmailday:contact')) m.delete(k); };
+  try {
+    clearRl();
+    // -- a fixed list of fields, each checked --
+    const nLeads = () => (raw('leads:index') || []).length, n0 = nLeads();
+    const bad = [[{ ...GOOD, kind: 'funeral' }, 'bad_kind'], [{ ...GOOD, kind: undefined }, 'bad_kind'], [{ ...GOOD, name: '   ' }, 'bad_name'],
+      [{ ...GOOD, name: { x: 1 } }, 'bad_name'], [{ ...GOOD, email: 'όχι' }, 'bad_email'], [{ ...GOOD, email: undefined }, 'bad_email'],
+      [{ ...GOOD, phone: '12345' }, 'bad_phone'], [{ ...GOOD, date: '2027-02-30' }, 'bad_date'], [{ ...GOOD, date: athensDay(-1) }, 'bad_date'],
+      [{ ...GOOD, date: athensDay(365 * 6) }, 'bad_date'], [{ ...GOOD, kind: 'venue', date: athensDay(30) }, 'bad_date']];
+    for (const [b, err] of bad) { const r = await send(b, '192.0.2.200'); ok(r.status === 400 && r.d.error === err, 'form: «' + JSON.stringify(b).slice(0, 80) + '» is refused (' + err + ')', r.d); }
+    ok(nLeads() === n0 && !mails.length && !m.has('rl:contact:192.0.2.200'), 'form: a refused message writes nothing, mails nobody and spends no budget');
+
+    // -- a good one --
+    let r = await send({ ...GOOD, stage: 3, source: 'phone', notes: 'από το bot', afm: '094019245', type: 'venue', lost: { reason: 'price' } });
+    ok(r.status === 200 && r.d.ok === true && Object.keys(r.d).length === 1, 'form: a good message is answered {ok:true} and nothing else', r.d);
+    let [L] = leadsBy('eleni-f4b@example.gr');
+    ok(L && L.source === 'form' && L.type === 'parents' && L.stage === 1 && !L.lost && L.notes === '' && L.afm === '' && L.date === GOOD.date && L.place === 'Κτήμα Πλάτανος'
+      && L.phone === '+306972223344' && L.name === 'Φ4Β Ελένη Μαυρίδου' && L.lang === 'el' && !L.noMail,
+      'form: it lands as «Νέα επαφή» from «Φόρμα», a baptism (γονείς), with the date and the venue; fields it does not offer are ignored', L);
+    const key = 'l:' + L.id;
+    let cd = (await cardOf(key)).d;
+    ok(cd.customer.stage === 1 && cd.customer.flags.includes('lead_new') && cd.source === 'form' && cd.customer.next === GOOD.date && cd.customer.nextKind === 'baptism',
+      'form: on the sheet, in «Θέλουν εμένα», its date as the next event', cd.customer);
+    ok(cd.timeline.length === 1 && cd.timeline[0].act === 'contact' && cd.timeline[0].src === 'form'
+      && cd.timeline[0].text === 'Θέλει το TakeaSeat — Θέλουμε το πλάνο για τη βάπτιση.\nΠερίπου 120 άτομα.', 'form: what they asked and their words are the first line of its timeline', cd.timeline);
+    ok(cd.memory.years === 2 && cd.memory.held === null, 'form: a contact who never bought — the 2-year clock');
+    const ack = toThem('eleni-f4b@example.gr');
+    ok(ack.length === 1 && /Λάβαμε το μήνυμά σας/.test(ack[0].subject) && !/Ελένη|Μαυρίδου|βάπτιση|120|Πλάτανος/.test(ack[0].subject + ack[0].text) && !ack[0].replyTo,
+      'form: they get a fixed «we got it» that repeats nothing they typed', ack[0]);
+    let own = toOwner();
+    ok(own.length === 1 && own[0].subject === 'Νέο μήνυμα από τη σελίδα: Φ4Β Ελένη Μαυρίδου' && own[0].replyTo === 'eleni-f4b@example.gr'
+      && own[0].text.includes('Περίπου 120 άτομα.') && own[0].text.includes('Εκδήλωση: βάπτιση') && own[0].text.includes('+306972223344') && own[0].text.includes('Θέλει το TakeaSeat')
+      && own[0].text.includes('https://takeaseat.gr/admin.html') && !own[0].text.includes('Γνωστός πελάτης') && !own[0].text.includes('Έχει ξαναγράψει'),
+      'form: he gets the whole message, and a reply goes straight to them', own[0]);
+
+    // -- a stranger's text is tamed --
+    r = await send({ kind: 'party', name: 'Φ4Β Κακός\r\nBcc: victim@example.com', email: 'f4b-ctl@example.gr', place: 'Αθήνα\u2028Χ', message: 'α\u0000β\r\n\r\n\r\n\r\nγ' + 'x'.repeat(2000), topic: 'hack', lang: 'xx' });
+    [L] = leadsBy('f4b-ctl@example.gr');
+    const last = raw('act:l:' + L.id).slice(-1)[0];
+    ok(r.status === 200 && L.name === 'Φ4Β Κακός Bcc: victim@example.com' && L.place === 'Αθήνα Χ' && L.lang === 'el' && last.text.startsWith('Ερώτηση — α β\n\nγx')
+      && last.text.length === 'Ερώτηση — '.length + 1000 && !toOwner().slice(-1)[0].subject.includes('\n'),
+      'form: no line break in a name or a subject, no control characters, the message capped at 1000; an unknown topic is «Ερώτηση»', { name: L.name, len: last.text.length });
+
+    // -- the same address again: the same contact, never a second row --
+    mails.length = 0;
+    const nBefore = nLeads();
+    r = await send({ ...GOOD, topic: 'ask', message: 'Ξέχασα: συνεργάζεται ο Πλάτανος;', phone: '' });
+    ok(r.status === 200 && Object.keys(r.d).length === 1 && nLeads() === nBefore && leadsBy('eleni-f4b@example.gr').length === 1,
+      'form again: the same answer, and no second contact', r.d);
+    cd = (await cardOf(key)).d;
+    ok(cd.timeline.filter(e => e.act === 'contact').length === 2 && cd.timeline[0].text === 'Ρωτά αν το κτήμα του δουλεύει με το TakeaSeat — Ξέχασα: συνεργάζεται ο Πλάτανος;'
+      && leadsBy('eleni-f4b@example.gr')[0].phone === '+306972223344','form again: the new message joins its timeline; a field left empty takes nothing away', cd.timeline);
+    ok(toOwner().length === 1 && toOwner()[0].text.includes('Έχει ξαναγράψει'), 'form again: his mail says they wrote before');
+    const LE = leadsBy('eleni-f4b@example.gr')[0];
+    await call('POST', '/admin/customers/' + encodeURIComponent(key) + '/stage', { stage: 8, reason: 'no_reply' }, OWN);
+    await send({ ...GOOD, message: 'Τελικά το θέλουμε', noMail: true });
+    let LE2 = raw('lead:' + LE.id);
+    ok(!LE2.lost && LE2.stage === 1 && LE2.moves.slice(-1)[0].stage === 1 && LE2.noMail === true && (await cardOf(key)).d.customer.flags.includes('lead_new'),
+      'form again: one that «Δεν προχώρησε» and writes again is «Νέα επαφή», back in «Θέλουν εμένα»', LE2);
+    await send({ ...GOOD, message: 'Και κάτι ακόμη', noMail: false });
+    ok(raw('lead:' + LE.id).noMail === true, 'decision 6: a «no» sticks — an unticked box later is not a «yes»');
+    ok(toOwner().slice(-1)[0].text.includes('Δεν θέλει μηνύματα για άλλη εκδήλωση'), 'decision 6: his mail says it');
+
+    // -- decision 6: the «no» on the form follows them when they buy --
+    r = await send({ kind: 'wedding', topic: 'start', name: 'Φ4Β Νίκος & Άννα', email: 'nikos-anna-f4b@example.gr', noMail: true, lang: 'en' });
+    const LN = leadsBy('nikos-anna-f4b@example.gr')[0];
+    ok(LN.noMail === true && LN.lang === 'en' && LN.type === 'couple' && (await cardOf('l:' + LN.id)).d.noMail === true && (await cardOf('l:' + LN.id)).d.lead.noMail === true,
+      'decision 6: the tick is kept on the contact and shown on its card');
+    ok(/We received your message/.test(toThem('nikos-anna-f4b@example.gr')[0].subject), 'form: an English form gets the English «we got it»');
+    r = await call('POST', '/admin/couples', { name: 'Φ4Β Νίκος & Άννα', email: 'nikos-anna-f4b@example.gr', weddingDate: athensDay(120), fromLead: LN.id }, OWN);
+    ok(r.status === 200 && raw('couple:' + r.d.couple.id).noMail === true && (await cardOf('c:' + r.d.couple.id)).d.noMail === true && (await cardOf('c:' + r.d.couple.id)).d.source === 'form',
+      'decision 6: «Έγινε πελάτης» carries the «no» and «Φόρμα» to the customer', r.d);
+
+    // -- «Γνωστός πελάτης» on the form's contact --
+    mails.length = 0;
+    const KC = (await call('POST', '/admin/couples', { name: 'Φ4Β Γνωστό ζευγάρι', email: 'known-f4b@example.gr', contact: 'τηλ. 6955 123 456', weddingDate: athensDay(30) }, OWN)).d;
+    await send({ kind: 'baptism', topic: 'start', name: 'Φ4Β Γνωστό ζευγάρι', email: 'known-f4b@example.gr', phone: '6955123456' });
+    const LK = leadsBy('known-f4b@example.gr')[0];
+    cd = (await cardOf('l:' + LK.id)).d;
+    ok(cd.known && cd.known.length === 1 && cd.known[0].key === 'c:' + KC.couple.id && JSON.stringify(cd.known[0].how.sort()) === '["email","phone"]',
+      'known: the form\'s contact card shows the customer who already has that address and number', cd.known);
+    ok(toOwner()[0].text.includes('Γνωστός πελάτης: Φ4Β Γνωστό ζευγάρι'), 'known: … and his mail says so', toOwner()[0].text);
+    ok(!(await cardOf('c:' + KC.couple.id)).d.known, 'known: (only a contact\'s card looks)');
+
+    // -- the bot trap --
+    mails.length = 0;
+    const nTrap = nLeads();
+    r = await send({ ...GOOD, email: 'bot-f4b@example.gr', website: 'http://spam.example' });
+    ok(r.status === 200 && r.d.ok === true && nLeads() === nTrap && !leadsBy('bot-f4b@example.gr').length && !mails.length, 'trap: a bot that fills the hidden field is told «sent», and nothing is written or mailed');
+
+    // -- the limits --
+    clearRl();
+    const ip = '192.0.2.250', codes = [];
+    for (let i = 0; i < 6; i++) codes.push((await send({ ...GOOD, email: 'ip' + i + '-f4b@example.gr' }, ip)).status);
+    ok(codes.slice(0, 5).every(c => c === 200) && codes[5] === 429 && !leadsBy('ip5-f4b@example.gr').length, 'limits: five a day from one address, the sixth refused and not written', codes);
+    clearRl(); mails.length = 0;
+    for (let i = 0; i < 4; i++) await send({ ...GOOD, message: 'μήνυμα ' + i });
+    ok(toThem('eleni-f4b@example.gr').length === 3 && toOwner().length === 4, 'limits: three «we got it» a day to one address; he still gets every message');
+    clearRl(); mails.length = 0;
+    m.set('rl:contact:all', JSON.stringify(Array.from({ length: 50 }, () => Date.now())));
+    const nFull = nLeads();
+    r = await send({ ...GOOD, email: 'flood1-f4b@example.gr' });
+    const r2 = await send({ ...GOOD, email: 'flood2-f4b@example.gr' });
+    ok(r.status === 503 && r.d.error === 'busy' && r2.status === 503 && nLeads() === nFull && !toThem('flood1-f4b@example.gr').length,
+      'limits: 50 messages in 24 hours close the form — nothing written, no «we got it»', [r.d, r2.d]);
+    ok(toOwner().length === 1 && /έκλεισε για σήμερα/.test(toOwner()[0].subject), 'limits: he is told once that it closed, not once per refused message', toOwner().map(x => x.subject));
+    clearRl();
+    const idx = raw('leads:index'); m.set('leads:index', JSON.stringify([...idx, ...Array.from({ length: 3000 }, (_, i) => 'pad' + i)]));
+    r = await send({ ...GOOD, email: 'full-f4b@example.gr' });
+    ok(r.status === 503 && !leadsBy('full-f4b@example.gr').length, 'limits: a full «Πελάτες» refuses a new contact', r.d);
+    m.set('leads:index', JSON.stringify(idx));
+    clearRl();
+
+    // -- the pages say it --
+    const fs = await import('node:fs'), read = f => fs.readFileSync(path.join(root, f), 'utf8');
+    const page = read('epikoinonia.html');
+    ok(/fetch\(["']\/contact["']/.test(page) && /name="website"/.test(page) && /id="f_nomail"/.test(page) && /"application\/json"/.test(page),
+      'page: epikoinonia.html posts JSON to /contact, with the trap and the decision-6 tick');
+    for (const f of ['index.html', 'plano-trapezion-gamou.html', 'plano-trapezion-vaptisis.html', 'plano-trapezion-giortis.html'])
+      ok(!/mailto:info@takeaseat\.gr\?/.test(read(f)) && /href="\/epikoinonia\.html\?kind=/.test(read(f)), 'page: ' + f + ' — every «write to us» button opens the form');
+    ok(/epikoinonia\.html/.test(read('sitemap.xml')), 'page: the form is in the sitemap');
+    ok(/φόρμα επικοινωνίας/.test(read('privacy.html')) && /contact form/.test(read('privacy.html')), 'page: privacy names the contact form, in both languages');
+  } finally {
+    env.MAIL = keepMail; if (!keepMail) delete env.MAIL;
+    if (keepOwner) m.set('meta:owner', keepOwner); else m.delete('meta:owner');
+    clearRl();
+  }
+}
 function leadStageOf(l) { return l.lost ? 8 : l.stage || 1; }
 
 console.log(`\nall ${n} checks passed`);

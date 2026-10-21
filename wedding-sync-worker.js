@@ -106,6 +106,11 @@ const SIGNUP_TTL = SETUP_TTL;                 // pending for exactly as long as 
 const SIGNUP_KEEP_DAYS = 30;                  // an expired row stays in the admin list this long, then goes
 const SIGNUPS_PER_IP_DAY = 3;                 // one person signing up their venue does it once, maybe twice
 const SIGNUPS_PENDING_MAX = 300;              // the whole pending queue — a flood cannot fill the database
+// The site's contact form (OPERATIONS-PLAN.md phase 4): a stranger's message becomes a «Νέα επαφή». It opens no account,
+// so its fences are lighter than the signup's, but it does mail a stranger — and that reply quotes nothing they typed.
+const CONTACT_PER_IP_DAY = 5;                 // a family with a question writes once, maybe again with a correction
+const CONTACT_DAY_MAX = 50;                   // the whole form, per 24 hours: a flood can never fill «Πελάτες» (LEAD_MAX)
+const CONTACT_MSG_MAX = 1000, CONTACT_TEXT_MAX = 120;
 // The free year is in force only while the licence is still the one the signup created. The moment Andreas sells that
 // venue a real season («Edit…», new dates), the trial stops governing and the venue is an ordinary subscriber again:
 // it renews, it is reminded like one, and its weddings are no longer judged on their date.
@@ -251,7 +256,7 @@ function pdfResponse(render, name, mode, lang) {   // render: a Promise of the b
 }
 // `tag` ({k:"couple"|"venue", id}) is how the host tells us afterwards whether SMTP really took the message: send()
 // itself only ever means "queued". Untagged messages (reminders, keepsakes) are fire-and-forget as before.
-function send(env, to, msg, tag) { if (!mailOn(env) || !to) return false; try { return env.MAIL.send({ to, subject: msg.subject, text: msg.text, ...(msg.attachments ? { attachments: msg.attachments } : {}), ...(tag ? { tag } : {}) }) !== false; } catch (e) { return false; } }
+function send(env, to, msg, tag) { if (!mailOn(env) || !to) return false; try { return env.MAIL.send({ to, subject: msg.subject, text: msg.text, ...(msg.attachments ? { attachments: msg.attachments } : {}), ...(msg.replyTo ? { replyTo: msg.replyTo } : {}), ...(tag ? { tag } : {}) }) !== false; } catch (e) { return false; } }
 // Called by the host once a tagged message has finally been accepted or finally refused — never on a retry that is
 // still pending. Without it the support card would keep saying «στάλθηκε» for a link that never left the building.
 export async function mailOutcome(env, tag, ok, code) {
@@ -302,6 +307,12 @@ const MAILS = {
     // business must never be left in silence because another address registered its ΑΦΜ first.
     signupAck: ["Λάβαμε την εγγραφή σας — TakeaSeat", "Γεια σας,\n\nΛάβαμε εγγραφή κτήματος από αυτή τη διεύθυνση.\n\nΑν η επιχείρηση ή η διεύθυνση είναι ήδη καταχωρημένη, η απάντηση πηγαίνει στη διεύθυνση που την καταχώρησε — όχι απαραίτητα σε αυτή. Δεύτερος λογαριασμός δεν δημιουργείται και δεν χρεωθήκατε τίποτα.\n\nΑν περιμένετε σύνδεσμο ρύθμισης και δεν ήρθε, ή αν νομίζετε ότι το ΑΦΜ σας το δήλωσε κάποιος άλλος, γράψτε μας στο info@takeaseat.gr ή τηλεφωνήστε στο 697 735 5378 (10:00–14:00 και 17:00–21:00).\n\nTakeaSeat"],
     ownerFlood: ["Η ουρά εγγραφών γεμίζει — TakeaSeat", "Εκκρεμείς εγγραφές το τελευταίο 24ωρο: {open} από {max}.\n\nΌταν γεμίσει, η φόρμα απαντά «δεν είναι διαθέσιμη» σε όλους μέχρι να αδειάσει. Στη διαχείριση, στις εγγραφές (Signups), το «Clear old pending» σβήνει μαζικά όσες εκκρεμούν και δεν τις άνοιξε ποτέ κανείς.\n\n{link}\n\nTakeaSeat"],
+    // ---- the site's contact form. The reply to the stranger is one fixed text: no name, no message, nothing typed, so
+    // the form can never be used to deliver someone else's words to an address they do not own.
+    contactAck: ["Λάβαμε το μήνυμά σας — TakeaSeat", "Γεια σας,\n\nΛάβαμε το μήνυμά σας από τη φόρμα επικοινωνίας του TakeaSeat. Θα σας απαντήσουμε σύντομα, συνήθως την ίδια ή την επόμενη μέρα.\n\nΑν βιάζεστε, τηλεφωνήστε μας στο 697 735 5378 (10:00–14:00 και 17:00–21:00) ή στείλτε μας μήνυμα στο Viber ή στο WhatsApp, στον ίδιο αριθμό.\n\nΑν δεν μας γράψατε εσείς, αγνοήστε αυτό το email· δεν χρειάζεται να κάνετε τίποτα.\n\nTakeaSeat"],
+    ownerContact: ["Νέο μήνυμα από τη σελίδα: {name}", "Νέο μήνυμα από τη φόρμα επικοινωνίας.\n\n{topic}\n\nΌνομα: {name}\nΕκδήλωση: {kind}\nΗμερομηνία: {date}\nΠού: {place}\nEmail: {email}\nΤηλέφωνο: {phone}{nomail}{known}{again}\n\nΜήνυμα:\n{message}\n\nΗ απάντηση σε αυτό το email πηγαίνει κατευθείαν στον αποστολέα. Η επαφή είναι ήδη στους «Πελάτες»: {link}\n\nTakeaSeat"],
+    ownerContactFull: ["Η φόρμα επικοινωνίας έκλεισε για σήμερα — TakeaSeat", "Η φόρμα επικοινωνίας δέχτηκε {max} μηνύματα μέσα σε 24 ώρες. Είναι το όριο που βάλαμε, ώστε ένα μαζικό σπαμ να μη γεμίσει τους «Πελάτες».\n\nΜέχρι να περάσει το 24ωρο, όποιος τη στέλνει διαβάζει ότι δεν είναι διαθέσιμη και βλέπει το τηλέφωνο και το email. Μετά ανοίγει ξανά μόνη της.\n\nΔες τις τελευταίες επαφές: {link}\n\nTakeaSeat"],
+    contactKnown: "\n\nΓνωστός πελάτης: {list}", contactAgain: "\n\nΈχει ξαναγράψει: το μήνυμα μπήκε στην επαφή που υπήρχε ήδη.", contactNoMail: "\n\nΔεν θέλει μηνύματα για άλλη εκδήλωση.",
   },
   en: {
     claim: ["Your seating plan — TakeaSeat", "Hello!\n\nYour seating plan “{name}” is ready. Open the link in Chrome or Safari and press “Open my plan”:\n\n{link}\n\nThe link opens once and is valid for 30 days. TakeaSeat never opens your plan without your invitation — every access is logged.\nIf you lose the link, ask for a new one with this email: {recover}\n\nTakeaSeat"],
@@ -332,6 +343,10 @@ const MAILS = {
     ownerSignup: ["New venue signup: {name}", "A new signup from the site.\n\nName: {name}\nΑΦΜ: {afm}\nEmail: {email}\nPhone: {phone}\n\nThe setup link has been sent; the free year starts when they open it and runs 365 days. In the admin console: {link}\n\nTakeaSeat"],
     signupAck: ["We received your signup — TakeaSeat", "Hello,\n\nWe received a venue signup from this address.\n\nIf the business or the address is already registered, the answer goes to the address that registered it — not necessarily to this one. No second account is created and you were not charged.\n\nIf you are waiting for a setup link and it has not arrived, or you think someone else registered your ΑΦΜ, write to info@takeaseat.gr or call +30 697 735 5378 (10:00–14:00 and 17:00–21:00, Greek time).\n\nTakeaSeat"],
     ownerFlood: ["The signup queue is filling up — TakeaSeat", "Pending signups in the last 24 hours: {open} of {max}.\n\nWhen it is full the form answers “not available” to everyone until it drains. In the admin console, under Signups, “Clear old pending” removes in one go the pending rows nobody ever opened.\n\n{link}\n\nTakeaSeat"],
+    contactAck: ["We received your message — TakeaSeat", "Hello,\n\nWe received your message from the TakeaSeat contact form. We will answer soon, usually the same day or the next.\n\nIf it is urgent, call us on +30 697 735 5378 (10:00–14:00 and 17:00–21:00, Greek time) or message us on Viber or WhatsApp at the same number.\n\nIf you did not write to us, please ignore this email; there is nothing you need to do.\n\nTakeaSeat"],
+    ownerContact: ["New message from the site: {name}", "A new message from the contact form.\n\n{topic}\n\nName: {name}\nEvent: {kind}\nDate: {date}\nWhere: {place}\nEmail: {email}\nPhone: {phone}{nomail}{known}{again}\n\nMessage:\n{message}\n\nReplying to this email goes straight to the sender. The contact is already in «Πελάτες»: {link}\n\nTakeaSeat"],
+    ownerContactFull: ["The contact form is closed for today — TakeaSeat", "The contact form took {max} messages within 24 hours. That is the limit we set, so that a spam flood can never fill «Πελάτες».\n\nUntil the 24 hours have passed, anyone sending it reads that it is not available and sees the phone and the email. Then it opens again by itself.\n\nSee the latest contacts: {link}\n\nTakeaSeat"],
+    contactKnown: "\n\nKnown customer: {list}", contactAgain: "\n\nHas written before: the message was added to the existing contact.", contactNoMail: "\n\nDoes not want mails about another event.",
   },
   de: {
     claim: ["Ihr Sitzplan — TakeaSeat", "Hallo!\n\nIhr Sitzplan „{name}“ ist bereit. Öffnen Sie den Link in Chrome oder Safari und tippen Sie auf „Meinen Plan öffnen“:\n\n{link}\n\nDer Link öffnet einmal und gilt 30 Tage. TakeaSeat öffnet Ihren Plan nie ohne Ihre Einladung — jeder Zugriff wird protokolliert.\nWenn Sie den Link verlieren, fordern Sie mit dieser E-Mail einen neuen an: {recover}\n\nTakeaSeat"],
@@ -362,6 +377,10 @@ const MAILS = {
     ownerSignup: ["Neue Location-Anmeldung: {name}", "Eine neue Anmeldung über die Website.\n\nName: {name}\nΑΦΜ: {afm}\nE-Mail: {email}\nTelefon: {phone}\n\nDer Einrichtungslink wurde gesendet; das Gratisjahr beginnt, sobald er geöffnet wird, und läuft 365 Tage. In der Verwaltung: {link}\n\nTakeaSeat"],
     signupAck: ["Wir haben Ihre Anmeldung erhalten — TakeaSeat", "Hallo,\n\nwir haben von dieser Adresse eine Location-Anmeldung erhalten.\n\nWenn das Unternehmen oder die Adresse bereits registriert ist, geht die Antwort an die Adresse, die sie registriert hat — nicht unbedingt an diese. Es wird kein zweites Konto angelegt und Ihnen nichts berechnet.\n\nWenn Sie auf einen Einrichtungslink warten und keiner angekommen ist, oder wenn Sie glauben, dass jemand anderes Ihre ΑΦΜ angemeldet hat, schreiben Sie an info@takeaseat.gr oder rufen Sie +30 697 735 5378 an (10:00–14:00 und 17:00–21:00, griechische Zeit).\n\nTakeaSeat"],
     ownerFlood: ["Die Anmelde-Warteschlange füllt sich — TakeaSeat", "Offene Anmeldungen in den letzten 24 Stunden: {open} von {max}.\n\nIst sie voll, antwortet das Formular allen „nicht verfügbar“, bis sie sich leert. In der Verwaltung, unter Signups, entfernt „Clear old pending“ in einem Schritt die offenen Zeilen, die nie jemand geöffnet hat.\n\n{link}\n\nTakeaSeat"],
+    contactAck: ["Wir haben Ihre Nachricht erhalten — TakeaSeat", "Hallo,\n\nwir haben Ihre Nachricht über das Kontaktformular von TakeaSeat erhalten. Wir antworten bald, meist am selben oder am nächsten Tag.\n\nWenn es eilt, rufen Sie uns an unter +30 697 735 5378 (10:00–14:00 und 17:00–21:00, griechische Zeit) oder schreiben Sie uns über Viber oder WhatsApp an dieselbe Nummer.\n\nWenn Sie uns nicht geschrieben haben, ignorieren Sie diese E-Mail bitte; Sie müssen nichts tun.\n\nTakeaSeat"],
+    ownerContact: ["Neue Nachricht von der Seite: {name}", "Eine neue Nachricht über das Kontaktformular.\n\n{topic}\n\nName: {name}\nAnlass: {kind}\nDatum: {date}\nWo: {place}\nE-Mail: {email}\nTelefon: {phone}{nomail}{known}{again}\n\nNachricht:\n{message}\n\nEine Antwort auf diese E-Mail geht direkt an den Absender. Der Kontakt ist bereits in «Πελάτες»: {link}\n\nTakeaSeat"],
+    ownerContactFull: ["Das Kontaktformular ist für heute geschlossen — TakeaSeat", "Das Kontaktformular hat innerhalb von 24 Stunden {max} Nachrichten angenommen. Das ist die Grenze, die wir gesetzt haben, damit eine Spam-Welle «Πελάτες» nie füllen kann.\n\nBis die 24 Stunden vorbei sind, liest jeder, der es absendet, dass es nicht verfügbar ist, und sieht Telefon und E-Mail. Danach öffnet es sich von selbst wieder.\n\nDie letzten Kontakte: {link}\n\nTakeaSeat"],
+    contactKnown: "\n\nBekannter Kunde: {list}", contactAgain: "\n\nHat schon einmal geschrieben: die Nachricht kam zum bestehenden Kontakt.", contactNoMail: "\n\nMöchte keine E-Mails zu einem anderen Anlass.",
   },
 };
 const fmtDay = (t, lang) => { try { return new Date(t).toLocaleDateString(langOf(lang) === "de" ? "de-DE" : langOf(lang) === "en" ? "en-GB" : "el-GR", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Athens" }); } catch (e) { return new Date(t).toISOString().slice(0, 10); } };
@@ -1637,7 +1656,8 @@ async function signupCustomer(env, s, now) {   // only a pending signup whose ve
 // πελάτης» turns it into a direct customer or a venue (the create routes' `fromLead`), which takes its history with it
 // and ends the lead. Never bought, so forgotten LEAD_YEARS after the last contact (§2 rule 5), each contact restarting it.
 const LEAD_YEARS = 2, LEAD_MAX = 3000, LEAD_NAME_MAX = 120, LEAD_PLACE_MAX = 120, MOVES_MAX = 50;
-const LEAD_SOURCES = ["phone", "email", "viber", "whatsapp", "facebook", "instagram", "amelie", "referral", "other"];
+// "form" is the site's contact form: only POST /contact writes it (admin.html never offers it as a chip)
+const LEAD_SOURCES = ["phone", "email", "viber", "whatsapp", "facebook", "instagram", "amelie", "referral", "other", "form"];
 const LEAD_TYPES = ["venue", "couple", "parents", "party"], LEAD_STAGES = [1, 2, 3], LEAD_LOST = ["price", "no_reply", "other_tool", "cancelled", "other"];
 const LEAD_KIND = { couple: "wedding", parents: "baptism", party: "party" };
 const LEAD_ID = /^[A-Za-z0-9]{1,64}$/;
@@ -1661,7 +1681,39 @@ function leadFields(b, cur) {
 }
 const leadOut = l => ({ id: l.id, name: l.name || "", source: l.source || "other", type: l.type || "couple", date: l.date || null, place: l.place || "",
   email: l.email || "", phone: l.phone || "", afm: l.afm || "", stage: leadStage(l), lost: l.lost ? { reason: l.lost.reason, at: l.lost.at || null } : null,
-  createdAt: l.createdAt || null });
+  noMail: !!l.noMail, createdAt: l.createdAt || null });
+// ---- the site's contact form (POST /contact) ----
+// A fixed list of fields, each with its own cap; anything else in the body is ignored. Typed by a stranger, so every
+// one-line field loses its control characters (a line break in a name would otherwise reach a mail subject).
+const CONTACT_KINDS = { wedding: "couple", baptism: "parents", party: "party", venue: "venue" };
+const CONTACT_TOPICS = ["start", "ask", "demo", "other"];
+// how the timeline and his mail say what they asked for; he reads Greek, whatever language the form was in
+const CONTACT_TOPIC_EL = { start: "Θέλει το TakeaSeat", ask: "Ρωτά αν το κτήμα του δουλεύει με το TakeaSeat", demo: "Ζητά demo για το κτήμα", other: "Ερώτηση" };
+const CONTACT_WORDS = {
+  el: { wedding: "γάμος", baptism: "βάπτιση", party: "γιορτή", venue: "κτήμα ή χώρος εκδηλώσεων", none: "—" },
+  en: { wedding: "wedding", baptism: "baptism", party: "party", venue: "venue", none: "—" },
+  de: { wedding: "Hochzeit", baptism: "Taufe", party: "Feier", venue: "Location", none: "—" },
+};
+const oneLine = (x, max) => (typeof x === "string" ? x : "").replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
+const manyLines = (x, max) => (typeof x === "string" ? x : "").replace(/\r\n?/g, "\n").replace(/[\u0000-\u0009\u000b-\u001f\u007f\u2028\u2029]/g, " ")
+  .replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim().slice(0, max);
+// → {f} or {error}. A date must be one still to come (and within five years): the form offers nothing else.
+function contactFields(b) {
+  const kind = Object.prototype.hasOwnProperty.call(CONTACT_KINDS, b.kind) ? b.kind : null;
+  if (!kind) return { error: "bad_kind" };
+  const name = oneLine(b.name, LEAD_NAME_MAX), email = normEmail(typeof b.email === "string" ? b.email : "");
+  if (!name) return { error: "bad_name" };
+  if (!email) return { error: "bad_email" };
+  const phoneIn = oneLine(b.phone, 40), phone = phoneIn ? phoneOf(phoneIn) : "";
+  if (phoneIn && !phone) return { error: "bad_phone" };
+  const date = typeof b.date === "string" && b.date ? b.date : "";
+  if (date && (!ymdOk(date) || kind === "venue" || date < todayAthens() || date > addYears(todayAthens(), 5))) return { error: "bad_date" };
+  return { f: { kind, type: CONTACT_KINDS[kind], name, email, phone, date: date || null, place: oneLine(b.place, LEAD_PLACE_MAX),
+    topic: CONTACT_TOPICS.includes(b.topic) ? b.topic : "other", message: manyLines(b.message, CONTACT_MSG_MAX),
+    noMail: b.noMail === true, lang: b.lang === "en" ? "en" : "el" } };
+}
+// the line on the timeline: what they asked for, then their own words
+const contactText = f => CONTACT_TOPIC_EL[f.topic] + (f.message ? " — " + f.message : "");
 function leadCustomer(l) {
   const stage = leadStage(l), type = LEAD_TYPES.includes(l.type) ? l.type : "couple", today = todayAthens();
   const row = custRow({ key: "l:" + l.id, type, name: l.name || "", stage, flags: stage === 1 ? ["lead_new"] : [], events: [], until: null, untilKind: null,
@@ -1693,6 +1745,7 @@ async function adoptLead(env, id, key, recKey) {
   if (acts.length) await kvUpdate(env, "act:" + key, a => [...acts, ...(Array.isArray(a) ? a : [])].sort((x, y) => (x.t || 0) - (y.t || 0)).slice(-ACT_MAX));
   await kvUpdate(env, recKey, cur => { if (!cur) return null;
     cur.fromLead = { source: l.source || "other", at: l.createdAt || null };
+    if (l.noMail) cur.noMail = true;   // decision 6: a "no" given on the form follows them, never the other way round
     const met = Math.max(l.createdAt || 0, l.contactAt || 0); if (met > (cur.contactAt || 0)) cur.contactAt = met;
     if (!cur.nextStep && stepOut(l.nextStep)) cur.nextStep = l.nextStep;
     return cur; });
@@ -1865,7 +1918,7 @@ async function customerCard(env, key) {   // → {customer, …details} or null
   const acts = await actsOf(env, k.key);
   // how they found us: a contact's own answer, or the one a customer brought with it from «Έγινε πελάτης»
   const source = k.t === "l" ? (rec.source || "other") : (rec.fromLead && rec.fromLead.source) || null;
-  return { customer: x.row, ...x.card, source, notes: String(rec[NOTES_FIELD[k.t]] || ""), nextStep: stepOut(rec.nextStep),
+  return { customer: x.row, ...x.card, source, noMail: !!rec.noMail, notes: String(rec[NOTES_FIELD[k.t]] || ""), nextStep: stepOut(rec.nextStep),
     past: pastOut(rec), memory: memoryOf(k.t, rec, x, acts, now), timeline: timelineOf(k.t, rec, x, acts) };
 }
 // Only what the books need outlives «Ξέχασέ τον» and the clock (Andreas, 2026-10-18): the name and the dates of what was
@@ -2598,6 +2651,71 @@ export default {
         console.log("signup: a new venue signed itself up (free year to " + endYmd + ")");
         return json({ ok: true });
       }
+      // ---------------- the site's contact form: a stranger's message becomes a «Νέα επαφή» ----------------
+      // Phase 4 of OPERATIONS-PLAN.md. Every accepted message answers {ok:true}, whether it made a new contact or joined
+      // one with the same address, so the form tells nobody whether an address is known. The guards, in order: the shape
+      // (a fixed field list, each capped), five a day per address (ip), the bot trap, and a ceiling on the whole form per
+      // day, so a flood can never fill «Πελάτες» or crowd out his own «+ Νέα επαφή». server.mjs adds a burst limit and
+      // demands JSON from our own origin, as for the signup.
+      if (parts[0] === "contact" && parts.length === 1 && request.method === "POST") {
+        const b = await readBody(request);
+        const c = contactFields(b);
+        if (c.error) return json({ error: c.error }, 400);
+        const f = c.f;
+        if (!(await rateTake(env, "contact", clientIp(request), CONTACT_PER_IP_DAY, 86400000))) return json({ error: "rate_limited" }, 429, { "Retry-After": "3600" });
+        // the trap: a field no person sees. A bot that fills it is told "sent", and nothing is written or mailed.
+        if (typeof b.website === "string" && b.website.trim()) { console.log("contact: the bot trap caught one"); return json({ ok: true }); }
+        const o = await ownerRec(env);
+        if (!(await rateTake(env, "contact", "all", CONTACT_DAY_MAX, 86400000))) {
+          console.log("contact: the form is at its daily ceiling — refused");
+          if (o.email && o.emailVerified && await mailAllowed(env, o.email, "contactfull", 1))
+            send(env, o.email, mailMsg(o.lang, "ownerContactFull", { max: String(CONTACT_DAY_MAX), link: baseUrl(env) + "/admin.html" }));
+          return json({ error: "busy" }, 503, { "Retry-After": "3600" });
+        }
+        const now = Date.now(), act = { id: rnd(10), t: now, kind: "contact", source: "form", text: contactText(f) };
+        // The same address writing again joins its contact instead of a second row. One that «Δεν προχώρησε» has a new
+        // message nobody has answered: «Νέα επαφή» again. A contact at 2 or 3 keeps its stage; his mail says it wrote.
+        let lead = null;
+        for (const lid of [...(safeParse(await env.PLANS.get("leads:index")) || [])].reverse()) {
+          const l = safeParse(await env.PLANS.get("lead:" + lid));
+          if (l && l.email === f.email) { lead = l; break; }
+        }
+        const again = !!lead;
+        if (lead) {
+          const r = await kvUpdate(env, "lead:" + lead.id, cur => { if (!cur) return null;
+            if (cur.lost) { delete cur.lost; cur.stage = 1; cur.moves = [...(cur.moves || []), { at: now, stage: 1 }].slice(-MOVES_MAX); }
+            if (!cur.name) cur.name = f.name;
+            if (!cur.phone && f.phone) cur.phone = f.phone;
+            if (!cur.date && f.date) cur.date = f.date;
+            if (!cur.place && f.place) cur.place = f.place;
+            if (f.noMail) cur.noMail = true;   // a "no" sticks; ticking nothing the second time is not a "yes"
+            cur.contactAt = now; cur.updatedAt = now; return cur; });
+          lead = r.obj || lead;
+          await kvUpdate(env, "act:l:" + lead.id, a => [...(Array.isArray(a) ? a : []), act].slice(-ACT_MAX));
+          console.log("contact: a known address wrote again — added to its contact");
+        } else {
+          if ((safeParse(await env.PLANS.get("leads:index")) || []).length >= LEAD_MAX) { console.log("contact: «Πελάτες» is full — refused"); return json({ error: "busy" }, 503, { "Retry-After": "3600" }); }
+          const id = rnd(12);
+          lead = { id, name: f.name, source: "form", type: f.type, date: f.date, place: f.place, email: f.email, phone: f.phone, afm: "",
+            stage: 1, notes: "", lang: f.lang, ...(f.noMail ? { noMail: true } : {}), createdAt: now, updatedAt: now, moves: [] };
+          await env.PLANS.put("lead:" + id, JSON.stringify(lead));
+          await env.PLANS.put("act:l:" + id, JSON.stringify([act]));
+          await addIndex(env, "leads:index", id);
+          console.log("contact: a new contact from the site's form");
+        }
+        // their "we got it": three an hour and three a day per address, like every mail to an address we were only told
+        if (await mailAllowed(env, f.email, "contact", 3)) send(env, f.email, mailMsg(f.lang, "contactAck", {}));
+        // his: bounded by the ceiling above, so no per-hour cap that would drop the fourth real message of a busy evening
+        if (o.email && o.emailVerified) {
+          const L = langOf(o.lang), W = CONTACT_WORDS[L] || CONTACT_WORDS.el, M = MAILS[L];
+          const known = (await knownCustomers(env, { email: f.email, phone: f.phone }, "l:" + lead.id)).slice(0, 3).map(k => k.name || k.email || k.phone).filter(Boolean);
+          send(env, o.email, { ...mailMsg(L, "ownerContact", { topic: CONTACT_TOPIC_EL[f.topic], name: f.name, kind: W[f.kind],
+            date: f.date ? fmtDay(Date.parse(f.date + "T12:00:00Z"), L) : W.none, place: f.place || W.none, email: f.email, phone: f.phone || W.none,
+            message: f.message || W.none, nomail: lead.noMail ? M.contactNoMail : "", known: known.length ? fill(M.contactKnown, { list: known.join(", ") }) : "",
+            again: again ? M.contactAgain : "", link: baseUrl(env) + "/admin.html" }), replyTo: f.email });
+        }
+        return json({ ok: true });
+      }
       if (parts[0] === "verify" && parts.length === 1 && request.method === "POST") {
         const b = await readBody(request);
         const t = await takeToken(env, b.token, ["verify-couple", "verify-venue", "verify-owner"], b.nonce);
@@ -3054,7 +3172,10 @@ export default {
         if (parts[1] === "customers" && parts.length === 3 && request.method === "GET") {
           let key = ""; try { key = decodeURIComponent(parts[2]); } catch (e) { key = ""; }
           const card = await customerCard(env, key);
-          return card ? json(card) : json({ error: "not found" }, 404);
+          if (!card) return json({ error: "not found" }, 404);
+          // a contact (the form's above all: nobody looked it up while typing) shows whoever already has its address or number
+          if (card.lead) card.known = await knownCustomers(env, { email: card.lead.email, phone: card.lead.phone, afm: card.lead.afm }, key);
+          return json(card);
         }
         // Phase 2: what he writes on a card, and «Ξέχασέ τον».
         //   PUT notes {notes} · PUT next {text, due?} · DELETE next · POST next/done · POST timeline {kind, text?}

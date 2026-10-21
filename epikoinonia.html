@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>if(location.hostname.endsWith("github.io"))location.replace("https://takeaseat.gr"+location.pathname+location.search+location.hash);</script>
+<title>Επικοινωνία — TakeaSeat</title>
+<meta name="description" content="Γράψτε μας για το πλάνο τραπεζιών του γάμου, της βάπτισης ή της γιορτής σας, ή για ένα demo για το κτήμα σας. Απαντάμε συνήθως την ίδια ή την επόμενη μέρα.">
+<link rel="canonical" href="https://takeaseat.gr/epikoinonia.html">
+<!-- OPERATIONS-PLAN.md phase 4: this form replaced every prefilled mailto on the site. A message becomes a «Νέα επαφή» in
+     admin.html (POST /contact); the sender gets a fixed «we got it», Andreas gets the message with Reply-To set to them.
+     The links into it say what was asked: ?kind=wedding|baptism|party|venue &q=start|ask|demo|other (&lang=en). -->
+<style>
+  :root{
+    --paper:#f7f4f1; --paper-2:#efe9e2; --card:#fffdfb;
+    --ink:#241f1a; --soft:#5f574d; --faint:#93897c;
+    --line:#e7ded4; --accent:#7d5a8c; --accent-ink:#5c3f68; --accent-soft:#efe6f2;
+    --good:#3f7a52; --good-soft:#e7f2ea; --bad:#a23b3b; --bad-soft:#fbeaea;
+    --shadow:0 1px 2px rgba(40,30,20,.05), 0 10px 30px rgba(40,30,20,.07);
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--paper); color:var(--ink); font-family:var(--sans); line-height:1.6; -webkit-font-smoothing:antialiased; }
+  a{ color:var(--accent-ink); }
+  .wrap{ max-width:680px; margin:0 auto; padding:0 18px; }
+
+  header.nav{ position:sticky; top:0; z-index:20; background:rgba(247,244,241,.9); backdrop-filter:saturate(1.4) blur(8px); border-bottom:1px solid var(--line); }
+  .nav .wrap{ display:flex; align-items:center; gap:14px; height:60px; max-width:1100px; }
+  .brand{ font-family:var(--serif); font-weight:700; font-size:20px; color:var(--ink); letter-spacing:-.01em; text-decoration:none; }
+  .brand .dot{ color:var(--accent); }
+  .nav .links{ margin-left:auto; display:flex; align-items:center; gap:4px; }
+  .nav .links a{ padding:8px 10px; color:var(--soft); font-weight:600; font-size:14px; border-radius:8px; text-decoration:none; white-space:nowrap; }
+  .nav .links a:hover{ color:var(--ink); background:var(--paper-2); }
+
+  main{ padding:30px 0 56px; }
+  h1{ font-family:var(--serif); font-weight:600; letter-spacing:-.01em; font-size:clamp(28px,5vw,38px); line-height:1.12; margin:4px 0 8px; }
+  .lead{ color:var(--soft); font-size:16px; margin:0 0 22px; }
+
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:16px; padding:22px 20px; box-shadow:var(--shadow); }
+  @media (max-width:520px){ .card{ padding:18px 14px; border-radius:14px; } }
+  .q{ font-weight:700; font-size:15px; margin:0 0 8px; }
+  .field{ margin:0 0 16px; }
+  .chips{ display:flex; flex-wrap:wrap; gap:8px; }
+  .chip{ font:inherit; font-size:15px; font-weight:600; padding:9px 14px; border-radius:999px; border:1px solid var(--line); background:#fff; color:var(--ink); cursor:pointer; }
+  .chip:hover{ background:var(--paper-2); }
+  .chip[aria-pressed="true"]{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .chip:focus-visible,.btn:focus-visible,input:focus-visible,textarea:focus-visible{ outline:3px solid #c9b2d4; outline-offset:2px; }
+  .grid{ display:grid; grid-template-columns:1fr 1fr; gap:0 14px; }
+  .grid .full{ grid-column:1 / -1; }
+  @media (max-width:520px){ .grid{ grid-template-columns:1fr; } }
+  label{ display:block; font-weight:600; font-size:14px; margin:0 0 5px; }
+  .opt{ font-weight:400; color:var(--faint); }
+  input[type=text],input[type=email],input[type=tel],input[type=date],textarea{ width:100%; font:inherit; font-size:16px; padding:11px 12px; border:1px solid #d9cfc4; border-radius:10px; background:#fff; color:var(--ink); }
+  input[type=date]{ min-height:46px; }
+  textarea{ min-height:120px; resize:vertical; }
+  input[aria-invalid="true"]{ border-color:var(--bad); background:var(--bad-soft); }
+  .tick{ display:flex; gap:10px; align-items:flex-start; background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:12px; font-size:14px; color:var(--soft); }
+  .tick input{ width:20px; height:20px; margin:1px 0 0; flex:none; accent-color:var(--accent); }
+  .tick label{ font-weight:400; margin:0; color:var(--soft); }
+  .tick b{ color:var(--ink); }
+  .fine{ font-size:13px; color:var(--faint); margin:12px 0 0; }
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; font:inherit; font-weight:700; font-size:16px; padding:13px 26px; border-radius:11px; border:1px solid transparent; cursor:pointer; background:var(--accent); color:#fff; }
+  .btn:hover{ filter:brightness(1.07); }
+  .btn[disabled]{ opacity:.6; cursor:default; }
+  .actions{ display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin-top:18px; }
+  .err{ display:none; background:var(--bad-soft); border:1px solid #e8c4c4; color:var(--bad); border-radius:10px; padding:11px 13px; font-size:14.5px; margin-top:14px; }
+  .err.on{ display:block; }
+  .done{ text-align:center; padding:26px 8px; }
+  .done .big{ font-size:44px; line-height:1; margin-bottom:8px; }
+  .done h2{ font-family:var(--serif); font-weight:600; font-size:26px; margin:0 0 8px; }
+  .done p{ color:var(--soft); margin:6px 0; }
+  /* the bot trap: off screen, out of the tab order, ignored by screen readers */
+  .hp{ position:absolute; left:-10000px; top:auto; width:1px; height:1px; overflow:hidden; }
+
+  .direct{ margin-top:22px; font-size:14.5px; color:var(--soft); }
+  .direct .row{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+  .direct a.pill{ display:inline-flex; align-items:center; padding:8px 13px; border:1px solid var(--line); border-radius:999px; background:var(--card); text-decoration:none; color:var(--ink); font-weight:600; }
+  .direct a.pill:hover{ background:var(--paper-2); }
+
+  footer{ background:var(--ink); color:#c9beb2; padding:30px 0; font-size:14px; }
+  footer .wrap{ display:flex; flex-wrap:wrap; gap:12px 24px; align-items:center; max-width:1100px; }
+  footer .brand{ color:#fff; }
+  footer a{ color:#d7ccc0; text-decoration:none; }
+  footer a:hover{ color:#fff; }
+  footer .sp{ margin-left:auto; }
+  @media (max-width:520px){ footer .sp{ margin-left:0; width:100%; } }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="/">Take<span class="dot">a</span>Seat</a>
+    <nav class="links">
+      <a href="/" data-t="home">Αρχική</a>
+      <a href="/lab.html" data-t="try">Δωρεάν δοκιμή</a>
+      <a id="langlink" href="?lang=en" hreflang="en" lang="en">English</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <h1 data-t="h1">Επικοινωνία</h1>
+    <p class="lead" data-t="lead">Γράψτε μας και θα σας απαντήσουμε σύντομα, συνήθως την ίδια ή την επόμενη μέρα.</p>
+
+    <div class="card" id="card">
+      <form id="form" novalidate>
+        <div class="field">
+          <div class="q" id="q_kind" data-t="qKind">Για τι μας γράφετε;</div>
+          <div class="chips" role="group" aria-labelledby="q_kind" data-pick="kind">
+            <button type="button" class="chip" data-v="wedding" data-t="kWedding">Γάμος</button>
+            <button type="button" class="chip" data-v="baptism" data-t="kBaptism">Βάπτιση</button>
+            <button type="button" class="chip" data-v="party" data-t="kParty">Γιορτή</button>
+            <button type="button" class="chip" data-v="venue" data-t="kVenue">Κτήμα ή χώρος εκδηλώσεων</button>
+          </div>
+        </div>
+        <div class="field">
+          <div class="q" id="q_topic" data-t="qTopic">Τι θέλετε;</div>
+          <div class="chips" role="group" aria-labelledby="q_topic" data-pick="topic" id="topics"></div>
+        </div>
+
+        <div class="grid">
+          <div class="field"><label for="f_name" data-t="name">Το όνομά σας</label><input type="text" id="f_name" maxlength="120" autocomplete="name" required></div>
+          <div class="field"><label for="f_email">Email</label><input type="email" id="f_email" maxlength="200" autocomplete="email" inputmode="email" required></div>
+          <div class="field"><label for="f_phone"><span data-t="phone">Τηλέφωνο</span> <span class="opt" data-t="optional">(προαιρετικό)</span></label><input type="tel" id="f_phone" maxlength="40" autocomplete="tel" inputmode="tel" placeholder="69…"></div>
+          <div class="field" id="w_date"><label for="f_date"><span id="l_date">Ημερομηνία</span> <span class="opt" data-t="optional">(προαιρετικό)</span></label><input type="date" id="f_date"></div>
+          <div class="field full"><label for="f_place"><span id="l_place">Πού γίνεται</span> <span class="opt" id="o_place" data-t="optional">(προαιρετικό)</span></label><input type="text" id="f_place" maxlength="120" autocomplete="off"></div>
+          <div class="field full"><label for="f_message"><span data-t="message">Μήνυμα</span> <span class="opt" data-t="optional">(προαιρετικό)</span></label><textarea id="f_message" maxlength="1000"></textarea></div>
+        </div>
+        <div class="hp" aria-hidden="true"><label for="f_website">Website</label><input type="text" id="f_website" name="website" tabindex="-1" autocomplete="off"></div>
+
+        <div class="tick">
+          <input type="checkbox" id="f_nomail">
+          <label for="f_nomail" data-t="nomail" data-html>Αν γίνετε πελάτες μας, μπορεί κάποτε να σας γράψουμε για μια σχετική εκδήλωση, π.χ. μετά τον γάμο για τη βάπτιση. <b>Αν δεν το θέλετε, τσεκάρετε εδώ.</b> Μπορείτε να μας το πείτε και αργότερα.</label>
+        </div>
+        <p class="fine" data-t="fine" data-html>Κρατάμε ό,τι γράψετε εδώ για να σας απαντήσουμε. Αν δεν γίνετε πελάτες μας, σβήνεται 2 χρόνια μετά την τελευταία μας επαφή. <a href="/privacy.html">Πολιτική Απορρήτου</a></p>
+
+        <div class="actions"><button type="submit" class="btn" id="send" data-t="send">Αποστολή</button></div>
+        <div class="err" id="err" role="alert"></div>
+      </form>
+    </div>
+
+    <div class="direct">
+      <div data-t="direct">Ή απευθείας, 10:00–14:00 και 17:00–21:00:</div>
+      <div class="row">
+        <a class="pill" href="tel:+306977355378">📞 697 735 5378</a>
+        <a class="pill" href="viber://chat?number=%2B306977355378">Viber</a>
+        <a class="pill" href="https://wa.me/306977355378" target="_blank" rel="noopener">WhatsApp</a>
+        <a class="pill" href="mailto:info@takeaseat.gr">info@takeaseat.gr</a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a class="brand" href="/" style="text-decoration:none">Take<span class="dot" style="color:var(--accent)">a</span>Seat</a>
+    <a href="/" data-t="home">Αρχική</a>
+    <a href="/privacy.html" data-t="privacy">Απόρρητο</a>
+    <a href="/terms.html" data-t="terms">Όροι</a>
+    <span class="sp">© 2026 TakeaSeat</span>
+  </div>
+</footer>
+
+<script>
+// One dictionary per language; the HTML above carries the Greek, so the page reads right before (and without) this script.
+const T = {
+  el: {
+    title:"Επικοινωνία — TakeaSeat", home:"Αρχική", try:"Δωρεάν δοκιμή", h1:"Επικοινωνία", lead:"Γράψτε μας και θα σας απαντήσουμε σύντομα, συνήθως την ίδια ή την επόμενη μέρα.",
+    qKind:"Για τι μας γράφετε;", kWedding:"Γάμος", kBaptism:"Βάπτιση", kParty:"Γιορτή", kVenue:"Κτήμα ή χώρος εκδηλώσεων", qTopic:"Τι θέλετε;",
+    tStart:"Θέλουμε το TakeaSeat", tAskVenue:"Έχει το κτήμα μας TakeaSeat;", tAskPlace:"Έχει ο χώρος μας TakeaSeat;", tDemo:"Ένα demo για το κτήμα μου", tOther:"Κάτι άλλο",
+    name:"Το όνομά σας", phone:"Τηλέφωνο", optional:"(προαιρετικό)", message:"Μήνυμα",
+    dWedding:"Ημερομηνία γάμου", dBaptism:"Ημερομηνία βάπτισης", dParty:"Ημερομηνία γιορτής",
+    pVenue:"Σε ποιο κτήμα γίνεται", pPlace:"Σε ποιον χώρο γίνεται", pOwn:"Το κτήμα ή ο χώρος σας", pOwnPh:"π.χ. Κτήμα Ηλιοβασίλεμα, Μαραθώνας", pPh:"π.χ. Κτήμα Ηλιοβασίλεμα",
+    mStart:"π.χ. πόσα άτομα περίπου, τι θα θέλατε να μάθετε", mAsk:"Γράψτε μας το κτήμα και την ημερομηνία· θα σας πούμε αν δουλεύει με το TakeaSeat.", mDemo:"π.χ. πόσες αίθουσες έχετε, πότε σας βολεύει ένα σύντομο demo", mOther:"Γράψτε μας τι θέλετε να μάθετε",
+    nomail:"Αν γίνετε πελάτες μας, μπορεί κάποτε να σας γράψουμε για μια σχετική εκδήλωση, π.χ. μετά τον γάμο για τη βάπτιση. <b>Αν δεν το θέλετε, τσεκάρετε εδώ.</b> Μπορείτε να μας το πείτε και αργότερα.",
+    fine:"Κρατάμε ό,τι γράψετε εδώ για να σας απαντήσουμε. Αν δεν γίνετε πελάτες μας, σβήνεται 2 χρόνια μετά την τελευταία μας επαφή. <a href=\"/privacy.html\">Πολιτική Απορρήτου</a>",
+    send:"Αποστολή", sending:"Αποστέλλεται…", direct:"Ή απευθείας, 10:00–14:00 και 17:00–21:00:", privacy:"Απόρρητο", terms:"Όροι",
+    eName:"Γράψτε το όνομά σας.", eEmail:"Το email δεν φαίνεται σωστό.", ePhone:"Το τηλέφωνο δεν φαίνεται σωστό: ελληνικό με 10 ψηφία, ή ξένο με το + μπροστά.",
+    eDate:"Η ημερομηνία πρέπει να είναι μελλοντική.", eRate:"Στείλατε ήδη αρκετά μηνύματα σήμερα. Αν είναι κάτι επείγον, τηλεφωνήστε μας στο 697 735 5378.",
+    eDown:"Η φόρμα δεν είναι διαθέσιμη αυτή τη στιγμή. Γράψτε μας στο info@takeaseat.gr ή τηλεφωνήστε στο 697 735 5378.",
+    doneH:"Ευχαριστούμε!", doneP:"Το μήνυμά σας στάλθηκε. Θα σας απαντήσουμε στο {email}, συνήθως την ίδια ή την επόμενη μέρα.",
+    doneP2:"Σας στείλαμε κι ένα σύντομο email επιβεβαίωσης. Αν δεν το βλέπετε, κοιτάξτε και στα ανεπιθύμητα.", back:"Πίσω στην αρχική",
+  },
+  en: {
+    title:"Contact — TakeaSeat", home:"Home", try:"Free demo", h1:"Contact us", lead:"Write to us and we will answer soon, usually the same day or the next.",
+    qKind:"What are you writing about?", kWedding:"Wedding", kBaptism:"Baptism", kParty:"Party", kVenue:"A venue", qTopic:"What would you like?",
+    tStart:"We want TakeaSeat", tAskVenue:"Does our venue use TakeaSeat?", tAskPlace:"Does our venue use TakeaSeat?", tDemo:"A demo for my venue", tOther:"Something else",
+    name:"Your name", phone:"Phone", optional:"(optional)", message:"Message",
+    dWedding:"Wedding date", dBaptism:"Baptism date", dParty:"Date of the party",
+    pVenue:"Which venue", pPlace:"Which venue", pOwn:"Your venue", pOwnPh:"e.g. Ktima Iliovasilema, Marathonas", pPh:"e.g. Ktima Iliovasilema",
+    mStart:"e.g. roughly how many guests, what you would like to know", mAsk:"Tell us the venue and the date, and we will tell you whether it works with TakeaSeat.", mDemo:"e.g. how many halls you have, when a short demo suits you", mOther:"Tell us what you would like to know",
+    nomail:"If you become our customer, we may one day write to you about a related event, e.g. a baptism after the wedding. <b>If you would rather we did not, tick here.</b> You can also tell us later.",
+    fine:"We keep what you write here so that we can answer you. If you do not become our customer, it is deleted 2 years after our last contact. <a href=\"/privacy.html#en\">Privacy Policy</a>",
+    send:"Send", sending:"Sending…", direct:"Or directly, 10:00–14:00 and 17:00–21:00 (Greek time):", privacy:"Privacy", terms:"Terms",
+    eName:"Please write your name.", eEmail:"That email address does not look right.", ePhone:"That phone number does not look right: a Greek one with 10 digits, or a foreign one starting with +.",
+    eDate:"The date must be in the future.", eRate:"You have already sent several messages today. If it is urgent, call us on +30 697 735 5378.",
+    eDown:"The form is not available right now. Write to info@takeaseat.gr or call +30 697 735 5378.",
+    doneH:"Thank you!", doneP:"Your message has been sent. We will answer at {email}, usually the same day or the next.",
+    doneP2:"We have also sent you a short confirmation email. If you cannot see it, please check your spam folder.", back:"Back to the home page",
+  },
+};
+const qs = new URLSearchParams(location.search);
+const lang = qs.get("lang") === "en" ? "en" : "el", t = k => T[lang][k];
+const $ = id => document.getElementById(id);
+const KINDS = ["wedding", "baptism", "party", "venue"];
+const TOPICS = { venue: ["demo", "other"], other: ["start", "ask", "other"] };
+let kind = KINDS.includes(qs.get("kind")) ? qs.get("kind") : "wedding";
+let topic = qs.get("q");
+
+if (lang === "en") {
+  document.documentElement.lang = "en"; document.title = t("title");
+  document.querySelectorAll("[data-t]").forEach(el => { const v = t(el.dataset.t); if (v != null) el[el.hasAttribute("data-html") ? "innerHTML" : "textContent"] = v; });
+  const ll = $("langlink"); ll.textContent = "Ελληνικά"; ll.lang = "el"; ll.hreflang = "el";
+}
+// the switch keeps what the link said (kind, topic)
+{ const q2 = new URLSearchParams(location.search); if (lang === "en") q2.delete("lang"); else q2.set("lang", "en"); $("langlink").href = "?" + q2.toString(); }
+
+const press = (group, v) => document.querySelectorAll(`[data-pick="${group}"] .chip`).forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === v)));
+function drawTopics() {
+  const list = TOPICS[kind === "venue" ? "venue" : "other"];
+  if (!list.includes(topic)) topic = list[0];
+  const word = { start: t("tStart"), ask: t(kind === "party" ? "tAskPlace" : "tAskVenue"), demo: t("tDemo"), other: t("tOther") };
+  $("topics").innerHTML = list.map(v => `<button type="button" class="chip" data-v="${v}">${word[v]}</button>`).join("");
+  press("topic", topic);
+}
+function sync() {
+  press("kind", kind); drawTopics();
+  const venue = kind === "venue";
+  $("w_date").style.display = venue ? "none" : "";
+  if (!venue) $("l_date").textContent = t({ wedding: "dWedding", baptism: "dBaptism", party: "dParty" }[kind]);
+  $("l_place").textContent = venue ? t("pOwn") : t(kind === "party" ? "pPlace" : "pVenue");
+  $("o_place").style.display = venue ? "none" : "";
+  $("f_place").placeholder = venue ? t("pOwnPh") : t("pPh");
+  $("f_message").placeholder = t({ start: "mStart", ask: "mAsk", demo: "mDemo", other: "mOther" }[topic]);
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-pick] .chip"); if (!b) return;
+  if (b.parentNode.dataset.pick === "kind") kind = b.dataset.v; else topic = b.dataset.v;
+  sync();
+});
+const ymd = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+$("f_date").min = ymd(new Date());
+sync();
+
+const errBox = $("err");
+function fail(msg, el) {
+  errBox.textContent = msg; errBox.classList.add("on");
+  document.querySelectorAll("[aria-invalid]").forEach(x => x.removeAttribute("aria-invalid"));
+  if (el) { el.setAttribute("aria-invalid", "true"); el.focus(); }
+}
+$("form").addEventListener("input", e => { if (e.target.getAttribute("aria-invalid")) e.target.removeAttribute("aria-invalid"); });
+$("form").addEventListener("submit", async e => {
+  e.preventDefault();
+  errBox.classList.remove("on");
+  const v = id => $(id).value.trim();
+  const body = { kind, topic, name: v("f_name"), email: v("f_email"), phone: v("f_phone"), date: kind === "venue" ? "" : $("f_date").value,
+    place: v("f_place"), message: $("f_message").value.trim(), noMail: $("f_nomail").checked, website: $("f_website").value, lang };
+  if (!body.name) return fail(t("eName"), $("f_name"));
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(body.email)) return fail(t("eEmail"), $("f_email"));
+  if (body.phone && body.phone.replace(/\D/g, "").length < 10) return fail(t("ePhone"), $("f_phone"));
+  if (kind !== "venue" && $("f_date").validity && $("f_date").validity.badInput) return fail(t("eDate"), $("f_date"));
+  if (body.date && body.date < $("f_date").min) return fail(t("eDate"), $("f_date"));
+  const btn = $("send"); btn.disabled = true; btn.textContent = t("sending");
+  let r = null, d = {};
+  try { r = await fetch("/contact", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); d = await r.json().catch(() => ({})); }
+  catch (x) { r = null; }
+  btn.disabled = false; btn.textContent = t("send");
+  if (r && r.ok && d.ok) {
+    const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    $("card").innerHTML = `<div class="done" role="status"><div class="big">✓</div><h2>${t("doneH")}</h2><p>${t("doneP").replace("{email}", "<b>" + esc(body.email) + "</b>")}</p><p>${t("doneP2")}</p><p style="margin-top:16px"><a href="/">${t("back")}</a></p></div>`;
+    $("card").scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  const code = d && d.error;
+  if (code === "bad_name") return fail(t("eName"), $("f_name"));
+  if (code === "bad_email") return fail(t("eEmail"), $("f_email"));
+  if (code === "bad_phone") return fail(t("ePhone"), $("f_phone"));
+  if (code === "bad_date") return fail(t("eDate"), $("f_date"));
+  if (code === "rate_limited") return fail(t("eRate"));
+  fail(t("eDown"));
+});
+</script>
+</body>
+</html>

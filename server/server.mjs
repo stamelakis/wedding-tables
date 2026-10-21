@@ -100,7 +100,7 @@ async function drainMail() {
   if (mailBusy) return; mailBusy = true;
   while (mailQueue.length) {
     const m = mailQueue.shift();
-    try { await transport.sendMail({ from: MAIL_FROM || 'TakeaSeat <noreply@localhost>', to: m.to, subject: m.subject, text: m.text, ...(m.attachments ? { attachments: m.attachments } : {}) }); mailStat.sent++; mailStat.lastOkAt = Date.now(); settleMail(m, true); }
+    try { await transport.sendMail({ from: MAIL_FROM || 'TakeaSeat <noreply@localhost>', to: m.to, subject: m.subject, text: m.text, ...(m.attachments ? { attachments: m.attachments } : {}), ...(m.replyTo ? { replyTo: m.replyTo } : {}) }); mailStat.sent++; mailStat.lastOkAt = Date.now(); settleMail(m, true); }
     catch (e) {
       const code = [e.code, e.responseCode, e.command].filter(Boolean).join(' ') || 'error';   // never e.message: SMTP errors quote the address
       const transient = !e.responseCode || (e.responseCode >= 400 && e.responseCode < 500);
@@ -162,7 +162,7 @@ setTimeout(runSweep, 60000).unref?.(); setInterval(runSweep, 3600000).unref?.();
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png',
   '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.ico': 'image/x-icon', '.webp': 'image/webp', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml; charset=utf-8' };
-const API_PREFIXES = ['/plans', '/codes', '/venues', '/admin', '/claim', '/health', '/recover', '/verify', '/pdf', '/find', '/signup'];
+const API_PREFIXES = ['/plans', '/codes', '/venues', '/admin', '/claim', '/health', '/recover', '/verify', '/pdf', '/find', '/signup', '/contact'];
 // The guest finder's page: never indexed. robots.txt disallows it too; this header is what a crawler that ignores robots.txt
 // still gets. Renaming the page means changing this one line and the Disallow in robots.txt.
 const NOINDEX = new Set(['/trapezi.html']);
@@ -290,7 +290,7 @@ http.createServer(async (req, res) => {
       res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '60' }); res.end('{"error":"rate_limited"}'); return;
     }
     // e-mail requests: 20 an hour per IP (each address is also limited to 3 an hour by the worker)
-    if ((req.method === 'POST' || req.method === 'PUT') && (canon === '/recover' || canon === '/admin/recover' || canon === '/admin/owner' || canon === '/admin/test/email' || canon === '/signup/venue' || /^\/(plans|venues)\/[^/]+\/email$/.test(canon)) && !rateOk(ip + ':mail', 20, 3600000)) {
+    if ((req.method === 'POST' || req.method === 'PUT') && (canon === '/recover' || canon === '/admin/recover' || canon === '/admin/owner' || canon === '/admin/test/email' || canon === '/signup/venue' || canon === '/contact' || /^\/(plans|venues)\/[^/]+\/email$/.test(canon)) && !rateOk(ip + ':mail', 20, 3600000)) {
       res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '3600' }); res.end('{"error":"rate_limited"}'); return;
     }
     // The venue signup is the one unauthenticated write that creates an account: a burst is stopped here, and the
@@ -298,11 +298,15 @@ http.createServer(async (req, res) => {
     if (canon === '/signup/venue' && !rateOk(ip + ':signup', 5, 3600000)) {
       res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '3600' }); res.end('{"error":"rate_limited"}'); return;
     }
-    // …and it is the one unauthenticated write a FOREIGN page could make a visitor's browser send. A POST with
+    // The contact form the same way: a burst stopped here, the real fence (5 a day per address) in the worker's store.
+    if (canon === '/contact' && !rateOk(ip + ':contact', 5, 3600000)) {
+      res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '3600' }); res.end('{"error":"rate_limited"}'); return;
+    }
+    // …and they are the two unauthenticated writes a FOREIGN page could make a visitor's browser send. A POST with
     // text/plain is a CORS "simple request": no preflight, so the per-IP fence above would be spending the visitor's
     // address instead of the attacker's. Demanding JSON forces a preflight, and the preflight answers with our one
     // fixed Access-Control-Allow-Origin, which no other page passes. A stated foreign Origin is refused outright.
-    if (canon === '/signup/venue') {
+    if (canon === '/signup/venue' || canon === '/contact') {
       const ct = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
       if (ct !== 'application/json') { res.writeHead(415, { 'Content-Type': 'application/json' }); res.end('{"error":"bad_content_type"}'); return; }
       const org = String(req.headers.origin || '').trim();
