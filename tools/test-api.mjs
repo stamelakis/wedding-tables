@@ -3497,6 +3497,15 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     ok(/τη βλέπει μόνο το Κτήμα, ποτέ ο πελάτης/.test(dpa) && /seen only by the Venue, never by the client/.test(dpa) && /Την καρτέλα τη βλέπει μόνο το κτήμα, ποτέ ο πελάτης/.test(priv)
       && /Only the venue sees the card, never the client/.test(priv), 'pages: both say the client never sees the card');
     ok(/γάμους, βαπτίσεις και γιορτές/.test(dpa) && /weddings, baptisms and parties/.test(dpa), 'pages: the DPA covers all three kinds');
+    // §0 of terms and privacy defines «εκδήλωση» for the whole page: it was left at γάμος/βάπτιση for days after the γιορτή went live
+    const sec0 = (t, h) => (t.split(h)[1] || '').split('<h2>')[0];
+    const sec0s = ['terms.html', 'privacy.html'].map(f => { const t = page(f);
+      return { f, t, el: sec0(t, '<h2>0. Τι σημαίνει «εκδήλωση»</h2>'), en: sec0(t, /<h2>0\. What .event. means<\/h2>/) }; });
+    ok(sec0s.every(s => /<b>γιορτή<\/b>/.test(s.el) && /για τα τρία είδη/.test(s.el) && /σε μια γιορτή, όποιος την οργανώνει/.test(s.el)
+      && /<b>party<\/b>/.test(s.en) && /all three kinds/.test(s.en) && /at a party, whoever organises it/.test(s.en)),
+      'pages: terms and privacy §0 name the γιορτή, and who «the couple» is at one, in Greek and English', sec0s.map(s => ({ f: s.f, el: s.el.slice(0, 80), en: s.en.slice(0, 80) })));
+    ok(sec0s.every(s => !/γάμ(ο|ος) ή βάπτιση|γάμους και βαπτίσεις|wedding or (a )?baptism|weddings and baptisms|wedding and baptism/.test(s.t)),
+      'pages: no two-kind list (γάμος ή βάπτιση, weddings and baptisms) is left on terms or privacy');
 
     // -- two first saves at once make one card, not two --
     const WT = (await call('POST', '/venues/' + V.id + '/weddings', { label: 'Φ3 δύο αποθηκεύσεις', date: athensDay(40) }, HV)).d;
