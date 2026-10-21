@@ -45,6 +45,8 @@
 //          · GET /admin/lookup?q= · GET /admin/diagnostics · POST /admin/test/email {email} · POST /admin/find-test {link|token, q}
 //   POST /admin/recover {email} · POST /admin/recover/claim {token, nonce}   (public: the owner forgot the admin key)
 //   /venues/:id · /rotate · /defaults · /template · /weddings[/:planId]                           (X-Venue-Key)
+//   /venues/:id/weddings/:planId/card · /client · /sent · /venues/:id/clients/:cid[/join] · /memory   the venue's own clients
+//          (phase 3: their contact, its notes and next step, the memory) — venue key only, never in an /admin/ answer
 
 const CORS = {
   "Access-Control-Allow-Origin": "https://takeaseat.gr",
@@ -508,7 +510,10 @@ async function lifecycleSweep(env, now) {
     if (rec.deletedAt) {   // a venue's trash
       if (now >= (rec.purgeAt || rec.deletedAt + TRASH_DAYS * DAY)) {
         await purgePlan(env, id); out.trash++;
-        if (own.type === "venue") await kvUpdate(env, "venue:" + own.venueId, v => { if (!v) return null; v.trash = (v.trash || []).filter(t => t.planId !== id); return v; });
+        if (own.type === "venue") {
+          const vr = await kvUpdate(env, "venue:" + own.venueId, v => { if (!v) return null; const t = (v.trash || []).find(x => x.planId === id); v.trash = (v.trash || []).filter(x => x.planId !== id); return { __obj: v, __res: t || null }; });
+          await clientEventGone(env, own.venueId, vr.res, rec, now, true);
+        }
       }
       continue;
     }
@@ -568,7 +573,11 @@ async function lifecycleSweep(env, now) {
       await purgePlan(env, id); out.purged++;
       // The plan goes; the customer's memory card stays (OPERATIONS-PLAN.md §2 rule 5, phase 2): the name, the address and
       // his notes, plus the kind and dates of the event in `past` — until the memory clock runs out (memorySweep).
-      if (own.type === "venue") await kvUpdate(env, "venue:" + own.venueId, vv => { if (!vv) return null; vv.weddings = (vv.weddings || []).filter(w => w.planId !== id); pushPast(vv, pastOf(rec, now)); return vv; });
+      if (own.type === "venue") {   // …and the venue's own client card keeps the event too, with its name (phase 3)
+        const vr = await kvUpdate(env, "venue:" + own.venueId, vv => { if (!vv) return null; const w = (vv.weddings || []).find(x => x.planId === id);
+          vv.weddings = (vv.weddings || []).filter(x => x.planId !== id); pushPast(vv, pastOf(rec, now)); return { __obj: vv, __res: w || null }; });
+        await clientEventGone(env, own.venueId, vr.res, rec, now, false);
+      }
       else if (c && c.planId === id) {   // the extra plans go with the main one; so does every way back into a plan
         const gone = [pastOf(rec, now)];
         for (const pid of (c.plans || [])) { const pr = safeParse(await env.PLANS.get("plan:" + pid)); if (pr && pr.coupleId === c.id) { gone.push(pastOf(pr, now, true)); await purgePlan(env, pid); out.purged++; } }
@@ -760,6 +769,7 @@ async function eraseVenue(env, id, why) {
   }
   await env.PLANS.delete("venue:" + id);
   await env.PLANS.delete("act:v:" + id);
+  for (const k of (await env.PLANS.list("vcli:" + id + ":")) || []) await env.PLANS.delete(k);   // the venue's own client cards
   await removeIndex(env, "venues:index", id);
   return !!dv;
 }
@@ -1796,8 +1806,111 @@ async function memorySweep(env, now) {
     const ck = custKeyOf(k.slice(4));
     if (!ck || !(await env.PLANS.get(ck.rec))) { await env.PLANS.delete(k); out.actsDropped++; }
   }
+  // The venues' own client cards: the same clock, run on the venue's chosen years (phase 3).
+  out.clientsForgotten = 0;
+  const vs = new Map();
+  for (const k of (await env.PLANS.list("vcli:")) || []) {
+    const c = safeParse(await env.PLANS.get(k)), vid = k.split(":")[1];
+    if (!vs.has(vid)) vs.set(vid, safeParse(await env.PLANS.get("venue:" + vid)));
+    const v = vs.get(vid);
+    const mem = (c && v) ? clientMemory(v, c, clientEvents(v, c.id), day) : null;
+    if (!mem || (!mem.held && mem.forgetAt <= day)) { await env.PLANS.delete(k); out.clientsForgotten++; }
+  }
   await env.PLANS.put(MEMORY_KEY, JSON.stringify({ day, at: now, ...out }));
   return out;
+}
+
+// ---- a venue's own clients (OPERATIONS-PLAN.md, phase 3) ----
+// One card per client of a venue, `vcli:<venueId>:<clientId>`: the name, phone and email the venue typed, its private notes
+// and next step, and what is left of the client's events once their plans are gone. The venue is the controller and
+// TakeaSeat only processes this for it (dpa.html): it is read and written with the venue key alone, the client's own link
+// never receives a word of it, and no /admin/ answer carries it. An event points at its card from the venue's own row
+// (`w.clientId`, also on a trash row), so the plan itself holds nothing of it. The card outlives its plans for the years the
+// venue chose (1–5, default 5) after the client's last event, then the nightly pass erases it; the venue can erase it at once.
+const VCLI_MAX = 3000, VCLI_YEARS = [1, 2, 3, 4, 5], VCLI_DEFAULT_YEARS = 5, VCLI_NAME_MAX = 120;
+const VCLI_ID = /^[A-Za-z0-9]{8,40}$/;
+const vcliKey = (vid, cid) => "vcli:" + vid + ":" + cid;
+const clientYears = v => VCLI_YEARS.includes(v && v.clientYears) ? v.clientYears : VCLI_DEFAULT_YEARS;
+async function venueClients(env, vid) {
+  const out = [];
+  for (const k of (await env.PLANS.list("vcli:" + vid + ":")) || []) { const c = safeParse(await env.PLANS.get(k)); if (c && c.id) out.push(c); }
+  return out;
+}
+// The client's events that still exist: live ones, and ones in the venue's trash (those still hold the card too).
+const clientEvents = (v, cid) => [
+  ...(v.weddings || []).filter(w => w.clientId === cid).map(w => ({ planId: w.planId, label: w.label || "", kind: normKind(w.kind), date: w.date || null })),
+  ...(v.trash || []).filter(t => t.clientId === cid).map(t => ({ label: t.label || "", kind: normKind(t.kind), date: t.date || null, deleted: true }))];
+// Forgotten `years` after the client's last event (an event still ahead counts as today), never while one still exists.
+function clientMemory(v, c, events, today) {
+  const dayOf = ymd => ymdOk(ymd) ? (ymd <= today ? ymd : today) : null;
+  const dates = [ymdOfMs(c.createdAt), ...events.map(e => dayOf(e.date)), ...(Array.isArray(c.past) ? c.past : []).map(p => dayOf(p.date))].filter(Boolean).sort();
+  const lastTouch = dates.pop() || today, years = clientYears(v);
+  return { lastTouch, forgetAt: addYears(lastTouch, years), years, held: events.length > 0 };
+}
+// "Is this the same family?": another card of the same venue with the same phone (last 10 digits) or the same email.
+const phoneKey = p => { const d = String(p || "").replace(/\D/g, ""); return d.length >= 10 ? d.slice(-10) : ""; };
+function clientMatches(all, c) {
+  const pk = phoneKey(c.phone), em = c.email || "";
+  return (pk || em) ? all.filter(o => o.id !== c.id && ((pk && phoneKey(o.phone) === pk) || (em && o.email === em))) : [];
+}
+const clientPast = c => (Array.isArray(c.past) ? c.past : []).map(p => ({ kind: normKind(p.kind), date: ymdOk(p.date) ? p.date : null, label: String(p.label || ""),
+  createdAt: p.createdAt || null, goneAt: p.goneAt || null, ...(p.deleted ? { deleted: true } : {}) })).sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+// The client's most recent event, live or gone: what the sheet shows for a card whose plans are all gone.
+function clientLast(v, c) {
+  const all = [...clientEvents(v, c.id), ...clientPast(c)].filter(e => !e.deleted);
+  return all.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))[0] || null;
+}
+function clientOut(v, c, all, today) {
+  const events = clientEvents(v, c.id);
+  return { id: c.id, name: c.name || "", phone: c.phone || "", email: c.email || "", notes: c.notes || "", next: stepOut(c.next),
+    events, past: clientPast(c), memory: clientMemory(v, c, events, today), createdAt: c.createdAt || null, updatedAt: c.updatedAt || null,
+    matches: clientMatches(all, c).map(o => ({ id: o.id, name: o.name || "", phone: o.phone || "", email: o.email || "", last: clientLast(v, o) })) };
+}
+const clientRow = c => ({ id: c.id, name: c.name || "", phone: c.phone || "", email: c.email || "", next: stepOut(c.next) });
+// The fields the venue types, checked the same way on every route. Changes `c` in place → an error code, or null.
+function clientFields(c, b) {
+  if (b.name !== undefined) c.name = String(b.name == null ? "" : b.name).trim().slice(0, VCLI_NAME_MAX);
+  if (b.phone !== undefined) { const s = String(b.phone == null ? "" : b.phone).trim(); if (s && !normPhone(s)) return "bad_phone"; c.phone = s ? normPhone(s) : ""; }
+  if (b.email !== undefined) { const s = String(b.email == null ? "" : b.email).trim(); if (s && !normEmail(s)) return "bad_email"; c.email = s ? normEmail(s) : ""; }
+  if (b.notes !== undefined) c.notes = String(b.notes == null ? "" : b.notes).slice(0, NOTES_MAX);
+  if (b.next !== undefined) {
+    if (b.next === null) c.next = null;
+    else {
+      const text = String((b.next && b.next.text) || "").trim().slice(0, STEP_MAX), due = b.next && b.next.due;
+      if (!text || (due != null && due !== "" && !ymdOk(due))) return "bad_step";
+      c.next = { text, due: ymdOk(due) ? due : null, at: Date.now() };
+    }
+  }
+  c.updatedAt = Date.now();
+  return null;
+}
+// An event of a card is gone (deleted a year after it, or emptied from the trash): the card keeps its kind, date and name.
+async function clientEventGone(env, vid, row, rec, now, deleted) {
+  if (!row || !row.clientId) return;
+  const e = { kind: rec ? kindOf(rec) : normKind(row.kind), date: (rec && rec.weddingDate) || row.date || null, label: String(row.label || (rec && rec.name) || "").slice(0, VCLI_NAME_MAX),
+    createdAt: (rec && rec.createdAt) || row.createdAt || null, goneAt: now, ...(deleted ? { deleted: true } : {}) };
+  await kvUpdate(env, vcliKey(vid, row.clientId), c => { if (!c) return null; pushPast(c, e); return c; });
+}
+// What the venue sees happen on one event, newest first: codes and times (venue.html words them), never a device.
+const VTL_AUDIT = ["date", "rotate", "invite", "revoke", "open", "save", "restore", "locked", "amelie", "amelie_off", "find_on", "find_off"];
+function eventTimeline(w, p) {
+  const out = [], add = (at, code, more) => { if (at) out.push({ at, code, ...(more || {}) }); };
+  add(w.createdAt, "created");
+  add(w.linkAt, "sent");
+  add(p.seenAt, "seen");
+  add(p.clientSavedAt, "saved");
+  add(p.notesGoneAt, "notes_gone");
+  for (const a of (Array.isArray(p.audit) ? p.audit : []))
+    if (VTL_AUDIT.includes(a.what) && (a.who === "support" || !["open", "save", "restore"].includes(a.what)))
+      add(a.last || a.t, "audit", { what: a.what, who: a.who || "", n: a.n || 1, ...(a.what === "date" ? { d: a.d || null } : {}), ...(a.what === "invite" && a.h ? { h: a.h } : {}) });
+  return out.sort((a, b) => b.at - a.at).slice(0, TIMELINE_MAX);
+}
+// Events created before the console learnt when a link was sent and opened have no such dates: the console does not
+// call them "not sent" or "never opened". Set once, the first time it is needed.
+async function clientTrackSince(env) {
+  const m = safeParse(await env.PLANS.get("meta:clienttrack"));
+  if (m && m.since) return m.since;
+  const since = Date.now(); await env.PLANS.put("meta:clienttrack", JSON.stringify({ since })); return since;
 }
 
 export default {
@@ -1871,6 +1984,9 @@ export default {
             out.supportExpires = rec.support.expires;
             await kvUpdate(env, key, cur => (cur && addAudit(cur, "support", "open", 30 * 60000)) ? cur : null);
           }
+          // The venue's sheet asks one thing of its client's link: has it ever been opened. The first open only, never each one.
+          if (a.role === "couple" && a.owner.type === "venue" && !rec.seenAt && !rec.template)
+            await kvUpdate(env, key, cur => { if (!cur || cur.seenAt) return null; cur.seenAt = Date.now(); return cur; });
           if (a.role !== "viewer") {
             out.support = supportActive(rec) ? { expires: rec.support.expires, by: rec.support.by || "", ...(a.full ? { message: rec.support.message || "" } : {}) } : null;
             out.audit = (rec.audit || []).slice(-20);
@@ -1931,6 +2047,7 @@ export default {
             if (newName) cur.name = newName;
             if (newKind !== undefined) cur.kind = newKind;
             if (a.role === "support") addAudit(cur, "support", "save", 30 * 60000);
+            if (a.role === "couple" && a.owner.type === "venue") { cur.clientSavedAt = now; if (!cur.seenAt) cur.seenAt = now; }   // the venue's sheet: the client's last change (phase 3)
             cur.updated = now;
             return { __obj: cur, __res: "ok" };
           });
@@ -2586,7 +2703,8 @@ export default {
               if (!r.obj || r.obj.deletedAt || ownerOf(r.obj).venueId !== v.id) return json({ error: "gone" }, 410);
               await kvUpdate(env, "venue:" + v.id, cur => { if (!cur) return null; cur.trash = (cur.trash || []).filter(x => x.planId !== t.planId);
                 cur.weddings = [...(cur.weddings || []), { planId: t.planId, label: r.obj.name || t.label, createdAt: r.obj.createdAt || t.deletedAt, editKey: r.obj.editKey,
-                  venueKey: r.obj.venueKey, perms: normPerms(r.obj.perms, ALL_OPEN), layoutSet: !!r.obj.layoutAt, date: r.obj.weddingDate || null, kind: kindOf(r.obj) }]; return cur; });
+                  venueKey: r.obj.venueKey, perms: normPerms(r.obj.perms, ALL_OPEN), layoutSet: !!r.obj.layoutAt, date: r.obj.weddingDate || null, kind: kindOf(r.obj),
+                  ...(t.clientId ? { clientId: t.clientId } : {}), ...(t.linkAt ? { linkAt: t.linkAt } : {}) }]; return cur; });   // its client card follows it back
               console.log("admin: restored wedding " + t.planId + " of venue " + v.id);
               return json({ ok: true });
             }
@@ -2948,7 +3066,8 @@ export default {
           // A plan we refused to purge keeps its venue: deleting the test venue under it would strand it with no
           // console, no owner and no way back. The venue goes only when nothing is left standing in it.
           const keepVenue = !!v && keptIds.length > 0;
-          if (v && !keepVenue) { await env.PLANS.delete("venue:" + TEST_VENUE_ID); await removeIndex(env, "venues:index", TEST_VENUE_ID); }
+          if (v && !keepVenue) { await env.PLANS.delete("venue:" + TEST_VENUE_ID); await removeIndex(env, "venues:index", TEST_VENUE_ID);
+            for (const k of (await env.PLANS.list("vcli:" + TEST_VENUE_ID + ":")) || []) await env.PLANS.delete(k); }
           else if (keepVenue) await kvUpdate(env, "venue:" + TEST_VENUE_ID, cur => { if (!isTest(cur)) return null;   // …but its rows for the plans that did go are cleared
             cur.weddings = (cur.weddings || []).filter(w => !gone.has(w.planId));
             cur.trash = (cur.trash || []).filter(t => !gone.has(t.planId));
@@ -3090,17 +3209,23 @@ export default {
           const gate = canCreateWedding(v);
           const live = x => (x && x > Date.now()) ? x : null;
           const settings = await getSettings(env), since = await lifecycleSince(env), rows = [];
+          const clients = await venueClients(env, v.id), byId = new Map(clients.map(c => [c.id, c])), today = ymdOfMs(Date.now());
           for (const w of (v.weddings || [])) {   // date, progress and lifecycle of each wedding
-            const p = await ownPlan(w.planId);
+            const p = await ownPlan(w.planId), c = w.clientId ? byId.get(w.clientId) : null;
             const L = p ? lifeOf(p, policyOf(settings, v.retention, p.retention), since) : null;
             rows.push({ planId: w.planId, label: w.label, kind: p ? kindOf(p) : normKind(w.kind), createdAt: w.createdAt, editKey: w.editKey, venueKey: w.venueKey,
               perms: normPerms(w.perms, ALL_OPEN), layoutSet: w.layoutSet !== false, supportExpires: live(w.supportExpires),
               date: p ? (p.weddingDate || null) : (w.date || null), updated: p ? p.updated : null, stats: p ? planStats(p.plan) : null,
               life: L ? { lockAt: L.lockAt, deleteAt: L.deleteAt, over: L.over, locked: L.locked, keep: L.keep, fallback: L.fallback, phase: L.phase, fullAt: L.fullAt } : null,
-              dateChangesLeft: p ? Math.max(0, DATE_CHANGES - (p.dateChanges || 0)) : 0 });
+              dateChangesLeft: p ? Math.max(0, DATE_CHANGES - (p.dateChanges || 0)) : 0,
+              // the venue's sheet (phase 3): its client, when it sent the link, when the client first opened it and last saved
+              client: c ? clientRow(c) : null, linkAt: w.linkAt || null, seenAt: (p && p.seenAt) || null, savedAt: (p && p.clientSavedAt) || null });
           }
+          // Cards whose events are all gone: the venue's memory of its clients, until the years it chose run out.
+          const memory = clients.filter(c => !clientEvents(v, c.id).length).map(c => ({ ...clientRow(c), last: clientLast(v, c), forgetAt: clientMemory(v, c, [], today).forgetAt }));
           return json({ venue: { ...publicVenue(v), email: v.email || "", emailVerified: !!v.emailVerified, mail: mailOn(env) }, template, defaultPerms: normPerms(v.defaultPerms, ALL_OPEN), canCreate: gate.ok, reason: gate.reason,
-            weddings: rows, trash: (v.trash || []).map(t => ({ label: t.label, kind: normKind(t.kind), deletedAt: t.deletedAt, purgeAt: t.purgeAt, date: t.date || null })) });
+            weddings: rows, trash: (v.trash || []).map(t => ({ label: t.label, kind: normKind(t.kind), deletedAt: t.deletedAt, purgeAt: t.purgeAt, date: t.date || null })),
+            clients: memory, clientYears: clientYears(v), trackSince: await clientTrackSince(env) });
         }
         // The venue sets its OWN key: from then on the admin can't read it, and every per-wedding venue link is renewed.
         if (parts.length === 3 && parts[2] === "rotate" && request.method === "POST") {
@@ -3225,11 +3350,12 @@ export default {
           const wp = w ? await ownPlan(parts[3]) : null;
           if (!w || !wp) return json({ error: "not found" }, 404);
           if ((await planLife(env, wp, parts[3], { venue: v })).locked) return json({ error: "locked" }, 403);
+          // A new link is a link nobody has been sent or opened yet: the sheet starts those two dates again.
           const r = await kvUpdate(env, "plan:" + parts[3], rec => { if (!rec) return null;
-            rec.editKey = rnd(28); rec.readKey = rnd(24); rec.keyGen = (rec.keyGen || 0) + 1; rec.legacyOpenUntil = null; addAudit(rec, "venue", "rotate");
+            rec.editKey = rnd(28); rec.readKey = rnd(24); rec.keyGen = (rec.keyGen || 0) + 1; rec.legacyOpenUntil = null; rec.seenAt = null; addAudit(rec, "venue", "rotate");
             amelieDropFor(rec, "couple", "venue"); return rec; });
           AMELIE_MEM.delete(parts[3]);
-          await kvUpdate(env, vkey, cur => { if (!cur) return null; const cw = (cur.weddings || []).find(x => x.planId === parts[3]); if (!cw) return null; cw.editKey = r.obj.editKey; return cur; });
+          await kvUpdate(env, vkey, cur => { if (!cur) return null; const cw = (cur.weddings || []).find(x => x.planId === parts[3]); if (!cw) return null; cw.editKey = r.obj.editKey; cw.linkAt = null; return cur; });
           console.log("venue " + v.id + ": new couple link for " + parts[3]);
           return json({ ok: true, editKey: r.obj.editKey, readKey: r.obj.readKey });
         }
@@ -3243,10 +3369,94 @@ export default {
             await removeIndex(env, "support:index", parts[3]);
           }
           await kvUpdate(env, vkey, cur => { if (!cur) return null; cur.weddings = (cur.weddings || []).filter(x => x.planId !== parts[3]);
-            if (p) cur.trash = [...(cur.trash || []), { planId: parts[3], label: w.label, kind: kindOf(p), deletedAt: now, purgeAt, date: p.weddingDate || null }];
+            if (p) cur.trash = [...(cur.trash || []), { planId: parts[3], label: w.label, kind: kindOf(p), deletedAt: now, purgeAt, date: p.weddingDate || null,
+              createdAt: w.createdAt || null, ...(w.clientId ? { clientId: w.clientId } : {}), ...(w.linkAt ? { linkAt: w.linkAt } : {}) }];
             return cur; });
           console.log("venue " + v.id + ": wedding " + parts[3] + " moved to the trash");
           return json({ ok: true, purgeAt: p ? purgeAt : null });
+        }
+        // ---- the venue's own clients (phase 3): the sheet, the event card, the memory. Venue key only. ----
+        const today = ymdOfMs(Date.now());
+        const rowOf = pid => (v.weddings || []).find(x => x.planId === pid);
+        if (parts.length === 5 && parts[2] === "weddings" && parts[4] === "sent" && request.method === "POST") {   // the venue copied the client's link
+          if (!rowOf(parts[3])) return json({ error: "not found" }, 404);
+          const r = await kvUpdate(env, vkey, cur => { if (!cur) return null; const cw = (cur.weddings || []).find(x => x.planId === parts[3]); if (!cw) return null;
+            if (cw.linkAt) return { __res: cw.linkAt }; cw.linkAt = Date.now(); return { __obj: cur, __res: cw.linkAt }; });
+          return json({ ok: true, linkAt: r.res || null });
+        }
+        if (parts.length === 5 && parts[2] === "weddings" && parts[4] === "card" && request.method === "GET") {
+          const w = rowOf(parts[3]), p = w ? await ownPlan(parts[3]) : null;
+          if (!w || !p) return json({ error: "not found" }, 404);
+          const all = await venueClients(env, v.id), c = w.clientId ? all.find(x => x.id === w.clientId) : null;
+          return json({ client: c ? clientOut(v, c, all, today) : null, timeline: eventTimeline(w, p) });
+        }
+        if (parts.length === 5 && parts[2] === "weddings" && parts[4] === "client" && request.method === "PUT") {   // the event's client: made on the first word typed
+          const w = rowOf(parts[3]); if (!w) return json({ error: "not found" }, 404);
+          const b = await readBody(request);
+          let cid = w.clientId && (await env.PLANS.get(vcliKey(v.id, w.clientId))) ? w.clientId : null;
+          if (!cid) {
+            if (((await env.PLANS.list("vcli:" + v.id + ":")) || []).length >= VCLI_MAX) return json({ error: "too_many" }, 409);
+            const c = { id: rnd(16), venueId: v.id, name: "", phone: "", email: "", notes: "", next: null, past: [], createdAt: Date.now(), ...(isTest(v) ? { test: true } : {}) };
+            const err = clientFields(c, b); if (err) return json({ error: err }, 400);
+            await env.PLANS.put(vcliKey(v.id, c.id), JSON.stringify(c));
+            await kvUpdate(env, vkey, cur => { if (!cur) return null; const cw = (cur.weddings || []).find(x => x.planId === parts[3]); if (!cw) return null; cw.clientId = c.id; return cur; });
+            const v2 = safeParse(await env.PLANS.get(vkey)) || v, all = await venueClients(env, v.id);
+            return json({ client: clientOut(v2, c, all, today) });
+          }
+          const r = await kvUpdate(env, vcliKey(v.id, cid), c => { if (!c) return { __res: "gone" }; const err = clientFields(c, b); return err ? { __res: err } : { __obj: c, __res: null }; });
+          if (r.res) return json({ error: r.res }, r.res === "gone" ? 404 : 400);
+          return json({ client: clientOut(v, r.obj, await venueClients(env, v.id), today) });
+        }
+        if (parts[2] === "clients" && parts.length >= 4) {
+          if (!VCLI_ID.test(parts[3] || "")) return json({ error: "not found" }, 404);
+          const ck = vcliKey(v.id, parts[3]);
+          if (parts.length === 4 && request.method === "GET") {
+            const all = await venueClients(env, v.id), c = all.find(x => x.id === parts[3]);
+            return c ? json({ client: clientOut(v, c, all, today) }) : json({ error: "not found" }, 404);
+          }
+          if (parts.length === 4 && (request.method === "PUT" || request.method === "PATCH")) {
+            const b = await readBody(request);
+            const r = await kvUpdate(env, ck, c => { if (!c) return { __res: "gone" }; const err = clientFields(c, b); return err ? { __res: err } : { __obj: c, __res: null }; });
+            if (r.res) return json({ error: r.res }, r.res === "gone" ? 404 : 400);
+            return json({ client: clientOut(v, r.obj, await venueClients(env, v.id), today) });
+          }
+          // Erase a card now (the client asked, or the venue no longer needs it). Its events stay; they just have no card.
+          if (parts.length === 4 && request.method === "DELETE") {
+            if (!(await env.PLANS.get(ck))) return json({ error: "not found" }, 404);
+            await env.PLANS.delete(ck);
+            await kvUpdate(env, vkey, cur => { if (!cur) return null; let hit = false;
+              for (const x of [...(cur.weddings || []), ...(cur.trash || [])]) if (x.clientId === parts[3]) { delete x.clientId; hit = true; }
+              return hit ? cur : null; });
+            console.log("venue " + v.id + ": erased a client card");
+            return json({ ok: true });
+          }
+          // «Ο ίδιος πελάτης»: the card `from` joins this one — its events, its past, its notes. The details typed last win.
+          if (parts.length === 5 && parts[4] === "join" && request.method === "POST") {
+            const b = await readBody(request), from = String(b.from || "");
+            if (!VCLI_ID.test(from) || from === parts[3]) return json({ error: "bad_request" }, 400);
+            const A = safeParse(await env.PLANS.get(ck)), B = safeParse(await env.PLANS.get(vcliKey(v.id, from)));
+            if (!A || !B) return json({ error: "not found" }, 404);
+            const [nw, old] = (B.updatedAt || 0) >= (A.updatedAt || 0) ? [B, A] : [A, B];
+            const notes = [A.notes, B.notes].map(s => String(s || "").trim()).filter(Boolean);
+            const joined = { ...A, name: nw.name || old.name || "", phone: nw.phone || old.phone || "", email: nw.email || old.email || "",
+              notes: [...new Set(notes)].join("\n\n").slice(0, NOTES_MAX), next: nw.next || old.next || null,
+              past: [...(A.past || []), ...(B.past || [])].sort((a, b) => String(a.date || "").localeCompare(String(b.date || ""))).slice(-PAST_MAX),
+              createdAt: Math.min(A.createdAt || Date.now(), B.createdAt || Date.now()), updatedAt: Date.now() };
+            await env.PLANS.put(ck, JSON.stringify(joined));
+            await kvUpdate(env, vkey, cur => { if (!cur) return null;
+              for (const x of [...(cur.weddings || []), ...(cur.trash || [])]) if (x.clientId === from) x.clientId = parts[3];
+              return cur; });
+            await env.PLANS.delete(vcliKey(v.id, from));
+            const v2 = safeParse(await env.PLANS.get(vkey)) || v;
+            return json({ client: clientOut(v2, joined, await venueClients(env, v.id), today) });
+          }
+          return json({ error: "not found" }, 404);
+        }
+        if (parts.length === 3 && parts[2] === "memory" && (request.method === "PUT" || request.method === "PATCH")) {   // how long its cards outlive their plans
+          const b = await readBody(request), years = Number(b.years);
+          if (!VCLI_YEARS.includes(years)) return json({ error: "bad_years" }, 400);
+          await kvUpdate(env, vkey, cur => { if (!cur) return null; cur.clientYears = years; return cur; });
+          return json({ ok: true, clientYears: years });
         }
       }
       return json({ error: "not found" }, 404);

@@ -3294,4 +3294,219 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
   }
 }
 
+// ---------- 23. phase 3: the venue's own sheet — its clients, their contact, its notes, the memory ----------
+// What a venue keeps about its clients is the venue's (TakeaSeat only processes it, dpa.html): read and written with its
+// own key alone, never seen by the client's link, never in an /admin/ answer, and forgotten on the years the venue chose.
+{
+  const realNow = Date.now, DAYMS = 86400000;
+  const athensYmd = ms => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Athens', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms));
+  const plusY = (ymd, y) => (+ymd.slice(0, 4) + y) + ymd.slice(4);
+  const nightly = async () => {
+    m.delete('meta:memory');
+    const t = realNow(), h = +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Athens', hour: '2-digit', hourCycle: 'h23' }).format(new Date(t));
+    const when = h >= 4 ? t : t + (5 - h) * 3600000;
+    Date.now = () => when; try { return await mod.sweep(env); } finally { Date.now = realNow; }
+  };
+  try {
+    const today = athensDay(0);
+    const V = (await call('POST', '/admin/venues', { name: 'Φάση3 Κτήμα', license: { type: 'per_wedding', quota: 30 } }, OWN)).d, HV = { 'X-Venue-Key': V.key };
+    const V2 = (await call('POST', '/admin/venues', { name: 'Φάση3 Άλλο κτήμα', license: { type: 'per_wedding', quota: 30 } }, OWN)).d, HV2 = { 'X-Venue-Key': V2.key };
+    const vget = async (h = HV, id = V.id) => (await call('GET', '/venues/' + id, undefined, h)).d;
+    const rowOf = async pid => (await vget()).weddings.find(w => w.planId === pid);
+    const W = (await call('POST', '/venues/' + V.id + '/weddings', { label: 'Γάμος Λαμπράκη', date: athensDay(10) }, HV)).d;
+    const NAME = 'Γιώργος και Ελπίδα Λαμπράκη', PHONE = '6955 731 842', EMAIL = 'lamprakis.f3@example.gr', NOTE = 'Θέλουν τη μουσική έξω · ΣΗΜΕΙΩΣΗ-Φ3', STEP = 'Κλείσιμο μενού Φ3';
+
+    // -- the venue key only, on every new route --
+    const routes = [['GET', 'weddings/' + W.planId + '/card'], ['PUT', 'weddings/' + W.planId + '/client', { notes: 'x' }], ['POST', 'weddings/' + W.planId + '/sent'],
+      ['GET', 'clients/abcdefgh1234'], ['PUT', 'clients/abcdefgh1234', { notes: 'x' }], ['DELETE', 'clients/abcdefgh1234'],
+      ['POST', 'clients/abcdefgh1234/join', { from: 'abcdefgh5678' }], ['PUT', 'memory', { years: 2 }]];
+    for (const [h, what] of [[{}, 'no key'], [{ 'X-Venue-Key': 'wrong' }, 'a wrong key'], [HV2, "another venue's key"], [OWN, "the owner's key"], [{ 'X-Venue-Key': W.editKey }, "the client's own key"]]) {
+      const st = [];
+      for (const [mth, sub, body] of routes) st.push((await call(mth, '/venues/' + V.id + '/' + sub, body, h)).status);
+      ok(st.every(s => s === 403), 'venue sheet: every client route refuses ' + what, st);
+    }
+    ok(!raw('venue:' + V.id).weddings[0].clientId && !raw('venue:' + V.id).weddings[0].linkAt && !raw('venue:' + V.id).clientYears,
+      'venue sheet: … and none of those refused calls changed anything');
+
+    // -- the three dates: the link sent, first opened, last changed by the client --
+    let d = await vget(), w = d.weddings.find(x => x.planId === W.planId);
+    ok(d.trackSince > 0 && d.clientYears === 5 && Array.isArray(d.clients) && w.client === null && w.linkAt === null && w.seenAt === null && w.savedAt === null,
+      'venue sheet: a new event has no client, no link sent, never opened, never changed by the client; cards are kept 5 years by default', { w, y: d.clientYears });
+    let r = await call('POST', '/venues/' + V.id + '/weddings/' + W.planId + '/sent', {}, HV);
+    const sentAt = r.d.linkAt;
+    ok(r.status === 200 && sentAt > 0 && (await rowOf(W.planId)).linkAt === sentAt, 'venue sheet: copying the client\'s link records when it was sent', r.d);
+    ok((await call('POST', '/venues/' + V.id + '/weddings/' + W.planId + '/sent', {}, HV)).d.linkAt === sentAt, 'venue sheet: … the first time only');
+    ok((await call('POST', '/venues/' + V.id + '/weddings/nope/sent', {}, HV)).status === 404, 'venue sheet: not for an event that is not the venue\'s');
+    await call('GET', '/plans/' + W.planId, undefined, { 'X-Edit-Key': W.venueKey });
+    ok(!raw('plan:' + W.planId).seenAt, 'venue sheet: the venue opening its own event is not the client opening it');
+    r = await call('GET', '/plans/' + W.planId, undefined, { 'X-Edit-Key': W.editKey });
+    const seen1 = raw('plan:' + W.planId).seenAt;
+    ok(r.status === 200 && seen1 > 0 && (await rowOf(W.planId)).seenAt === seen1, 'venue sheet: the client opening their link is recorded', seen1);
+    ok(!/seenAt|clientSavedAt|linkAt|clientId/.test(JSON.stringify(r.d)), 'venue sheet: … and the client\'s own answer carries none of it', Object.keys(r.d));
+    await call('GET', '/plans/' + W.planId, undefined, { 'X-Edit-Key': W.editKey });
+    ok(raw('plan:' + W.planId).seenAt === seen1, 'venue sheet: only the first open is kept, not every one');
+    const audit0 = (raw('plan:' + W.planId).audit || []).length;
+    ok(!(raw('plan:' + W.planId).audit || []).some(a => a.what === 'open' && a.who === 'couple'), 'venue sheet: an open is a date on the record, not an access-log line', audit0);
+    let cur = (await call('GET', '/plans/' + W.planId, undefined, { 'X-Edit-Key': W.venueKey })).d;
+    await call('PUT', '/plans/' + W.planId, { plan: layout(), baseUpdated: cur.updated }, { 'X-Edit-Key': W.venueKey });
+    ok(!raw('plan:' + W.planId).clientSavedAt, 'venue sheet: a save by the venue is not a change by the client');
+    cur = (await call('GET', '/plans/' + W.planId, undefined, { 'X-Edit-Key': W.editKey })).d;
+    r = await call('PUT', '/plans/' + W.planId, { plan: layout({ guests: { g1: { name: 'Περσεφόνη Φ3' }, g2: { name: 'Αλκμήνη Φ3' } } }), baseUpdated: cur.updated }, { 'X-Edit-Key': W.editKey });
+    const saved = raw('plan:' + W.planId).clientSavedAt;
+    ok(r.status === 200 && saved > 0 && (await rowOf(W.planId)).savedAt === saved, 'venue sheet: a save by the client is its last change', r.d);
+    const WS = (await call('POST', '/venues/' + V.id + '/weddings', { label: 'Φ3 σιωπηλός πελάτης', date: athensDay(20) }, HV)).d;
+    cur = (await call('GET', '/plans/' + WS.planId, undefined, { 'X-Edit-Key': WS.venueKey })).d;
+    ok(!raw('plan:' + WS.planId).seenAt, 'venue sheet: (another event, never opened by its client)');
+    await call('PUT', '/plans/' + WS.planId, { plan: layout(), baseUpdated: cur.updated }, { 'X-Edit-Key': WS.editKey });
+    const ws = raw('plan:' + WS.planId);
+    ok(ws.seenAt > 0 && ws.clientSavedAt >= ws.seenAt, 'venue sheet: a save by the client also counts as having opened it');
+
+    // -- the client card: made on the first word typed --
+    r = await call('PUT', '/venues/' + V.id + '/weddings/' + W.planId + '/client', { name: '  ' + NAME + '  ', phone: PHONE, email: EMAIL.toUpperCase(), notes: NOTE, next: { text: STEP, due: athensDay(3) } }, HV);
+    const CID = r.d.client && r.d.client.id;
+    ok(r.status === 200 && CID && r.d.client.name === NAME && r.d.client.phone === PHONE && r.d.client.email === EMAIL && r.d.client.notes === NOTE
+      && r.d.client.next.text === STEP && r.d.client.next.due === athensDay(3), 'venue card: the client\'s name, phone, email, notes and next step are saved', r.d);
+    ok(m.has('vcli:' + V.id + ':' + CID) && raw('venue:' + V.id).weddings.find(x => x.planId === W.planId).clientId === CID && !JSON.stringify(raw('plan:' + W.planId)).includes(NOTE),
+      'venue card: it is a record of its own, the event points at it, and the plan holds nothing of it');
+    for (const [body, err] of [[{ phone: '12' }, 'bad_phone'], [{ email: 'not-an-email' }, 'bad_email'], [{ next: { text: '', due: today } }, 'bad_step'], [{ next: { text: 'x', due: '2026-02-30' } }, 'bad_step']])
+      ok((r = await call('PUT', '/venues/' + V.id + '/weddings/' + W.planId + '/client', body, HV)).status === 400 && r.d.error === err, 'venue card: ' + err + ' is refused', body);
+    ok(raw('vcli:' + V.id + ':' + CID).phone === PHONE && raw('vcli:' + V.id + ':' + CID).email === EMAIL, 'venue card: … and a refused save changes nothing');
+    r = await call('PUT', '/venues/' + V.id + '/clients/' + CID, { notes: 'α'.repeat(2500) }, HV);
+    ok(r.status === 200 && r.d.client.notes.length === 2000, 'venue card: notes stop at 2000 characters');
+    await call('PUT', '/venues/' + V.id + '/clients/' + CID, { notes: NOTE }, HV);
+    w = await rowOf(W.planId);
+    ok(w.client && w.client.id === CID && w.client.name === NAME && w.client.phone === PHONE && w.client.email === EMAIL && w.client.next.text === STEP && !('notes' in w.client),
+      'venue sheet: the row carries the client\'s name, contact and next step (the notes stay on the card)', w.client);
+    r = await call('GET', '/venues/' + V.id + '/weddings/' + W.planId + '/card', undefined, HV);
+    const codes = r.d.timeline.map(e => e.code + (e.what ? ':' + e.what : ''));
+    ok(r.status === 200 && r.d.client.notes === NOTE && r.d.client.memory.held === true && r.d.client.events.length === 1 && r.d.client.events[0].planId === W.planId,
+      'venue card: a fresh read has everything, and the clock waits while the event exists', r.d.client);
+    ok(['created', 'sent', 'seen', 'saved'].every(c => codes.includes(c)) && r.d.timeline.find(e => e.code === 'sent').at === sentAt && r.d.timeline.every((e, i, a) => !i || a[i - 1].at >= e.at),
+      'venue card: the timeline has the event, the link sent, the first open and the client\'s last change, newest first', codes);
+    await call('PATCH', '/venues/' + V.id + '/weddings/' + W.planId, { date: athensDay(12) }, HV);
+    r = await call('GET', '/venues/' + V.id + '/weddings/' + W.planId + '/card', undefined, HV);
+    ok(r.d.timeline.some(e => e.code === 'audit' && e.what === 'date' && e.who === 'venue' && e.d === athensDay(12)), 'venue card: a date change shows with its new date');
+    ok(!/"dev"|Περσεφόνη|Αλκμήνη/.test(JSON.stringify(r.d)), 'venue card: no device and no guest in the card');
+
+    // -- a new client link: not sent, not opened, again --
+    r = await call('POST', '/venues/' + V.id + '/weddings/' + W.planId + '/couple-link', {}, HV);
+    const newEdit = r.d.editKey;
+    w = await rowOf(W.planId);
+    ok(w.linkAt === null && w.seenAt === null && w.savedAt === saved, 'venue sheet: a new link starts "sent" and "opened" again; the last change stays', w);
+    r = await call('GET', '/venues/' + V.id + '/weddings/' + W.planId + '/card', undefined, HV);
+    ok(r.d.timeline.some(e => e.code === 'audit' && e.what === 'rotate'), 'venue card: … and the new link is on the timeline');
+    await call('GET', '/plans/' + W.planId, undefined, { 'X-Edit-Key': newEdit });
+
+    // -- a client never sees the venue's notes or flags --
+    const seenByClient = JSON.stringify((await call('GET', '/plans/' + W.planId, undefined, { 'X-Edit-Key': newEdit })).d)
+      + JSON.stringify((await call('GET', '/plans/' + W.planId + '/history', undefined, { 'X-Edit-Key': newEdit })).d);
+    ok(![NAME, PHONE, EMAIL, NOTE, STEP, CID].some(s => seenByClient.includes(s)), 'venue card: the client\'s own link never returns the venue\'s card, notes or next step');
+    ok((await call('GET', '/venues/' + V.id + '/weddings/' + W.planId + '/card', undefined, { 'X-Edit-Key': newEdit })).status === 403, 'venue card: … nor opens the card with its own key');
+
+    // -- a venue sees only its own clients --
+    ok((await call('GET', '/venues/' + V2.id + '/clients/' + CID, undefined, HV2)).status === 404, 'venue sheet: another venue cannot open the card, even knowing its id');
+    ok((await call('PUT', '/venues/' + V2.id + '/clients/' + CID, { notes: 'x' }, HV2)).status === 404 && (await call('DELETE', '/venues/' + V2.id + '/clients/' + CID, undefined, HV2)).status === 404,
+      'venue sheet: … nor change or erase it');
+    ok((await call('PUT', '/venues/' + V2.id + '/weddings/' + W.planId + '/client', { notes: 'x' }, HV2)).status === 404 && (await call('GET', '/venues/' + V2.id + '/weddings/' + W.planId + '/card', undefined, HV2)).status === 404,
+      'venue sheet: … nor attach a card to an event that is not its own');
+    const W2b = (await call('POST', '/venues/' + V2.id + '/weddings', { label: 'Φ3 άλλου κτήματος', date: athensDay(15) }, HV2)).d;
+    await call('PUT', '/venues/' + V2.id + '/weddings/' + W2b.planId + '/client', { phone: PHONE }, HV2);
+    r = await call('POST', '/venues/' + V2.id + '/clients/' + raw('venue:' + V2.id).weddings[0].clientId + '/join', { from: CID }, HV2);
+    ok(r.status === 404 && m.has('vcli:' + V.id + ':' + CID), 'venue sheet: … nor pull it into one of its own cards');
+    const other = JSON.stringify(await vget(HV2, V2.id)) + JSON.stringify((await call('GET', '/venues/' + V2.id + '/weddings/' + W2b.planId + '/card', undefined, HV2)).d);
+    ok(![NAME, EMAIL, NOTE, STEP, CID].some(s => other.includes(s)), 'venue sheet: the same phone at another venue matches nothing of this one', other.slice(0, 300));
+
+    // -- the same family again --
+    const WB = (await call('POST', '/venues/' + V.id + '/weddings', { label: 'Βάπτιση Λαμπράκη', kind: 'baptism', date: athensDay(60) }, HV)).d;
+    r = await call('PUT', '/venues/' + V.id + '/weddings/' + WB.planId + '/client', { phone: '+30 695 573 1842', notes: 'Νονά η Κατερίνα' }, HV);
+    const CB = r.d.client.id;
+    ok(CB !== CID && r.d.client.matches.length === 1 && r.d.client.matches[0].id === CID && r.d.client.matches[0].name === NAME && r.d.client.matches[0].last.label === 'Γάμος Λαμπράκη',
+      'family: the same phone written differently finds the earlier card and its event', r.d.client.matches);
+    r = await call('PUT', '/venues/' + V.id + '/clients/' + CB, { email: EMAIL.toUpperCase() }, HV);
+    ok(r.d.client.matches.length === 1, 'family: (the email matches too, still one card)');
+    ok((await call('POST', '/venues/' + V.id + '/clients/' + CID + '/join', { from: CID }, HV)).status === 400 && (await call('POST', '/venues/' + V.id + '/clients/' + CID + '/join', { from: 'nope' }, HV)).status === 400,
+      'family: a card cannot join itself, nor a card that does not exist');
+    r = await call('POST', '/venues/' + V.id + '/clients/' + CID + '/join', { from: CB }, HV);
+    ok(r.status === 200 && r.d.client.id === CID && r.d.client.events.length === 2 && r.d.client.events.some(e => e.planId === WB.planId) && !m.has('vcli:' + V.id + ':' + CB)
+      && raw('venue:' + V.id).weddings.find(x => x.planId === WB.planId).clientId === CID, '«Ο ίδιος πελάτης»: both events now point at one card, the other card is gone', r.d.client);
+    ok(r.d.client.notes.includes(NOTE) && r.d.client.notes.includes('Νονά η Κατερίνα') && r.d.client.name === NAME && r.d.client.phone === '+30 695 573 1842' && r.d.client.matches.length === 0,
+      '«Ο ίδιος πελάτης»: notes from both, the name kept, the contact typed last wins', r.d.client);
+    await call('PUT', '/venues/' + V.id + '/clients/' + CID, { phone: PHONE }, HV);
+
+    // -- the memory: the card outlives its plans, for the years the venue chose --
+    patchRaw('plan:' + W.planId, o => { o.weddingDate = athensDay(-400); });
+    await mod.sweep(env);
+    ok(!m.has('plan:' + W.planId) && m.has('vcli:' + V.id + ':' + CID), 'memory: a year after the event the plan is deleted, the client card stays');
+    r = await call('GET', '/venues/' + V.id + '/clients/' + CID, undefined, HV);
+    ok(r.d.client.past.length === 1 && r.d.client.past[0].label === 'Γάμος Λαμπράκη' && r.d.client.past[0].kind === 'wedding' && r.d.client.past[0].date === athensDay(-400)
+      && r.d.client.events.length === 1 && r.d.client.memory.held === true, 'memory: it remembers the event by name, kind and date; the baptism still holds the clock', r.d.client);
+    ok((await call('DELETE', '/venues/' + V.id + '/weddings/' + WB.planId, undefined, HV)).status === 200 && raw('venue:' + V.id).trash.find(t => t.planId === WB.planId).clientId === CID,
+      'memory: an event moved to the trash keeps its card');
+    r = await call('GET', '/venues/' + V.id + '/clients/' + CID, undefined, HV);
+    ok(r.d.client.memory.held === true && r.d.client.events[0].deleted === true && !('planId' in r.d.client.events[0]), 'memory: … and still holds the clock while it is there', r.d.client.events);
+    ok(!(await vget()).clients.some(c => c.id === CID), 'memory: a card with an event still standing is not in the memory list');
+    patchRaw('plan:' + WB.planId, o => { o.purgeAt = Date.now() - 1000; });
+    await mod.sweep(env);
+    r = await call('GET', '/venues/' + V.id + '/clients/' + CID, undefined, HV);
+    ok(!m.has('plan:' + WB.planId) && r.d.client.past.length === 2 && r.d.client.past.some(p => p.deleted && p.kind === 'baptism' && p.label === 'Βάπτιση Λαμπράκη') && r.d.client.memory.held === false,
+      'memory: emptied from the trash, the event joins the past (marked deleted) and the clock runs', r.d.client);
+    d = await vget();
+    let mc = d.clients.find(c => c.id === CID);
+    ok(mc && mc.name === NAME && mc.phone === PHONE && mc.last.label === 'Γάμος Λαμπράκη' && mc.forgetAt === plusY(r.d.client.memory.lastTouch, 5) && r.d.client.memory.lastTouch === today,
+      'memory: the sheet lists the card with its last event and the date it will be forgotten (5 years)', { mc, mem: r.d.client.memory });
+    ok((await call('PUT', '/venues/' + V.id + '/memory', { years: 7 }, HV)).status === 400 && (await call('PUT', '/venues/' + V.id + '/memory', { years: 0 }, HV)).status === 400,
+      'memory: the venue picks 1 to 5 years, nothing else');
+    r = await call('PUT', '/venues/' + V.id + '/memory', { years: 2 }, HV);
+    d = await vget(); mc = d.clients.find(c => c.id === CID);
+    ok(r.status === 200 && d.clientYears === 2 && mc.forgetAt === plusY(today, 2), 'memory: a venue that keeps cards 2 years sees the shorter date at once', mc);
+    // one card three years back (gone at 2 years), one a year back (stays)
+    patchRaw('vcli:' + V.id + ':' + CID, o => { const t = realNow() - 3 * 366 * DAYMS; o.createdAt = t; o.past.forEach(p => { p.date = athensYmd(t); }); });
+    const W1 = (await call('POST', '/venues/' + V.id + '/weddings', { label: 'Φ3 πέρσι', date: athensDay(25) }, HV)).d;
+    const C1 = (await call('PUT', '/venues/' + V.id + '/weddings/' + W1.planId + '/client', { name: 'Φ3 Πρόσφατος' }, HV)).d.client.id;
+    patchRaw('plan:' + W1.planId, o => { o.weddingDate = athensDay(-400); });
+    await mod.sweep(env);
+    patchRaw('vcli:' + V.id + ':' + C1, o => { const t = realNow() - 366 * DAYMS; o.createdAt = t; o.past.forEach(p => { p.date = athensYmd(t); }); });
+    const live = (await call('PUT', '/venues/' + V.id + '/weddings/' + WS.planId + '/client', { name: 'Φ3 με εκδήλωση' }, HV)).d.client.id;
+    patchRaw('vcli:' + V.id + ':' + live, o => { o.createdAt = realNow() - 4 * 366 * DAYMS; });
+    const sw = await nightly();
+    ok(!m.has('vcli:' + V.id + ':' + CID) && sw.clientsForgotten >= 1, 'memory: the nightly pass forgets a card on the venue\'s date (3 years back, kept 2)', sw);
+    ok(m.has('vcli:' + V.id + ':' + C1) && m.has('vcli:' + V.id + ':' + live), 'memory: not before its date, and never while its event exists, however old the card');
+    ok(!(await vget()).clients.some(c => c.id === CID) && (await call('GET', '/venues/' + V.id + '/clients/' + CID, undefined, HV)).status === 404, 'memory: the forgotten card is gone from the sheet');
+    m.set('vcli:goneVenue000:abcdefgh0001', JSON.stringify({ id: 'abcdefgh0001', createdAt: realNow() }));
+    await nightly();
+    ok(!m.has('vcli:goneVenue000:abcdefgh0001'), 'memory: a card whose venue is gone goes with the next nightly pass');
+
+    // -- erased now, on request --
+    r = await call('DELETE', '/venues/' + V.id + '/clients/' + live, undefined, HV);
+    ok(r.status === 200 && !m.has('vcli:' + V.id + ':' + live) && !raw('venue:' + V.id).weddings.find(x => x.planId === WS.planId).clientId && (await rowOf(WS.planId)).client === null,
+      'erasure: the venue erases a card at once; its event stays, without a card');
+    ok((await call('DELETE', '/venues/' + V.id + '/clients/' + live, undefined, HV)).status === 404, 'erasure: (once)');
+    ok((await call('GET', '/venues/' + V.id + '/clients/..%2F' + CID, undefined, HV)).status === 404 && (await call('GET', '/venues/' + V.id + '/clients/x', undefined, HV)).status === 404,
+      'erasure: a card id that is not one opens nothing');
+
+    // -- no admin endpoint returns a venue's client data --
+    const WA = (await call('POST', '/venues/' + V.id + '/weddings', { label: 'Φ3 έλεγχος διαχειριστή', date: athensDay(30) }, HV)).d;
+    const CA = (await call('PUT', '/venues/' + V.id + '/weddings/' + WA.planId + '/client', { name: NAME, phone: PHONE, email: EMAIL, notes: NOTE, next: { text: STEP, due: today } }, HV)).d.client.id;
+    await call('POST', '/venues/' + V.id + '/weddings/' + WA.planId + '/sent', {}, HV);
+    const adminOut = [];
+    for (const u of ['/admin/customers', '/admin/customers/v:' + V.id, '/admin/venues', '/admin/venues/' + V.id + '/trash', '/admin/support', '/admin/diagnostics', '/admin/books',
+      '/admin/couples', '/admin/signups', '/admin/settings', '/admin/lookup?q=' + encodeURIComponent('Φάση3'), '/admin/lookup?q=' + encodeURIComponent(EMAIL),
+      '/admin/lookup?q=' + encodeURIComponent('6955731842'), '/admin/lookup?q=' + encodeURIComponent('Λαμπράκη'), '/admin/test/data'])
+      { const a = (await call('GET', u, undefined, OWN)).d; adminOut.push(u.replace(/\?.*/, '') + ' ' + JSON.stringify(u.includes('?q=') ? a.results : a)); }   // a lookup repeats the words he typed: only its results count
+    const all = adminOut.join('\n');
+    ok(adminOut.length === 15 && /Φάση3 Κτήμα/.test(all), 'admin: (the venue itself is there, in ' + adminOut.length + ' answers)');
+    ok(![NAME, PHONE, '6955731842', EMAIL, NOTE, STEP, CA].some(s => all.includes(s)), 'admin: no answer carries a venue client\'s name, phone, email, notes, next step or card id',
+      [NAME, PHONE, EMAIL, NOTE, STEP, CA].filter(s => all.includes(s)));
+    ok(!/"(clientId|linkAt|seenAt|savedAt|clientSavedAt|clientYears)"/.test(all), 'admin: nor the sheet\'s dates or the venue\'s memory setting');
+    ok(!/vcli:/.test(all), 'admin: nor a card\'s key');
+
+    // -- the venue goes, its cards go --
+    ok((await call('DELETE', '/admin/venues/' + V.id, undefined, OWN)).status === 200 && ![...m.keys()].some(k => k.startsWith('vcli:' + V.id + ':')),
+      'erasure: erasing a venue takes all its client cards with it');
+    ok(m.has('vcli:' + V2.id + ':' + raw('venue:' + V2.id).weddings[0].clientId), 'erasure: … and no other venue\'s');
+  } finally {
+    Date.now = realNow;
+  }
+}
+
 console.log(`\nall ${n} checks passed`);
