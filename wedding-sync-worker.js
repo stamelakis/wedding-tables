@@ -687,7 +687,10 @@ async function renewSweep(env, now) {
       cur.license = { ...lic, seasonStart: start, seasonEnd: end, renewedAt: now, invoiceDue: true, renewSkipped: null };
       cur.renewals = [...(cur.renewals || []), { at: now, from: start, to: end }].slice(-20);
       return cur; });
-    if (r.obj && r.obj.license && r.obj.license.renewedAt === now) { out.renewed++; console.log("licence: venue " + v.id + " renewed automatically to " + r.obj.license.seasonEnd); }
+    if (r.obj && r.obj.license && r.obj.license.renewedAt === now) {
+      out.renewed++; console.log("licence: venue " + v.id + " renewed automatically to " + r.obj.license.seasonEnd);
+      await addDue(env, "v:" + v.id, r.obj, seasonDue(r.obj.license, "renew", addDays(r.obj.license.seasonStart || ymdOfMs(now), DUE_RENEW_DAYS)));
+    }
   }
   return out;
 }
@@ -788,6 +791,7 @@ async function eraseVenue(env, id, why) {
   }
   await env.PLANS.delete("venue:" + id);
   await env.PLANS.delete("act:v:" + id);
+  await eraseLedger(env, "v:" + id);
   for (const k of (await env.PLANS.list("vcli:" + id + ":")) || []) await env.PLANS.delete(k);   // the venue's own client cards
   await removeIndex(env, "venues:index", id);
   return !!dv;
@@ -1799,12 +1803,12 @@ async function customerList(env) {
   for (const vid of (safeParse(await env.PLANS.get("venues:index")) || [])) {
     const v = safeParse(await env.PLANS.get("venue:" + vid));
     if (!v || isTest(v) || seen.has("v:" + v.id)) continue;   // the test venue is his playground, not a customer
-    seen.add("v:" + v.id); out.push((await venueCustomer(env, v, now, today)).row);
+    seen.add("v:" + v.id); out.push(withPay((await venueCustomer(env, v, now, today)).row, paySummary("v", v, await ledgerOf(env, "v:" + v.id), today)));
   }
   for (const cid of (safeParse(await env.PLANS.get("couples:index")) || [])) {
     const c = safeParse(await env.PLANS.get("couple:" + cid));
     if (!c || seen.has("c:" + c.id)) continue;
-    seen.add("c:" + c.id); out.push((await coupleCustomer(env, c, now)).row);
+    seen.add("c:" + c.id); out.push(withPay((await coupleCustomer(env, c, now)).row, paySummary("c", c, await ledgerOf(env, "c:" + c.id), today)));
   }
   for (const sid of (safeParse(await env.PLANS.get("signups:index")) || [])) {
     const s = safeParse(await env.PLANS.get("signup:" + sid));
@@ -1842,7 +1846,7 @@ const pushPast = (o, e) => { o.past = [...(Array.isArray(o.past) ? o.past : []),
 const pastOut = rec => (Array.isArray(rec.past) ? rec.past : []).map(p => ({ kind: normKind(p.kind), date: ymdOk(p.date) ? p.date : null,
   createdAt: p.createdAt || null, goneAt: p.goneAt || null, extra: !!p.extra })).reverse();
 // When the card will be forgotten, and why its clock is not running yet ("plans" · "licence" · null = it is running).
-function memoryOf(t, rec, x, acts, now) {
+function memoryOf(t, rec, x, acts, now, ledger) {   // ledger: a payment is a purchase, so it restarts the clock too
   if (t === "s") return null;   // a pending signup whose venue is gone leaves by itself within a month (signupSweep)
   if (t === "l") {   // a contact who never bought: only contacts count (the date they named is not one), and nothing holds the clock
     const last = Math.max(rec.createdAt || 0, ...(rec.moves || []).map(mv => (mv && mv.at) || 0), ...acts.map(a => a.t || 0)) || now;
@@ -1854,7 +1858,8 @@ function memoryOf(t, rec, x, acts, now) {
   const last = Math.max(x.row.last || 0, rec.createdAt || 0, rec.paidAt || 0, rec.claimedAt || 0,
     (rec.trial && rec.trial.verifiedAt) || 0, (rec.trial && rec.trial.endedAt) || 0, (rec.license && rec.license.renewedAt) || 0,
     ...(rec.renewals || []).map(r => (r && r.at) || 0), ...x.card.events.map(e => dayMs(e.date)),
-    ...(Array.isArray(rec.past) ? rec.past : []).map(p => dayMs(p.date)), ...acts.map(a => a.t || 0)) || now;
+    ...(Array.isArray(rec.past) ? rec.past : []).map(p => dayMs(p.date)), ...acts.map(a => a.t || 0),
+    ...((ledger && ledger.pays) || []).map(p => p.at || 0)) || now;
   const lastTouch = ymdOfMs(Math.min(last, now));
   const held = (x.card.events.length || (t === "v" && ((rec.weddings || []).length || (rec.trash || []).length))) ? "plans"
     : (t === "v" && canCreateWedding(rec).ok) ? "licence" : null;
@@ -1863,7 +1868,7 @@ function memoryOf(t, rec, x, acts, now) {
 // The timeline, newest first: his entries and what the system already knows. Codes only (admin.html words them), a time,
 // sometimes a kind of event or a date — never a label, a name from a plan, a key or a device.
 const AUDIT_TL = { c: ["recover", "invite", "open", "date", "email", "unfreeze", "locked", "rotate"], v: ["invite", "open", "date"] };
-function timelineOf(t, rec, x, acts) {
+function timelineOf(t, rec, x, acts, ledger) {
   const out = [], add = (at, code, more) => { if (at) out.push({ at, code, ...(more || {}) }); };
   const mails = (marks, code) => {   // one entry per mail actually sent: a late signup's single mail marks several days at once
     const by = new Map();
@@ -1895,6 +1900,11 @@ function timelineOf(t, rec, x, acts) {
     add(rec.resentAt, "setup_resent");
   }
   add(rec.mailFailedAt, "mail_failed");
+  for (const p of ((ledger && ledger.pays) || [])) {   // phase 5: what came in, what went back, what was cancelled
+    add(p.at, p.refundOf ? "refund" : "paid", { amount: p.amount, method: p.method });
+    if (p.cancelled) add(p.cancelled.at, "pay_cancel", { amount: p.amount, refund: !!p.refundOf });
+  }
+  for (const d of ((ledger && ledger.dues) || [])) if (d.waived) add(d.waived.at, "due_waived", { amount: d.amount });
   for (const e of x.card.events) {
     add(e.createdAt, "event_new", { kind: e.kind, d: e.date || null, extra: !!e.extra });
     for (const a of (e.audit || [])) if ((AUDIT_TL[t] || []).includes(a.what) && (t === "c" || a.who === "admin" || a.what !== "date"))
@@ -1915,11 +1925,12 @@ async function customerCard(env, key) {   // → {customer, …details} or null
   const x = k.t === "v" ? (isTest(rec) ? null : await venueCustomer(env, rec, now, todayAthens()))
     : k.t === "c" ? await coupleCustomer(env, rec, now) : k.t === "l" ? leadCustomer(rec) : await signupCustomer(env, rec, now);
   if (!x) return null;
-  const acts = await actsOf(env, k.key);
+  const acts = await actsOf(env, k.key), ledger = (k.t === "v" || k.t === "c") ? await ledgerOf(env, k.key) : null;
+  const payments = ledger ? paySummary(k.t, rec, ledger, todayAthens()) : null;
   // how they found us: a contact's own answer, or the one a customer brought with it from «Έγινε πελάτης»
   const source = k.t === "l" ? (rec.source || "other") : (rec.fromLead && rec.fromLead.source) || null;
-  return { customer: x.row, ...x.card, source, noMail: !!rec.noMail, notes: String(rec[NOTES_FIELD[k.t]] || ""), nextStep: stepOut(rec.nextStep),
-    past: pastOut(rec), memory: memoryOf(k.t, rec, x, acts, now), timeline: timelineOf(k.t, rec, x, acts) };
+  return { customer: payments ? withPay(x.row, payments) : x.row, ...x.card, source, noMail: !!rec.noMail, notes: String(rec[NOTES_FIELD[k.t]] || ""),
+    nextStep: stepOut(rec.nextStep), past: pastOut(rec), memory: memoryOf(k.t, rec, x, acts, now, ledger), timeline: timelineOf(k.t, rec, x, acts, ledger), payments };
 }
 // Only what the books need outlives «Ξέχασέ τον» and the clock (Andreas, 2026-10-18): the name and the dates of what was
 // bought, under `books:<customerKey>`. Its own namespace on purpose: nothing live (the sheet, the sweeps, recovery) lists
@@ -1949,6 +1960,7 @@ async function eraseCouple(env, id, why) {   // «Ξέχασέ τον», the old
   }
   await env.PLANS.delete("couple:" + id);
   await env.PLANS.delete("act:c:" + id);
+  await eraseLedger(env, "c:" + id);
   await removeIndex(env, "couples:index", id);
   return !!c;
 }
@@ -1975,7 +1987,7 @@ async function memorySweep(env, now) {
   for (const vid of (safeParse(await env.PLANS.get("venues:index")) || [])) {
     const v = safeParse(await env.PLANS.get("venue:" + vid));
     if (!v || isTest(v) || (v.weddings || []).length || (v.trash || []).length || canCreateWedding(v).ok) continue;
-    const x = await venueCustomer(env, v, now, day), mem = memoryOf("v", v, x, await actsOf(env, "v:" + v.id), now);
+    const x = await venueCustomer(env, v, now, day), mem = memoryOf("v", v, x, await actsOf(env, "v:" + v.id), now, await ledgerOf(env, "v:" + v.id));
     if (mem && !mem.held && mem.forgetAt <= day) { await eraseVenue(env, v.id, "clock"); out.forgotten++; console.log("memory: forgot a venue, " + MEMORY_YEARS + " years after its last contact"); }
   }
   for (const cid of (safeParse(await env.PLANS.get("couples:index")) || [])) {
@@ -1984,7 +1996,7 @@ async function memorySweep(env, now) {
     let live = false;
     for (const pid of [c.planId, ...(c.plans || [])]) if (pid && await env.PLANS.get("plan:" + pid)) { live = true; break; }
     if (live) continue;
-    const x = await coupleCustomer(env, c, now), mem = memoryOf("c", c, x, await actsOf(env, "c:" + c.id), now);
+    const x = await coupleCustomer(env, c, now), mem = memoryOf("c", c, x, await actsOf(env, "c:" + c.id), now, await ledgerOf(env, "c:" + c.id));
     if (mem && !mem.held && mem.forgetAt <= day) { await eraseCouple(env, c.id, "clock"); out.forgotten++; console.log("memory: forgot a direct customer, " + MEMORY_YEARS + " years after the last contact"); }
   }
   for (const lid of (safeParse(await env.PLANS.get("leads:index")) || [])) {
@@ -2009,6 +2021,141 @@ async function memorySweep(env, now) {
   }
   await env.PLANS.put(MEMORY_KEY, JSON.stringify({ day, at: now, ...out }));
   return out;
+}
+
+// ---- phase 5: payments (OPERATIONS-PLAN.md §4) ----
+// TakeaSeat records the money; Λογιστής issues every receipt (§2 rule 3). One `ledger:<customerKey>` row per customer who
+// ever owed or paid anything: what is expected (`dues`) and what came in (`pays`), in cents. One row on purpose: "already
+// paid", a refund's ceiling and "no cancelling a refunded payment" are checked in the same atomic write that records it.
+// A payment is never deleted and its amount never edited: a mistake is cancelled with a reason and entered again, and a
+// refund is its own entry pointing at the payment. VAT is what he typed, never computed, until the accountant answers.
+// The row outlives its customer: an erasure keeps the name and the amounts (the books) and drops notes and open dues.
+// Dues appear by themselves for what is bought from now on (a couple, a venue made by hand, a free year turned into a
+// season, an automatic renewal); older customers owe nothing on screen, since nobody can know whether they paid —
+// except a renewal still marked «invoice due», and a free year ending within 60 days (expected, never late).
+const PRICE_SEASON = 12900, PRICE_PLAN = 1900;   // a venue's season (+ ΦΠΑ) · a couple's plan (ΦΠΑ included)
+const PAY_METHODS = ["bank", "iris", "card", "cash", "other"], PAY_WHAT = ["season", "plan", "extra", "other"];
+const PAY_MAX = 500, DUE_MAX = 100, PAY_NOTE_MAX = 300, PAY_REASON_MAX = 200, PAY_ABOUT_MAX = 80, PAY_RECEIPT_MAX = 40;
+const PAY_AMOUNT_MAX = 10000000, PAY_FIRST_DAY = "2020-01-01";   // €100,000 · nothing older is a TakeaSeat payment
+const DUE_NEW_DAYS = 7, DUE_RENEW_DAYS = 30;   // a new customer: late a week after · a renewal: a month into the new season
+const ledgerOf = async (env, key) => { const l = safeParse(await env.PLANS.get("ledger:" + key));
+  return { dues: [], pays: [], ...(l && typeof l === "object" ? l : {}) }; };
+const cents = x => (Number.isInteger(x) && x > 0 && x <= PAY_AMOUNT_MAX) ? x : null;
+const payText = (x, max) => typeof x === "string" ? x.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, max) : "";
+// What a payment counts towards its due: the whole amount, or without the VAT he typed when the price is «+ ΦΠΑ».
+const payNet = (p, d) => p.amount - ((d && d.plusVat) ? (p.vat || 0) : 0);
+const refundsOf = (pays, id) => pays.filter(x => x.refundOf === id && !x.cancelled);
+function dueState(d, pays, today) {
+  let paid = 0;
+  for (const p of pays) if (p.dueId === d.id && !p.refundOf && !p.cancelled)
+    paid += payNet(p, d) - refundsOf(pays, p.id).reduce((s, x) => s + payNet(x, d), 0);
+  const left = Math.max(0, d.amount - paid);
+  const state = d.waived ? "waived" : left === 0 ? "paid" : (!d.prospect && today > d.due) ? "late" : "due";
+  return { paid, left, state };
+}
+// The two dues nobody stored: a renewal marked «invoice due» before this ledger existed, and the season a free year is
+// about to become (shown from 60 days before its end, gone if it ends unconverted). Paying or waiving one stores it.
+function derivedDues(t, rec, ledger, today) {
+  if (t !== "v" || !rec) return [];
+  const out = [], lic = rec.license || {}, has = from => ledger.dues.some(d => d.what === "season" && d.from === from);
+  if (lic.invoiceDue && ymdOk(lic.seasonStart) && !has(lic.seasonStart))
+    out.push({ id: "inv-" + lic.seasonStart, what: "season", from: lic.seasonStart, to: lic.seasonEnd || null, amount: PRICE_SEASON, plusVat: true,
+      due: addDays(lic.seasonStart, DUE_RENEW_DAYS), src: "invoice", derived: true });
+  if (onTrial(rec) && rec.active !== false && ymdOk(lic.seasonEnd) && Date.now() < seasonOverAt(lic.seasonEnd)
+    && daysTo(today, lic.seasonEnd) <= CUST_ENDING_DAYS && !ledger.dues.some(d => d.src === "trial")) {
+    const from = addDays(lic.seasonEnd, 1);
+    if (!has(from)) out.push({ id: "trial-" + lic.seasonEnd, what: "season", from, to: addYears(lic.seasonEnd, 1), amount: PRICE_SEASON, plusVat: true,
+      due: from, src: "trial", derived: true, prospect: true });
+  }
+  return out;
+}
+const dueOut = (d, st) => ({ id: d.id, what: d.what, about: d.about || "", kind: d.kind || null, from: d.from || null, to: d.to || null,
+  amount: d.amount, plusVat: !!d.plusVat, due: d.due, at: d.at || null, src: d.src || null, derived: !!d.derived, prospect: !!d.prospect,
+  waived: d.waived ? { reason: d.waived.reason, at: d.waived.at } : null, ...st });
+const payOut = (p, pays) => ({ id: p.id, amount: p.amount, vat: p.vat ?? null, date: p.date, method: p.method, what: p.what, about: p.about || "",
+  kind: p.kind || null, from: p.from || null, to: p.to || null, dueId: p.dueId || null, receipt: p.receipt || "", note: p.note || "", at: p.at,
+  refundOf: p.refundOf || null, reason: p.reason || "", cancelled: p.cancelled ? { reason: p.cancelled.reason, at: p.cancelled.at } : null,
+  ...(p.refundOf ? {} : { refunded: refundsOf(pays, p.id).reduce((s, x) => s + x.amount, 0) }) });
+// The card's «Πληρωμές» and the sheet's column: πληρωμένος · αναμένεται · καθυστερεί · δωρεάν έτος (null: nothing to say).
+function paySummary(t, rec, ledger, today) {
+  const dues = [...ledger.dues, ...derivedDues(t, rec, ledger, today)].map(d => dueOut(d, dueState(d, ledger.pays, today)));
+  const open = dues.filter(d => d.state === "due" || d.state === "late");
+  const lic = (rec && rec.license) || {}, freeYear = t === "v" && onTrial(rec) && ymdOk(lic.seasonEnd) && Date.now() < seasonOverAt(lic.seasonEnd);
+  const state = open.some(d => d.state === "late") ? "late" : open.length ? "due" : freeYear ? "trial"
+    : ledger.pays.some(p => !p.refundOf && !p.cancelled && p.amount > refundsOf(ledger.pays, p.id).reduce((s, x) => s + x.amount, 0)) ? "paid" : null;   // a refund in full is no payment
+  return { state, owed: open.reduce((s, d) => s + d.left, 0),
+    dues: dues.sort((a, b) => String(b.due).localeCompare(String(a.due))),
+    pays: ledger.pays.map(p => payOut(p, ledger.pays)).sort((a, b) => b.date.localeCompare(a.date) || b.at - a.at) };
+}
+const withPay = (row, ps) => ({ ...row, pay: { state: ps.state, owed: ps.owed }, flags: ps.state === "late" ? [...row.flags, "pay_overdue"] : row.flags });
+const seasonName = (from, to) => (ymdOk(from) && ymdOk(to)) ? (from.slice(0, 4) === to.slice(0, 4) ? from.slice(0, 4) : from.slice(0, 4) + "–" + to.slice(2, 4)) : "";   // «2027», «2026–27»
+const payType = (t, rec) => t === "v" ? "venue" : (CUST_TYPE[normKind(rec && rec.kind)] || "couple");
+// A new due, written once: one per season (its first day) and one per purchase.
+async function addDue(env, key, rec, d) {
+  const t = key[0];
+  return kvUpdate(env, "ledger:" + key, l => {
+    l = { dues: [], pays: [], ...(l || {}) };
+    if (l.dues.some(x => x.id === d.id || (d.from && x.what === "season" && d.what === "season" && x.from === d.from)) || l.dues.length >= DUE_MAX) return null;
+    l.cust = key; l.name = (rec && rec.name) || l.name || ""; l.type = payType(t, rec);
+    l.dues.push({ ...d, at: d.at || Date.now() });
+    return l;
+  });
+}
+const seasonDue = (lic, src, due) => ({ id: rnd(10), what: "season", from: lic.seasonStart || null, to: lic.seasonEnd, amount: PRICE_SEASON, plusVat: true, due, src });
+// Paying or waiving the season a venue's licence is in clears its «invoice due»: the money question is answered.
+async function settleInvoice(env, key, ledger, due) {
+  if (key[0] !== "v" || !due || due.what !== "season") return;
+  const st = dueState(due, ledger.pays, todayAthens()).state;
+  if (st !== "paid" && st !== "waived") return;
+  await kvUpdate(env, "venue:" + key.slice(2), v => (v && v.license && v.license.invoiceDue && v.license.seasonStart === due.from)
+    ? (v.license = { ...v.license, invoiceDue: false }, v) : null);
+}
+// A payment's own fields (POST pay, and a refund's subset): every one checked, nothing else read.
+function payFields(b, today, refund) {
+  const amount = cents(b.amount);
+  if (!amount) return { error: "bad_amount" };
+  const vat = b.vat == null || b.vat === "" ? null : (Number.isInteger(b.vat) && b.vat >= 0 && b.vat <= amount) ? b.vat : undefined;
+  if (vat === undefined) return { error: "bad_vat" };
+  if (!ymdOk(b.date) || b.date < PAY_FIRST_DAY || b.date > today) return { error: "bad_date" };
+  if (!PAY_METHODS.includes(b.method)) return { error: "bad_method" };
+  const o = { amount, vat, date: b.date, method: b.method, receipt: payText(b.receipt, PAY_RECEIPT_MAX), note: payText(b.note, PAY_NOTE_MAX) };
+  if (refund) { o.reason = payText(b.reason, PAY_REASON_MAX); if (!o.reason) return { error: "bad_reason" }; return { pay: o }; }
+  if (!PAY_WHAT.includes(b.what)) return { error: "bad_what" };
+  o.what = b.what; o.about = payText(b.about, PAY_ABOUT_MAX);
+  if (b.what === "other" && !o.about) return { error: "bad_about" };
+  return { pay: o };
+}
+// Every payment, for the «Πληρωμές» screen, with totals per month, per year and per season (cancelled ones count nowhere;
+// a refund counts against the month it was paid back in).
+async function paymentsList(env) {
+  const today = todayAthens(), out = [], months = {}, years = {}, seasons = {};
+  const bump = (o, k, p, sign) => { const b = o[k] || (o[k] = { in: 0, out: 0, net: 0, vat: 0, count: 0 });
+    if (sign > 0) b.in += p.amount; else b.out += p.amount; b.net += sign * p.amount; b.vat += sign * (p.vat || 0); b.count++; };
+  for (const k of (await env.PLANS.list("ledger:")) || []) {
+    const l = safeParse(await env.PLANS.get(k));
+    if (!l || !Array.isArray(l.pays) || !l.pays.length) continue;
+    const key = k.slice(7), ck = custKeyOf(key), rec = ck ? safeParse(await env.PLANS.get(ck.rec)) : null;
+    const name = (rec && rec.name) || l.name || "", type = rec ? payType(ck.t, rec) : (l.type || null);
+    for (const p of l.pays) {
+      out.push({ key, name, type, gone: !rec, ...payOut(p, l.pays) });
+      if (p.cancelled) continue;
+      const sign = p.refundOf ? -1 : 1;
+      bump(months, p.date.slice(0, 7), p, sign); bump(years, p.date.slice(0, 4), p, sign);
+      if (p.what === "season") bump(seasons, seasonName(p.from, p.to) || p.about || "—", p, sign);
+    }
+  }
+  const y = today.slice(0, 4);
+  return { today, payments: out.sort((a, b) => b.date.localeCompare(a.date) || b.at - a.at), totals: { months, years, seasons },
+    ytd: { year: y, ...(years[y] || { in: 0, out: 0, net: 0, vat: 0, count: 0 }) } };
+}
+// An erased customer: the books keep who paid what and when, and why a payment was cancelled or refunded — not his notes.
+async function eraseLedger(env, key) {
+  await kvUpdate(env, "ledger:" + key, l => {
+    if (!l) return null;
+    if (!(l.pays || []).length) return { __del: true };
+    l.erasedAt = Date.now(); l.dues = []; l.pays = l.pays.map(p => ({ ...p, note: "" }));
+    return l;
+  });
 }
 
 // ---- a venue's own clients (OPERATIONS-PLAN.md, phase 3) ----
@@ -2919,6 +3066,7 @@ export default {
             await env.PLANS.put("venue:" + id, JSON.stringify(v));
             await addIndex(env, "venues:index", id);
             await indexEmail(env, email, "venue", id, true);
+            if (v.license.type === "seasonal" && ymdOk(v.license.seasonEnd)) await addDue(env, "v:" + id, v, seasonDue(v.license, "venue", addDays(todayAthens(), DUE_NEW_DAYS)));
             if (lead) await adoptLead(env, lead.id, "v:" + id, "venue:" + id);
             return json(mailed ? { id, venue: adminVenue(v), mailed: true } : { id, key, venue: adminVenue(v), mailed: false });
           }
@@ -2983,7 +3131,9 @@ export default {
             const b = await readBody(request);
             const email = b.email != null ? normEmail(b.email) : null;
             if (b.email != null && String(b.email).trim() && !email) return json({ error: "bad_email" }, 400);
+            let trialEnd = null;   // set when this edit turns a free year into a paid season
             const r = await kvUpdate(env, "venue:" + parts[2], v => { if (!v) return null; const old = v.email || "";
+              trialEnd = null; const freeTo = (v.trial && !v.trial.endedAt) ? v.trial.seasonEnd : null;   // before a licence edit moves it
               if (b.name != null) v.name = String(b.name).slice(0, 120);
               if (b.contact != null) v.contact = String(b.contact).slice(0, 200);   // PUBLIC: shown to this venue's couples
               if (b.notes != null) v.notes = String(b.notes).slice(0, NOTES_MAX);   // private: admin only (the card's notes box)
@@ -2995,12 +3145,17 @@ export default {
               if (b.license) { const was = onTrial(v); v.license = normLicense(b.license, v.license);
                 if (was && v.trial) v.trial = { ...v.trial, seasonEnd: v.license.seasonEnd,
                   endsAt: ymdOk(v.license.seasonEnd) ? athensMidnight(addDays(v.license.seasonEnd, 1)) : v.trial.endsAt }; }
-              if (b.trial === false && v.trial) v.trial = { ...v.trial, seasonEnd: null, endedAt: Date.now() };
+              if (b.trial === false && v.trial) { if (!v.trial.endedAt) trialEnd = freeTo || ymdOfMs(Date.now()); v.trial = { ...v.trial, seasonEnd: null, endedAt: Date.now() }; }
               if (b.lang != null) v.lang = langOf(b.lang);
               if (email != null && email !== old) { v.email = email; v.emailVerified = false; v.pendingVerify = null; nextGen(v); }   // links sent to the old address retire
               return { __obj: v, __res: old }; });
             if (!r.obj) return json({ error: "not found" }, 404);
             if (b.retention !== undefined) await unarchive(env);   // its weddings' deletion dates may have moved
+            // A free year turned into a season is the season bought: expected from the day the free year ends, a week at least.
+            if (trialEnd && r.obj.license && r.obj.license.type === "seasonal" && ymdOk(r.obj.license.seasonEnd)) {
+              const ld = await ledgerOf(env, "v:" + r.obj.id), due = [addDays(trialEnd, 1), addDays(todayAthens(), DUE_NEW_DAYS)].sort()[1];
+              if (!ld.dues.some(d => d.src === "trial" && !d.waived)) await addDue(env, "v:" + r.obj.id, r.obj, seasonDue(r.obj.license, "convert", due));
+            }
             if (email != null && email !== r.res) {
               await indexEmail(env, r.res, "venue", r.obj.id, false); await indexEmail(env, email, "venue", r.obj.id, true);
               if (r.res) send(env, r.res, mailMsg(r.obj.lang, "changed", { name: r.obj.name, email: maskEmail(email) || "—", by: MAILS[langOf(r.obj.lang)].byAdmin }));
@@ -3085,6 +3240,7 @@ export default {
             await env.PLANS.put("claim:" + token, JSON.stringify({ cid, planId, createdAt: Date.now(), gen: 0 }));
             await addIndex(env, "couples:index", cid);
             await indexEmail(env, email, "couple", cid, true);
+            await addDue(env, "c:" + cid, c, { id: rnd(10), what: "plan", kind, amount: PRICE_PLAN, plusVat: false, due: addDays(todayAthens(), DUE_NEW_DAYS), src: "couple" });
             if (lead) await adoptLead(env, lead.id, "c:" + cid, "couple:" + cid);
             return json(mailed ? { couple: await adminCouple(env, c), mailed: true } : { couple: await adminCouple(env, c), claimToken: token, mailed: false });
           }
@@ -3274,6 +3430,122 @@ export default {
             if (text) await kvUpdate(env, "act:" + k.key, a => [...(Array.isArray(a) ? a : []), { id: rnd(10), t: now, kind: "other", text }].slice(-ACT_MAX));
             return json({ ok: true, lead: leadOut(r.obj) });
           }
+          // Phase 5: «Πληρωμές», a venue's or a direct customer's dues and payments.
+          //   POST pay · PATCH pay/:id {receipt?, note?} · POST pay/:id/refund · POST pay/:id/cancel {reason}
+          //   · POST dues · POST dues/:id/waive {reason} · POST dues/:id/unwaive      → { ok, payments }
+          if (parts[3] === "pay" || parts[3] === "dues") {
+            if (k.t !== "v" && k.t !== "c") return json({ error: "no_payments" }, 400);
+            const b = await readBody(request), today = todayAthens();
+            const derived = derivedDues(k.t, cur0, await ledgerOf(env, k.key), today);
+            const stamp = l0 => { const l = { dues: [], pays: [], ...(l0 || {}) }; l.cust = k.key; l.name = cur0.name || l.name || ""; l.type = payType(k.t, cur0); return l; };
+            // a derived due (a renewal marked «invoice due», a free year about to end) is stored the first time it is used
+            const findDue = (l, id) => { let d = l.dues.find(x => x.id === id);
+              if (!d) { const dd = derived.find(x => x.id === id); if (dd) { const { derived: _, ...keep } = dd; d = { ...keep, at: now }; l.dues.push(d); } }
+              return d; };
+            const fail = (error, status, more) => ({ __res: { error, status, ...(more || {}) } });
+            const done = async (r, dueId) => {
+              if (r.res && r.res.error) { const { status, ...e } = r.res; return json(e, status); }
+              const d = dueId && r.obj.dues.find(x => x.id === dueId);
+              if (d) await settleInvoice(env, k.key, r.obj, d);
+              const rec = safeParse(await env.PLANS.get(k.rec)) || cur0;
+              return json({ ok: true, ...(r.res && r.res.id ? { id: r.res.id } : {}), payments: paySummary(k.t, rec, r.obj, today) });
+            };
+            const pid = parts[4] || "";
+            if (sub === "pay" && M === "POST") {   // «Καταχώρηση πληρωμής»
+              const dueId = typeof b.dueId === "string" && b.dueId ? b.dueId : null;
+              const f = payFields(dueId ? { what: "plan", ...b } : b, today, false);   // a due says what the payment is for
+              if (f.error) return json({ error: f.error }, 400);
+              const p = { id: rnd(12), ...f.pay, at: now };
+              const r = await kvUpdate(env, "ledger:" + k.key, l0 => {
+                const l = stamp(l0);
+                if (l.pays.length >= PAY_MAX) return fail("full", 409);
+                if (dueId) {
+                  const d = findDue(l, dueId);
+                  if (!d) return fail("no_due", 404);
+                  if (d.waived) return fail("waived", 409);
+                  const st = dueState(d, l.pays, today);
+                  if (st.left === 0 && b.force !== true) return fail("already_paid", 409, { paid: st.paid });   // the same season twice: he confirms first
+                  Object.assign(p, { dueId: d.id, what: d.what, about: p.about || d.about || "" },
+                    d.kind ? { kind: d.kind } : {}, d.from ? { from: d.from } : {}, d.to ? { to: d.to } : {});
+                }
+                l.pays.push(p);
+                return { __obj: l, __res: { id: p.id } };
+              });
+              if (!r.res || !r.res.error) console.log("admin: payment recorded for " + k.key + " (" + p.amount + " cents, " + p.method + ")");
+              return done(r, dueId);
+            }
+            if (parts.length === 6 && parts[3] === "pay" && parts[5] === "refund" && M === "POST") {   // a refund, against one payment
+              const f = payFields(b, today, true);
+              if (f.error) return json({ error: f.error }, 400);
+              let dueId = null;
+              const r = await kvUpdate(env, "ledger:" + k.key, l0 => {
+                const l = stamp(l0), o = l.pays.find(x => x.id === pid);
+                if (!o || o.refundOf) return fail("not found", 404);
+                if (o.cancelled) return fail("cancelled", 409);
+                if (l.pays.length >= PAY_MAX) return fail("full", 409);
+                if (f.pay.date < o.date) return fail("bad_date", 400);
+                const left = o.amount - refundsOf(l.pays, o.id).reduce((s, x) => s + x.amount, 0);
+                if (f.pay.amount > left) return fail("more_than_paid", 409, { left });
+                const p = { id: rnd(12), ...f.pay, refundOf: o.id, what: o.what, about: o.about || "", at: now };
+                for (const x of ["dueId", "kind", "from", "to"]) if (o[x]) p[x] = o[x];
+                dueId = o.dueId || null;
+                l.pays.push(p);
+                return { __obj: l, __res: { id: p.id } };
+              });
+              return done(r, dueId);
+            }
+            if (parts.length === 6 && parts[3] === "pay" && parts[5] === "cancel" && M === "POST") {   // a mistake: never deleted
+              const reason = payText(b.reason, PAY_REASON_MAX);
+              if (!reason) return json({ error: "bad_reason" }, 400);
+              const r = await kvUpdate(env, "ledger:" + k.key, l0 => {
+                const l = stamp(l0), o = l.pays.find(x => x.id === pid);
+                if (!o) return fail("not found", 404);
+                if (o.cancelled) return fail("already_cancelled", 409);
+                if (!o.refundOf && refundsOf(l.pays, o.id).length) return fail("has_refunds", 409);   // its refunds first
+                o.cancelled = { reason, at: now };
+                return l;
+              });
+              return done(r, null);
+            }
+            if (parts.length === 5 && parts[3] === "pay" && (M === "PATCH" || M === "PUT")) {   // the receipt number comes later
+              if (typeof b.receipt !== "string" && typeof b.note !== "string") return json({ error: "bad_request" }, 400);
+              const r = await kvUpdate(env, "ledger:" + k.key, l0 => {
+                const l = stamp(l0), o = l.pays.find(x => x.id === pid);
+                if (!o) return fail("not found", 404);
+                if (typeof b.receipt === "string") o.receipt = payText(b.receipt, PAY_RECEIPT_MAX);
+                if (typeof b.note === "string") o.note = payText(b.note, PAY_NOTE_MAX);
+                return l;
+              });
+              return done(r, null);
+            }
+            if (sub === "dues" && M === "POST") {   // «+ Αναμενόμενη πληρωμή», for what no rule foresaw
+              const amount = cents(b.amount), about = payText(b.about, PAY_ABOUT_MAX);
+              if (!amount) return json({ error: "bad_amount" }, 400);
+              if (!PAY_WHAT.includes(b.what)) return json({ error: "bad_what" }, 400);
+              if (b.what === "other" && !about) return json({ error: "bad_about" }, 400);
+              if (!ymdOk(b.due)) return json({ error: "bad_date" }, 400);
+              const season = b.what === "season" && (b.from || b.to);
+              if (season && !(ymdOk(b.from) && ymdOk(b.to) && b.from <= b.to)) return json({ error: "bad_season" }, 400);
+              const d = { id: rnd(10), what: b.what, about, amount, plusVat: b.plusVat === true, due: b.due, src: "manual",
+                ...(season ? { from: b.from, to: b.to } : {}), ...(b.what === "plan" && k.t === "c" ? { kind: normKind(cur0.kind) } : {}) };
+              const r = await addDue(env, k.key, cur0, d);
+              if (!r.obj || !r.obj.dues.some(x => x.id === d.id)) return json({ error: "exists" }, 409);
+              return done(r, null);
+            }
+            if (parts.length === 6 && parts[3] === "dues" && (parts[5] === "waive" || parts[5] === "unwaive") && M === "POST") {
+              const waive = parts[5] === "waive", reason = payText(b.reason, PAY_REASON_MAX);
+              if (waive && !reason) return json({ error: "bad_reason" }, 400);
+              const r = await kvUpdate(env, "ledger:" + k.key, l0 => {
+                const l = stamp(l0), d = waive ? findDue(l, pid) : l.dues.find(x => x.id === pid);
+                if (!d) return fail("not found", 404);
+                if (!!d.waived === waive) return fail(waive ? "already_waived" : "not_waived", 409);
+                if (waive) d.waived = { reason, at: now }; else delete d.waived;   // «Δεν οφείλεται», and its undo
+                return l;
+              });
+              return done(r, waive ? pid : null);
+            }
+            return json({ error: "not found" }, 404);
+          }
           if (sub === "forget" && M === "POST") {   // «Ξέχασέ τον»: everything goes but what the books need
             const r = await forgetCustomer(env, k, "request");
             console.log("admin: a customer was forgotten on request" + (r.books ? " (books kept)" : ""));
@@ -3304,6 +3576,7 @@ export default {
           const b = await readBody(request);
           return json({ matches: await knownCustomers(env, b, typeof b.except === "string" ? b.except : "") });
         }
+        if (parts[1] === "payments" && parts.length === 2 && request.method === "GET") return json(await paymentsList(env));   // phase 5: «Πληρωμές»
         if (parts[1] === "books" && parts.length === 2 && request.method === "GET") {   // what the books keep of forgotten customers
           const out = [];
           for (const key of (safeParse(await env.PLANS.get("books:index")) || [])) { const b = safeParse(await env.PLANS.get("books:" + key)); if (b) out.push(b); }
