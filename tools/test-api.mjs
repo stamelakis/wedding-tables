@@ -3973,12 +3973,17 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     ok((await on('POST', KB, 'pay/' + p2.id + '/refund', { amount: 1900, date: '2025-03-27', method: 'bank', reason: 'υπαναχώρηση' })).d.error === 'bad_date', 'refund: never before the payment');
     ok((await on('POST', KB, 'pay/nope/refund', { amount: 1900, date: '2025-04-02', method: 'bank', reason: 'υπαναχώρηση' })).status === 404, 'refund: of a payment that does not exist: refused');
     x = await on('POST', KB, 'pay/' + p2.id + '/refund', { amount: 1900, date: '2025-04-02', method: 'bank', reason: 'υπαναχώρηση εντός 14 ημερών' });
-    ok(x.status === 200 && x.d.payments.dues[0].left === 1900 && x.d.payments.pays.find(p => p.id === p2.id).refunded === 1900
+    ok(x.status === 200 && x.d.payments.pays.find(p => p.id === p2.id).refunded === 1900
       && x.d.payments.pays.some(p => p.refundOf === p2.id && p.reason === 'υπαναχώρηση εντός 14 ημερών' && p.dueId === due.id),
-      'refund: recorded against the payment; the plan is owed again', x.d.payments);
+      'refund: recorded against the payment', x.d.payments);
+    ok(x.d.payments.dues[0].state === 'refunded' && x.d.payments.owed === 0 && x.d.payments.state === null,
+      'refund: closes the due, never reopens it (nothing owed, nothing paid to show)', x.d.payments);
+    patchRaw('ledger:' + KB, l => { l.dues[0].due = '2025-03-01'; });   // weeks after its date: still not «late»
+    ok((await cardOf(KB)).customer.flags.includes('pay_overdue') === false && (await cardOf(KB)).payments.dues[0].state === 'refunded',
+      'refund: a refunded due never turns into «καθυστερεί πληρωμή»');
     ok((await on('POST', KB, 'pay/' + x.d.payments.pays.find(p => p.refundOf).id + '/refund', { amount: 1, date: today, method: 'bank', reason: 'x' })).status === 404, 'refund: a refund is not refunded');
     ok((await on('POST', KB, 'pay/' + p2.id + '/cancel', { reason: 'λάθος' })).d.error === 'has_refunds', 'cancel: a refunded payment cannot be cancelled while its refund stands');
-    // the plan is owed again: he agrees there is nothing more to ask
+    // «Δεν οφείλεται» works on any due, refunded or not
     const dB = (await cardOf(KB)).payments.dues[0];
     ok((await on('POST', KB, 'dues/' + dB.id + '/waive', {})).d.error === 'bad_reason', 'waive: needs a reason');
     x = await on('POST', KB, 'dues/' + dB.id + '/waive', { reason: 'υπαναχώρησαν' });

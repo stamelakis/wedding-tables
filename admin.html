@@ -173,6 +173,32 @@
   .tl .w{ flex:1; min-width:0; overflow-wrap:anywhere; color:var(--soft); white-space:pre-line; }   /* a message from the site's form keeps its lines */
   .tl li.mine .w{ color:var(--ink); font-weight:600; }
   .tl .x{ flex:none; padding:0 6px; }
+  /* «Πληρωμές» (phase 5): what is expected and what came in, on the card and on its own screen */
+  .badge.pay-late{ background:#f8e1de; color:var(--danger); } .badge.pay-due{ background:var(--amber-soft); color:var(--amber); }
+  .badge.pay-paid{ background:var(--good-soft); color:var(--good); } .badge.pay-trial{ background:var(--accent-soft); color:var(--accent-ink); }
+  .plist{ list-style:none; margin:6px 0 0; padding:0; font-size:13.5px; }
+  .plist li{ padding:8px 0; border-top:1px dashed var(--line); }
+  .plist li:first-child{ border-top:none; }
+  .plist .top{ display:flex; flex-wrap:wrap; gap:4px 8px; align-items:baseline; }
+  .amt{ font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .amt.neg{ color:var(--danger); }
+  .plist li.off .top, .plist li.off .amt, tr.off td{ color:var(--faint); } .plist li.off .amt, tr.off .amt{ text-decoration:line-through; }
+  .plist .sub{ color:var(--soft); font-size:12.5px; margin-top:2px; overflow-wrap:anywhere; }
+  .plist .btns{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .payform{ border:1px solid var(--line); }
+  .payform .grid{ margin-top:8px; }
+  .ptitle{ font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--faint); margin-top:10px; }
+  .ytd{ display:flex; flex-wrap:wrap; gap:6px 18px; align-items:baseline; font-size:13.5px; }
+  .ytd b{ font-size:20px; font-variant-numeric:tabular-nums; }
+  .meter{ height:8px; border-radius:6px; background:var(--card2); box-shadow:inset 0 0 0 1px var(--line); overflow:hidden; margin:8px 0 4px; }
+  .meter i{ display:block; height:100%; background:var(--good); }
+  .meter.near i{ background:var(--amber); } .meter.over i{ background:var(--danger); }
+  .payfilters{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:14px 0 6px; }
+  .payfilters select{ width:auto; flex:0 1 auto; }
+  .ptotals{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:10px 0 4px; }
+  .ptotals table{ font-size:13px; } .ptotals td, .ptotals th{ padding:5px 6px; }
+  td.num, th.num{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  #payTable tr[data-key]{ cursor:pointer; } #payTable tr[data-key]:hover td{ background:var(--card2); }
   @media (max-width:620px){ .fields > div{ flex-direction:column; gap:0; } .fields i{ flex:none; } }
   @media (max-width:620px){
     .grid{ grid-template-columns:1fr; }
@@ -200,6 +226,10 @@
     .pick .chip{ min-height:40px; padding:8px 13px; font-size:14px; }
     .known .btn.sm{ min-height:40px; padding:8px 12px; font-size:14px; }
     .tl li{ flex-wrap:wrap; gap:0 10px; } .tl time{ flex-basis:100%; }
+    .plist .btn.sm, .payform .btn.sm{ min-height:40px; padding:8px 12px; font-size:14px; }
+    .ptotals{ grid-template-columns:1fr; }
+    .payfilters select{ flex:1 1 140px; }
+    #payTable td.num{ text-align:left; } #payTable td{ padding:3px 0; } #payTable td.ce{ display:none; }
   }
 </style>
 </head>
@@ -702,6 +732,24 @@ function renderDashboard(venues){
       </div>
     </div>
 
+    <!-- «Πληρωμές» (OPERATIONS-PLAN.md §4, phase 5): every payment of every customer, the totals the accountant asks for,
+         and two files: an Excel for the accountant, and the payments still without a receipt for Λογιστής to import. -->
+    <div class="section" id="paySection" lang="el">
+      <div class="sechead"><h2>Πληρωμές <span class="muted" id="payCount"></span></h2>
+        <div class="row acts"><button class="btn sm" id="payCsv" title="Ό,τι βλέπεις, σε αρχείο για το Excel του λογιστή">Excel</button>
+          <button class="btn sm" id="payLog" title="Όσες από αυτές δεν έχουν απόδειξη, σε αρχείο που διαβάζει ο Λογιστής">Για τον Λογιστή</button>
+          <button class="btn sm" id="payRefresh">Ανανέωση</button></div></div>
+      <div class="card">
+        <div id="payYtd"></div>
+        <div class="payfilters">
+          <select id="pfMonth" aria-label="Μήνας"></select><select id="pfSeason" aria-label="Σεζόν"></select><select id="pfMethod" aria-label="Τρόπος"></select>
+          <label class="chk sm" style="margin:0"><input type="checkbox" id="pfNoRcpt"> Μόνο χωρίς απόδειξη</label></div>
+        <div class="muted" id="payHint" style="margin:0 0 4px"></div>
+        <div class="tablewrap" id="payTable"><div class="empty">Φορτώνει…</div></div>
+        <div id="payTotals"></div>
+      </div>
+    </div>
+
     <div class="section" id="supportSection">
       <div class="sechead"><h2>Support requests <span class="muted" id="scount"></span></h2>
         <button class="btn sm" id="supRefresh">Refresh</button></div>
@@ -807,8 +855,8 @@ function renderDashboard(venues){
   wireExceptionForm();
   document.getElementById("xlist").addEventListener("click", onExceptionAction);
   wireTools();
-  wireCustomers();
-  refreshCustomers(); refreshSupport(); refreshCouples(); refreshSettings(); refreshOwner();
+  wireCustomers(); wirePayments();
+  refreshCustomers(); refreshPayments(); refreshSupport(); refreshCouples(); refreshSettings(); refreshOwner();
 }
 
 // ---------------------------------------------------------------- signups (self-service venues)
@@ -1781,11 +1829,12 @@ const C_FLAG={
   trial_ending:["λήγει ο δωρεάν χρόνος", "Ο δωρεάν χρόνος λήγει σε λιγότερο από 60 μέρες."],
   support_open:["ζητά υποστήριξη", "Περιμένει υποστήριξη: η πρόσκληση είναι στα «Support requests», πιο κάτω."],
   next_due:["επόμενο βήμα", "Ήρθε η μέρα του επόμενου βήματος που έγραψες."],
-  lead_new:["περιμένει απάντηση", "Νέα επαφή: δεν έχεις απαντήσει ακόμη. Μόλις απαντήσεις, πάτα «Σε συζήτηση»."] };
+  lead_new:["περιμένει απάντηση", "Νέα επαφή: δεν έχεις απαντήσει ακόμη. Μόλις απαντήσεις, πάτα «Σε συζήτηση»."],
+  pay_overdue:["καθυστερεί πληρωμή", "Μια αναμενόμενη πληρωμή πέρασε την ημερομηνία της — δες «Πληρωμές» πιο κάτω."] };
 const C_UNTIL={ season:"τέλος σεζόν", trial:"τέλος δωρεάν χρόνου", plan:"διαγραφή σχεδίου", keep:"κρατιέται" };
 const C_SIGNUP={ pending:"περιμένει να ανοίξει τον σύνδεσμο", verified:"επιβεβαιώθηκε", expired:"έληξε", deleted:"διαγράφηκε" };
 const C_CHIPS=[["all","Όλοι"],["want","Θέλουν εμένα"],["leads","Επαφές"],["venues","Κτήματα"],["private","Ιδιώτες"],["soon","Εκδήλωση σε 14 ημέρες"],["ending","Λήγουν σε 60 ημέρες"],["archive","Αρχείο"]];
-const C_COLS=[["name","Πελάτης",1],["type","Τύπος",1],["stage","Στάδιο",1],["next","Επόμενη εκδήλωση",1],["events","Εκδηλώσεις",-1],
+const C_COLS=[["name","Πελάτης",1],["type","Τύπος",1],["stage","Στάδιο",1],["pay","Πληρωμή",1],["next","Επόμενη εκδήλωση",1],["events","Εκδηλώσεις",-1],
   ["until","Λήξη",1],["last","Τελευταία κίνηση",-1],["reach","Επαφή",1]];   // key, header, the direction a first tap sorts in
 let custData=null, custFilter="all", custSortBy={ col:"next", dir:1 };
 const cDays=(a,b)=>Math.round((Date.parse(b+"T00:00:00Z")-Date.parse(a+"T00:00:00Z"))/86400000);
@@ -1815,6 +1864,7 @@ function cSortVal(c, col){
   if(col==="name") return cFold(c.name);
   if(col==="type") return C_TYPE_ORDER[c.type]==null ? 9 : C_TYPE_ORDER[c.type];
   if(col==="stage") return c.stage;
+  if(col==="pay") return c.pay && c.pay.state ? P_ORDER[c.pay.state] : null;   // late first
   if(col==="next") return c.next||null;
   if(col==="events") return (c.upcoming||0)*10000+(c.total||0);
   if(col==="until") return c.until||null;
@@ -1854,6 +1904,7 @@ function cRowHtml(c){
     <td><div class="cname">${esc(c.name||"—")}</div>${flags ? `<div class="cflags">${flags}</div>` : ""}${step}</td>
     <td data-l="Τύπος">${esc(C_TYPE[c.type]||c.type)}</td>
     <td data-l="Στάδιο"><span class="badge st${esc(c.stage)}">${esc(C_STAGE[c.stage]||c.stage)}</span></td>
+    <td data-l="Πληρωμή"${c.pay && c.pay.state ? "" : ` class="ce"`}>${cPayBadge(c.pay)}</td>
     <td data-l="Επόμενη"${c.next ? "" : ` class="ce"`}>${next}</td>
     <td data-l="Εκδηλώσεις" title="επόμενες / σύνολο"${c.total ? "" : ` class="ce"`}>${esc(c.upcoming)} <span class="muted">/ ${esc(c.total)}</span></td>
     <td data-l="Λήξη"${c.until || c.untilKind==="keep" ? "" : ` class="ce"`}>${until}</td>
@@ -1972,9 +2023,11 @@ function flushNotes(){ const n=cardNotes; return n ? saveNotes(n) : Promise.reso
 async function onCardClick(e, root, key, x){
   const kn=e.target.closest("button[data-known]");   // «Γνωστός πελάτης» on a contact's card: the other card, after his notes are saved
   if(kn && root.contains(kn)){ await flushNotes(); return openCustomer(kn.dataset.key); }
+  const ch=e.target.closest("#pp_box .pick .chip"); if(ch && root.contains(ch)) return payChip(root, ch);   // the payment form's chips
   const b=e.target.closest("button[data-k],button[data-a]"); if(!b || b.disabled || !root.contains(b)) return;
   if(b.dataset.a) return cardAction(key, x, b.dataset.a, b);
   const k=b.dataset.k, path="/admin/customers/"+encodeURIComponent(key), q=s=>root.querySelector(s);
+  if(/^pf?_/.test(k) && k!=="panel_close") return onPayClick(root, key, x, b, k);   // «Πληρωμές»
   const send=async (url, opts, ok, fail)=>{
     b.disabled=true; const res=await req(url, opts); b.disabled=false;
     if(!res.ok){ failToast(res, res.status===404 ? "Αυτός ο πελάτης δεν υπάρχει πια" : fail); return; }
@@ -2079,6 +2132,10 @@ function cTlWords(e, t){
     case "audit": return e.what==="locked" ? "Η εκδήλωση πέρασε — το σχέδιο έμεινε μόνο για προβολή"
       : `${GR_WHO[e.who]||e.who||"—"}: ${GR_WHAT[e.what]||e.what}${D ? " "+D : ""}${e.n>1 ? ` ×${e.n}` : ""}`;
     case "plan_gone": return "Το σχέδιο σβήστηκε"+(ev ? ` (${ev})` : "");
+    case "paid": return "Πληρωμή "+eur(e.amount)+(e.method ? " · "+(P_METHOD[e.method]||e.method) : "");
+    case "refund": return "Επιστροφή "+eur(e.amount)+(e.method ? " · "+(P_METHOD[e.method]||e.method) : "");
+    case "pay_cancel": return (e.refund ? "Ακυρώθηκε η επιστροφή " : "Ακυρώθηκε η πληρωμή ")+eur(e.amount);
+    case "due_waived": return "Δεν οφείλεται: "+eur(e.amount);
   }
   return e.code||"—";
 }
@@ -2204,6 +2261,7 @@ function customerCardHtml(x){
   // a contact's card (the form's above all: nobody looked it up while typing) shows who already has its address or number
   if((x.known||[]).length) out.push(knownHtml(x.known, false));
   out.push(cardWorkHtml(x));
+  out.push(cPayHtml(x));
   if(v){
     const L=v.license||{}, lic=x.licence||{}, st=x.setup||{}, trial=v.trial && v.trial.inForce;
     out.push(`<div class="subh">Άδεια</div>`+fieldsHtml([
@@ -2250,6 +2308,320 @@ function customerCardHtml(x){
     +cPastHtml(past));
   out.push(`<div class="subh">Μνήμη <span class="muted">— για πόσο κρατάμε την καρτέλα</span></div>`+cMemoryHtml(x));
   return out.join("");
+}
+
+// ---- phase 5: «Πληρωμές» (OPERATIONS-PLAN.md §4) ----
+// The server keeps the money in cents and works out what is owed and late; this part only words it and sends what he
+// types. A payment is never deleted or its amount edited: a mistake is «Ακύρωση…» with a reason, a refund its own entry.
+// VAT is what he typed, never computed. Λογιστής issues the receipts; its number is added here, now or later.
+const P_METHOD={ bank:"Μεταφορά", iris:"IRIS", card:"Κάρτα", cash:"Μετρητά", other:"Άλλο" };
+const P_METHOD_LONG={ bank:"Τραπεζική μεταφορά", iris:"IRIS", card:"Κάρτα", cash:"Μετρητά", other:"Άλλο" };   // the files: Λογιστής reads «μεταφορ», «iris», «κάρτα», «μετρητ»
+const P_WHAT={ season:"Σεζόν", plan:"Σχέδιο", extra:"Επιπλέον σχέδιο", other:"Άλλο" };
+const P_STATE={ late:"καθυστερεί", due:"αναμένεται", trial:"δωρεάν έτος", paid:"πληρωμένος" };
+const P_ORDER={ late:0, due:1, trial:2, paid:3 };
+const P_SRC={ couple:"Μπήκε μόνη της με την αγορά.", venue:"Μπήκε μόνη της με το νέο κτήμα.", renew:"Μπήκε μόνη της με την αυτόματη ανανέωση.",
+  convert:"Μπήκε μόνη της όταν ο δωρεάν χρόνος έγινε σεζόν.", trial:"Ο δωρεάν χρόνος λήγει: αν συνεχίσει, αυτή είναι η πρώτη σεζόν που πληρώνει.",
+  invoice:"Η σεζόν ανανεώθηκε με εκκρεμές τιμολόγιο.", manual:"Την πρόσθεσες εσύ." };
+const P_ERR={ bad_amount:"Το ποσό δεν είναι σωστό", bad_vat:"Ο ΦΠΑ δεν είναι σωστός — ως το ποσό", bad_date:"Η ημερομηνία δεν είναι σωστή",
+  bad_method:"Διάλεξε τρόπο πληρωμής", bad_what:"Διάλεξε για τι είναι", bad_about:"Γράψε μια περιγραφή", bad_reason:"Γράψε τον λόγο",
+  bad_season:"Η σεζόν θέλει «Από» και «Έως», με τη σειρά", no_due:"Αυτή η αναμενόμενη πληρωμή δεν υπάρχει πια — πάτα «Ανανέωση»",
+  waived:"Είναι σημειωμένη «δεν οφείλεται» — πάτα πρώτα «Αναίρεση»", cancelled:"Η πληρωμή έχει ακυρωθεί", already_cancelled:"Έχει ήδη ακυρωθεί",
+  has_refunds:"Έχει επιστροφές: ακύρωσε πρώτα εκείνες", already_waived:"Είναι ήδη «δεν οφείλεται»", not_waived:"Δεν ήταν «δεν οφείλεται»",
+  exists:"Υπάρχει ήδη αναμενόμενη πληρωμή για αυτή τη σεζόν", full:"Αυτός ο πελάτης έχει φτάσει το όριο κινήσεων", no_payments:"Εδώ δεν γράφονται πληρωμές" };
+const GR_MON=["Ιανουάριος","Φεβρουάριος","Μάρτιος","Απρίλιος","Μάιος","Ιούνιος","Ιούλιος","Αύγουστος","Σεπτέμβριος","Οκτώβριος","Νοέμβριος","Δεκέμβριος"];
+const gMonth=m=>GR_MON[+m.slice(5,7)-1]+" "+m.slice(0,4);
+// 1900 → «19,00 €», 123456 → «1.234,56 €», -500 → «−5,00 €»
+function eurNum(c){ const n=Math.abs(c), i=String(Math.floor(n/100)).replace(/\B(?=(\d{3})+(?!\d))/g,"."); return (c<0 ? "−" : "")+i+","+String(n%100).padStart(2,"0"); }
+const eur=c=>eurNum(c)+" €";
+// What he types → cents: «19», «19,5», «19,00», «1.234,56», «1234.56». Anything else → null.
+function parseEur(s){
+  s=String(s==null ? "" : s).replace(/[\s€]/g,"");
+  if(/^\d{1,3}(\.\d{3})+(,\d{1,2})?$/.test(s)) s=s.replace(/\./g,"").replace(",",".");   // 1.234,56
+  else if(/^\d+(,\d{1,2})?$/.test(s)) s=s.replace(",",".");
+  else if(!/^\d+(\.\d{1,2})?$/.test(s)) return null;
+  const [i, f=""]=s.split("."), c=(+i)*100+(+(f+"00").slice(0,2));
+  return Number.isSafeInteger(c) ? c : null;
+}
+const eurInput=c=>eurNum(c).replace(/\./g,"");   // a prefilled box: «1234,56», which parseEur reads back the same
+// A number cell Greek Excel adds up: «-19,00», never through cCsvCell (it would make a minus sign text)
+const cCsvNum=c=>(c<0 ? "-" : "")+Math.floor(Math.abs(c)/100)+","+String(Math.abs(c)%100).padStart(2,"0");
+const seasonWord=(from, to)=>(isYmd(from) && isYmd(to)) ? (from.slice(0,4)===to.slice(0,4) ? from.slice(0,4) : from.slice(0,4)+"–"+to.slice(2,4)) : "";   // the server's seasonName
+function cPayBadge(pay){
+  const s=pay && pay.state; if(!s) return `<span class="muted">—</span>`;
+  return `<span class="badge pay-${s}"${pay.owed ? ` title="μένουν ${esc(eur(pay.owed))}"` : ""}>${esc(P_STATE[s])}</span>`;
+}
+// What a due or a payment is for, in a few words: «Σεζόν 2027», «Σχέδιο — βάπτιση», «Εκπαίδευση προσωπικού»
+function pWhatText(o){
+  const base=o.what==="season" ? "Σεζόν"+(seasonWord(o.from, o.to) ? " "+seasonWord(o.from, o.to) : "")
+    : o.what==="plan" ? "Σχέδιο"+(o.kind ? " — "+(C_KIND[o.kind]||o.kind) : "") : o.what==="extra" ? "Επιπλέον σχέδιο" : (o.about||"Άλλο");
+  return o.about && o.what!=="other" ? base+" · "+o.about : base;
+}
+function cDueItem(d){
+  const st=d.state, open=st==="due" || st==="late";
+  const badge=st==="waived" ? `<span class="badge off">δεν οφείλεται</span>` : st==="paid" ? `<span class="badge pay-paid">✓ πληρώθηκε</span>`
+    : st==="refunded" ? `<span class="badge tpl">έκλεισε με επιστροφή</span>`
+    : st==="late" ? `<span class="badge pay-late">καθυστερεί</span>` : d.prospect ? `<span class="badge pay-trial">αν συνεχίσει</span>` : `<span class="badge pay-due">αναμένεται</span>`;
+  const when=st==="waived" ? `Δεν οφείλεται: ${esc(d.waived.reason)} (${esc(gD(d.waived.at))})`
+    : d.prospect ? `από ${esc(gYmd(d.from))}`
+    : open ? `${st==="late" ? "έπρεπε" : "ως"} ${esc(gYmd(d.due))} (${esc(cInDays(d.due))})` : "";
+  const part=open && d.paid>0 ? `πληρώθηκαν ${esc(eur(d.paid))}, μένουν ${esc(eur(d.left))}`
+    : st==="refunded" ? (d.paid>0 ? `μετά την επιστροφή έμειναν ${esc(eur(d.paid))}` : "επιστράφηκαν όλα") : "";
+  const sub=[when, part, d.what==="season" && d.from && d.to ? `σεζόν ${esc(gYmd(d.from))} → ${esc(gYmd(d.to))}` : "", esc(P_SRC[d.src]||"")].filter(Boolean).join(" · ");
+  const btns=open ? `<button class="btn sm primary" data-k="p_paydue" data-id="${esc(d.id)}">Πληρώθηκε…</button><button class="btn sm" data-k="p_waive" data-id="${esc(d.id)}" title="Π.χ. δώρο, ή παλιός πελάτης που πλήρωσε αλλιώς">Δεν οφείλεται…</button>`
+    : st==="waived" ? `<button class="btn sm ghost" data-k="p_unwaive" data-id="${esc(d.id)}">Αναίρεση</button>` : "";
+  return `<li${st==="waived" ? ` class="off"` : ""}><div class="top"><span class="amt">${esc(eur(d.amount))}</span>${d.plusVat ? `<span class="muted">+ ΦΠΑ</span>` : ""}<span>${esc(pWhatText(d))}</span>${badge}</div>
+    ${sub ? `<div class="sub">${sub}</div>` : ""}${btns ? `<div class="btns">${btns}</div>` : ""}</li>`;
+}
+function cPayItem(p){
+  const refund=!!p.refundOf, off=!!p.cancelled;
+  const rcpt=p.receipt ? `<span class="muted">${refund ? "Πιστωτικό" : "Απόδειξη"} ${esc(p.receipt)}</span>` : off ? "" : `<span class="badge warn">χωρίς ${refund ? "πιστωτικό" : "απόδειξη"}</span>`;
+  const sub=[p.vat!=null ? "ΦΠΑ "+esc(eur(p.vat)) : "", refund ? "Λόγος: "+esc(p.reason) : "", !refund && p.refunded ? "επιστράφηκαν "+esc(eur(p.refunded)) : "",
+    p.note ? esc(p.note) : "", off ? `<span style="color:var(--danger)">Ακυρώθηκε ${esc(gD(p.cancelled.at))} — ${esc(p.cancelled.reason)}</span>` : ""].filter(Boolean).join(" · ");
+  const btns=off ? "" : `<button class="btn sm" data-k="p_rcpt" data-id="${esc(p.id)}">${p.receipt ? "Αλλαγή αριθμού…" : refund ? "Αρ. πιστωτικού…" : "Αρ. απόδειξης…"}</button>`
+    +`<button class="btn sm ghost" data-k="p_note" data-id="${esc(p.id)}">Σημείωση…</button>`
+    +(!refund && p.amount>p.refunded ? `<button class="btn sm" data-k="p_refund" data-id="${esc(p.id)}">Επιστροφή…</button>` : "")
+    +(refund || !p.refunded ? `<button class="btn sm ghost" data-k="p_cancel" data-id="${esc(p.id)}" title="Για λάθος καταχώριση: δεν σβήνεται, μένει διαγραμμένη με τον λόγο">Ακύρωση…</button>` : "");
+  return `<li${off ? ` class="off"` : ""}><div class="top"><span class="amt${refund ? " neg" : ""}">${esc(eur(refund ? -p.amount : p.amount))}</span><span>${esc(gYmd(p.date))}</span>
+      <span class="badge tpl">${esc(P_METHOD[p.method]||p.method)}</span><span>${refund ? "Επιστροφή · " : ""}${esc(pWhatText(p))}</span>${rcpt}</div>
+    ${sub ? `<div class="sub">${sub}</div>` : ""}${btns ? `<div class="btns">${btns}</div>` : ""}</li>`;
+}
+// The card's «Πληρωμές»: what is expected, what came in, and the two ways to add one. Only a venue's or a direct customer's.
+function cPayHtml(x){
+  const P=x.payments; if(!P) return "";
+  const dues=P.dues||[], pays=P.pays||[], openVat=dues.some(d=>(d.state==="due" || d.state==="late") && d.plusVat);
+  return `<div class="subh">Πληρωμές ${P.state ? cPayBadge(P) : ""}${P.owed ? ` <span class="muted">— μένουν ${esc(eur(P.owed))}${openVat ? " + ΦΠΑ" : ""}</span>` : ""}</div>`
+    +(dues.length ? `<div class="ptitle">Αναμενόμενες</div><ul class="plist">${dues.map(cDueItem).join("")}</ul>` : "")
+    +`<div class="ptitle">Ό,τι μπήκε</div>`+(pays.length ? `<ul class="plist">${pays.map(cPayItem).join("")}</ul>` : `<div class="muted" style="margin-top:4px">Καμία πληρωμή ακόμη.</div>`)
+    +`<div class="tlbtns"><button class="btn sm" data-k="p_new">+ Πληρωμή</button><button class="btn sm" data-k="p_due" title="Κάτι που θα πληρώσει και δεν μπήκε μόνο του">+ Αναμενόμενη…</button></div>
+      <div id="pp_box"></div>`;
+}
+// One form for the three: a payment (against a due, or on its own), a refund of a payment, a new due.
+function payFormHtml(mode, x, id){
+  const t=x.customer.key.slice(0,1), P=x.payments, today=todayYmd();
+  const d=mode==="pay" && id ? P.dues.find(z=>z.id===id) : null, p=mode==="refund" ? P.pays.find(z=>z.id===id) : null;
+  if((mode==="pay" && id && !d) || (mode==="refund" && !p)) return "";
+  const chip=(g, v, l, on)=>`<button type="button" class="chip${on ? " on" : ""}" data-g="${g}" data-v="${v}" aria-pressed="${on}">${esc(l)}</button>`;
+  const what0=t==="v" ? "season" : "plan";
+  const whats=`<div class="full"><label>Για τι</label><div class="pick" data-pick="what">${Object.entries(P_WHAT).map(([k, l])=>chip("what", k, l, k===what0)).join("")}</div></div>
+    <div class="full"><label for="pf_about">Περιγραφή <span class="hint">— απαραίτητη στο «Άλλο»</span></label><input id="pf_about" maxlength="80" autocomplete="off"></div>`;
+  const amount=v=>`<div><label for="pf_amount">Ποσό (€)</label><input id="pf_amount" inputmode="decimal" autocomplete="off" placeholder="π.χ. 19,00" value="${v}"></div>`;
+  const money=v=>amount(v)+`<div><label for="pf_vat">ΦΠΑ (€) <span class="hint">— αν υπάρχει, όπως στην απόδειξη</span></label><input id="pf_vat" inputmode="decimal" autocomplete="off"></div>
+    <div><label for="pf_date">Ημερομηνία</label><input id="pf_date" type="date" max="${today}" value="${today}"></div>
+    <div><label for="pf_receipt">${mode==="refund" ? "Αρ. πιστωτικού" : "Αρ. απόδειξης"} <span class="hint">— από τον Λογιστή, μπαίνει και αργότερα</span></label><input id="pf_receipt" maxlength="40" autocomplete="off"></div>
+    <div class="full"><label>Τρόπος</label><div class="pick" data-pick="method">${Object.entries(P_METHOD).map(([k, l])=>chip("method", k, l, k===(p ? p.method : "bank"))).join("")}</div></div>`;
+  const note=`<div class="full"><label for="pf_note">Σημείωση <span class="hint">— προαιρετική</span></label><input id="pf_note" maxlength="300" autocomplete="off"></div>`;
+  let title, body;
+  if(mode==="refund"){
+    title="Επιστροφή χρημάτων";
+    body=`<div class="muted">Από την πληρωμή ${esc(eur(p.amount))} της ${esc(gYmd(p.date))} (${esc(pWhatText(p))})${p.refunded ? `· έχουν ήδη επιστραφεί ${esc(eur(p.refunded))}` : ""}.</div>
+      <div class="grid">${money(eurInput(p.amount-p.refunded))}<div class="full"><label for="pf_reason">Λόγος</label><input id="pf_reason" maxlength="200" autocomplete="off" placeholder="π.χ. ακυρώθηκε η εκδήλωση"></div>${note}</div>`;
+  } else if(mode==="due"){
+    title="Νέα αναμενόμενη πληρωμή";
+    body=`<div class="grid">${whats}${amount("")}<div><label for="pf_due">Ως πότε</label><input id="pf_due" type="date" value="${esc(addDaysYmd(today, 7))}"></div>
+      <div class="full"><label class="chk"><input type="checkbox" id="pf_plusvat"${what0==="season" ? " checked" : ""}> <span>Η τιμή είναι <b>χωρίς</b> ΦΠΑ («+ ΦΠΑ», όπως η σεζόν)</span></label></div>
+      <div id="pf_seasonrow" class="full"${what0==="season" ? "" : ` style="display:none"`}><label>Σεζόν <span class="hint">— αν είναι σεζόν, από πότε ως πότε</span></label>
+        <div class="steprow"><input type="date" id="pf_from" aria-label="Από"><input type="date" id="pf_to" aria-label="Έως"></div></div></div>`;
+  } else {
+    title="Καταχώριση πληρωμής";
+    const pre=d && !d.plusVat ? eurInput(d.left) : "";
+    body=(d ? `<div class="muted">Για: <b>${esc(pWhatText(d))}</b> — ${d.plusVat ? `η τιμή είναι ${esc(eur(d.amount))} + ΦΠΑ: γράψε ό,τι μπήκε στον λογαριασμό, και τον ΦΠΑ χωριστά.` : `μένουν ${esc(eur(d.left))}.`}</div>` : "")
+      +`<div class="grid">${d ? "" : whats}${money(pre)}${note}</div>`;
+  }
+  return `<div class="cbox payform"><div class="row between"><b>${title}</b><button class="btn sm ghost" data-k="pf_close" title="Κλείσιμο">✕</button></div>${body}
+    <div class="row fw" style="margin-top:10px"><button class="btn sm primary" data-k="pf_save">${mode==="due" ? "Προσθήκη" : "Καταχώριση"}</button><button class="btn sm ghost" data-k="pf_close">Άκυρο</button></div></div>`;
+}
+const addDaysYmd=(ymd, n)=>new Date(Date.parse(ymd+"T00:00:00Z")+n*86400000).toISOString().slice(0,10);
+function payErr(res){
+  const e=res.d && res.d.error;
+  if(e==="more_than_paid") return "Μπορούν να επιστραφούν ως "+eur(res.d.left);
+  if(res.status===404 && (!e || e==="not found")) return "Δεν βρέθηκε — πάτα «Ανανέωση»";
+  return P_ERR[e]||"Δεν έγινε";
+}
+// Sends one change; the answer is the customer's whole «Πληρωμές», so the card, the sheet and the screen are redrawn.
+async function paySend(b, key, url, method, body, ok){
+  b.disabled=true;
+  let res=await req(url, { method, body:JSON.stringify(body) });
+  if(res.status===409 && res.d && res.d.error==="already_paid"){   // the same season or plan twice: only if he says so
+    if(!confirm(`Αυτό έχει ήδη εξοφληθεί (${eur(res.d.paid)}).\n\nΑν μπήκαν πράγματι χρήματα δεύτερη φορά, πάτα OK για να καταχωριστούν κι αυτά.`)){ b.disabled=false; return; }
+    res=await req(url, { method, body:JSON.stringify({ ...body, force:true }) });
+  }
+  b.disabled=false;
+  if(!res.ok){ failToast(res, payErr(res)); return; }
+  toast(ok); refreshCustomers(); refreshPayments(); await refreshCard(key);
+}
+async function onPayClick(root, key, x, b, k){
+  const q=s=>root.querySelector(s), box=q("#pp_box"), P=x.payments||{}, id=b.dataset.id||"";
+  const path="/admin/customers/"+encodeURIComponent(key), pay=(P.pays||[]).find(p=>p.id===id);
+  const open=(mode, id)=>{ if(!box) return; box.dataset.mode=mode; box.dataset.id=id||""; box.innerHTML=payFormHtml(mode, x, id);
+    box.scrollIntoView({ behavior:"smooth", block:"nearest" }); const a=q("#pf_amount"); if(a && !a.value) a.focus(); };
+  if(k==="p_new") return open("pay", "");
+  if(k==="p_paydue") return open("pay", id);
+  if(k==="p_due") return open("due", "");
+  if(k==="p_refund") return open("refund", id);
+  if(k==="pf_close"){ if(box) box.innerHTML=""; return; }
+  if(k==="pf_save") return payFormSave(root, key, b);
+  if(k==="p_waive"){
+    const r=prompt("Γιατί δεν οφείλεται; (π.χ. δώρο, ή παλιός πελάτης που πλήρωσε αλλιώς)"); if(r==null) return;
+    if(!r.trim()){ toast("Χρειάζεται ένας λόγος"); return; }
+    return paySend(b, key, path+"/dues/"+encodeURIComponent(id)+"/waive", "POST", { reason:r.trim() }, "Σημειώθηκε: δεν οφείλεται");
+  }
+  if(k==="p_unwaive") return paySend(b, key, path+"/dues/"+encodeURIComponent(id)+"/unwaive", "POST", {}, "Αναιρέθηκε — αναμένεται ξανά");
+  if(!pay) return;
+  if(k==="p_rcpt"){
+    const r=prompt(pay.refundOf ? "Αριθμός πιστωτικού από τον Λογιστή:" : "Αριθμός απόδειξης από τον Λογιστή:", pay.receipt||""); if(r==null) return;
+    return paySend(b, key, path+"/pay/"+encodeURIComponent(id), "PATCH", { receipt:r.trim() }, r.trim() ? "Γράφτηκε ο αριθμός" : "Ο αριθμός σβήστηκε");
+  }
+  if(k==="p_note"){
+    const r=prompt("Σημείωση για αυτή την κίνηση:", pay.note||""); if(r==null) return;
+    return paySend(b, key, path+"/pay/"+encodeURIComponent(id), "PATCH", { note:r.trim() }, "Αποθηκεύτηκε");
+  }
+  if(k==="p_cancel"){
+    const r=prompt(`Ακύρωση ${pay.refundOf ? "της επιστροφής" : "της πληρωμής"} ${eur(pay.amount)} της ${gYmd(pay.date)}.\n\nΔεν σβήνεται: μένει διαγραμμένη, με τον λόγο, και δεν μετράει πουθενά. Γιατί ακυρώνεται; (π.χ. λάθος ποσό — θα την περάσω ξανά)`);
+    if(r==null) return;
+    if(!r.trim()){ toast("Χρειάζεται ένας λόγος"); return; }
+    return paySend(b, key, path+"/pay/"+encodeURIComponent(id)+"/cancel", "POST", { reason:r.trim() }, "Ακυρώθηκε");
+  }
+}
+function payChip(root, ch){
+  const g=ch.dataset.g, box=ch.closest("#pp_box");
+  box.querySelectorAll(`.pick .chip[data-g="${g}"]`).forEach(c=>{ const on=c===ch; c.classList.toggle("on", on); c.setAttribute("aria-pressed", on); });
+  if(g==="what" && box.dataset.mode==="due"){   // a season is «+ ΦΠΑ» and has dates; a couple's plan includes ΦΠΑ
+    const v=ch.dataset.v, row=box.querySelector("#pf_seasonrow"), vat=box.querySelector("#pf_plusvat");
+    if(row) row.style.display=v==="season" ? "" : "none";
+    if(vat && v!=="other") vat.checked=v==="season";
+  }
+}
+function payFormSave(root, key, b){
+  const q=s=>root.querySelector(s), box=q("#pp_box"), mode=box.dataset.mode, id=box.dataset.id||"";
+  const pick=g=>{ const c=box.querySelector(`.pick[data-pick="${g}"] .chip.on`); return c ? c.dataset.v : null; };
+  const path="/admin/customers/"+encodeURIComponent(key), aEl=q("#pf_amount"), amount=parseEur(aEl.value);
+  if(!amount){ invalid(aEl, "Γράψε το ποσό, π.χ. 19,00"); return; }
+  const about=q("#pf_about") ? q("#pf_about").value.trim() : "", what=pick("what");
+  if(q("#pf_about") && what==="other" && !about){ invalid(q("#pf_about"), "Γράψε τι είναι"); return; }
+  if(mode==="due"){
+    const dEl=q("#pf_due"), from=q("#pf_from").value, to=q("#pf_to").value;
+    if(!dEl.value){ invalid(dEl, "Γράψε ως πότε"); return; }
+    if(what==="season" && (from || to) && !(from && to && from<=to)){ invalid(q(from ? "#pf_to" : "#pf_from"), P_ERR.bad_season); return; }
+    return paySend(b, key, path+"/dues", "POST", { what, about, amount, plusVat:q("#pf_plusvat").checked, due:dEl.value, ...(what==="season" && from ? { from, to } : {}) },
+      "Προστέθηκε στις αναμενόμενες");
+  }
+  const vEl=q("#pf_vat"), vRaw=vEl.value.trim(), vat=vRaw ? parseEur(vRaw) : null, dEl=q("#pf_date");
+  if(vRaw && vat==null){ invalid(vEl, "Ο ΦΠΑ δεν είναι σωστός, π.χ. 30,96"); return; }
+  if(vat!=null && vat>amount){ invalid(vEl, "Ο ΦΠΑ δεν μπορεί να είναι πάνω από το ποσό"); return; }
+  if(!dEl.value || dEl.value>todayYmd()){ invalid(dEl, "Η ημερομηνία δεν μπορεί να είναι μετά από σήμερα"); return; }
+  const common={ amount, vat, date:dEl.value, method:pick("method"), receipt:q("#pf_receipt").value.trim(), note:q("#pf_note").value.trim() };
+  if(mode==="refund"){
+    const rEl=q("#pf_reason"); if(!rEl.value.trim()){ invalid(rEl, "Γράψε γιατί επιστρέφονται"); return; }
+    return paySend(b, key, path+"/pay/"+encodeURIComponent(id)+"/refund", "POST", { ...common, reason:rEl.value.trim() }, "Η επιστροφή καταχωρίστηκε");
+  }
+  return paySend(b, key, path+"/pay", "POST", id ? { ...common, dueId:id } : { ...common, what, about }, "Η πληρωμή καταχωρίστηκε");
+}
+
+// ---- the «Πληρωμές» screen: every payment, the totals, the €10,000 question, and the two files ----
+let payData=null;
+async function refreshPayments(){
+  const res=await req("/admin/payments");
+  const box=document.getElementById("payTable"); if(!box) return;
+  if(!res.ok || !res.d || !Array.isArray(res.d.payments)){
+    if(res.status===403 && authFail(res.d)) return;
+    if(!payData) box.innerHTML=`<div class="empty">Οι πληρωμές δεν φόρτωσαν — πάτα «Ανανέωση».</div>`;
+    else toast(res.status===0 ? "Δεν υπάρχει σύνδεση — δοκίμασε ξανά" : "Η ανανέωση δεν έγινε");
+    return;
+  }
+  payData=res.d; renderPayments();
+}
+const pSeasonOf=p=>p.what==="season" ? (seasonWord(p.from, p.to)||p.about||"—") : null;   // the server's season bucket
+const pVal=id=>{ const el=document.getElementById(id); return el ? el.value : ""; };
+function pVisible(){
+  if(!payData) return [];
+  const m=pVal("pfMonth"), se=pVal("pfSeason"), me=pVal("pfMethod"), nr=!!(document.getElementById("pfNoRcpt")||{}).checked;
+  return payData.payments.filter(p=>(!m || p.date.startsWith(m)) && (!se || pSeasonOf(p)===se) && (!me || p.method===me) && (!nr || (!p.receipt && !p.cancelled)));
+}
+function pTotalsTable(head, rows, foot){
+  const tr=(l, b, tag)=>`<tr><${tag}>${esc(l)}</${tag}><${tag} class="num">${esc(eurNum(b.in))}</${tag}><${tag} class="num">${b.out ? "−"+esc(eurNum(b.out)) : "—"}</${tag}><${tag} class="num">${esc(eurNum(b.net))}</${tag}><${tag} class="num">${esc(eurNum(b.vat))}</${tag}></tr>`;
+  return `<div class="tablewrap"><table><thead><tr><th>${esc(head)}</th><th class="num">Μπήκαν</th><th class="num">Επιστροφές</th><th class="num">Καθαρά €</th><th class="num">ΦΠΑ €</th></tr></thead>
+    <tbody>${rows.map(([l, b])=>tr(l, b, "td")).join("")}${foot ? tr(foot[0], foot[1], "th") : ""}</tbody></table></div>`;
+}
+function renderPayments(){
+  const D=payData; if(!D || !document.getElementById("payTable")) return;
+  const y=D.ytd, LIMIT=1000000, pct=Math.max(0, Math.min(100, y.net/LIMIT*100));
+  document.getElementById("payYtd").innerHTML=`<div class="ytd"><span>Φέτος (${esc(y.year)}) καθαρά</span><b>${esc(eur(y.net))}</b>
+      <span class="muted">μπήκαν ${esc(eur(y.in))} · επιστροφές ${esc(eur(y.out))} · ΦΠΑ, όπως τον έγραψες, ${esc(eur(y.vat))} · ${esc(gN(y.count, "κίνηση", "κινήσεις"))}</span></div>
+    <div class="meter${pct>=100 ? " over" : pct>=80 ? " near" : ""}" role="img" aria-label="${Math.round(pct)} % των 10.000 €"><i style="width:${pct.toFixed(1)}%"></i></div>
+    <div class="muted">${Math.round(pct)} % των 10.000 € (το όριο του ΦΠΑ). Τι ακριβώς μετράει στο όριο θα το πει ο λογιστής.</div>`;
+  const fill=(id, opts)=>{ const el=document.getElementById(id), v=el.value;
+    el.innerHTML=opts.map(([k, l])=>`<option value="${esc(k)}">${esc(l)}</option>`).join(""); el.value=opts.some(o=>o[0]===v) ? v : ""; };
+  const yrs=Object.keys(D.totals.years).sort().reverse(), mons=Object.keys(D.totals.months).sort().reverse();
+  fill("pfMonth", [["", "Όλοι οι μήνες"], ...yrs.flatMap(yy=>[[yy, "Όλο το "+yy], ...mons.filter(m=>m.startsWith(yy)).map(m=>[m, "· "+gMonth(m)])])]);
+  fill("pfSeason", [["", "Όλες οι σεζόν"], ...Object.keys(D.totals.seasons).sort().reverse().map(s=>[s, "Σεζόν "+s])]);
+  fill("pfMethod", [["", "Όλοι οι τρόποι"], ...Object.entries(P_METHOD_LONG)]);
+  const rows=pVisible(), live=rows.filter(p=>!p.cancelled), filtered=rows.length!==D.payments.length;
+  document.getElementById("payCount").textContent=`(${D.payments.length})`;
+  const sIn=live.filter(p=>!p.refundOf).reduce((s, p)=>s+p.amount, 0), sOut=live.filter(p=>p.refundOf).reduce((s, p)=>s+p.amount, 0);
+  document.getElementById("payHint").textContent=filtered && live.length ? `Σε όσες φαίνονται: μπήκαν ${eur(sIn)} · επιστροφές ${eur(sOut)} · καθαρά ${eur(sIn-sOut)}` : "";
+  document.getElementById("payTable").innerHTML=rows.length ? `<table class="cards"><thead><tr><th>Ημερομηνία</th><th>Πελάτης</th><th>Για τι</th><th>Τρόπος</th><th class="num">Ποσό</th><th class="num">ΦΠΑ</th><th>Απόδειξη</th></tr></thead><tbody>${rows.map(p=>{
+      const refund=!!p.refundOf, off=!!p.cancelled;
+      return `<tr${off ? ` class="off"` : ""}${p.gone ? "" : ` data-key="${esc(p.key)}" tabindex="0"`}>
+        <td class="nw">${esc(gYmd(p.date))}</td>
+        <td data-l="Πελάτης"><div><b>${esc(p.name||"—")}</b> <span class="muted">${esc(C_TYPE[p.type]||"")}${p.gone ? " · ξεχάστηκε" : ""}</span></div></td>
+        <td data-l="Για τι"><div>${refund ? "Επιστροφή · " : ""}${esc(pWhatText(p))}${off ? `<div class="muted" style="color:var(--danger)">ακυρώθηκε — ${esc(p.cancelled.reason)}</div>` : refund ? `<div class="muted">${esc(p.reason)}</div>` : ""}</div></td>
+        <td data-l="Τρόπος">${esc(P_METHOD[p.method]||p.method)}</td>
+        <td data-l="Ποσό" class="num"><span class="amt${refund && !off ? " neg" : ""}">${esc(eur(refund ? -p.amount : p.amount))}</span></td>
+        <td data-l="ΦΠΑ" class="num${p.vat==null ? " ce" : ""}">${p.vat==null ? `<span class="muted">—</span>` : esc(eur(refund ? -p.vat : p.vat))}</td>
+        <td data-l="Απόδειξη"${!p.receipt && off ? ` class="ce"` : ""}>${p.receipt ? esc(p.receipt) : off ? `<span class="muted">—</span>` : `<span class="badge warn">χωρίς</span>`}</td></tr>`; }).join("")}</tbody></table>`
+    : `<div class="empty">${D.payments.length ? "Καμία πληρωμή με αυτά τα φίλτρα." : "Καμία πληρωμή ακόμη. Γράφονται από την καρτέλα του πελάτη, στις «Πληρωμές» της."}</div>`;
+  const fy=(pVal("pfMonth")||y.year).slice(0,4), T=D.totals;
+  const mrows=Object.keys(T.months).filter(m=>m.startsWith(fy)).sort().map(m=>[gMonth(m), T.months[m]]);
+  const srows=Object.keys(T.seasons).sort().reverse().map(s=>[s, T.seasons[s]]);
+  document.getElementById("payTotals").innerHTML=(mrows.length || srows.length) ? `<div class="ptotals">
+      <div><div class="ptitle">Ανά μήνα, ${esc(fy)}</div>${mrows.length ? pTotalsTable("Μήνας", mrows, T.years[fy] ? ["Σύνολο "+fy, T.years[fy]] : null) : `<div class="muted">Τίποτα το ${esc(fy)}.</div>`}</div>
+      <div><div class="ptitle">Ανά σεζόν</div>${srows.length ? pTotalsTable("Σεζόν", srows, null) : `<div class="muted">Καμία πληρωμή σεζόν ακόμη.</div>`}</div></div>
+    <div class="muted" style="margin-top:6px">Οι ακυρωμένες δεν μετράνε πουθενά· μια επιστροφή μετράει στον μήνα που έγινε.</div>` : "";
+}
+function wirePayments(){
+  if(!document.getElementById("paySection")) return;
+  ["pfMonth", "pfSeason", "pfMethod", "pfNoRcpt"].forEach(id=>document.getElementById(id).addEventListener("change", ()=>renderPayments()));
+  const t=document.getElementById("payTable");
+  t.addEventListener("click", e=>{ const tr=e.target.closest("tr[data-key]"); if(tr) openCustomer(tr.dataset.key); });
+  t.addEventListener("keydown", e=>{ if(e.key!=="Enter") return; const tr=e.target.closest("tr[data-key]"); if(tr) openCustomer(tr.dataset.key); });
+  document.getElementById("payRefresh").onclick=async e=>{ const b=e.currentTarget; b.disabled=true; await refreshPayments(); b.disabled=false; };
+  document.getElementById("payCsv").onclick=exportPaymentsCsv;
+  document.getElementById("payLog").onclick=exportLogistis;
+}
+const pCust=key=>((custData && custData.customers)||[]).find(c=>c.key===key)||{};   // the ΑΦΜ and email the sheet already has
+const dmy=ymd=>ymd.slice(8,10)+"/"+ymd.slice(5,7)+"/"+ymd.slice(0,4);
+function pDownload(name, lines){
+  const url=URL.createObjectURL(new Blob(["﻿"+lines.join("\r\n")+"\r\n"], { type:"text/csv;charset=utf-8" })), a=document.createElement("a");
+  a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url), 60000);
+}
+// «Excel»: what is on screen for the accountant, the cancelled ones left out; refunds as negative amounts, so a sum is right.
+function exportPaymentsCsv(){
+  const rows=pVisible().filter(p=>!p.cancelled);
+  if(!rows.length){ toast("Δεν υπάρχει τίποτα για να βγει σε αρχείο"); return; }
+  const head=["Ημερομηνία","Πελάτης","Τύπος","ΑΦΜ","Κίνηση","Για τι","Σεζόν","Τρόπος","Ποσό (€)","ΦΠΑ (€)","Αρ. απόδειξης","Λόγος επιστροφής","Σημείωση"];
+  const lines=[head.map(cCsvCell).join(";")].concat(rows.map(p=>{ const s=p.refundOf ? -1 : 1, c=pCust(p.key);
+    return [dmy(p.date), cCsvCell(p.name), cCsvCell(C_TYPE[p.type]||p.type||""), cCsvText(c.afm), p.refundOf ? "επιστροφή" : "πληρωμή", cCsvCell(pWhatText(p)),
+      cCsvCell(pSeasonOf(p)||""), cCsvCell(P_METHOD_LONG[p.method]||p.method), cCsvNum(s*p.amount), p.vat==null ? "" : cCsvNum(s*p.vat),
+      cCsvCell(p.receipt), cCsvCell(p.reason), cCsvCell(p.note)].join(";"); }));
+  const name="takeaseat-pliromes-"+todayYmd()+".csv"; pDownload(name, lines);
+  toast("Κατέβηκε: "+name);
+}
+// «Για τον Λογιστή»: the payments on screen that still have no receipt, as Λογιστής imports income (Έσοδα → εισαγωγή CSV):
+// one row each, RID = the payment's own id (Λογιστής skips a RID it already has, so the same file twice adds nothing).
+// Refunds stay out: there they become a credit note on the receipt they correct. A "|" would split Λογιστής's fields.
+function exportLogistis(){
+  const vis=pVisible().filter(p=>!p.cancelled && !p.receipt), rows=vis.filter(p=>!p.refundOf), refunds=vis.length-rows.length;
+  if(!rows.length){ toast(refunds ? "Μόνο επιστροφές χωρίς πιστωτικό εδώ — αυτές γίνονται πιστωτικό μέσα στον Λογιστή" : "Καμία πληρωμή χωρίς απόδειξη εδώ"); return; }
+  const lg=v=>cCsvCell(String(v==null ? "" : v).replace(/[|\r\n\t]/g, " ").trim());
+  const P_KIND_GEN={ wedding:"γάμο", baptism:"βάπτιση", party:"γιορτή" };   // the line printed on the receipt itself
+  const desc=p=>"TakeaSeat — "+(p.what==="season" ? "σεζόν"+(seasonWord(p.from, p.to) ? " "+seasonWord(p.from, p.to) : "")
+    : p.what==="plan" ? "σχέδιο θέσεων"+(p.kind ? " για "+(P_KIND_GEN[p.kind]||p.kind) : "") : p.what==="extra" ? "επιπλέον σχέδιο θέσεων" : (p.about||"υπηρεσία"));
+  const head=["RID","DATE","AMOUNT","NAME","CUSTOMER_AFM","EMAIL","SERVICE","DESCRIPTION","PAYMENT","NOTES"];
+  const lines=[head.join(";")].concat(rows.map(p=>{ const c=pCust(p.key);
+    return ["TAS-"+p.id, p.date, cCsvNum(p.amount), lg(p.name), String(c.afm||"").replace(/\D/g, ""), lg(c.email), "TakeaSeat", lg(desc(p)),
+      lg(P_METHOD_LONG[p.method]||p.method), lg(p.note)].join(";"); }));
+  const name="takeaseat-gia-logisti-"+todayYmd()+".csv"; pDownload(name, lines);
+  toast(`Κατέβηκε: ${name} — ${gN(rows.length, "πληρωμή", "πληρωμές")}`+(refunds ? `. ${refunds===1 ? "Η 1 επιστροφή δεν μπαίνει" : `Οι ${refunds} επιστροφές δεν μπαίνουν`}: στον Λογιστή γίνεται πιστωτικό.` : ""));
 }
 
 // ---- phase 4: every contact lands in the sheet (OPERATIONS-PLAN.md §4) ----
@@ -2514,9 +2886,10 @@ const cStamp=t=>{ const d=new Date(t), p=n=>String(n).padStart(2,"0"); return `$
 function exportCustomersCsv(){
   const rows=cVisible();
   if(!rows.length){ toast("Δεν υπάρχει τίποτα για να βγει σε αρχείο"); return; }
-  const head=["Πελάτης","Τύπος","Στάδιο","Επόμενη εκδήλωση","Με θέση %","Επόμενες εκδηλώσεις","Όλες οι εκδηλώσεις","Λήξη","Τι λήγει","Τελευταία κίνηση","Email","Τηλέφωνο","ΑΦΜ","Θέλουν εμένα"];
+  const head=["Πελάτης","Τύπος","Στάδιο","Πληρωμή","Αναμένεται (€)","Επόμενη εκδήλωση","Με θέση %","Επόμενες εκδηλώσεις","Όλες οι εκδηλώσεις","Λήξη","Τι λήγει","Τελευταία κίνηση","Email","Τηλέφωνο","ΑΦΜ","Θέλουν εμένα"];
   const lines=[head.map(cCsvCell).join(";")].concat(rows.map(c=>[
-    cCsvCell(c.name), cCsvCell(C_TYPE[c.type]||c.type), cCsvCell(C_STAGE[c.stage]||c.stage), cCsvCell(c.next||""), cCsvCell(c.nextPct==null ? "" : c.nextPct),
+    cCsvCell(c.name), cCsvCell(C_TYPE[c.type]||c.type), cCsvCell(C_STAGE[c.stage]||c.stage),
+    cCsvCell(c.pay && c.pay.state ? P_STATE[c.pay.state] : ""), c.pay && c.pay.owed ? cCsvNum(c.pay.owed) : "", cCsvCell(c.next||""), cCsvCell(c.nextPct==null ? "" : c.nextPct),
     cCsvCell(c.upcoming), cCsvCell(c.total), cCsvCell(c.until||""), cCsvCell(c.until ? C_UNTIL[c.untilKind]||"" : ""), cCsvCell(c.last ? cStamp(c.last) : ""),
     cCsvCell(c.email), cCsvText(c.phone), cCsvText(c.afm), cCsvCell((c.flags||[]).map(f=>(C_FLAG[f]||[])[0]||f).join(", ")),
   ].join(";")));

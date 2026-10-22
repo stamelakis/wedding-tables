@@ -2045,12 +2045,16 @@ const payText = (x, max) => typeof x === "string" ? x.replace(/[\u0000-\u001f\u0
 // What a payment counts towards its due: the whole amount, or without the VAT he typed when the price is «+ ΦΠΑ».
 const payNet = (p, d) => p.amount - ((d && d.plusVat) ? (p.vat || 0) : 0);
 const refundsOf = (pays, id) => pays.filter(x => x.refundOf === id && !x.cancelled);
+// Money given back closes a due ("refunded"), it never reopens it: nobody refunds a discount or a cancelled event and then
+// waits to be paid again — reopened, it would turn into «καθυστερεί πληρωμή» a week later.
 function dueState(d, pays, today) {
-  let paid = 0;
-  for (const p of pays) if (p.dueId === d.id && !p.refundOf && !p.cancelled)
-    paid += payNet(p, d) - refundsOf(pays, p.id).reduce((s, x) => s + payNet(x, d), 0);
+  let paid = 0, back = false;
+  for (const p of pays) if (p.dueId === d.id && !p.refundOf && !p.cancelled) {
+    const r = refundsOf(pays, p.id); if (r.length) back = true;
+    paid += payNet(p, d) - r.reduce((s, x) => s + payNet(x, d), 0);
+  }
   const left = Math.max(0, d.amount - paid);
-  const state = d.waived ? "waived" : left === 0 ? "paid" : (!d.prospect && today > d.due) ? "late" : "due";
+  const state = d.waived ? "waived" : left === 0 ? "paid" : back ? "refunded" : (!d.prospect && today > d.due) ? "late" : "due";
   return { paid, left, state };
 }
 // The two dues nobody stored: a renewal marked «invoice due» before this ledger existed, and the season a free year is

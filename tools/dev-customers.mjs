@@ -125,8 +125,8 @@ await call('PUT', '/plans/' + k1.id, { plan: plan(g3, Array.from({ length: 3 }, 
 await call('POST', '/plans/' + k1.id + '/support', { hours: 24, message: 'Βοήθεια με το Excel' }, { 'X-Edit-Key': k1.editKey });   // ⚑ support
 const c2 = await couple({ name: 'Ελένη & Γιώργος', email: 'eleni.g@example.gr', contact: '6909 876 543', weddingDate: day(80) });
 patch('couple:' + c2, o => { o.claimAt = ago(6); o.createdAt = ago(6); o.paidAt = ago(6); });                 // ⚑ claim link unused
-await couple({ name: 'Βάπτιση Αλεξάνδρας', kind: 'baptism', email: 'alexandra.v@example.gr', contact: '6955 101 202', weddingDate: day(35) });
-await couple({ name: '40ά γενέθλια Κώστα', kind: 'party', contact: '+44 7700 900456', weddingDate: day(12), startNow: true });
+const c3 = await couple({ name: 'Βάπτιση Αλεξάνδρας', kind: 'baptism', email: 'alexandra.v@example.gr', contact: '6955 101 202', weddingDate: day(35) });
+const c4 = await couple({ name: '40ά γενέθλια Κώστα', kind: 'party', contact: '+44 7700 900456', weddingDate: day(12), startNow: true });
 const c5 = await couple({ name: 'Σοφία & Άρης', email: 'sofia.aris@example.gr', weddingDate: day(10), startNow: true });
 patch('plan:' + raw('couple:' + c5).planId, o => { o.weddingDate = day(-40); });                               // archive: wedding done
 
@@ -139,7 +139,24 @@ await call('PUT', C('v:' + v4) + '/notes', { notes: 'Υπεύθυνη: κα Δή
 await call('PUT', C('c:' + c2) + '/next', { text: 'Να δω αν άνοιξαν τον σύνδεσμο', due: day(3) }, OWN);
 await call('POST', C('c:' + c2) + '/timeline', { kind: 'viber', text: 'Τους έστειλα ξανά τον σύνδεσμο' }, OWN);
 const c6 = await couple({ name: 'Δέσποινα & Μάριος', email: 'despoina.m@example.gr', weddingDate: day(60) });
+await call('POST', C('c:' + c6) + '/pay', { dueId: raw('ledger:c:' + c6).dues[0].id, amount: 1900, date: day(-1), method: 'iris' }, OWN);   // paid, then forgotten: the books keep it
 await call('POST', C('c:' + c6) + '/forget', {}, OWN);                                                         // books: name and purchase date only
+
+// ---- phase 5: payments. Every customer made above got its due by itself (a week to pay); here some pay, one is late. ----
+const P = k => C(k) + '/pay', due1 = k => raw('ledger:' + k).dues[0].id;
+const p1 = await call('POST', P('v:' + v1), { dueId: due1('v:' + v1), amount: 15996, vat: 3096, date: day(-2), method: 'bank' }, OWN);   // season paid, ΦΠΑ typed
+await call('PATCH', P('v:' + v1) + '/' + p1.id, { receipt: 'Α-0012' }, OWN);                                      // …and its receipt number came later
+patch('ledger:v:' + v2, o => { o.dues[0].due = day(-3); });                                                      // ⚑ payment late
+await call('POST', P('v:' + v3), { what: 'other', about: 'Εκπαίδευση προσωπικού', amount: 5000, date: day(-40), method: 'card' }, OWN);   // something no rule foresaw
+for (const v of [v5, v6, v7]) await call('POST', C('v:' + v) + '/dues/' + due1('v:' + v) + '/waive', { reason: 'Παλιός πελάτης — πληρώθηκε πριν από τις «Πληρωμές»' }, OWN);
+await call('POST', P('c:' + c1), { dueId: due1('c:' + c1), amount: 1900, date: day(-1), method: 'iris', receipt: 'Α-0013' }, OWN);
+const p2 = await call('POST', P('c:' + c2), { dueId: due1('c:' + c2), amount: 1900, date: day(-5), method: 'bank' }, OWN);
+await call('POST', P('c:' + c2) + '/' + p2.id + '/refund', { amount: 500, date: day(-4), method: 'bank', reason: 'Έκπτωση που είχαμε συμφωνήσει' }, OWN);   // partly refunded
+await call('POST', P('c:' + c3), { dueId: due1('c:' + c3), amount: 1900, date: day(-3), method: 'cash' }, OWN);
+const p3 = await call('POST', P('c:' + c3), { dueId: due1('c:' + c3), amount: 1900, date: day(-3), method: 'cash', force: true }, OWN);   // entered twice by mistake…
+await call('POST', P('c:' + c3) + '/' + p3.id + '/cancel', { reason: 'Καταχωρίστηκε δύο φορές' }, OWN);              // …and cancelled
+await call('POST', C('c:' + c4) + '/dues/' + due1('c:' + c4) + '/waive', { reason: 'Δώρο σε φίλο' }, OWN);
+await call('POST', P('c:' + c5), { dueId: due1('c:' + c5), amount: 1900, date: day(-45), method: 'card' }, OWN);   // no receipt yet
 
 // ---- phase 4: contacts who have not bought (yet), one per stage ----
 const lead = async body => (await call('POST', '/admin/leads', body, OWN)).key;
