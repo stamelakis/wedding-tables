@@ -2,37 +2,29 @@
 
 Updated: 2026-10-22
 
-**Status:** Phase 4 part B (the site's contact form) is built and committed (`5262ee2`), **not deployed**: it waits
-on Andreas reading its Greek. Live runs `373419e` (deployed 2026-10-21, tag `deploy-2026-10-21-7`), healthy. Operations phases 1–3
-and phase 4 part A (contacts in admin.html) are live. Andreas read phase 4's Greek on 2026-10-21; his four fixes
-(A–D, `373419e`) went live with it. Smoke test passed (home, privacy, admin sign-in, lab, venue; new strings served).
-Not checked live: the contacts screen itself, which needs the owner key (checked on the local copy at 375 px).
+**Status:** Live runs `bd33f4a` (deployed 2026-10-22, tag `deploy-2026-10-22-1`), healthy. Operations phases 1–4
+are live, phase 4 part B (the site's contact form, `epikoinonia.html`) included, after Andreas read its Greek.
+Smoke test passed: home, the form (el, en, venue), privacy, a guide, admin, lab and sitemap load; the home page has
+no mailto subject links left; the form page has no console errors; `/contact` answers a bad form with `bad_kind` and
+refuses another site (403). Not checked live: a real form end to end (needs a real address; see Waiting on Andreas).
 
 ## In progress / unfinished
 
-- **Phase 4 part B is built, not deployed** (`5262ee2`): `epikoinonia.html` (Greek, English switch) replaces the
-  mailto links on index.html and the three guides and writes a «Νέα επαφή» through `POST /contact`. 1241 checks pass;
-  a test form sent locally landed in «Πελάτες» (card, «Φόρμα σελίδας», message lines, opt-out line), checked at
-  375 px in Greek and English; `/security-review` found nothing. Not seen: the two mails themselves (mail is off
-  locally; the tests check their text). Next: Andreas reads the Greek, then deploy, then one real form on the live site.
 - Party plans created before 2026-10-17 keep the label «Τραπέζι της γιορτής» until the customer renames it
   (deliberately not rewritten on load). Converting such a plan to another kind still works (LEGACY_HEADS).
 
 ## Next
 
-1. **Deploy phase 4 part B** once Andreas has read its Greek (Waiting on Andreas), then send one form from the live
-   site to his own address and confirm the «Νέα επαφή», the "we got it" mail and the mail to him (Reply-To works).
-2. **Phase 5: payments** (`OPERATIONS-PLAN.md` §4); phase 6 follows; phase 7 (online payment) waits on the
+1. **Phase 5: payments** (`OPERATIONS-PLAN.md` §4); phase 6 follows; phase 7 (online payment) waits on the
    company, accountant and lawyer. The page's remaining English sections move to Greek as each is touched.
-3. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today (checked
+2. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today (checked
    2026-10-18): every plan on the server comes from a purchase, a venue licence or free year, or a paying couple.
 
 ## Waiting on Andreas
 
-- **Read the contact form's Greek** before it goes live: the page http://localhost:8080/epikoinonia.html (or the
-  file `epikoinonia.html`; try `?kind=venue` too), the two mails in `wedding-sync-worker.js` (`contactAck`, and
-  `ownerContact`, the one you receive), and the new lines in privacy.html (Ενδιαφερόμενοι, Email που στέλνουμε).
-  Also say if the opt-out tick's wording is how you want to say it.
+- **Send one real form from the live site** with your own email: https://takeaseat.gr/epikoinonia.html. Check that
+  you get the "we got it" mail, that the mail to info@ arrives and Reply answers your own address, and that the
+  contact shows in «Πελάτες» as «Νέα επαφή». Then «Σβήσε την επαφή…» on its card. Tell the session if anything is off.
 - **Send the bank details for the payment text**: δικαιούχος, IBAN and IRIS number (put them in chat; they are not
   secret, they go on every payment message). Until then the live payment reply shows «[ΣΥΜΠΛΗΡΩΣΕ…]» and warns on
   copy. Then fill `REPLY_PAY` in admin.html and deploy.
@@ -74,6 +66,8 @@ Not checked live: the contacts screen itself, which needs the owner key (checked
 
 ## History
 
+- 2026-10-22 — phase 4 part B deployed (`bd33f4a`, `deploy-2026-10-22-1`) after Andreas read its Greek (no changes);
+  pre-deploy backup `/opt/backups/takeaseat-20261022-123540.db.gz.age`; live smoke test passed.
 - 2026-10-22 — operations phase 4 part B built, not deployed (`5262ee2`): the site's contact form
   (`epikoinonia.html` → `POST /contact` → «Νέα επαφή»), "we got it" mail el/en, owner mail with Reply-To, spam limits,
   opt-out tick (decision 6), privacy updated. 1241 checks; screen check at 375 px; `/security-review` clean.
