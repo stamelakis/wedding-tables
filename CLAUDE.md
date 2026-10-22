@@ -143,6 +143,17 @@ build runs the full suite), restarts and health-checks; on failure it rolls back
   His mail app keeps the thread and the customer's answer lands in his inbox; a server mail would leave no sent copy
   and add one more route that mails strangers. Opening one writes «✉ Email» to the timeline. Rejected: the plan's
   "send by mail from the card". The payment text keeps «[ΣΥΜΠΛΗΡΩΣΕ…]» gaps (`REPLY_PAY`) until Andreas gives the details.
+- **Payments live in one `ledger:<customerKey>` row per customer, not `pay:` rows** (phase 5, 2026-10-22). «Already paid»,
+  a refund's ceiling and «no cancelling a refunded payment» must be checked in the same atomic write. A payment is never
+  deleted or re-priced (only its receipt number and note change); it is cancelled with a reason, and refunds are their own
+  entries. Rejected: separate rows plus an index (the checks could race), and an edit button for amounts.
+- **A refund closes its due («έκλεισε με επιστροφή»), it never reopens it** (2026-10-22). Nobody refunds a discount or a
+  cancelled event and then waits to be paid again; reopened, it turned into «καθυστερεί πληρωμή» a week later. On a «+ΦΠΑ»
+  due a payment counts net of the VAT Andreas typed; VAT is never computed until the accountant says so. The only warning
+  is «ήδη πληρωμένο» (409 `already_paid`, then a confirm and `force`); there is no «more than due» check.
+- **The «Για τον Λογιστή» file leaves refunds out and lists only payments with no receipt** (2026-10-22). Λογιστής issues
+  a refund as a credit note against the receipt, not as a negative import; RID is `TAS-<payment id>` so a second import
+  adds nothing. Do not add refunds as negative rows, and do not edit Λογιστής's files from here (another project).
 - **The site has one contact page, `epikoinonia.html`, not a form on each page** (phase 4 part B, 2026-10-22). Every
   «γράψτε μας» / «ζητήστε demo» link opens it with `?kind=…&q=…` preselected; venues use it too (Andreas). Rejected: a form
   pasted into index.html and the three guides (four copies of one form to keep in step).

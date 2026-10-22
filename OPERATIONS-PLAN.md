@@ -360,6 +360,35 @@ options (HANDOFF §8.6).
   the verified owner address with the message, «Γνωστός πελάτης» matches and `replyTo` the sender (no hourly cap,
   only the 50-a-day ceiling, so a real message is never dropped). `noMail` shows on the card and carries over in
   `adoptLead`; a contact's card also gets `known` (added at route level, since `knownCustomers` calls `customerCard`).
+- **Phase 5 as built.** Not `pay:<id>` + `pays:index` as planned above: one row per customer, `ledger:<customerKey>`
+  `{cust, name, type, dues[], pays[], erasedAt?}`, so «already paid», a refund's ceiling and «no cancelling a refunded
+  payment» are checked in one atomic `kvUpdate`. Customers only (`v:`, `c:`), never `l:` or `s:`. Amounts are integer
+  cents (1 … 10,000,000); `vat` is what he typed, never computed. A due `{id, what (season|plan|extra|other), about, from,
+  to, amount, plusVat, due, src, waived {reason, at}?}`; a payment `{id, amount, vat, date, method (bank|iris|card|cash|
+  other), what, about, dueId?, receipt, note, at, refundOf?, reason?, cancelled {reason, at}?}`. Dues appear by
+  themselves (`addDue`, once per season / purchase): a couple made by hand (19 €) and a venue made with a season,
+  late 7 days after creation (`DUE_NEW_DAYS`); an automatic renewal, late 30 days into the season (`DUE_RENEW_DAYS`);
+  a free year turned into a season, late at max(day after the free year, today + 7). Two are derived, not stored
+  (`derivedDues`): `inv-<seasonStart>` for an old `invoiceDue`, and `trial-<seasonEnd>` (a «prospect», never late)
+  from 60 days before a free year ends. Paying or waiving one stores it; paying or waiving the season the licence is in
+  clears `invoiceDue` (`settleInvoice`). `dueState`: partial payments add up, on a «+ΦΠΑ» due net of the VAT typed
+  (`payNet`); states paid · waived · refunded (any refund closes the due, it never reopens) · late · due. Customers
+  from before the ledger owe nothing on screen. The sheet row gets `pay {state, owed}` and the flag `pay_overdue`
+  (`withPay`). Routes under `/admin/customers/:key/` (owner key): `POST pay` (409 `already_paid` {paid} unless
+  `force:true`), `PATCH pay/:id {receipt?, note?}` (nothing else ever changes), `POST pay/:id/refund` (409
+  `more_than_paid` {left}), `POST pay/:id/cancel {reason}` (not while it has a live refund), `POST dues`,
+  `POST dues/:id/waive {reason}`, `POST dues/:id/unwaive`; each answers `{ok, id?, payments}`. `GET /admin/payments`
+  → `{today, payments [{key, name, type, gone, …}], totals {months, years, seasons}, ytd}`; cancelled entries count
+  nowhere, a refund counts in the month it was paid back. Erasure (`eraseLedger`, from `eraseVenue` / `eraseCouple`)
+  drops the dues and every note and keeps name, amounts, dates, receipts and reasons; a ledger with no payments goes
+  whole. Timeline codes `paid`, `refund`, `pay_cancel`, `due_waived`. admin.html: the card's «Πληρωμές» (`cPayHtml`,
+  `payFormHtml` pay|refund|due, `paySend`, `onPayClick`), the sheet's «Πληρωμή» column, and the «Πληρωμές» section
+  (`renderPayments`, filters month / season / method / «Μόνο χωρίς απόδειξη», totals, the year against €10,000).
+  Two files: «Excel» (every live entry, refunds negative) and «Για τον Λογιστή» (`exportLogistis`): `;`-separated,
+  `RID;DATE;AMOUNT;NAME;CUSTOMER_AFM;EMAIL;SERVICE;DESCRIPTION;PAYMENT;NOTES`, only payments with no receipt yet,
+  RID `TAS-<payment id>` (Λογιστής skips a RID it has, so a second import adds nothing), DESCRIPTION is what the
+  receipt says, `|` and line breaks stripped (Λογιστής joins fields with `|`). Refunds stay out: Λογιστής makes them
+  credit notes against the receipt. Checked against `logistis/income.py` read-only; no Λογιστής file changed.
 
 ## 8. Phase status
 
@@ -369,6 +398,6 @@ options (HANDOFF §8.6).
 | 2 Customer card + memory | live 2026-10-18 (`aed530c`, tag `deploy-2026-10-18-3`); Greek approved by Andreas; his own look on his phone still to come |
 | 3 The venue's own sheet | live 2026-10-21 (`1bcc6ae`, `cf5788d`; deployed as `23e0ad0`, tag `deploy-2026-10-21-3`) after Andreas read the Greek |
 | 4 Contacts | part A live 2026-10-21 (`373419e`, tag `deploy-2026-10-21-7`) with Andreas's Greek fixes; part B (the site's form, `epikoinonia.html`) live 2026-10-22 (`bd33f4a`, tag `deploy-2026-10-22-1`) after Andreas read the Greek |
-| 5 Payments | — |
+| 5 Payments | built 2026-10-22 (`db46296` server, `5a182f7` screens), security review passed, checked on screen at desktop and phone width; not deployed — waits on Andreas reading the Greek |
 | 6 «Σήμερα» | — |
 | 7 Online payment | not scheduled |

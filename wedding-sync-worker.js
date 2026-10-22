@@ -2132,7 +2132,8 @@ function payFields(b, today, refund) {
 // Every payment, for the «Πληρωμές» screen, with totals per month, per year and per season (cancelled ones count nowhere;
 // a refund counts against the month it was paid back in).
 async function paymentsList(env) {
-  const today = todayAthens(), out = [], months = {}, years = {}, seasons = {};
+  // No prototype: a season's typed description is a key here, and «__proto__» must stay just a word.
+  const today = todayAthens(), out = [], months = Object.create(null), years = Object.create(null), seasons = Object.create(null);
   const bump = (o, k, p, sign) => { const b = o[k] || (o[k] = { in: 0, out: 0, net: 0, vat: 0, count: 0 });
     if (sign > 0) b.in += p.amount; else b.out += p.amount; b.net += sign * p.amount; b.vat += sign * (p.vat || 0); b.count++; };
   for (const k of (await env.PLANS.list("ledger:")) || []) {

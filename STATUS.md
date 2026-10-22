@@ -8,6 +8,11 @@ Smoke test passed: home, the form (el, en, venue), privacy, a guide, admin, lab 
 no mailto subject links left; the form page has no console errors; `/contact` answers a bad form with `bad_kind` and
 refuses another site (403). Not checked live: a real form end to end (needs a real address; see Waiting on Andreas).
 
+**Phase 5 (payments) is built, not deployed** (`db46296` server, `5a182f7` screens, plus a hardening line and docs).
+1336 checks pass, totals match a worked example by hand, `/security-review` found nothing exploitable, and the card,
+sheet column and «Πληρωμές» screen were checked on the local copy at desktop and phone width. It waits on Andreas
+reading the Greek; then deploy, with a backup.
+
 ## In progress / unfinished
 
 - Party plans created before 2026-10-17 keep the label «Τραπέζι της γιορτής» until the customer renames it
@@ -15,13 +20,17 @@ refuses another site (403). Not checked live: a real form end to end (needs a re
 
 ## Next
 
-1. **Phase 5: payments** (`OPERATIONS-PLAN.md` §4); phase 6 follows; phase 7 (online payment) waits on the
-   company, accountant and lawyer. The page's remaining English sections move to Greek as each is touched.
+1. **Deploy phase 5** once Andreas has read its Greek (backup first). Then phase 6 («Σήμερα», `OPERATIONS-PLAN.md`
+   §4); phase 7 (online payment) waits on the company, accountant and lawyer. The page's remaining English sections
+   move to Greek as each is touched.
 2. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today (checked
    2026-10-18): every plan on the server comes from a purchase, a venue licence or free year, or a paying couple.
 
 ## Waiting on Andreas
 
+- **Read the Greek of phase 5** on the local copy (`node tools/dev-customers.mjs`, admin.html, owner key
+  `dev-owner-key`): a card's «Πληρωμές» (try «+ Πληρωμή», «Επιστροφή…», «Δεν οφείλεται…»), the sheet's «Πληρωμή»
+  column and the «Πληρωμές» screen at the bottom. Say what reads wrong; then it can be deployed.
 - **Send one real form from the live site** with your own email: https://takeaseat.gr/epikoinonia.html. Check that
   you get the "we got it" mail, that the mail to info@ arrives and Reply answers your own address, and that the
   contact shows in «Πελάτες» as «Νέα επαφή». Then «Σβήσε την επαφή…» on its card. Tell the session if anything is off.
