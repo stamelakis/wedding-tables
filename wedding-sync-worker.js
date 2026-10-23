@@ -41,6 +41,7 @@
 //   GET /admin/customers[/:key]  «Πελάτες»: one row per customer, and its card — state only, never inside a plan   (X-Owner-Key)
 //   /admin/customers/:key/notes · /next[/done] · /timeline[/:id] · /forget   his notes, next step, contacts; «Ξέχασέ τον»
 //   GET /admin/books   what the books keep of a forgotten customer: the name and the dates of what was bought   (X-Owner-Key)
+//   GET /admin/today · POST /admin/today/hide {id, how}   «Σήμερα»: what needs him today; «έγινε» / «αύριο»   (X-Owner-Key)
 //   Εργαλεία (X-Owner-Key, see "Εργαλεία" below): POST /admin/test/wedding · DELETE /admin/test/wedding/:planId · GET/DELETE /admin/test/data
 //          · GET /admin/lookup?q= · GET /admin/diagnostics · POST /admin/test/email {email} · POST /admin/find-test {link|token, q}
 //   POST /admin/recover {email} · POST /admin/recover/claim {token, nonce}   (public: the owner forgot the admin key)
@@ -485,6 +486,7 @@ export async function sweep(env) {
     if (!c || now - (c.createdAt || 0) > CLAIM_TTL + 86400000) { await env.PLANS.delete(k); out.claim++; }
   }
   Object.assign(out, await lifecycleSweep(env, now), await renewSweep(env, now), await signupSweep(env, now), await memorySweep(env, now));
+  try { Object.assign(out, await morningMail(env, now)); } catch (e) { console.error("morning mail failed", e); }   // phase 6: «Σήμερα» by mail
   await record({ out });
   return out;
 }
@@ -1798,27 +1800,33 @@ async function knownCustomers(env, q, except) {
   }
   return out;
 }
-async function customerList(env) {
+// each (phase 6, «Σήμερα»): called with every row and what it was made from — {row, x (the card parts), rec, ledger, ps}.
+async function customerList(env, each) {
   const now = Date.now(), today = todayAthens(), out = [], seen = new Set();
+  const put = (row, x, rec, ledger, ps) => { out.push(row); if (each) each({ row, x, rec, ledger, ps }); };
   for (const vid of (safeParse(await env.PLANS.get("venues:index")) || [])) {
     const v = safeParse(await env.PLANS.get("venue:" + vid));
     if (!v || isTest(v) || seen.has("v:" + v.id)) continue;   // the test venue is his playground, not a customer
-    seen.add("v:" + v.id); out.push(withPay((await venueCustomer(env, v, now, today)).row, paySummary("v", v, await ledgerOf(env, "v:" + v.id), today)));
+    seen.add("v:" + v.id);
+    const x = await venueCustomer(env, v, now, today), lg = await ledgerOf(env, "v:" + v.id), ps = paySummary("v", v, lg, today);
+    put(withPay(x.row, ps), x, v, lg, ps);
   }
   for (const cid of (safeParse(await env.PLANS.get("couples:index")) || [])) {
     const c = safeParse(await env.PLANS.get("couple:" + cid));
     if (!c || seen.has("c:" + c.id)) continue;
-    seen.add("c:" + c.id); out.push(withPay((await coupleCustomer(env, c, now)).row, paySummary("c", c, await ledgerOf(env, "c:" + c.id), today)));
+    seen.add("c:" + c.id);
+    const x = await coupleCustomer(env, c, now), lg = await ledgerOf(env, "c:" + c.id), ps = paySummary("c", c, lg, today);
+    put(withPay(x.row, ps), x, c, lg, ps);
   }
   for (const sid of (safeParse(await env.PLANS.get("signups:index")) || [])) {
     const s = safeParse(await env.PLANS.get("signup:" + sid));
     if (!s || s.status !== "pending" || (s.venueId && seen.has("v:" + s.venueId)) || seen.has("s:" + s.id)) continue;
-    seen.add("s:" + s.id); out.push((await signupCustomer(env, s, now)).row);
+    seen.add("s:" + s.id); const x = await signupCustomer(env, s, now); put(x.row, x, s, null, null);
   }
   for (const lid of (safeParse(await env.PLANS.get("leads:index")) || [])) {
     const l = safeParse(await env.PLANS.get("lead:" + lid));
     if (!l || seen.has("l:" + l.id)) continue;
-    seen.add("l:" + l.id); out.push(leadCustomer(l).row);
+    seen.add("l:" + l.id); const x = leadCustomer(l); put(x.row, x, l, null, null);
   }
   return { at: now, today, customers: out };
 }
@@ -2161,6 +2169,147 @@ async function eraseLedger(env, key) {
     l.erasedAt = Date.now(); l.dues = []; l.pays = l.pays.map(p => ({ ...p, note: "" }));
     return l;
   });
+}
+
+// ---- phase 6: «Σήμερα» and the morning mail (OPERATIONS-PLAN.md §4) ----
+// One list of what needs him today, worked out on request from the sheet's own rows, the ledgers and the server's health —
+// never stored. What he hid is the only thing kept: `meta:today` {hide: {itemId: {how, fp, until?, at}}}. «αύριο» hides an
+// item until tomorrow; «έγινε» hides it until its situation changes (`fp`), and a money item (a late payment, a receipt to
+// issue) comes back after TODAY_MONEY_DAYS if it is still true, so money never leaves the list for good. On a new contact
+// and a next step «έγινε» is the card's own action (Σε συζήτηση · next/done), which admin.html calls; this route refuses it.
+// The words are Greek and written here, once: the screen, the morning mail and Hermes all read `text`.
+const TODAY_GROUPS = [["lead", "Νέες επαφές"], ["next", "Επόμενα βήματα"], ["late", "Πληρωμές που καθυστερούν"], ["receipt", "Αποδείξεις για έκδοση"],
+  ["renew", "Ανανεώσεις σε 30 ημέρες"], ["stuck", "Ενεργοποιήσεις που κόλλησαν"], ["support", "Αιτήματα υποστήριξης"], ["system", "Σύστημα"]];
+const TODAY_KEY = "meta:today", MORNING_KEY = "meta:morning", TODAY_HIDE_MAX = 2000;
+const TODAY_RENEW_DAYS = 30, TODAY_MONEY_DAYS = 7, TODAY_SWEEP_HOURS = 3, TODAY_BACKUP_HOURS = 48, TODAY_DISK_PCT = 85;
+const MORNING_HOUR = 8, MORNING_LAST_HOUR = 11;   // the first sweep from 08:00 Athens; a server down all morning skips the day
+const TODAY_CARD_DONE = ["lead", "next"], TODAY_MONEY = ["late", "receipt"];
+const STUCK_WORDS = { setup_unopened: "δεν άνοιξε τον σύνδεσμο ρύθμισης", claim_unused: "δεν άνοιξε τον σύνδεσμο του σχεδίου", no_event: "δεν έχει φτιάξει καμία εκδήλωση" };
+const KIND_MANY = { wedding: ["γάμος", "γάμοι"], baptism: ["βάπτιση", "βαπτίσεις"], party: ["γιορτή", "γιορτές"] };
+const eur = c => (c / 100).toLocaleString("el-GR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+const dm = ymd => ymdOk(ymd) ? (+ymd.slice(8, 10)) + "/" + (+ymd.slice(5, 7)) : "";
+const inDays = n => n === 0 ? "σήμερα" : n === 1 ? "αύριο" : "σε " + n + " ημέρες";
+const athensYmd = ms => { const a = athensParts(ms); return a.year + "-" + a.month + "-" + a.day; };
+const athensHm = ms => { try { return new Date(ms).toLocaleString("el-GR", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Europe/Athens" }); } catch (e) { return ""; } };
+// The weekend the list talks about: from Monday to Thursday the coming one, from Friday to Sunday the one we are in.
+function weekendOf(today) {
+  const dow = new Date(today + "T12:00:00Z").getUTCDay();   // 0 Sunday … 6 Saturday
+  const fri = dow === 0 ? addDays(today, -2) : dow === 6 ? addDays(today, -1) : addDays(today, 5 - dow);
+  return { from: fri < today ? today : fri, fri, to: addDays(fri, 2) };
+}
+async function todayList(env, now = Date.now(), sweeping = false) {   // sweeping: called by the sweep itself, which is running
+  const today = athensYmd(now), items = [], wk = weekendOf(today), kinds = { wedding: 0, baptism: 0, party: 0 };
+  const add = (group, id, o) => items.push({ id, group, ...o });
+  await customerList(env, ({ row, x, rec, ps }) => {
+    const key = row.key, name = row.name || "(χωρίς όνομα)", who = { key, name, type: row.type }, fl = row.flags || [];
+    for (const e of (x.card.events || [])) if (e.date && e.date >= wk.from && e.date <= wk.to) kinds[normKind(e.kind)]++;
+    if (fl.includes("lead_new")) add("lead", "lead:" + key, { ...who, code: "lead_new", at: rec.createdAt || null, fp: "1",
+      text: name + " — νέα επαφή, περιμένει απάντηση" + (rec.source === "form" ? " (από τη φόρμα)" : "") });
+    if (fl.includes("next_due") && row.step) add("next", "next:" + key, { ...who, code: "next_due", d: row.step.due, fp: String(row.step.at || ""),
+      text: name + " — " + row.step.text + (row.step.due < today ? " (από " + dm(row.step.due) + ")" : "") });
+    if (ps) {
+      const late = ps.dues.filter(d => d.state === "late"), owed = late.reduce((s, d) => s + d.left, 0), first = late.map(d => d.due).sort()[0];
+      if (late.length) add("late", "late:" + key, { ...who, code: "pay_overdue", amount: owed, d: first, fp: late.map(d => d.id + "=" + d.left).sort().join(","),
+        text: name + " — καθυστερεί πληρωμή " + eur(owed) + " από " + dm(first) });
+      for (const p of ps.pays) if (!p.refundOf && !p.cancelled && !p.receipt && p.amount > (p.refunded || 0))
+        add("receipt", "receipt:" + key + ":" + p.id, { ...who, code: "no_receipt", amount: p.amount, d: p.date, fp: p.id,
+          text: name + " — " + eur(p.amount) + " στις " + dm(p.date) + ", χωρίς απόδειξη" });
+    }
+    if (key[0] === "v") {
+      const left = row.until ? daysTo(today, row.until) : null;
+      const code = fl.includes("renew_skipped") ? "renew_skipped" : fl.includes("invoice_due") ? "invoice_due"
+        : (row.active !== false && left != null && left >= 0 && left <= TODAY_RENEW_DAYS) ? (row.untilKind === "trial" ? "trial_ending" : "season_ending") : null;
+      if (code) add("renew", "renew:" + key, { ...who, code, d: row.until, fp: code + "@" + (row.until || ""),
+        text: name + " — " + (code === "renew_skipped" ? "η σεζόν έληξε χωρίς ανανέωση" : code === "invoice_due" ? "εκκρεμεί το τιμολόγιο της ανανέωσης"
+          : (code === "trial_ending" ? "ο δωρεάν χρόνος λήγει " : "η σεζόν λήγει ") + dm(row.until) + " (" + inDays(left) + ")") });
+    }
+    for (const f of ["setup_unopened", "claim_unused", "no_event"]) if (fl.includes(f))
+      add("stuck", "stuck:" + key, { ...who, code: f, fp: f + "@" + (row.last || 0), text: name + " — " + STUCK_WORDS[f] });
+    if (fl.includes("support_open")) {
+      const exp = Math.max(0, ...(x.card.events || []).map(e => (e.support && e.support.expires) || 0), (x.card.template && x.card.template.support && x.card.template.support.expires) || 0);
+      add("support", "support:" + key, { ...who, code: "support_open", fp: String(exp), text: name + " — ζητά υποστήριξη" });
+    }
+    if (rec.mailFailedAt && (key[0] === "v" || key[0] === "c"))
+      add("system", "mail:" + key, { ...who, code: "mail_failed", at: rec.mailFailedAt, fp: String(rec.mailFailedAt),
+        text: name + " — ένα email δεν παραδόθηκε (" + athensHm(rec.mailFailedAt) + ")" });
+  });
+  // the server itself: the hourly sweep, the mail login, the disk and the nightly backup — where the server can see them
+  let host = null; try { if (typeof env.HOST_INFO === "function") host = env.HOST_INFO(); } catch (e) { host = null; }
+  const sw = safeParse(await env.PLANS.get("meta:sweep"));
+  if (!sweeping && sw && sw.at && now - sw.at > TODAY_SWEEP_HOURS * 3600000)
+    add("system", "sys:sweep", { code: "sweep_late", at: sw.at, fp: String(sw.at), text: "Ο ωριαίος έλεγχος δεν έχει τρέξει από " + athensHm(sw.at) });
+  let st = {}; try { if (mailOn(env) && typeof env.MAIL.status === "function") st = env.MAIL.status() || {}; } catch (e) { st = {}; }
+  if (st.smtp && st.smtp.login === "failed")
+    add("system", "sys:smtp", { code: "smtp_failed", at: st.smtp.at || null, fp: String(st.smtp.at || ""), text: "Ο server δεν μπορεί να συνδεθεί στο email (SMTP): τα emails δεν φεύγουν" });
+  if (host && host.disk && host.disk.size > 0) {
+    const pct = Math.round(100 * (1 - host.disk.free / host.disk.size));
+    if (pct >= TODAY_DISK_PCT) add("system", "sys:disk", { code: "disk_full", n: pct, fp: String(Math.floor(pct / 5)), text: "Ο δίσκος του server είναι γεμάτος κατά " + pct + " %" });
+  }
+  if (host && host.backup) {
+    const at = host.backup.at;
+    if (!at) add("system", "sys:backup", { code: "backup_unknown", fp: "0", text: "Δεν φαίνεται πότε έγινε το τελευταίο αντίγραφο ασφαλείας" });
+    else if (now - at > TODAY_BACKUP_HOURS * 3600000) add("system", "sys:backup", { code: "backup_old", at, fp: String(at),
+      text: "Το τελευταίο αντίγραφο ασφαλείας είναι από " + athensHm(at) + " (" + Math.floor((now - at) / DAY) + " ημέρες πριν)" });
+  }
+  // what he hid
+  const hide = ((safeParse(await env.PLANS.get(TODAY_KEY)) || {}).hide) || {};
+  const shown = [], later = [];
+  for (const it of items) {
+    const h = hide[it.id];
+    const hidden = !!h && (h.how === "tomorrow" ? today < h.until : (h.fp === it.fp && (!h.until || today < h.until)));
+    it.done = it.group === "lead" ? "stage" : it.group === "next" ? "step" : "hide";
+    (hidden ? later : shown).push(hidden ? { ...it, hidden: { how: h.how, until: h.until || null, at: h.at || null } } : it);
+  }
+  const order = it => TODAY_GROUPS.findIndex(g => g[0] === it.group);
+  shown.sort((a, b) => order(a) - order(b));
+  const n = kinds.wedding + kinds.baptism + kinds.party;
+  const weekend = n ? { from: wk.from, to: wk.to, n, kinds, text: (wk.from === wk.fri ? "Αυτό το Σαββατοκύριακο: " : "Μέχρι την Κυριακή: ") + n + (n === 1 ? " εκδήλωση" : " εκδηλώσεις")
+    + " (" + Object.entries(kinds).filter(([, c]) => c).map(([k, c]) => c + " " + KIND_MANY[k][c === 1 ? 0 : 1]).join(", ") + ")" } : null;
+  return { at: now, today, count: shown.length, top: shown.slice(0, 3).map(it => it.text), weekend,
+    groups: TODAY_GROUPS.map(([id, title]) => ({ id, title, items: shown.filter(it => it.group === id) })).filter(g => g.items.length),
+    later, ids: items.map(it => it.id) };
+}
+// «αύριο» · «έγινε» · «show» (back on the list). Entries whose item has gone, or whose day has passed, are dropped here.
+async function todayHide(env, id, how) {
+  if (!["done", "tomorrow", "show"].includes(how)) return { error: "bad_how", status: 400 };
+  const L = await todayList(env), it = [...L.groups.flatMap(g => g.items), ...L.later].find(x => x.id === id);
+  if (!it) return { error: "not_found", status: 404 };
+  if (how === "done" && TODAY_CARD_DONE.includes(it.group)) return { error: "use_card", status: 400 };
+  const live = new Set(L.ids), at = Date.now();
+  await kvUpdate(env, TODAY_KEY, cur => {
+    const hide = {};
+    for (const [k, h] of Object.entries((cur && cur.hide) || {})) if (live.has(k) && h && !(h.until && h.until <= L.today)) hide[k] = h;
+    if (how === "show") delete hide[id];
+    else hide[id] = how === "tomorrow" ? { how, until: addDays(L.today, 1), at }
+      : { how, fp: it.fp, at, ...(TODAY_MONEY.includes(it.group) ? { until: addDays(L.today, TODAY_MONEY_DAYS) } : {}) };
+    const keys = Object.keys(hide); for (const k of keys.slice(0, Math.max(0, keys.length - TODAY_HIDE_MAX))) delete hide[k];
+    return { hide };
+  });
+  return { ok: true, today: await todayList(env) };
+}
+// The morning mail: once a day, from the first sweep after 08:00 Athens, to him only, and only when the list is not empty.
+// The day is claimed before anything is read, so two sweeps at once can never both send it.
+async function morningMail(env, now) {
+  const ap = athensParts(now), day = ap.year + "-" + ap.month + "-" + ap.day, hour = +ap.hour;
+  if (hour < MORNING_HOUR || hour > MORNING_LAST_HOUR) return { morning: null };
+  const claim = await kvUpdate(env, MORNING_KEY, cur => (cur && cur.day === day) ? null : { __obj: { day, at: now }, __res: true });
+  if (!claim.res) return { morning: null };
+  const L = await todayList(env, now, true), o = await ownerRec(env);
+  let sent = false;
+  if (L.count && o.email && o.emailVerified && mailOn(env)) {
+    const lines = ["Καλημέρα. Αυτά περιμένουν από σένα σήμερα:", ""];
+    for (const g of L.groups) {
+      lines.push(g.title + " (" + g.items.length + ")");
+      for (const it of g.items.slice(0, 8)) lines.push("· " + it.text.replace(/[\u0000-\u001f\u007f]/g, " "));
+      if (g.items.length > 8) lines.push("· … και " + (g.items.length - 8) + " ακόμη");
+      lines.push("");
+    }
+    if (L.weekend) lines.push(L.weekend.text + ".", "");
+    lines.push("Άνοιξε το «Σήμερα»: " + baseUrl(env) + "/admin.html#today", "", "Αυτό το email φεύγει μόνο τις μέρες που κάτι σε περιμένει.", "", "TakeaSeat");
+    sent = send(env, o.email, { subject: "TakeaSeat σήμερα: " + L.count + (L.count === 1 ? " πράγμα σε περιμένει" : " πράγματα σε περιμένουν"), text: lines.join("\n") });
+  }
+  await kvUpdate(env, MORNING_KEY, cur => (cur && cur.day === day) ? { ...cur, n: L.count, sent } : null);
+  return { morning: { n: L.count, sent } };
 }
 
 // ---- a venue's own clients (OPERATIONS-PLAN.md, phase 3) ----
@@ -3330,6 +3479,13 @@ export default {
         }
         // «Πελάτες»: the sheet, and one customer's card (read-only in phase 1 of OPERATIONS-PLAN.md).
         if (parts[1] === "customers" && parts.length === 2 && request.method === "GET") return json(await customerList(env));
+        // Phase 6: «Σήμερα» — GET the list · POST hide {id, how: done|tomorrow|show}
+        if (parts[1] === "today" && parts.length === 2 && request.method === "GET") return json(await todayList(env));
+        if (parts[1] === "today" && parts[2] === "hide" && parts.length === 3 && request.method === "POST") {
+          const b = await readBody(request);
+          const r = await todayHide(env, typeof b.id === "string" ? b.id.slice(0, 200) : "", b.how);
+          return r.error ? json({ error: r.error }, r.status) : json(r);
+        }
         if (parts[1] === "customers" && parts.length === 3 && request.method === "GET") {
           let key = ""; try { key = decodeURIComponent(parts[2]); } catch (e) { key = ""; }
           const card = await customerCard(env, key);

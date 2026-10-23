@@ -4130,6 +4130,220 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     env.MAIL = keepMail; if (!keepMail) delete env.MAIL;
   }
 }
+// ---------- 27. phase 6: «Σήμερα» — each kind of item appears, and goes away when handled; the morning mail ----------
+{
+  const keepMail = env.MAIL, keepHost = env.HOST_INFO, realNow = Date.now, saved = new Map(m), DAYMS = 86400000;
+  const mails = [], today = athensDay(0);
+  const T = async (h = OWN) => (await call('GET', '/admin/today', undefined, h)).d;
+  const hide = (id, how, h = OWN) => call('POST', '/admin/today/hide', { id, how }, h);
+  const on = (method, key, sub, body) => call(method, '/admin/customers/' + encodeURIComponent(key) + '/' + sub, body, OWN);
+  const items = L => L.groups.flatMap(g => g.items);
+  const item = (L, id) => items(L).find(i => i.id === id);
+  const later = (L, id) => L.later.find(i => i.id === id);
+  const ago = days => realNow() - days * DAYMS;
+  const athensAt = h => {   // today at hh:30 Athens time, whatever the offset of the season
+    const f = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Athens', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' });
+    for (let i = -4; i < 28; i++) {
+      const t = Date.parse(today + 'T00:30:00Z') + i * 3600000, p = Object.fromEntries(f.formatToParts(new Date(t)).map(x => [x.type, x.value]));
+      if (p.year + '-' + p.month + '-' + p.day === today && +p.hour === h) return t;
+    }
+  };
+  const morning = () => mails.filter(x => x.to === 'andreas@example.gr' && /^TakeaSeat σήμερα: /.test(x.subject));
+  const sweepAt = async h => { Date.now = () => athensAt(h); try { return await mod.sweep(env); } finally { Date.now = realNow; } };
+  try {
+    // a database of its own: every earlier section leaves customers with flags of their own
+    for (const k of [...m.keys()]) if (!k.startsWith('meta:') || ['meta:today', 'meta:morning', 'meta:sweep', 'meta:owner', 'meta:archive'].includes(k)) m.delete(k);
+    delete env.MAIL; delete env.HOST_INFO;
+    let L = await T();
+    ok(L.count === 0 && !L.groups.length && !L.later.length && L.weekend === null && L.today === today && Array.isArray(L.top) && !L.top.length, 'today: an empty database has nothing for him', L);
+    ok((await call('GET', '/admin/today')).status === 403 && (await hide('x', 'tomorrow', {})).status === 403
+      && (await call('GET', '/admin/today', undefined, { 'X-Owner-Key': 'wrong' })).status === 403, 'today: the list and its buttons refuse without the owner key');
+
+    // -- a new contact: «έγινε» is «Σε συζήτηση», on the card --
+    const LK = (await call('POST', '/admin/leads', { name: 'Σήμ. Νέα Επαφή', source: 'phone', type: 'couple' }, OWN)).d.key;
+    L = await T();
+    let it = item(L, 'lead:' + LK);
+    ok(it && it.group === 'lead' && it.key === LK && it.code === 'lead_new' && it.done === 'stage' && it.text === 'Σήμ. Νέα Επαφή — νέα επαφή, περιμένει απάντηση'
+      && L.groups[0].id === 'lead' && L.groups[0].title === 'Νέες επαφές', 'today: a new contact is first, «περιμένει απάντηση»', L);
+    ok((await hide('lead:' + LK, 'done')).d.error === 'use_card', 'today: «έγινε» on a new contact is not a hide — it is «Σε συζήτηση» on the card');
+    ok((await on('POST', LK, 'stage', { stage: 2 })).status === 200 && !item(await T(), 'lead:' + LK), 'today: answered («Σε συζήτηση»), it leaves the list');
+
+    // -- a next step: on its day, and «έγινε» is next/done --
+    ok((await on('PUT', LK, 'next', { text: 'Στείλε την προσφορά', due: athensDay(1) })).status === 200 && !item(await T(), 'next:' + LK), 'today: a next step for tomorrow is not on today\'s list');
+    await on('PUT', LK, 'next', { text: 'Στείλε την προσφορά', due: athensDay(-2) });
+    it = item(await T(), 'next:' + LK);
+    ok(it && it.done === 'step' && it.text === 'Σήμ. Νέα Επαφή — Στείλε την προσφορά (από ' + (+athensDay(-2).slice(8)) + '/' + (+athensDay(-2).slice(5, 7)) + ')', 'today: one two days late says since when', it);
+    ok((await hide('next:' + LK, 'done')).d.error === 'use_card' && (await on('POST', LK, 'next/done', {})).status === 200 && !item(await T(), 'next:' + LK), 'today: done on the card, it leaves the list');
+
+    // -- a late payment, «έγινε» for a week, then paid; the receipt to issue, then issued --
+    const CL = (await call('POST', '/admin/couples', { name: 'Σήμ. Ζεύγος Πληρωμή', weddingDate: athensDay(50) }, OWN)).d.couple.id, KL = 'c:' + CL;
+    ok(!item(await T(), 'late:' + KL), 'today: a payment expected but not late is not on the list');
+    patchRaw('ledger:' + KL, o => { o.dues[0].due = athensDay(-1); });
+    it = item(await T(), 'late:' + KL);
+    ok(it && it.amount === 1900 && it.text === 'Σήμ. Ζεύγος Πληρωμή — καθυστερεί πληρωμή 19,00 € από ' + (+athensDay(-1).slice(8)) + '/' + (+athensDay(-1).slice(5, 7)) && it.done === 'hide',
+      'today: a late payment, with how much and since when', it);
+    L = (await hide('late:' + KL, 'done')).d.today;
+    ok(!item(L, 'late:' + KL) && later(L, 'late:' + KL).hidden.how === 'done' && later(L, 'late:' + KL).hidden.until === athensDay(7) && L.count === items(L).length,
+      'today: «έγινε» on money hides it for seven days, not for good', L.later);
+    patchRaw('meta:today', o => { o.hide['late:' + KL].until = today; });
+    ok(item(await T(), 'late:' + KL), 'today: … and a week later, still unpaid, it is back');
+    const dueId = raw('ledger:' + KL).dues[0].id;
+    let x = await on('POST', KL, 'pay', { amount: 1900, date: today, method: 'iris', dueId });
+    const payId = x.d.payments.pays[0].id;
+    L = await T();
+    it = item(L, 'receipt:' + KL + ':' + payId);
+    ok(x.status === 200 && !item(L, 'late:' + KL) && it && it.group === 'receipt' && it.text === 'Σήμ. Ζεύγος Πληρωμή — 19,00 € στις ' + (+today.slice(8)) + '/' + (+today.slice(5, 7)) + ', χωρίς απόδειξη',
+      'today: paid, the late payment goes and a receipt to issue takes its place', L);
+    ok((await on('PATCH', KL, 'pay/' + payId, { receipt: 'ΑΠΥ-61' })).status === 200 && !item(await T(), 'receipt:' + KL + ':' + payId), 'today: the receipt number typed, it leaves the list');
+    x = await on('POST', KL, 'pay', { amount: 500, date: today, method: 'cash', what: 'other', about: 'Επιπλέον' });
+    const pay2 = x.d.payments.pays.find(p => p.amount === 500).id;
+    ok(item(await T(), 'receipt:' + KL + ':' + pay2) && (await on('POST', KL, 'pay/' + pay2 + '/cancel', { reason: 'λάθος' })).status === 200 && !item(await T(), 'receipt:' + KL + ':' + pay2),
+      'today: a cancelled payment needs no receipt');
+
+    // -- a season ending within 30 days: «έγινε» until the date changes --
+    const VR = (await call('POST', '/admin/venues', { name: 'Σήμ. Κτήμα Σεζόν', license: { type: 'seasonal', seasonStart: athensDay(-300), seasonEnd: athensDay(20) } }, OWN)).d, KR = 'v:' + VR.id;
+    patchRaw('venue:' + VR.id, o => { o.keyRotated = true; o.used = 1; });
+    it = item(await T(), 'renew:' + KR);
+    ok(it && it.code === 'season_ending' && /— η σεζόν λήγει \d+\/\d+ \(σε 20 ημέρες\)$/.test(it.text), 'today: a season ending in 20 days', it);
+    patchRaw('venue:' + VR.id, o => { o.license.seasonEnd = athensDay(31); });
+    ok(!item(await T(), 'renew:' + KR), 'today: … one ending in 31 days is not yet');
+    patchRaw('venue:' + VR.id, o => { o.license.seasonEnd = athensDay(20); });
+    ok(!item((await hide('renew:' + KR, 'done')).d.today, 'renew:' + KR), 'today: «έγινε» hides it');
+    patchRaw('venue:' + VR.id, o => { o.license.seasonEnd = athensDay(25); });
+    ok(item(await T(), 'renew:' + KR), 'today: … until its situation changes (a new end date)');
+    const VT = (await call('POST', '/admin/venues', { name: 'Σήμ. Κτήμα Δωρεάν', license: { type: 'seasonal', seasonStart: athensDay(-355), seasonEnd: athensDay(10) } }, OWN)).d;
+    patchRaw('venue:' + VT.id, o => { o.keyRotated = true; o.used = 1; o.license.autoRenew = false; o.trial = { startedAt: ago(355), endsAt: ago(-10), verifiedAt: ago(355), seasonEnd: athensDay(10), signupId: null }; });
+    patchRaw('venue:' + VR.id, o => { o.license.invoiceDue = true; });
+    L = await T();
+    ok(item(L, 'renew:v:' + VT.id).code === 'trial_ending' && item(L, 'renew:v:' + VT.id).text.endsWith('(σε 10 ημέρες)') && item(L, 'renew:' + KR).code === 'invoice_due'
+      && item(L, 'renew:' + KR).text === 'Σήμ. Κτήμα Σεζόν — εκκρεμεί το τιμολόγιο της ανανέωσης', 'today: a free year ending, and a renewal invoice due', items(L).filter(i => i.group === 'renew'));
+    patchRaw('venue:' + VR.id, o => { o.license.invoiceDue = false; o.license.seasonStart = athensDay(-368); o.license.seasonEnd = athensDay(-3); o.license.autoRenew = true; o.license.renewSkipped = athensDay(-3); });
+    ok(item(await T(), 'renew:' + KR).code === 'renew_skipped', 'today: a season that ended unrenewed');
+
+    // -- stuck activations: a setup link and a claim link unopened, a venue with no event --
+    const VS = (await call('POST', '/admin/venues', { name: 'Σήμ. Κτήμα Σύνδεσμος', license: { type: 'seasonal', seasonStart: athensDay(-10), seasonEnd: athensDay(200) } }, OWN)).d;
+    ok(!item(await T(), 'stuck:v:' + VS.id), 'today: a setup link sent today is not stuck');
+    patchRaw('venue:' + VS.id, o => { o.createdAt = ago(4); });
+    it = item(await T(), 'stuck:v:' + VS.id);
+    ok(it && it.code === 'setup_unopened' && it.text === 'Σήμ. Κτήμα Σύνδεσμος — δεν άνοιξε τον σύνδεσμο ρύθμισης', 'today: four days later it is', it);
+    ok(!item((await hide('stuck:v:' + VS.id, 'done')).d.today, 'stuck:v:' + VS.id), 'today: «έγινε» hides it');
+    patchRaw('venue:' + VS.id, o => { o.keyRotated = true; });
+    ok(!item(await T(), 'stuck:v:' + VS.id), 'today: … and once it opens the link it is gone for real');
+    patchRaw('venue:' + VS.id, o => { o.createdAt = ago(15); });
+    ok(item(await T(), 'stuck:v:' + VS.id).code === 'no_event', 'today: two weeks in, no event: a different stuck, back on the list');
+    const CC = (await call('POST', '/admin/couples', { name: 'Σήμ. Ζεύγος Σύνδεσμος', weddingDate: athensDay(40) }, OWN)).d;
+    patchRaw('couple:' + CC.couple.id, o => { o.claimAt = ago(4); o.createdAt = ago(4); });
+    ok(item(await T(), 'stuck:c:' + CC.couple.id).text === 'Σήμ. Ζεύγος Σύνδεσμος — δεν άνοιξε τον σύνδεσμο του σχεδίου', 'today: a claim link unused for four days');
+    const claimed = (await call('POST', '/claim', { token: CC.claimToken, nonce: 'today-cc' })).d;
+    ok(claimed && claimed.editKey && !item(await T(), 'stuck:c:' + CC.couple.id), 'today: claimed, it leaves the list');
+
+    // -- a support request --
+    ok((await call('POST', '/plans/' + claimed.id + '/support', { hours: 24, message: 'ΜΥΣΤΙΚΟ μήνυμα' }, { 'X-Edit-Key': claimed.editKey })).status === 200, 'today: the couple asks for support');
+    it = item(await T(), 'support:c:' + CC.couple.id);
+    ok(it && it.text === 'Σήμ. Ζεύγος Σύνδεσμος — ζητά υποστήριξη', 'today: … and it is on the list', it);
+    patchRaw('plan:' + claimed.id, o => { o.support.expires = realNow() - 1000; });
+    ok(!item(await T(), 'support:c:' + CC.couple.id), 'today: the request expired, it is gone');
+
+    // -- the system: a mail that bounced, the hourly sweep, the mail login, the disk, the backup --
+    patchRaw('couple:' + CL, o => { o.mailFailedAt = realNow() - 3600000; o.mailError = '550'; });
+    it = item(await T(), 'mail:' + KL);
+    ok(it && it.group === 'system' && it.text.startsWith('Σήμ. Ζεύγος Πληρωμή — ένα email δεν παραδόθηκε ('), 'today: a mail to a customer that bounced', it);
+    ok(!item((await hide('mail:' + KL, 'done')).d.today, 'mail:' + KL), 'today: «έγινε» hides it');
+    patchRaw('couple:' + CL, o => { o.mailFailedAt = realNow(); });
+    ok(item(await T(), 'mail:' + KL), 'today: … until another one bounces');
+    patchRaw('couple:' + CL, o => { o.mailFailedAt = null; });
+    m.set('meta:sweep', JSON.stringify({ at: realNow() - 4 * 3600000, ms: 5, out: {} }));
+    ok(item(await T(), 'sys:sweep').code === 'sweep_late', 'today: the hourly sweep has not run for four hours');
+    m.set('meta:sweep', JSON.stringify({ at: realNow() - 600000, ms: 5, out: {} }));
+    ok(!item(await T(), 'sys:sweep'), 'today: … it ran ten minutes ago: nothing to say');
+    env.MAIL = { enabled: true, from: 'x', send: () => true, status: () => ({ smtp: { login: 'failed', at: 5, code: 'EAUTH' } }) };
+    ok(item(await T(), 'sys:smtp'), 'today: the server cannot log in to the mail');
+    env.MAIL = { enabled: true, from: 'x', send: () => true, status: () => ({ smtp: { login: 'ok', at: 5 } }) };
+    ok(!item(await T(), 'sys:smtp'), 'today: … and once it can, nothing');
+    let host = { disk: { free: 90e9, size: 100e9 }, backup: { at: realNow() - 3600000 } };
+    env.HOST_INFO = () => host;
+    L = await T();
+    ok(!items(L).some(i => i.group === 'system'), 'today: a disk 90 % free and last night\'s backup: nothing', items(L).filter(i => i.group === 'system'));
+    host = { disk: { free: 12e9, size: 100e9 }, backup: { at: null } };
+    L = await T();
+    ok(item(L, 'sys:disk').text === 'Ο δίσκος του server είναι γεμάτος κατά 88 %' && item(L, 'sys:backup').code === 'backup_unknown', 'today: a disk 88 % full, and no backup time to read', items(L).filter(i => i.group === 'system'));
+    host = { disk: null, backup: { at: realNow() - 3 * DAYMS } };
+    ok(item(await T(), 'sys:backup').code === 'backup_old' && item(await T(), 'sys:backup').text.endsWith('(3 ημέρες πριν)') && !item(await T(), 'sys:disk'), 'today: a backup three days old');
+    host = { disk: null, backup: null };
+    ok(!items(await T()).some(i => i.group === 'system'), 'today: a server that watches no backup (a dev server) reports none');
+    env.HOST_INFO = () => { throw new Error('boom'); };
+    ok((await call('GET', '/admin/today', undefined, OWN)).status === 200, 'today: a host that cannot answer does not break the list');
+    delete env.HOST_INFO; delete env.MAIL;
+
+    // -- «αύριο», and «show» --
+    L = (await hide('stuck:v:' + VS.id, 'tomorrow')).d.today;
+    ok(!item(L, 'stuck:v:' + VS.id) && later(L, 'stuck:v:' + VS.id).hidden.how === 'tomorrow' && later(L, 'stuck:v:' + VS.id).hidden.until === athensDay(1), 'today: «αύριο» hides it until tomorrow');
+    patchRaw('meta:today', o => { o.hide['stuck:v:' + VS.id].until = today; });
+    ok(item(await T(), 'stuck:v:' + VS.id), 'today: … and tomorrow it is back');
+    await hide('stuck:v:' + VS.id, 'tomorrow');
+    ok(item((await hide('stuck:v:' + VS.id, 'show')).d.today, 'stuck:v:' + VS.id), 'today: «show» puts a hidden one back at once');
+    ok((await hide('stuck:v:nobody', 'tomorrow')).status === 404 && (await hide('stuck:v:' + VS.id, 'forever')).status === 400, 'today: an unknown item, or an unknown button, is refused');
+    patchRaw('meta:today', o => { o.hide['stuck:v:gone'] = { how: 'done', fp: 'x', at: 1 }; o.hide['renew:old'] = { how: 'tomorrow', until: today, at: 1 }; });
+    await hide('stuck:v:' + VS.id, 'tomorrow');
+    ok(!raw('meta:today').hide['stuck:v:gone'] && !raw('meta:today').hide['renew:old'] && raw('meta:today').hide['stuck:v:' + VS.id], 'today: what he hid of items that are gone, or days that passed, is dropped');
+    await hide('stuck:v:' + VS.id, 'show');
+
+    // -- the weekend: how many, of which kind (a venue's wedding included; its label never shown) --
+    const dow = new Date(today + 'T12:00:00Z').getUTCDay(), sun = (dow === 0 ? -2 : dow === 6 ? -1 : 5 - dow) + 2;
+    for (const nm of ['Σήμ. Βάπτιση Α', 'Σήμ. Βάπτιση Β']) await call('POST', '/admin/couples', { name: nm, kind: 'baptism', weddingDate: athensDay(sun) }, OWN);
+    x = await call('POST', '/venues/' + VS.id + '/weddings', { label: 'Οικογένεια Μυστικάκη', date: athensDay(sun) }, { 'X-Venue-Key': VS.key });
+    ok(x.status === 200, 'today: the venue makes a wedding for Sunday', x.d);
+    L = await T();
+    ok(L.weekend && L.weekend.n === 3 && L.weekend.kinds.wedding === 1 && L.weekend.kinds.baptism === 2 && L.weekend.to === athensDay(sun)
+      && /: 3 εκδηλώσεις \(1 γάμος, 2 βαπτίσεις\)$/.test(L.weekend.text), 'today: this weekend, 3 events (1 γάμος, 2 βαπτίσεις)', L.weekend);
+    ok(!items(L).some(i => i.group === 'weekend') && L.count === items(L).length, 'today: the weekend is a line of its own, not an item to tick');
+
+    // -- what the list never carries --
+    const all = JSON.stringify(L);
+    ok(!all.includes('Οικογένεια Μυστικάκη') && !all.includes('ΜΥΣΤΙΚΟ') && !all.includes(VS.key) && !all.includes(claimed.editKey)
+      && !/"(planId|editKey|readKey|venueKey|token|claimToken|email|phone)"/.test(all), 'privacy: no event label, support message, key, token, address or number on «Σήμερα»');
+    ok(L.top.length === Math.min(3, L.count) && L.top.length > 1 && L.top.every((t, i) => t === items(L)[i].text), 'today: the top three, for Hermes, in the list\'s order', L.top);
+
+    // -- the morning mail: from 08:00, once a day, never on an empty day --
+    env.MAIL = { enabled: true, from: 'TakeaSeat <hello@takeaseat.gr>', send: msg => { mails.push(msg); return true; } };
+    m.set('meta:owner', JSON.stringify({ email: 'andreas@example.gr', emailVerified: true, lang: 'el' }));
+    patchRaw('plan:' + claimed.id, o => { delete o.support; });   // its expiry is real time: the sweeps below run earlier in the day
+    const n0 = (await T()).count;
+    let s = await sweepAt(7);
+    ok(!morning().length && !m.has('meta:morning') && s.morning === null, 'mail: at 07:30 nothing goes out');
+    s = await sweepAt(8);
+    const mm = morning();
+    ok(mm.length === 1 && mm[0].subject === 'TakeaSeat σήμερα: ' + n0 + ' πράγματα σε περιμένουν' && mm[0].text.includes('Ανανεώσεις σε 30 ημέρες (2)')
+      && mm[0].text.includes('· Σήμ. Κτήμα Σεζόν — η σεζόν έληξε χωρίς ανανέωση') && mm[0].text.includes('/admin.html#today') && /: 3 εκδηλώσεις \(1 γάμος, 2 βαπτίσεις\)\./.test(mm[0].text),
+      'mail: at 08:30 one mail, to him, with the count, each group, the weekend and the link', mm[0]);
+    ok(!mm[0].text.includes('Οικογένεια Μυστικάκη') && raw('meta:morning').day === today && raw('meta:morning').sent === true && raw('meta:morning').n === n0 && s.morning.sent, 'mail: … the venue\'s label not in it; the day is marked sent');
+    await sweepAt(9); await sweepAt(10);
+    ok(morning().length === 1, 'mail: a later sweep the same day sends nothing more');
+    patchRaw('meta:morning', o => { o.day = athensDay(-1); });
+    await sweepAt(12);
+    ok(morning().length === 1 && raw('meta:morning').day === athensDay(-1), 'mail: a server that was down all morning skips the day rather than mail at noon');
+    await sweepAt(9);
+    ok(morning().length === 2, 'mail: the next day, a new one');
+    // an empty day: nothing for him (hide everything he can, and take every customer away)
+    for (const k of [...m.keys()]) if (/^(venue|couple|lead|plan|ledger|signup|act):|^(venues|couples|leads|signups):index$/.test(k)) m.delete(k);
+    patchRaw('meta:morning', o => { o.day = athensDay(-1); });
+    s = await sweepAt(8);
+    ok(morning().length === 2 && raw('meta:morning').day === today && raw('meta:morning').n === 0 && raw('meta:morning').sent === false,
+      'mail: an empty day sends nothing, and is still marked done', raw('meta:morning'));
+    // one item: the singular
+    await call('POST', '/admin/leads', { name: 'Σήμ. Μόνη Επαφή', source: 'email', type: 'party' }, OWN);
+    patchRaw('meta:morning', o => { o.day = athensDay(-1); });
+    await sweepAt(8);
+    ok(morning().length === 3 && morning()[2].subject === 'TakeaSeat σήμερα: 1 πράγμα σε περιμένει', 'mail: one thing, «1 πράγμα σε περιμένει»', morning()[2]);
+    m.set('meta:owner', JSON.stringify({ email: 'andreas@example.gr', emailVerified: false, lang: 'el' }));
+    patchRaw('meta:morning', o => { o.day = athensDay(-1); });
+    await sweepAt(8);
+    ok(morning().length === 3 && raw('meta:morning').sent === false, 'mail: never to an address he has not confirmed');
+  } finally {
+    Date.now = realNow; env.MAIL = keepMail; if (!keepMail) delete env.MAIL; env.HOST_INFO = keepHost; if (!keepHost) delete env.HOST_INFO;
+    m.clear(); for (const [k, v] of saved) m.set(k, v);
+  }
+}
 function leadStageOf(l) { return l.lost ? 8 : l.stage || 1; }
 
 console.log(`\nall ${n} checks passed`);

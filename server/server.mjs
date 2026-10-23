@@ -221,12 +221,23 @@ try { PKG_VERSION = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.jso
 let BUILT_AT = null;   // written by the Docker "check" stage once the API tests and the planner check have passed
 try { BUILT_AT = fs.readFileSync(path.join(__dirname, '.checks-passed'), 'utf8').trim() || null; } catch (e) {}
 // What the admin console's «Διαγνωστικά» asks the host (the worker itself knows nothing about processes or sockets).
+// «Σήμερα» (phase 6): the disk the database is on, and when the host's nightly backup last succeeded. The backup script
+// writes that time (epoch seconds) into BACKUP_STAMP, a file in our own volume; the image sets it, a dev server does not
+// (no backup there, so nothing to report). Both are read here, every few minutes, so HOST_INFO stays synchronous.
+const BACKUP_STAMP = process.env.BACKUP_STAMP || '';
+let hostDisk = null, backupAt = null;
+async function readHostState() {
+  try { const s = await fs.promises.statfs(path.dirname(DB_PATH)); hostDisk = { free: s.bavail * s.bsize, size: s.blocks * s.bsize }; } catch (e) { hostDisk = null; }
+  if (BACKUP_STAMP) { try { const t = parseInt(await fs.promises.readFile(BACKUP_STAMP, 'utf8'), 10); backupAt = t > 0 ? t * 1000 : null; } catch (e) { backupAt = null; } }
+}
+readHostState(); setInterval(readHostState, 5 * 60000).unref?.();
 env.HOST_INFO = () => ({
   version: PKG_VERSION, commit: (process.env.GIT_COMMIT || '').trim().slice(0, 40) || null, builtAt: BUILT_AT,
   startedAt: STARTED_AT, uptimeMs: Date.now() - STARTED_AT, node: process.version,
   kv: process.env.KV_BACKEND === 'memory' ? 'memory' : 'sqlite', publicUrl: env.PUBLIC_URL,
   pdf: !!renderPlanPdf, pdfQueue: pdfWaiting, trustProxy: TRUST_ALL ? 'all' : 'private-hop',
   rss: process.memoryUsage().rss, rate: ratePressure(RL),
+  disk: hostDisk, backup: BACKUP_STAMP ? { at: backupAt } : null,
 });
 async function diskLow() {
   try { const s = await fs.promises.statfs(path.dirname(DB_PATH)); return (s.bavail * s.bsize) < 300 * 1024 * 1024; }

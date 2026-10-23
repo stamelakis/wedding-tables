@@ -60,6 +60,11 @@ Put the public recipient (age1...) back into $PUB." || true
   exit 1
 fi
 echo "$(date -Is) backup ok: $OUT ($(du -h "$OUT" | cut -f1))"
+# «Σήμερα» in admin.html reads when the last good backup was made from this one line in the app's own volume
+# (the container cannot see $DEST). Written last, and only here, so a failed run leaves the old time and the
+# list says the backup is getting old. A failure to write it is not a failed backup.
+OKSTAMP=${OKSTAMP:-$(dirname "$DB")/backup-ok}
+{ date +%s > "$OKSTAMP.part" && mv -f "$OKSTAMP.part" "$OKSTAMP" && chmod 644 "$OKSTAMP"; } || echo "$(date -Is) WARNING: could not write $OKSTAMP"
 
 # --- OFF-SITE --------------------------------------------------------------------------
 # Handled by /opt/offsite-push.sh (repo: server/offsite-push.sh), a separate cron at

@@ -31,7 +31,8 @@ COPY index.html plano-trapezion-gamou.html plano-trapezion-vaptisis.html plano-t
 ENV PORT=8080 \
     DB_PATH=/data/wedding.db \
     PUBLIC_DIR=/app/public \
-    KV_BACKEND=sqlite
+    KV_BACKEND=sqlite \
+    BACKUP_STAMP=/data/backup-ok
 VOLUME ["/data"]
 EXPOSE 8080
 CMD ["node", "server.mjs"]
