@@ -66,7 +66,10 @@ is on — §1c; otherwise send the **claim link** yourself, §1b). Never again a
   the Startup shortcut `TakeaSeatHermes.lnk`, and then **CHECK `%LOCALAPPDATA%\Hermes\apps\TakeaSeat-τραπεζολόγιο.json`:
   it must carry the live port and pid and today's `control_version`.** On 2026-09-22 a restart left that file
   advertising a dead port and pid; Hermes probed the dead port and reported the app "not answering" for nine days while
-  it was healthy and serving all along. The symptom is invisible from the app's own side — the port answers, the actions
+  it was healthy and serving all along. **It happened again**: from the shim's start on 2026-10-19 until 2026-10-23
+  the file still named the 2026-10-01 port and pid while the shim served on another, despite hermes_control's
+  self-check; the restart of 2026-10-23 rewrote it. So check the file after every logon too, not only after a change.
+  The symptom is invisible from the app's own side — the port answers, the actions
   work, only Hermes is looking in the wrong place. Why that restart failed to rewrite the file was never established.
   (It was NOT the interpreter: the venv `pythonw.exe` on Windows is a redirector that spawns the base interpreter as a
   child, so `.venv\Scripts\pythonw.exe` and the system `pythonw.exe` are one logical process either way — verified
@@ -439,7 +442,7 @@ Browser ──HTTPS──> Caddy (edu-admin-caddy-1, owns :80/:443 on the shared
 | `planner.src.html` | **THE planner source.** One file with all three UI languages embedded (`T_ALL`) and `__LANG__` / `__MODE__` / `__TITLE__` placeholders. Edit only this. |
 | `tools/build-planner.mjs` | Builds every planner output from the source: 3 language files + 3 `.artifact.html` twins + `lab.html`. `--check` fails if outputs are stale. |
 | `tools/dev.mjs` | Local dev server (`node tools/dev.mjs` → http://127.0.0.1:8080, loopback only): the real server over an in-memory KV. |
-| `hermes/takeaseat_control.py` | **Hermes voice shim** (Andreas's local voice/watch assistant, `C:\Users\andre\hermes`). Headless local process that registers "TakeaSeat τραπεζολόγιο" and forwards each spoken question to the live API. Config in git-ignored `hermes/.env` (see `.env.example`). Autostarts via the Startup shortcut `TakeaSeatHermes.lnk`. Writes only ever go to venues listed in `TAKEASEAT_OWN_VENUES` — never to a venue we have sold to. Creating is propose → «επιβεβαιώνω στο TakeaSeat» (§1e). `sim_match.py` runs Hermes's real matcher over the registered apps; `test_takeaseat_control.py` tests the shim with the API stubbed. |
+| `hermes/takeaseat_control.py` | **Hermes voice shim** (Andreas's local voice/watch assistant, `C:\Users\andre\hermes`). Headless local process that registers "TakeaSeat τραπεζολόγιο" and forwards each spoken question to the live API. Config in git-ignored `hermes/.env` (see `.env.example`). Autostarts via the Startup shortcut `TakeaSeatHermes.lnk`. Writes only ever go to venues listed in `TAKEASEAT_OWN_VENUES` — never to a venue we have sold to. Creating is propose → «επιβεβαιώνω στο TakeaSeat» (§1e). «τι έχει σήμερα το TakeaSeat;» (`takeaseat_dailybrief`) reads admin.html's «Σήμερα» aloud, read-only. `sim_match.py` runs Hermes's real matcher over the registered apps; `test_takeaseat_control.py` tests the shim with the API stubbed. |
 | `seating-planner.html` / `-de.html` / `-el.html` | **Generated** seat editor — EN / DE / EL. Do not hand-edit. |
 | `seating-planner*.artifact.html` | **Generated** claude.ai-artifact twins (the file minus its `<head>/<body>` wrapper). |
 | `lab.html` | **Generated** sandbox build (Greek, `MODE=lab`: demo data, storage under `weddingSeatingPlanner.lab.*`, no gate). |
@@ -549,6 +552,8 @@ It ends with the startup log (migration / mail / pdf) and a list of host files t
 
 **Backups (all in `/opt/backups`, cron in `/etc/cron.d/`):**
 - `takeaseat-backup` — 03:10 — WAL-safe snapshot → gzip → **age-encrypt** → `takeaseat-*.db.gz.age`, kept at most 14 days.
+  After «backup ok» it writes the time into `backup-ok` beside the database; the app reads it as `/data/backup-ok` and
+  «Σήμερα» shows a system line when the last good backup is more than 2 days old (OPERATIONS-PLAN.md §7, phase 6).
 - `offsite-push` — 03:40 — age-encrypts every backup (edu + elab too, which are otherwise plaintext) and
   `rclone copy`s them to Backblaze **B2 bucket `TakeaSeat/backups`**, 21-day retention. B2 only ever holds ciphertext.
 - The **age private key is OFF the box** (Andreas's password manager). Without it, backups can't be decrypted.

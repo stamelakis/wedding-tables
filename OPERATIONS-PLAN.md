@@ -389,6 +389,28 @@ options (HANDOFF §8.6).
   RID `TAS-<payment id>` (Λογιστής skips a RID it has, so a second import adds nothing), DESCRIPTION is what the
   receipt says, `|` and line breaks stripped (Λογιστής joins fields with `|`). Refunds stay out: Λογιστής makes them
   credit notes against the receipt. Checked against `logistis/income.py` read-only; no Λογιστής file changed.
+- **Phase 6 as built.** `todayList(env, now)` (worker) builds the list from `customerList`'s rows plus the ledger, and
+  words every line in Greek itself, so the screen, the morning mail and Hermes say the same thing. `GET /admin/today`
+  → `{at, today, count, top [3 texts], weekend {from, to, n, kinds, text} | null, groups [{id, title, items}], later
+  [items + hidden]}`. Groups in order: `lead` (flag lead_new) · `next` (next_due) · `late` (a due `late`) · `receipt`
+  (one line per live payment with no receipt) · `renew` (renew_skipped, invoice_due, trial_ending, or a season ending in
+  0–30 days) · `stuck` (setup_unopened, claim_unused, no_event) · `support` · `system` (a mail that bounced
+  `mail:<key>`, `sys:sweep` when the hourly sweep is 3+ hours late, `sys:smtp` when the SMTP login failed, `sys:disk` at
+  85 %+, `sys:backup` when the last good backup is 48+ hours old or unknown). Item ids are `<group>:<customerKey>`
+  (`receipt:<key>:<payId>`, `sys:<what>`). `POST /admin/today/hide {id, how: done|tomorrow|show}` keeps hides in
+  `meta:today` (at most 2000, pruned when the item is gone or the date passed). «έγινε» does the real thing where one
+  exists — a new contact goes to «Σε συζήτηση» (`/stage {stage:2}`), a next step to `/next/done`; `done` on those two
+  is refused (`use_card`). Elsewhere «έγινε» hides the line until its fingerprint changes (the amount, the date, the
+  code), and a money line (`late`, `receipt`) also comes back after 7 days if still true. «αύριο» hides it until
+  tomorrow. The weekend line is a count only (Monday–Thursday: the coming Friday–Sunday; Friday–Sunday: from today to
+  Sunday) and never sends the mail on its own. The morning mail (`morningMail`, from the hourly sweep) runs at the first
+  sweep from 08:00 to 11:59 Athens, claims the day in `meta:morning` before sending (once a day, even if two sweeps
+  race), and goes only to the verified owner address and only when `count > 0`; it is written in Greek directly, not
+  through `MAILS`, and links to `admin.html#today`. Disk and backup come from `HOST_INFO()`: server.mjs reads `statfs`
+  and the stamp file `BACKUP_STAMP` (`/data/backup-ok`, epoch seconds) every 5 minutes; `server/backup.sh` writes the
+  stamp after «backup ok» into the volume beside the database. No stamp setting means no backup line, so the local
+  copy stays quiet. Hermes: `takeaseat_dailybrief` reads `GET /admin/today` and says the count, the first three and the
+  weekend line.
 
 ## 8. Phase status
 
@@ -399,5 +421,5 @@ options (HANDOFF §8.6).
 | 3 The venue's own sheet | live 2026-10-21 (`1bcc6ae`, `cf5788d`; deployed as `23e0ad0`, tag `deploy-2026-10-21-3`) after Andreas read the Greek |
 | 4 Contacts | part A live 2026-10-21 (`373419e`, tag `deploy-2026-10-21-7`) with Andreas's Greek fixes; part B (the site's form, `epikoinonia.html`) live 2026-10-22 (`bd33f4a`, tag `deploy-2026-10-22-1`) after Andreas read the Greek |
 | 5 Payments | built 2026-10-22 (`db46296` server, `5a182f7` screens), security review passed, checked on screen at desktop and phone width; live 2026-10-23 (`3e2888e`, tag `deploy-2026-10-23-1`) after Andreas read the Greek |
-| 6 «Σήμερα» | — |
+| 6 «Σήμερα» | built 2026-10-23 (`122e233` server, `d81e3ff` screen, `dc987a2` Hermes), checked on screen at desktop and phone width; waiting for Andreas to read the Greek, then deploy |
 | 7 Online payment | not scheduled |

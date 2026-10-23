@@ -10,6 +10,11 @@ passed: home, admin, the contact form, lab and sitemap load (admin and lab witho
 code is in the live admin.html), and `/admin/payments` and `POST /admin/customers/:key/pay` refuse without the
 owner key (403). Not checked live: the signed-in «Πληρωμές» screen (needs the owner key; see Waiting on Andreas).
 
+**Phase 6 («Σήμερα» and the morning mail) is built and committed, not deployed** (`122e233` server, `d81e3ff` screen,
+`dc987a2` Hermes). 1398 checks pass; the screen was checked on the local copy at desktop and phone width (every group
+shows, «έγινε», «αύριο», «Επαναφορά» and a tap on the name work, no console errors); Hermes: 35 tests, `sim_match.py`
+0 problems, the shim restarted and registered with 13 actions. It waits for Andreas to read the Greek, then a deploy.
+
 ## In progress / unfinished
 
 - Party plans created before 2026-10-17 keep the label «Τραπέζι της γιορτής» until the customer renames it
@@ -17,12 +22,18 @@ owner key (403). Not checked live: the signed-in «Πληρωμές» screen (ne
 
 ## Next
 
-1. **Phase 6: «Σήμερα» and a morning summary** (`OPERATIONS-PLAN.md` §4); phase 7 (online payment) waits on the company, accountant and lawyer. The page's remaining English sections
-   move to Greek as each is touched.
+1. **Deploy phase 6** once Andreas has read its Greek. With it, install the new `server/backup.sh` on the host
+   (`install -m 755 /opt/takeaseat/server/backup.sh /opt/takeaseat-backup.sh`) and run it once, so the backup stamp
+   exists before «Σήμερα» first asks for it; otherwise the live list shows «Δεν φαίνεται πότε έγινε το τελευταίο
+   αντίγραφο ασφαλείας» until 03:10. After the deploy: ask Hermes «τι έχει σήμερα το TakeaSeat;» (today it answers 404, as the
+   live server has no `/admin/today` yet). Phase 7 (online payment) waits on the company, accountant and lawyer.
 2. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today (checked
    2026-10-18): every plan on the server comes from a purchase, a venue licence or free year, or a paying couple.
 
 ## Waiting on Andreas
+
+- **Read the Greek of «Σήμερα»** (phase 6): the group titles, the lines, the buttons, the morning mail and the Hermes
+  answer, listed for you in the session of 2026-10-23. Then say "deploy".
 
 - **A look at «Πληρωμές» live** (admin.html, owner key): the screen at the bottom should be empty with 0,00 € this
   year, and the one real venue's card should show its «Πληρωμές» box. When the next real payment comes in, record it

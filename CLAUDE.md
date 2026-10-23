@@ -9,7 +9,7 @@ decisions a future session might undo by mistake. `STATUS.md` says where we are.
 ```bash
 node tools/build-planner.mjs            # regenerate the planner outputs
 node tools/build-planner.mjs --check    # must print "all planner outputs up to date"
-node tools/test-api.mjs                 # the whole suite (1336 checks today)
+node tools/test-api.mjs                 # the whole suite (1398 checks today)
 node tools/dev.mjs                      # local stack on :8080 — never `node server/server.mjs`
 node tools/dev-customers.mjs            # the same, seeded with one customer per «Θέλουν εμένα» flag and stage
 ```
@@ -165,6 +165,18 @@ build runs the full suite), restarts and health-checks; on failure it rolls back
   Rejected: a new row per message (the same person twice in the sheet), and the per-address hourly mail cap on the owner
   mail (it would drop a real customer's second message). Only the 50-a-day ceiling bounds it. The "we got it" mail echoes
   nothing the sender typed, so the form cannot be used to send our mail with someone else's words.
+- **«Σήμερα» is worded on the server, in Greek** (phase 6, 2026-10-23), unlike the rest of admin.html, which words codes
+  itself: the screen, the 08:00 mail and Hermes must say the same line. Rejected: codes worded three times in three places.
+- **«έγινε» on «Σήμερα» does the real thing where there is one** (Andreas, 2026-10-23): a new contact moves to «Σε
+  συζήτηση», a next step is done on the card. Elsewhere it only hides the line until its situation changes, and money
+  (a late payment, a missing receipt) comes back after 7 days if still true. Rejected: a plain "hide" everywhere (the
+  thing would stay undone while the list looked clear), and money hidden for good.
+- **The weekend count never sends the morning mail by itself** (Andreas, 2026-10-23). A mail that only says "2 weddings
+  this weekend" every Friday trains him to ignore it. The mail goes only when something waits on him.
+- **The backup age comes from a stamp file** (2026-10-23): `backup.sh` writes `backup-ok` beside the database after
+  «backup ok», and the app reads it as `/data/backup-ok`. Rejected: the app reading `/opt/backups` (it would need a
+  second mount of a folder the education app's backups share). After changing `backup.sh`, install it on the host:
+  deploy.sh only reports the drift.
 - **A contact that becomes a customer ends** (`adoptLead`): its timeline, source and next step move to the new card and
   the `lead:` row is erased, so no one is in the sheet twice. Do not keep converted leads "for statistics". A couple's
   or venue's phone stays in their notes, where `phonesOf` finds it for «Γνωστός πελάτης»; rejected: a new phone field.
