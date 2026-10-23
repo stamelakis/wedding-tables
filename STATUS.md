@@ -51,8 +51,9 @@ owner key (403). Not checked live: the signed-in «Πληρωμές» screen (ne
 - **Accountant, add:** how long the «Για τα λογιστικά» records (name and purchase dates of a forgotten customer)
   must be kept. Today they have no end date and no delete button.
 - **Accountant** (€10,000 VAT threshold, and who issues receipts for TakeaSeat sales until the company
-  exists; also how many years payment records must be kept), **company registration** — later. The receipt
-  question only blocks the receipt-number part of operations phase 5.
+  exists; also how many years payment records must be kept), **company registration** — later. Phase 5 is built
+  around the answers: receipt numbers can be added to a payment later, the «Πληρωμές» screen counts the year against
+  €10,000 without deciding anything, and VAT is only what you type until the accountant says how it is charged.
 - **Lawyer review** of terms — later. Add to the list: the customer-memory periods (5 years after the last
   contact for buyers, 2 for non-buyers, venues' client cards 1–5 years, default 5) and the «say no to related
   mails» line under ν. 3471/2006 άρθρο 11 §3 (`OPERATIONS-PLAN.md` §2.5 and §6). Both are built before the review;
@@ -71,6 +72,14 @@ owner key (403). Not checked live: the signed-in «Πληρωμές» screen (ne
 
 ## History
 
+- 2026-10-23 — phase 5 (payments) deployed (`3e2888e`, `deploy-2026-10-23-1`) after Andreas read its Greek; his two
+  asks added first (a forgotten customer's row says why it opens nothing; «Ποσό — μόνο αυτό χρειάζεται»). Pre-deploy
+  backup `/opt/backups/takeaseat-20261023-145601.db.gz.age`; live smoke test passed (pages load, payment routes 403
+  without the owner key).
+- 2026-10-22 — operations phase 5 built (`db46296` server, `5a182f7` screens, `6ae079a`): one `ledger:` row per
+  customer, dues that appear by themselves, late ones flagged, refunds and cancellations, the «Πληρωμές» screen with
+  the €10,000 meter, an Excel and a «Για τον Λογιστή» import file. 1336 checks, a hand-worked total, `/security-review`
+  clean, screen check at desktop and 375 px.
 - 2026-10-22 — phase 4 part B deployed (`bd33f4a`, `deploy-2026-10-22-1`) after Andreas read its Greek (no changes);
   pre-deploy backup `/opt/backups/takeaseat-20261022-123540.db.gz.age`; live smoke test passed.
 - 2026-10-22 — operations phase 4 part B built, not deployed (`5262ee2`): the site's contact form
