@@ -421,5 +421,5 @@ options (HANDOFF §8.6).
 | 3 The venue's own sheet | live 2026-10-21 (`1bcc6ae`, `cf5788d`; deployed as `23e0ad0`, tag `deploy-2026-10-21-3`) after Andreas read the Greek |
 | 4 Contacts | part A live 2026-10-21 (`373419e`, tag `deploy-2026-10-21-7`) with Andreas's Greek fixes; part B (the site's form, `epikoinonia.html`) live 2026-10-22 (`bd33f4a`, tag `deploy-2026-10-22-1`) after Andreas read the Greek |
 | 5 Payments | built 2026-10-22 (`db46296` server, `5a182f7` screens), security review passed, checked on screen at desktop and phone width; live 2026-10-23 (`3e2888e`, tag `deploy-2026-10-23-1`) after Andreas read the Greek |
-| 6 «Σήμερα» | built 2026-10-23 (`122e233` server, `d81e3ff` screen, `dc987a2` Hermes), checked on screen at desktop and phone width; waiting for Andreas to read the Greek, then deploy |
+| 6 «Σήμερα» | built 2026-10-23 (`122e233` server, `d81e3ff` screen, `dc987a2` Hermes), checked on screen at desktop and phone width; live 2026-10-23 (`01eb974`, tag `deploy-2026-10-23-2`) after Andreas read the Greek |
 | 7 Online payment | not scheduled |

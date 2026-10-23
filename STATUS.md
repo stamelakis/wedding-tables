@@ -2,18 +2,14 @@
 
 Updated: 2026-10-23
 
-**Status:** Live runs `3e2888e` (deployed 2026-10-23, tag `deploy-2026-10-23-1`, pre-deploy backup
-`/opt/backups/takeaseat-20261023-145601.db.gz.age`), healthy. Operations phases 1–5 are live; phase 5 (payments)
-went live after Andreas read its Greek. 1336 checks pass, totals match a worked example by hand, `/security-review`
-found nothing exploitable, and the screens were checked on the local copy at desktop and phone width. Smoke test
-passed: home, admin, the contact form, lab and sitemap load (admin and lab without console errors, the payments
-code is in the live admin.html), and `/admin/payments` and `POST /admin/customers/:key/pay` refuse without the
-owner key (403). Not checked live: the signed-in «Πληρωμές» screen (needs the owner key; see Waiting on Andreas).
-
-**Phase 6 («Σήμερα» and the morning mail) is built and committed, not deployed** (`122e233` server, `d81e3ff` screen,
-`dc987a2` Hermes). 1398 checks pass; the screen was checked on the local copy at desktop and phone width (every group
-shows, «έγινε», «αύριο», «Επαναφορά» and a tap on the name work, no console errors); Hermes: 35 tests, `sim_match.py`
-0 problems, the shim restarted and registered with 13 actions. It waits for Andreas to read the Greek, then a deploy.
+**Status:** Live runs `01eb974` (deployed 2026-10-23, tag `deploy-2026-10-23-2`, pre-deploy backup
+`/opt/backups/takeaseat-20261023-154554.db.gz.age`), healthy. Operations phases 1–6 are live; phase 6 («Σήμερα», the
+08:00 mail, Hermes «τι έχει σήμερα το TakeaSeat;») went live after Andreas read its Greek. 1398 checks pass; the screen
+was checked on the local copy at desktop and phone width. Live: smoke test 5/5 (home, admin with the new code,
+contact form, lab, sitemap; `/admin/today` and `/admin/today/hide` refuse without the owner key), the new `backup.sh`
+installed as `/opt/takeaseat-backup.sh` and run once («backup ok», stamp read by the app), live «Σήμερα» is empty,
+and Hermes answers «Στο TakeaSeat σήμερα δεν σε περιμένει τίποτα.» from the live server. Not checked live: the
+signed-in «Σήμερα» screen on his phone, and a real morning mail (none goes while the list is empty).
 
 ## In progress / unfinished
 
@@ -22,18 +18,17 @@ shows, «έγινε», «αύριο», «Επαναφορά» and a tap on the n
 
 ## Next
 
-1. **Deploy phase 6** once Andreas has read its Greek. With it, install the new `server/backup.sh` on the host
-   (`install -m 755 /opt/takeaseat/server/backup.sh /opt/takeaseat-backup.sh`) and run it once, so the backup stamp
-   exists before «Σήμερα» first asks for it; otherwise the live list shows «Δεν φαίνεται πότε έγινε το τελευταίο
-   αντίγραφο ασφαλείας» until 03:10. After the deploy: ask Hermes «τι έχει σήμερα το TakeaSeat;» (today it answers 404, as the
-   live server has no `/admin/today` yet). Phase 7 (online payment) waits on the company, accountant and lawyer.
+1. **Nothing scheduled.** Phase 7 (online payment) waits on the company, accountant and lawyer. The page's remaining
+   English sections move to Greek as each is touched.
 2. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today (checked
    2026-10-18): every plan on the server comes from a purchase, a venue licence or free year, or a paying couple.
 
 ## Waiting on Andreas
 
-- **Read the Greek of «Σήμερα»** (phase 6): the group titles, the lines, the buttons, the morning mail and the Hermes
-  answer, listed for you in the session of 2026-10-23. Then say "deploy".
+- **A look at «Σήμερα» live on your phone** (admin.html, owner key): it is the first section and should say «✓ Σήμερα
+  δεν σε περιμένει τίποτα.» today. When something comes up, try «αύριο» on a line and «Επαναφορά» under «Κρυμμένα».
+  The 08:00 mail comes only on days the list is not empty, so no mail tomorrow is normal. When one does come, say if
+  the wording reads right in your mail app.
 
 - **A look at «Πληρωμές» live** (admin.html, owner key): the screen at the bottom should be empty with 0,00 € this
   year, and the one real venue's card should show its «Πληρωμές» box. When the next real payment comes in, record it
@@ -79,10 +74,17 @@ shows, «έγινε», «αύριο», «Επαναφορά» and a tap on the n
 - **Shared-box disk.** On 2026-10-06 Docker build cache (edu-admin's builds, 40 GB of 53 GB) filled the
   disk to 85 %. Cleared — 28 % on 2026-10-17. Recurs unless edu-admin's Dockerfile stops rebuilding
   node_modules every time. TakeaSeat's own share was 0.1 GB.
+- **Hermes's registration file can go stale** (twice now: 2026-09-22 and 2026-10-19 to 2026-10-23): it names a dead
+  port while the shim serves on another, so Hermes says TakeaSeat is "not answering". Fix: restart through
+  `TakeaSeatHermes.lnk` and check the file (HANDOFF). The cause is in Hermes's `hermes_control.py`, another project.
+- **This PC's C: drive is 98 % full** (9.7 GB free on 2026-10-23). Not the server's; the server is at 24 %.
 - The 🛟 on the «Υποστήριξη έως …» badge shows as an empty box on Windows 10 browsers (no such emoji there).
 
 ## History
 
+- 2026-10-23 — phase 6 («Σήμερα», morning mail, Hermes) built (`122e233`, `d81e3ff`, `dc987a2`, `01eb974`) and deployed
+  (`deploy-2026-10-23-2`) after Andreas read the Greek; `backup.sh` with the backup stamp installed on the host; the
+  Hermes shim restarted (its registration had pointed at a dead port since 2026-10-19).
 - 2026-10-23 — phase 5 (payments) deployed (`3e2888e`, `deploy-2026-10-23-1`) after Andreas read its Greek; his two
   asks added first (a forgotten customer's row says why it opens nothing; «Ποσό — μόνο αυτό χρειάζεται»). Pre-deploy
   backup `/opt/backups/takeaseat-20261023-145601.db.gz.age`; live smoke test passed (pages load, payment routes 403
