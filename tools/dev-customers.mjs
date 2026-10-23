@@ -12,7 +12,10 @@ import { registerHooks } from 'node:module';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const DB = path.join(root, 'server', 'data', 'dev-customers.db');
+// --port=8081: a second copy beside one already running (its own file, since the first one holds its database open)
+const PORT = (process.argv.find(x => x.startsWith('--port=')) || '').slice(7) || process.env.PORT || '8080';
+process.env.PORT = PORT;
+const DB = path.join(root, 'server', 'data', PORT === '8080' ? 'dev-customers.db' : 'dev-customers-' + PORT + '.db');
 fs.mkdirSync(path.dirname(DB), { recursive: true });
 for (const f of [DB, DB + '-wal', DB + '-shm']) fs.rmSync(f, { force: true });
 // the four calls server.mjs makes of better-sqlite3 (pragma, exec, prepare, and get/run/all on a statement)
@@ -31,7 +34,7 @@ const PLANS = { get: async k => { const r = sGet.get(k); return r ? r.value : nu
 const mod = await import(pathToFileURL(path.join(root, 'wedding-sync-worker.js')).href);
 const worker = mod.default;
 // Mail "on" only while seeding, so setup and claim links count as sent; the dev server itself runs with mail off.
-const env = { OWNER_KEY: 'dev-owner-key', PLANS, PUBLIC_URL: 'http://localhost:8080', MAIL: { enabled: true, from: 'TakeaSeat <hello@takeaseat.gr>', send: () => true } };
+const env = { OWNER_KEY: 'dev-owner-key', PLANS, PUBLIC_URL: 'http://localhost:' + PORT, MAIL: { enabled: true, from: 'TakeaSeat <hello@takeaseat.gr>', send: () => true } };
 await mod.migrate(env);
 const OWN = { 'X-Owner-Key': 'dev-owner-key' };
 async function call(method, url, body, headers = {}) {
@@ -167,9 +170,18 @@ const l4 = await lead({ source: 'viber', type: 'party', name: 'Νίκη Σταύ
 await call('POST', C(l4) + '/stage', { stage: 8, reason: 'price' }, OWN);                                          // archive: did not go ahead
 await call('POST', C(l2) + '/timeline', { kind: 'call', text: 'Θα το συζητήσει με τη γυναίκα του' }, OWN);
 
+// ---- phase 6: what «Σήμερα» shows that nothing above makes: a season ending soon, a mail that bounced, the weekend ----
+const v10 = await venue('Κτήμα Λεμονιά', 'lemonia@example.gr', { contact: '6972 333 444' });
+patch('venue:' + v10, o => { o.keyRotated = true; o.used = 5; o.license = { ...o.license, seasonStart: day(-345), seasonEnd: day(20), autoRenew: true }; });   // season ends in 20 days
+await call('POST', C('v:' + v10) + '/dues/' + due1('v:' + v10) + '/waive', { reason: 'Παλιός πελάτης — πληρώθηκε πριν από τις «Πληρωμές»' }, OWN);
+patch('couple:' + c3, o => { o.mailFailedAt = Date.now() - 2 * 3600000; o.mailError = '550'; });                   // a mail to them bounced
+const dow = new Date(day(0) + 'T12:00:00Z').getUTCDay(), sun = (dow === 0 ? -2 : dow === 6 ? -1 : 5 - dow) + 2;
+const c7 = await couple({ name: 'Χριστίνα & Πέτρος', email: 'christina.p@example.gr', weddingDate: day(sun), startNow: true });   // a wedding this Sunday
+await call('POST', C('c:' + c7) + '/dues/' + due1('c:' + c7) + '/waive', { reason: 'Δώρο' }, OWN);
+
 db.close();
 console.log('dev-customers: seeded ' + DB);
-console.log('dev-customers: venue console «Κτήμα Ροδακινιά» at http://localhost:8080/venue.html, key ' + VK);
+console.log('dev-customers: venue console «Κτήμα Ροδακινιά» at http://localhost:' + PORT + '/venue.html, key ' + VK);
 process.env.KV_BACKEND = 'sqlite';
 process.env.DB_PATH = DB;
 await import('./dev.mjs');

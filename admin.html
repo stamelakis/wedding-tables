@@ -118,6 +118,23 @@
   .cardpanel{ margin-top:10px; }
   .ccard{ border-top:1px solid var(--line); padding-top:14px; margin-top:14px; }
   .ccard:first-child{ border-top:none; padding-top:0; margin-top:0; }
+  /* «Σήμερα»: the first thing on the page (phase 6) */
+  .tgroup + .tgroup{ margin-top:14px; }
+  .tgroup h3{ margin:0 0 4px; font-size:13px; font-weight:700; color:var(--soft); text-transform:none; }
+  .tgroup h3 .muted{ font-weight:600; }
+  .tlist{ list-style:none; margin:0; padding:0; }
+  .tlist li{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:7px 0; border-top:1px solid var(--line); font-size:14px; }
+  .tlist li:first-child{ border-top:none; }
+  .tlist .ttext{ flex:1; min-width:0; }
+  .tlist button.ttext{ font:inherit; text-align:left; background:none; border:none; padding:0; color:var(--ink); cursor:pointer; }
+  .tlist button.ttext:hover b{ text-decoration:underline; }
+  .tlist .tbtns{ display:flex; gap:6px; flex:none; }
+  .tlist .tnote{ color:var(--faint); font-size:12.5px; }
+  .tweek{ margin-top:14px; padding:8px 12px; border-radius:9px; background:var(--accent-soft); color:var(--accent-ink); font-size:14px; font-weight:600; }
+  .tlater{ margin-top:14px; font-size:13px; }
+  .tlater summary{ cursor:pointer; color:var(--soft); font-weight:600; }
+  .tlater .tlist li{ color:var(--soft); }
+  .tdone{ text-align:center; padding:14px 8px; color:var(--good); font-weight:600; }
   /* «Πελάτες»: the first screen */
   .chips{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
   .chip{ font:inherit; font-size:13px; font-weight:600; border:1px solid var(--line); background:var(--card); color:var(--soft); padding:5px 11px; border-radius:20px; cursor:pointer; white-space:nowrap; }
@@ -227,6 +244,9 @@
     .known .btn.sm{ min-height:40px; padding:8px 12px; font-size:14px; }
     .tl li{ flex-wrap:wrap; gap:0 10px; } .tl time{ flex-basis:100%; }
     .plist .btn.sm, .payform .btn.sm{ min-height:40px; padding:8px 12px; font-size:14px; }
+    .tlist li{ flex-wrap:wrap; }
+    .tlist .tbtns{ width:100%; justify-content:flex-end; }
+    .tlist .tbtns .btn.sm{ min-height:40px; min-width:72px; padding:8px 12px; font-size:14px; }
     .ptotals{ grid-template-columns:1fr; }
     .payfilters select{ flex:1 1 140px; }
     #payTable td.num{ text-align:left; } #payTable td{ padding:3px 0; } #payTable td.ce{ display:none; }
@@ -713,6 +733,14 @@ function renderDashboard(venues){
     </div>
     ${mailBarHtml()}
 
+    <!-- «Σήμερα» (OPERATIONS-PLAN.md §4, phase 6): what needs him today, one list, grouped. The server words every line
+         (the morning mail and Hermes read the same words); a tap on the name opens the card, «έγινε» / «αύριο» on the right. -->
+    <div class="section" id="today" lang="el" style="margin-top:18px">
+      <div class="sechead"><h2>Σήμερα <span class="muted" id="todayCount"></span></h2>
+        <button class="btn sm" id="todayRefresh">Ανανέωση</button></div>
+      <div class="card" id="todayBox"><div class="empty">Φορτώνει…</div></div>
+    </div>
+
     <!-- «Πελάτες» (OPERATIONS-PLAN.md, phases 1–2): everyone who bought or signed up, one row each, and the card behind
          each row where he works: every button of the old lists, his notes, the next step, the timeline. State, dates
          and contact details — never anything inside a plan. Greek, like every screen he works from. -->
@@ -855,7 +883,7 @@ function renderDashboard(venues){
   wireExceptionForm();
   document.getElementById("xlist").addEventListener("click", onExceptionAction);
   wireTools();
-  wireCustomers(); wirePayments();
+  wireToday(); wireCustomers(); wirePayments();
   refreshCustomers(); refreshPayments(); refreshSupport(); refreshCouples(); refreshSettings(); refreshOwner();
 }
 
@@ -1939,7 +1967,7 @@ async function refreshCustomers(){
     else toast(res.status===0 ? "Δεν υπάρχει σύνδεση — δοκίμασε ξανά" : "Η ανανέωση δεν έγινε");
     return;
   }
-  custData=res.d; renderCustomers();
+  custData=res.d; renderCustomers(); refreshToday();
 }
 function wireCustomers(){
   if(!document.getElementById("custSection")) return;
@@ -1958,6 +1986,69 @@ function wireCustomers(){
   t.addEventListener("keydown", e=>{ if(e.key!=="Enter" || e.target.closest("a,button")) return; const tr=e.target.closest("tr[data-key]"); if(tr) openCustomer(tr.dataset.key); });
   document.getElementById("custRefresh").onclick=async e=>{ const b=e.currentTarget; b.disabled=true; await refreshCustomers(); b.disabled=false; };
   document.getElementById("custCsv").onclick=exportCustomersCsv;
+}
+
+// ---- «Σήμερα» (phase 6): one list of what needs him today ----
+// The server works the list out and words every line. «έγινε» on a new contact is «Σε συζήτηση», on a next step it is
+// «done» on the card — the real action, so the line goes because the thing is done; anywhere else it hides the line until
+// its situation changes (money comes back in a week if it is still unpaid / without a receipt). «αύριο» hides it for today.
+let todayData=null;
+const T_DONE_TITLE={ stage:"Απάντησες: η επαφή περνά σε «Σε συζήτηση»", step:"Το επόμενο βήμα έγινε: γράφεται στο ιστορικό",
+  hide:"Το τακτοποίησες: φεύγει από τη λίστα μέχρι να αλλάξει κάτι" };
+function todayLine(it, later){
+  const rest=it.name && it.text.startsWith(it.name) ? it.text.slice(it.name.length) : null;
+  const words=rest!=null ? `<b>${esc(it.name)}</b>${esc(rest)}` : esc(it.text);
+  const text=it.key ? `<button class="ttext" data-open="${esc(it.key)}" title="Άνοιγμα της καρτέλας">${words}</button>` : `<span class="ttext">${words}</span>`;
+  if(later){
+    const h=it.hidden||{}, when=h.how==="tomorrow" ? "ξανά αύριο" : h.until ? "ξανά στις "+gD(Date.parse(h.until+"T12:00:00Z"))+" αν μείνει" : "μέχρι να αλλάξει κάτι";
+    return `<li>${text}<span class="tbtns"><span class="tnote">${when}</span><button class="btn sm ghost" data-show="${esc(it.id)}">Επαναφορά</button></span></li>`;
+  }
+  return `<li>${text}<span class="tbtns"><button class="btn sm" data-done="${esc(it.id)}" title="${T_DONE_TITLE[it.done]||""}">έγινε</button>`
+    +`<button class="btn sm ghost" data-tom="${esc(it.id)}" title="Κρύψ’ το για σήμερα: αύριο ξαναβγαίνει">αύριο</button></span></li>`;
+}
+function renderToday(){
+  const box=document.getElementById("todayBox"); if(!box || !todayData) return;
+  const L=todayData, cnt=document.getElementById("todayCount");
+  if(cnt) cnt.textContent=L.count ? "— "+L.count : "";
+  box.innerHTML=(L.count ? L.groups.map(g=>`<div class="tgroup"><h3>${esc(g.title)} <span class="muted">${g.items.length}</span></h3>
+      <ul class="tlist">${g.items.map(it=>todayLine(it)).join("")}</ul></div>`).join("")
+    : `<div class="tdone">✓ Σήμερα δεν σε περιμένει τίποτα.</div>`)
+    +(L.weekend ? `<div class="tweek">${esc(L.weekend.text)}</div>` : "")
+    +(L.later.length ? `<details class="tlater"><summary>Κρυμμένα (${L.later.length})</summary><ul class="tlist">${L.later.map(it=>todayLine(it, true)).join("")}</ul></details>` : "");
+}
+async function refreshToday(){
+  const res=await req("/admin/today");
+  const box=document.getElementById("todayBox"); if(!box) return;
+  if(!res.ok || !res.d || !Array.isArray(res.d.groups)){
+    if(res.status===403 && authFail(res.d)) return;
+    if(!todayData) box.innerHTML=`<div class="empty">Το «Σήμερα» δεν φόρτωσε — πάτα «Ανανέωση».</div>`;
+    return;
+  }
+  todayData=res.d; renderToday();
+}
+async function todayAct(btn, id, how){
+  const it=[...todayData.groups.flatMap(g=>g.items), ...todayData.later].find(x=>x.id===id); if(!it) return;
+  btn.disabled=true;
+  const path="/admin/customers/"+encodeURIComponent(it.key||"");
+  const res=how==="done" && it.done==="stage" ? await req(path+"/stage", { method:"POST", body:JSON.stringify({ stage:2 }) })
+    : how==="done" && it.done==="step" ? await req(path+"/next/done", { method:"POST", body:"{}" })
+    : await req("/admin/today/hide", { method:"POST", body:JSON.stringify({ id, how }) });
+  btn.disabled=false;
+  if(!res.ok){ failToast(res, res.status===404 ? "Αυτό έχει ήδη τακτοποιηθεί" : "Δεν έγινε — δοκίμασε ξανά"); refreshToday(); return; }
+  toast(how==="tomorrow" ? "Κρύφτηκε ως αύριο" : how==="show" ? "Ξανά στη λίστα" : it.done==="stage" ? "Πέρασε σε «Σε συζήτηση»" : "Έγινε");
+  if(res.d && res.d.today){ todayData=res.d.today; renderToday(); }
+  if(it.done!=="hide" && how==="done") refreshCustomers(); else if(!(res.d && res.d.today)) refreshToday();
+}
+function wireToday(){
+  const box=document.getElementById("todayBox"); if(!box) return;
+  box.addEventListener("click", e=>{
+    const b=e.target.closest("[data-open],[data-done],[data-tom],[data-show]"); if(!b) return;
+    if(b.dataset.open) return openCustomer(b.dataset.open);
+    if(b.dataset.done) return todayAct(b, b.dataset.done, "done");
+    if(b.dataset.tom) return todayAct(b, b.dataset.tom, "tomorrow");
+    if(b.dataset.show) return todayAct(b, b.dataset.show, "show");
+  });
+  document.getElementById("todayRefresh").onclick=async e=>{ const b=e.currentTarget; b.disabled=true; await refreshToday(); b.disabled=false; };
 }
 
 // ---- the customer card: where he works (phase 2) ----
