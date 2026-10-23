@@ -96,6 +96,17 @@ T = [
     ("open the seating editor", S + "open_editor"),
     ("άνοιξε το εργαστήριο δοκιμών", S + "open_lab"),
     ("open the seating sandbox laboratory", S + "open_lab"),
+    # «Σήμερα» (phase 6, read-only): only with our name in the sentence — «σήμερα» / "today" alone are other apps'
+    ("τι έχει σήμερα το TakeaSeat;", S + "dailybrief"),
+    ("τι έχει σήμερα το TakeaSeat", S + "dailybrief"),
+    ("τι έχουμε σήμερα στο TakeaSeat", S + "dailybrief"),
+    ("τι έχει το TakeaSeat σήμερα", S + "dailybrief"),
+    ("what's on TakeaSeat today", S + "dailybrief"),
+    ("what do I have today in TakeaSeat", S + "dailybrief"),
+    ("τι έχει σήμερα", "-"),
+    ("τι έχω σήμερα", "-"),
+    ("what do I have to do today", "-"),
+    ("ποιος γιορτάζει σήμερα", "-"),
     # creation requests → the PROPOSAL (nothing is created until the confirm)
     ("δημιούργησε νέο γάμο για το ζευγάρι Μαρία και Νίκος στις 12 Σεπτεμβρίου 2027", S + "new_wedding"),
     ("νέος γάμος Μαρία και Νίκος στις 12 Σεπτεμβρίου", "!w"),   # a noun phrase is not a creation by words any more (say «φτιάξε γάμο …»)

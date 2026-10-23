@@ -579,6 +579,19 @@ def takeaseat_last_change(**_):
     return f"Το πλάνο «{d.get('name', '')}» άλλαξε τελευταία φορά {_when(d.get('updated'))}."
 
 
+def takeaseat_dailybrief(**_):
+    """admin.html's «Σήμερα», read aloud: the count and the first three lines. Read-only — «έγινε» stays on the screen.
+    The server words every line, so this says exactly what the screen and the morning mail say."""
+    d = _owner("/admin/today") or {}
+    n, top = int(d.get("count") or 0), [t for t in (d.get("top") or []) if t][:3]
+    week = (d.get("weekend") or {}).get("text") or ""
+    if not n:
+        return "Στο TakeaSeat σήμερα δεν σε περιμένει τίποτα." + (f" {week}" if week else "")
+    head = "Στο TakeaSeat σήμερα σε περιμένει 1 πράγμα" if n == 1 else f"Στο TakeaSeat σήμερα σε περιμένουν {n} πράγματα"
+    first = "" if not top else (": " if n == 1 else (". Τα πρώτα: " if len(top) > 1 else ". Το πρώτο: "))
+    return head + first + "· ".join(top) + "." + (f" {week}" if week else "")
+
+
 # ── Navigation on this PC ─────────────────────────────────────────────────────
 def takeaseat_open_editor(**_):
     if not PLAN_ID:
@@ -718,6 +731,8 @@ def takeaseat_confirm(value: str = "", task: str = "", **_):
 #    "confirm" — hence the name takeaseat_confirmtakeaseat.
 #  - No bare function words («είναι», «πόσα», «στον», «χωρίς»): each one took other apps' sentences — «χωρίςθέση» and
 #    "noseat" are run together for the same reason.
+#  - «σήμερα» and "today" are every app's words (Notes «ποιος γιορτάζει σήμερα», Education «… σήμερα»): the daily brief
+#    holds them only run together WITH our name, and its action name avoids "today" (a name's words count too).
 # Run sim_match.py after changing any of them.
 _PROPOSAL_ONLY = " — μόνο πρόταση, χρειάζεται δεύτερη φράση / proposal only, needs a second phrase"
 ACTIONS = {
@@ -728,6 +743,7 @@ ACTIONS = {
     "takeaseat_unseated_guests": (takeaseat_unseated_guests, "ποιοι καλεσμένοι λείπουν, ονόματα που δεν έχουν θέση, χωρίςθέση / which names are still missing a seat, hasnoseat, noseat"),
     "takeaseat_empty_tables": (takeaseat_empty_tables, "ποια τραπέζια έχουν κενές θέσεις, άδεια τραπέζια / which tables have free seats, a free seat, empty tables"),
     "takeaseat_last_change": (takeaseat_last_change, "πότε άλλαξε τελευταία φορά το πλάνο / when was the seating plan last updated"),
+    "takeaseat_dailybrief": (takeaseat_dailybrief, "τιέχεισήμερατοTakeaSeat, σήμερατοTakeaSeat, σήμεραστοTakeaSeat, σήμεραTakeaSeat, TakeaSeatσήμερα / TakeaSeattoday, todayinTakeaSeat, todayonTakeaSeat, todayatTakeaSeat"),
     "takeaseat_open_editor": (takeaseat_open_editor, "άνοιξε τον επεξεργαστή τραπεζιών, υπολογιστή / open the seating editor on the PC"),
     "takeaseat_open_lab": (takeaseat_open_lab, "άνοιξε το εργαστήριο δοκιμών / open the seating sandbox laboratory"),
     "takeaseat_new_wedding": (takeaseat_new_wedding, "δημιούργησενέογάμο, δημιούργησεγάμο, δημιούργησεέναγάμο, φτιάξενέογάμο, φτιάξεγάμο, φτιάξεέναγάμο / createanewwedding, createnewwedding, createawedding, createwedding" + _PROPOSAL_ONLY),

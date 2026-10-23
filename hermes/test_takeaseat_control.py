@@ -29,6 +29,8 @@ sys.path.insert(0, str(HERE))
 import takeaseat_control as tc  # noqa: E402
 from hermes_control import Control  # noqa: E402
 
+_REAL_OWNER = tc._owner   # kept before any test replaces it
+
 VENUE = "v_test"
 BRIDE = "δημιούργησε νέο γάμο για το ζευγάρι Μαρία και Νίκος στις 12 Σεπτεμβρίου 2027"
 APP = " TakeaSeat τραπεζολόγιο"   # run_action appends the app name the orchestrator passed
@@ -395,7 +397,7 @@ class ShimTest(unittest.TestCase):
     def test_actions_and_gate_words(self):
         sys.path.insert(0, os.environ.get("HERMES_DIR", r"C:\Users\andre\hermes"))
         from hermes import appbridge as ab
-        self.assertEqual(len(tc.ACTIONS), 12)
+        self.assertEqual(len(tc.ACTIONS), 13)
         words = {k: ab._words(k, d) for k, (_f, d) in tc.ACTIONS.items()}
         owners = lambda w: [k for k, ws in words.items() if w in ws]   # noqa: E731
         # no action of ours holds a bare «επιβεβαιώνω» / "confirm" (every app's gate word): the confirm's words all
@@ -442,6 +444,74 @@ class ShimTest(unittest.TestCase):
         for s in ("καλεσμένοι χωρίς θέση", "χωρίς θέση", "who has no seat"):
             for q in (s, s + APP):
                 self.assertEqual(ab.match([me], q)[1]["name"], "takeaseat_unseated_guests", q)
+
+
+
+class DailyBriefTest(unittest.TestCase):
+    """takeaseat_dailybrief reads GET /admin/today and says the count and the first three lines — nothing else."""
+
+    def setUp(self):
+        self.calls, self.today = [], {}
+
+        def owner(path, method="GET", body=None):
+            self.calls.append((method, path))
+            if method == "GET" and path == "/admin/today":
+                return self.today
+            raise AssertionError(f"unexpected owner call {method} {path}")
+
+        def api(*a, **k):
+            raise AssertionError("only the owner read is allowed")
+        for p in (
+            mock.patch.object(tc, "_owner", owner),
+            mock.patch.object(tc, "_api", api),
+            mock.patch.object(urllib.request, "urlopen", _no_network),
+        ):
+            p.start()
+            self.addCleanup(p.stop)
+        self.control = Control("TakeaSeat τραπεζολόγιο", tc.ACTIONS)   # never started: no server, no file
+
+    def say(self, **today):
+        self.today = today
+        return self.control._invoke(tc.ACTIONS["takeaseat_dailybrief"][0], {"task": "τι έχει σήμερα το TakeaSeat;"})
+
+    def test_many_items_say_the_count_and_the_first_three(self):
+        said = self.say(count=14, top=["Χριστίνα Λαμπράκη — νέα επαφή, περιμένει απάντηση", "Κτήμα Πλάτανος — Να τους πάρω",
+                                       "Αίθουσα Φεγγαράκι — καθυστερεί πληρωμή 129,00 € από 20/10", "τέταρτο"])
+        self.assertEqual(said, "Στο TakeaSeat σήμερα σε περιμένουν 14 πράγματα. Τα πρώτα: Χριστίνα Λαμπράκη — νέα επαφή, "
+                               "περιμένει απάντηση· Κτήμα Πλάτανος — Να τους πάρω· Αίθουσα Φεγγαράκι — καθυστερεί πληρωμή 129,00 € από 20/10.")
+        self.assertNotIn("τέταρτο", said)
+        self.assertEqual(self.calls, [("GET", "/admin/today")])   # one read, nothing written
+
+    def test_one_item_and_the_weekend(self):
+        said = self.say(count=1, top=["Κτήμα Ελαιώνας — δεν άνοιξε τον σύνδεσμο ρύθμισης"],
+                        weekend={"n": 2, "text": "Αυτό το Σαββατοκύριακο: 2 εκδηλώσεις (2 γάμοι)."})
+        self.assertEqual(said, "Στο TakeaSeat σήμερα σε περιμένει 1 πράγμα: Κτήμα Ελαιώνας — δεν άνοιξε τον σύνδεσμο ρύθμισης. "
+                               "Αυτό το Σαββατοκύριακο: 2 εκδηλώσεις (2 γάμοι).")
+
+    def test_two_items(self):
+        self.assertEqual(self.say(count=2, top=["α", "β"]), "Στο TakeaSeat σήμερα σε περιμένουν 2 πράγματα. Τα πρώτα: α· β.")
+
+    def test_an_empty_day(self):
+        self.assertEqual(self.say(count=0, top=[], weekend=None), "Στο TakeaSeat σήμερα δεν σε περιμένει τίποτα.")
+        self.assertEqual(self.say(count=0, top=[], weekend={"text": "Αυτό το Σαββατοκύριακο: 1 εκδήλωση (1 βάπτιση)."}),
+                         "Στο TakeaSeat σήμερα δεν σε περιμένει τίποτα. Αυτό το Σαββατοκύριακο: 1 εκδήλωση (1 βάπτιση).")
+
+    def test_a_missing_owner_key_is_said_not_sent(self):
+        with mock.patch.object(tc, "OWNER_KEY", ""), mock.patch.object(tc, "_owner", _REAL_OWNER):
+            with self.assertRaises(RuntimeError) as e:
+                tc.takeaseat_dailybrief()
+        self.assertIn("TAKEASEAT_OWNER_KEY", str(e.exception))
+
+    def test_hermes_routes_it_only_with_our_name(self):
+        sys.path.insert(0, os.environ.get("HERMES_DIR", r"C:\Users\andre\hermes"))
+        from hermes import appbridge as ab
+        me = {"name": "TakeaSeat τραπεζολόγιο", "port": 1,
+              "actions": [{"name": k, "describe": d} for k, (_f, d) in tc.ACTIONS.items()]}
+        for s in ("τι έχει σήμερα το TakeaSeat;", "τι έχουμε σήμερα στο TakeaSeat", "τι έχει το TakeaSeat σήμερα",
+                  "what's on TakeaSeat today", "τι έχει σήμερα" + APP):
+            self.assertEqual(ab.match([me], s)[1]["name"], "takeaseat_dailybrief", s)
+        for s in ("τι έχει σήμερα", "τι έχω σήμερα", "what do I have to do today", "ποιος γιορτάζει σήμερα", "πόσα ποστ έφυγαν σήμερα"):
+            self.assertIsNone(ab.match([me], s), s)
 
 
 if __name__ == "__main__":
