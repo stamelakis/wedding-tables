@@ -2404,7 +2404,7 @@ function payFormHtml(mode, x, id){
   const what0=t==="v" ? "season" : "plan";
   const whats=`<div class="full"><label>Για τι</label><div class="pick" data-pick="what">${Object.entries(P_WHAT).map(([k, l])=>chip("what", k, l, k===what0)).join("")}</div></div>
     <div class="full"><label for="pf_about">Περιγραφή <span class="hint">— απαραίτητη στο «Άλλο»</span></label><input id="pf_about" maxlength="80" autocomplete="off"></div>`;
-  const amount=v=>`<div><label for="pf_amount">Ποσό (€)</label><input id="pf_amount" inputmode="decimal" autocomplete="off" placeholder="π.χ. 19,00" value="${v}"></div>`;
+  const amount=v=>`<div><label for="pf_amount">Ποσό (€)${d ? ` <span class="hint">— μόνο αυτό χρειάζεται</span>` : ""}</label><input id="pf_amount" inputmode="decimal" autocomplete="off" placeholder="π.χ. 19,00" value="${v}"></div>`;
   const money=v=>amount(v)+`<div><label for="pf_vat">ΦΠΑ (€) <span class="hint">— αν υπάρχει, όπως στην απόδειξη</span></label><input id="pf_vat" inputmode="decimal" autocomplete="off"></div>
     <div><label for="pf_date">Ημερομηνία</label><input id="pf_date" type="date" max="${today}" value="${today}"></div>
     <div><label for="pf_receipt">${mode==="refund" ? "Αρ. πιστωτικού" : "Αρ. απόδειξης"} <span class="hint">— από τον Λογιστή, μπαίνει και αργότερα</span></label><input id="pf_receipt" maxlength="40" autocomplete="off"></div>
@@ -2561,7 +2561,7 @@ function renderPayments(){
   document.getElementById("payHint").textContent=filtered && live.length ? `Σε όσες φαίνονται: μπήκαν ${eur(sIn)} · επιστροφές ${eur(sOut)} · καθαρά ${eur(sIn-sOut)}` : "";
   document.getElementById("payTable").innerHTML=rows.length ? `<table class="cards"><thead><tr><th>Ημερομηνία</th><th>Πελάτης</th><th>Για τι</th><th>Τρόπος</th><th class="num">Ποσό</th><th class="num">ΦΠΑ</th><th>Απόδειξη</th></tr></thead><tbody>${rows.map(p=>{
       const refund=!!p.refundOf, off=!!p.cancelled;
-      return `<tr${off ? ` class="off"` : ""}${p.gone ? "" : ` data-key="${esc(p.key)}" tabindex="0"`}>
+      return `<tr${off ? ` class="off"` : ""}${p.gone ? ` data-gone="1" title="${P_GONE}"` : ` data-key="${esc(p.key)}" tabindex="0"`}>
         <td class="nw">${esc(gYmd(p.date))}</td>
         <td data-l="Πελάτης"><div><b>${esc(p.name||"—")}</b> <span class="muted">${esc(C_TYPE[p.type]||"")}${p.gone ? " · ξεχάστηκε" : ""}</span></div></td>
         <td data-l="Για τι"><div>${refund ? "Επιστροφή · " : ""}${esc(pWhatText(p))}${off ? `<div class="muted" style="color:var(--danger)">ακυρώθηκε — ${esc(p.cancelled.reason)}</div>` : refund ? `<div class="muted">${esc(p.reason)}</div>` : ""}</div></td>
@@ -2578,11 +2578,13 @@ function renderPayments(){
       <div><div class="ptitle">Ανά σεζόν</div>${srows.length ? pTotalsTable("Σεζόν", srows, null) : `<div class="muted">Καμία πληρωμή σεζόν ακόμη.</div>`}</div></div>
     <div class="muted" style="margin-top:6px">Οι ακυρωμένες δεν μετράνε πουθενά· μια επιστροφή μετράει στον μήνα που έγινε.</div>` : "";
 }
+// A forgotten customer has no card to open: a tap says why instead of doing nothing.
+const P_GONE="Ο πελάτης ξεχάστηκε — μένει μόνο η πληρωμή, για τα βιβλία";
 function wirePayments(){
   if(!document.getElementById("paySection")) return;
   ["pfMonth", "pfSeason", "pfMethod", "pfNoRcpt"].forEach(id=>document.getElementById(id).addEventListener("change", ()=>renderPayments()));
   const t=document.getElementById("payTable");
-  t.addEventListener("click", e=>{ const tr=e.target.closest("tr[data-key]"); if(tr) openCustomer(tr.dataset.key); });
+  t.addEventListener("click", e=>{ const tr=e.target.closest("tr[data-key]"); if(tr) openCustomer(tr.dataset.key); else if(e.target.closest("tr[data-gone]")) toast(P_GONE); });
   t.addEventListener("keydown", e=>{ if(e.key!=="Enter") return; const tr=e.target.closest("tr[data-key]"); if(tr) openCustomer(tr.dataset.key); });
   document.getElementById("payRefresh").onclick=async e=>{ const b=e.currentTarget; b.disabled=true; await refreshPayments(); b.disabled=false; };
   document.getElementById("payCsv").onclick=exportPaymentsCsv;
