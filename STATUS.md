@@ -2,10 +2,11 @@
 
 Updated: 2026-11-03
 
-**Status:** Live runs `2fb509c` (deployed 2026-11-03, tag `deploy-2026-11-03-3`, pre-deploy backup
+**Status:** Phase 2 of `COMPANIES-PLAN.md` (the fourth kind, «Εταιρική εκδήλωση») is built and committed on the local copy, **not deployed**: it waits for
+Andreas to read the Greek. 1629 checks pass on the local copy; checked on screen from demo to PDF, details under "In progress". Live runs `2fb509c` (deployed 2026-11-03, tag `deploy-2026-11-03-3`, pre-deploy backup
 `/opt/backups/takeaseat-20261103-142329.db.gz.age`), healthy. «Πληρωμές» now writes a new customer's due as 25 € or
 349 € + ΦΠΑ, what the site says. Phase 1 of `COMPANIES-PLAN.md` (a company and a γραφείο
-εκδηλώσεων as customers) went live after Andreas's yes; phases 2–4 are not built. 1497 checks pass, on the local copy and
+εκδηλώσεων as customers) went live after Andreas's yes; phases 3–4 are not built. That deploy's 1497 checks passed, on the local copy and
 in the server's build; checked on screen at phone width on the local copy; `/security-review` found nothing. Live smoke
 test, read-only: health, eight pages with no console errors, the prices on the pages, the new example in admin.html,
 `/admin/customers` and `/admin/payments` refuse without a key. Not checked live: a real form sent as a company, and the
@@ -14,20 +15,27 @@ card and «+ Νέα επαφή» live and all looked fine. Not yet seen live: a 
 
 ## In progress / unfinished
 
+- **Phase 2, built, not live.** Checked on screen on the local copy: the demo (`lab.html?ev=company`) in el/en/de words, the phone and small-window kind picker,
+  converting between the four kinds with a custom label kept, print titles, the note about guest notes (shown online, hidden device-only), the new guide and its
+  links, the home page's four cards, the admin dialogs, the venue console; the PDFs in el, en and de. Not checked: on the live site, a real mail, an actual iPhone
+  tap on the invisible picker (only an emulated phone width). Open: `REVIEW-GREEK-company.md` is temporary, delete it when Andreas approves.
 - Party plans created before 2026-10-17 keep the label «Τραπέζι της γιορτής» until the customer renames it
   (deliberately not rewritten on load). Converting such a plan to another kind still works (LEGACY_HEADS).
 
 ## Next
 
-1. **Phases 2–4 of `COMPANIES-PLAN.md`**, each in its own session: the fourth kind, then one console with saved rooms and
+1. **Deploy phase 2** once Andreas has read the Greek and said yes (`/ship`).
+2. **Phases 3–4 of `COMPANIES-PLAN.md`**, each in its own session: one console with saved rooms and
    old designs, then the organiser in public. Each has its own "done when" there.
-2. **Phase 7 (online payment)** waits on the company, accountant and lawyer. The page's remaining English sections move
+3. **Phase 7 (online payment)** waits on the company, accountant and lawyer. The page's remaining English sections move
    to Greek as each is touched.
-3. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today (checked
+4. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today (checked
    2026-10-18): every plan on the server comes from a purchase, a venue licence or free year, or a paying couple.
 
 ## Waiting on Andreas
 
+- **Read the Greek of the company event:** `REVIEW-GREEK-company.md` (87 numbered lines; the first four are the decisions: the room with a «Σκηνή», the
+  groups, the two demo names, the note on the Excel import) and the guide page `plano-trapezion-etairikis-ekdilosis.html`. Reply with the numbers to change.
 - **When something comes up in «Σήμερα»:** try «αύριο» on a line and «Επαναφορά» under «Κρυμμένα». The 08:00 mail comes
   only on days the list is not empty. When one does come, say if the wording reads right in your mail app.
 - **When the next real payment comes in:** record it in «Πληρωμές» («+ Πληρωμή», only the amount is needed) and say if
@@ -47,7 +55,7 @@ card and «+ Νέα επαφή» live and all looked fine. Not yet seen live: a 
 - **A design question for later, no rush:** while a venue has not set its own key, the owner key can read that
   key in admin.html, and with it the venue's client cards. A venue that sets its own key closes this. If «the
   admin never sees a venue's clients» must hold strictly, say so and the admin box will stop showing the key.
-- **Accountant, add:** how long the «Για τα λογιστικά» records (name and purchase dates of a forgotten customer)
+- **Accountant, add (phase 2):** the company guide says «παραστατικό» until invoices are answered. **Accountant, add:** how long the «Για τα λογιστικά» records (name and purchase dates of a forgotten customer)
   must be kept. Today they have no end date and no delete button. Also: invoices to companies at 25 € per event
   (`COMPANIES-PLAN.md` §4).
 - **Accountant** (€10,000 VAT threshold, and who issues receipts for TakeaSeat sales until the company
@@ -61,7 +69,7 @@ card and «+ Νέα επαφή» live and all looked fine. Not yet seen live: a 
   buys a γιορτή for its own company dinner is a business, and §8 gives every direct buyer the consumer-law 14-day
   withdrawal (ν. 2251/1994), with the planner opening only after it, a business included. And: terms §8's
   «άμεση έναρξη» names only a γάμος under 21 days away, while the payment reply says «εκδήλωση»; confirm it may
-  cover a βάπτιση or γιορτή and widen §8's wording. And the four points for companies in `COMPANIES-PLAN.md` §4: the
+  cover a βάπτιση or γιορτή and widen §8's wording. The terms' opening now says «ιδιώτες και εταιρείες» while §8 still gives every direct buyer the 14-day withdrawal, so this is more visible once phase 2 is live. And the four points for companies in `COMPANIES-PLAN.md` §4: the
   1–5 year choice, a company accepting `dpa.html`, no consumer withdrawal for a company, table labels in saved rooms.
 
 ## Known problems
@@ -74,8 +82,9 @@ card and «+ Νέα επαφή» live and all looked fine. Not yet seen live: a 
   `TakeaSeatHermes.lnk` and check the file (HANDOFF). The cause is in Hermes's `hermes_control.py`, another project.
 - **This PC's C: drive is 98 % full** (9.7 GB free on 2026-10-23). Not the server's; the server is at 24 %.
 - The 🛟 on the «Υποστήριξη έως …» badge shows as an empty box on Windows 10 browsers (no such emoji there).
-- **`lab.html` at 375px: the ⋯ button in the top bar (`#moreBtn`) ends at 379px**, so its edge is clipped by a few pixels
-  (found live 2026-11-03). No sideways scroll. That deploy did not touch the planner; not known when it began.
+- **`lab.html` at 375px: the ⋯ button's clipped edge is fixed on the local copy by phase 2** (it now ends at 367px); live keeps it until that deploy.
+- **The tour once threw a `TypeError … 'prep'`** when «Επόμενο» was pressed past its last step (planner around line 5502, seen 2026-11-03 in a screen check, not
+  company-specific). Probably a stale double click; not reproduced by hand and not fixed.
 
 ## History
 

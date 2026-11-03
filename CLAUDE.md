@@ -9,13 +9,13 @@ decisions a future session might undo by mistake. `STATUS.md` says where we are.
 ```bash
 node tools/build-planner.mjs            # regenerate the planner outputs
 node tools/build-planner.mjs --check    # must print "all planner outputs up to date"
-node tools/test-api.mjs                 # the whole suite (1497 checks today)
+node tools/test-api.mjs                 # the whole suite (1629 checks today)
 node tools/dev.mjs                      # local stack on :8080 — never `node server/server.mjs`
 node tools/dev-customers.mjs            # the same, seeded with one customer per «Θέλουν εμένα» flag and stage
 ```
 
 Preview with `preview_start {name:"takeaseat-local"}` (`.claude/launch.json`), then
-`http://localhost:8080/lab.html?ev=baptism|party`. For admin.html's «Πελάτες» use `takeaseat-customers`
+`http://localhost:8080/lab.html?ev=baptism|party|company`. For admin.html's «Πελάτες» use `takeaseat-customers`
 (owner key `dev-owner-key`). It runs on `node:sqlite`, because better-sqlite3 has no Windows binary here.
 
 Deploy: `ssh -i ~/.ssh/hetzner root@178.104.158.125 /opt/takeaseat/server/deploy.sh` (without `-i` the
@@ -40,7 +40,7 @@ build runs the full suite), restarts and health-checks; on failure it rolls back
   and `duplicate-key scan could not read the dictionaries`. Keep comments there apostrophe-free.
 - **Bash heredocs eat one level of backslashes.** Writing JS/Python through `<<'PY'` turns `\\n` into a
   real newline and breaks string literals. Use `chr(92)+"n"`, a raw string, or the Edit tool.
-- **Every kind question goes through `KIND_PFX`** (`{wedding:"", baptism:"b_", party:"p_"}`), which
+- **Every kind question goes through `KIND_PFX`** (`{wedding:"", baptism:"b_", party:"p_", company:"c_"}`), which
   exists identically in `planner.src.html`, `wedding-sync-worker.js`, `server/pdf.mjs` and
   `trapezi.html`. A test fails on any `=== "baptism"` in the planner except the children's corner.
   The second kind leaked by growing such tests; the third kind found two still standing.
@@ -72,10 +72,18 @@ build runs the full suite), restarts and health-checks; on failure it rolls back
   `custType` only names and files the customer: no plan, price or permission reads it. Rejected: a new record type now, since phase 3
   decides the real shape. The ΑΦΜ can be edited only on a `custType` row, because on a Κτήμα the `afm:` row is the free-year fence.
   The form asks no ΑΦΜ or company name (Andreas adds them at the sale). `books:` keeps the word, never the ΑΦΜ.
-- **One third kind, `party` («γιορτή»)**, covering γενέθλια, ονομαστική and επέτειος, and a company dinner until phase 2 of
-  `COMPANIES-PLAN.md` — not several kinds. A nameday and a 40th are the same room on the same evening, and each extra kind
-  costs ~135 strings in three languages. *Andreas asked for this after hearing the argument against
-  building it at all; it is his explicit decision, not a recommendation.*
+- **`party` («γιορτή») covers γενέθλια, ονομαστική and επέτειος, not one kind each.** A nameday and a 40th are the same room on the
+  same evening, and each extra kind costs ~135 strings in three languages. *Andreas's explicit decision, after hearing the argument
+  against building it at all.* A company event became a fourth kind, `company`, by `COMPANIES-PLAN.md` (his decision, knowing the cost).
+- **On a company event's screens the customer is «η εταιρεία» and the event «η εκδήλωση»** (phase 2, 2026-11-03), never «διοργανωτής»
+  or «γιορτή». A test refuses another event's words in any `c_` string. Its starter room is the wedding's round tables with a
+  «Σκηνή» in the dance floor's place and no DJ (filter: speeches and awards decide who sits near the front). Rejected: the γιορτή's long tables and bar.
+- **The kind makes the customer a company, but only one way** (phase 2, 2026-11-03). Sold or corrected to `company`, the row gets
+  `custType`; moved to a γιορτή it stays a company (a company dinner sold before phase 2); corrected to a γάμος or βάπτιση, `custType`
+  and the ΑΦΜ go, because a private buyer's ΑΦΜ is never kept. Existing company dinners stay γιορτές until someone changes them.
+- **The company guide keeps today's 14-day and 30-day rules, and says «παραστατικό»** (2026-11-03). Decision 5 (a company's plan opens
+  at once) comes with phase 3's console; until then a promise on the page would be false. Change the page with phase 3, and
+  «παραστατικό» once the accountant has answered on invoices.
 - **A γιορτή starts with NO honour table** (decided 2026-10-10, built 2026-10-17). A γάμος and a
   βάπτιση each have exactly one table the evening is about; a γιορτή may have none, one or several, so
   it becomes an opt-in table from the toolbar. Rejected: copying the wedding's pattern — Andreas's
