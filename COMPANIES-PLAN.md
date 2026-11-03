@@ -1,7 +1,7 @@
 # TakeaSeat — companies and event organisers: the development plan
 
-Written and approved 2026-11-03. **Status: approved by Andreas, with one point waiting on him** (decision 6, the guest
-notes). Each phase gets its own session, its own deploy and its own status line in §6.
+Written and approved 2026-11-03. **Status: approved by Andreas, all six decisions settled.** Each phase gets its own
+session, its own deploy and its own status line in §6.
 
 **The goal, in one line:** a company can plan its own events and come back to them, and an organiser can run events in
 any room, each in their own words and on the same one product.
@@ -51,12 +51,12 @@ any room, each in their own words and on the same one product.
    work than it earns. Once online payment exists, "1 year included, longer for a fee" is the first candidate.
 5. **Company plans open at once**, with no 14-day wait and no 30-day room rule. The wait exists for the consumer
    withdrawal right, which a company does not have, and a returning company wants its old room straight away.
-6. **Guest notes are still erased the day after the event, for everyone. WAITING: recommended, Andreas has not answered.**
-   Andreas asked whether a company could choose to keep them. The recommendation is no: notes are where allergies end
-   up, and a health detail belongs to the guest, so the company's tick does not make keeping it fine. What is offered
-   instead: the CSV download already includes notes and the import reads them back, so a company can keep its own file
-   and bring the notes in next time. The planner should say so before the event. Other details that repeat (department,
-   VIP) go in groups, which are kept with the names.
+6. **Guest notes are still erased the day after the event, for everyone.** Andreas asked whether a company could choose
+   to keep them, then settled on no. Rejected: a company's choice to store them: notes are where allergies end up, and a
+   health detail belongs to the guest, so the company's tick does not make keeping it fine. Instead the CSV download
+   already includes notes and the import reads them back, so a company keeps its own file and brings the notes in next
+   time. The planner says so before the event. Other details that repeat (department, VIP) go in groups, which are kept
+   with the names.
 
 **This replaces the decision "one third kind, not several"** in `CLAUDE.md`. The cost of a kind (about 135 strings in
 three languages) is accepted knowingly.
@@ -78,6 +78,8 @@ three languages) is accepted knowingly.
   under the filter "does it change a seating decision"; no «Οικογένεια» or «Παιδιά».
 - A new guide page for company events; the γιορτή pages stop naming «εταιρικό δείπνο» and link to it. Terms, privacy and
   `dpa.html` define the fourth kind. Existing company dinners stay γιορτές until someone changes the kind.
+- On an online company plan, before the event, the planner says the notes go the day after and that the CSV download
+  keeps a copy (decision 6). Not on a device-only plan: the erasure is the server's.
 - *Done when:* a company event reads right from demo to PDF in all three languages, Andreas has read the Greek, converting
   a plan between all four kinds keeps custom labels, and the tests compare the new strings with the server's.
 

@@ -27,9 +27,6 @@ Not yet seen live: a real morning mail (none goes while the list is empty).
 
 ## Waiting on Andreas
 
-- **Answer on guest notes** (`COMPANIES-PLAN.md` §2, decision 6): you asked if a company could choose to keep them. The
-  recommendation is no, with the company keeping its own file through the CSV download instead. Say yes, or what you'd
-  rather do. Phase 3 is the first that depends on it.
 - **When something comes up in «Σήμερα»:** try «αύριο» on a line and «Επαναφορά» under «Κρυμμένα». The 08:00 mail comes
   only on days the list is not empty. When one does come, say if the wording reads right in your mail app.
 - **When the next real payment comes in:** record it in «Πληρωμές» («+ Πληρωμή», only the amount is needed) and say if
@@ -80,7 +77,7 @@ Not yet seen live: a real morning mail (none goes while the list is empty).
 ## History
 
 - 2026-11-03 — `COMPANIES-PLAN.md` written and approved by Andreas (a fourth kind, «Γραφείο εκδηλώσεων», old designs, a 1–5
-  year choice); no code changed. Andreas's live look at «Σήμερα», «Πληρωμές», «Πελάτες», the card and «+ Νέα επαφή»: fine.
+  year choice, guest notes still erased with the company keeping its own CSV); no code changed. Andreas's live look at «Σήμερα», «Πληρωμές», «Πελάτες», the card and «+ Νέα επαφή»: fine.
 - 2026-10-23 — phase 6 («Σήμερα», morning mail, Hermes) built (`122e233`, `d81e3ff`, `dc987a2`, `01eb974`) and deployed
   (`deploy-2026-10-23-2`) after Andreas read the Greek; `backup.sh` with the backup stamp installed on the host; the
   Hermes shim restarted (its registration had pointed at a dead port since 2026-10-19).

@@ -66,7 +66,8 @@ build runs the full suite), restarts and health-checks; on failure it rolls back
 
 - **Companies and organisers follow `COMPANIES-PLAN.md`** (Andreas, 2026-11-03, not built yet; its §2 has the decisions). A
   fourth kind, chosen after hearing the cheaper option, and a «Γραφείο εκδηλώσεων», never «διοργανωτής», which already means
-  the venue's client on γιορτή screens. Rejected: a small separate charge for saving designs (payments are by hand for now).
+  the venue's client on γιορτή screens. Rejected: a small separate charge for saving designs (payments are by hand for now), and a company choosing to keep guest
+  notes (health data; it keeps its own CSV instead).
 - **One third kind, `party` («γιορτή»)**, covering γενέθλια, ονομαστική and επέτειος, and a company dinner until phase 2 of
   `COMPANIES-PLAN.md` — not several kinds. A nameday and a 40th are the same room on the same evening, and each extra kind
   costs ~135 strings in three languages. *Andreas asked for this after hearing the argument against
