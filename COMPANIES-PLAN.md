@@ -129,7 +129,7 @@ three languages) is accepted knowingly.
 
 | Phase | Status |
 |---|---|
-| 1. A company as a customer | Built and tested on the local copy 2026-11-03, not deployed: waiting on Andreas's read of the Greek |
+| 1. A company as a customer | Live 2026-11-03 (`924490c`, `deploy-2026-11-03-1`) |
 | 2. The fourth kind | Not started |
 | 3. One console, saved rooms, old designs | Not started |
 | 4. The organiser in public | Not started |
