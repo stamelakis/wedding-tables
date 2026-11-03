@@ -64,8 +64,11 @@ build runs the full suite), restarts and health-checks; on failure it rolls back
 
 ## Decisions
 
-- **One third kind, `party` («γιορτή»)**, covering γενέθλια, ονομαστική, επέτειος and a company dinner
-  — not several kinds. A nameday and a 40th are the same room on the same evening, and each extra kind
+- **Companies and organisers follow `COMPANIES-PLAN.md`** (Andreas, 2026-11-03, not built yet; its §2 has the decisions). A
+  fourth kind, chosen after hearing the cheaper option, and a «Γραφείο εκδηλώσεων», never «διοργανωτής», which already means
+  the venue's client on γιορτή screens. Rejected: a small separate charge for saving designs (payments are by hand for now).
+- **One third kind, `party` («γιορτή»)**, covering γενέθλια, ονομαστική and επέτειος, and a company dinner until phase 2 of
+  `COMPANIES-PLAN.md` — not several kinds. A nameday and a 40th are the same room on the same evening, and each extra kind
   costs ~135 strings in three languages. *Andreas asked for this after hearing the argument against
   building it at all; it is his explicit decision, not a recommendation.*
 - **A γιορτή starts with NO honour table** (decided 2026-10-10, built 2026-10-17). A γάμος and a
