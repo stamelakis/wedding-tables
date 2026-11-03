@@ -2871,7 +2871,7 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
       'retention: a year after the event the couple\'s plan is deleted and leaves the list; the address stays on the memory card only', sw);
     // what the customer is told matches: a year for everyone, and the notes go the day after
     const fs = await import('node:fs'), read = f => fs.readFileSync(path.join(root, f), 'utf8');
-    const lands = ['plano-trapezion-gamou.html', 'plano-trapezion-vaptisis.html', 'plano-trapezion-giortis.html'];
+    const lands = ['plano-trapezion-gamou.html', 'plano-trapezion-vaptisis.html', 'plano-trapezion-giortis.html', 'plano-trapezion-etairikis-ekdilosis.html'];
     const pages = ['index.html', 'privacy.html', 'terms.html', 'dpa.html', ...lands];
     ok(pages.every(f => !/σβήνουμε ποτέ|never delete/i.test(read(f))), 'retention: no page promises we never delete (GDPR storage limitation)');
     ok(lands.every(f => !/Επτά ημέρες μετά|7 ημέρες μετά/.test(read(f)) && /Έναν χρόνο μετά/.test(read(f)) && /σημειώσεις των καλεσμένων σας σβήνονται/.test(read(f))),
@@ -3512,13 +3512,13 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
       && /when the [Vv]enue copied the client's link/.test(t) && /first opened it/.test(t)), 'pages: both name the three dates, in both languages');
     ok(/τη βλέπει μόνο το Κτήμα, ποτέ ο πελάτης/.test(dpa) && /seen only by the Venue, never by the client/.test(dpa) && /Την καρτέλα τη βλέπει μόνο το κτήμα, ποτέ ο πελάτης/.test(priv)
       && /Only the venue sees the card, never the client/.test(priv), 'pages: both say the client never sees the card');
-    ok(/γάμους, βαπτίσεις και γιορτές/.test(dpa) && /weddings, baptisms and parties/.test(dpa), 'pages: the DPA covers all three kinds');
+    ok(/γάμους, βαπτίσεις, γιορτές και εταιρικές εκδηλώσεις/.test(dpa) && /weddings, baptisms, parties and company events/.test(dpa), 'pages: the DPA covers all four kinds');
     // §0 of terms and privacy defines «εκδήλωση» for the whole page: it was left at γάμος/βάπτιση for days after the γιορτή went live
     const sec0 = (t, h) => (t.split(h)[1] || '').split('<h2>')[0];
     const sec0s = ['terms.html', 'privacy.html'].map(f => { const t = page(f);
       return { f, t, el: sec0(t, '<h2>0. Τι σημαίνει «εκδήλωση»</h2>'), en: sec0(t, /<h2>0\. What .event. means<\/h2>/) }; });
-    ok(sec0s.every(s => /<b>γιορτή<\/b>/.test(s.el) && /για τα τρία είδη/.test(s.el) && /σε μια γιορτή, όποιος την οργανώνει/.test(s.el)
-      && /<b>party<\/b>/.test(s.en) && /all three kinds/.test(s.en) && /at a party, whoever organises it/.test(s.en)),
+    ok(sec0s.every(s => /<b>γιορτή<\/b>/.test(s.el) && /<b>εταιρική εκδήλωση<\/b>/.test(s.el) && /για τα τέσσερα είδη/.test(s.el) && /σε μια γιορτή, όποιος την οργανώνει/.test(s.el) && /σε μια εταιρική εκδήλωση, η εταιρεία/.test(s.el)
+      && /<b>party<\/b>/.test(s.en) && /<b>company event<\/b>/.test(s.en) && /all four kinds/.test(s.en) && /at a party, whoever organises it/.test(s.en) && /at a company event, the company/.test(s.en)),
       'pages: terms and privacy §0 name the γιορτή, and who «the couple» is at one, in Greek and English', sec0s.map(s => ({ f: s.f, el: s.el.slice(0, 80), en: s.en.slice(0, 80) })));
     ok(sec0s.every(s => !/γάμ(ο|ος) ή βάπτιση|γάμους και βαπτίσεις|wedding or (a )?baptism|weddings and baptisms|wedding and baptism/.test(s.t)),
       'pages: no two-kind list (γάμος ή βάπτιση, weddings and baptisms) is left on terms or privacy');
@@ -3895,7 +3895,7 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     const page = read('epikoinonia.html');
     ok(/fetch\(["']\/contact["']/.test(page) && /name="website"/.test(page) && /id="f_nomail"/.test(page) && /"application\/json"/.test(page),
       'page: epikoinonia.html posts JSON to /contact, with the trap and the decision-6 tick');
-    for (const f of ['index.html', 'plano-trapezion-gamou.html', 'plano-trapezion-vaptisis.html', 'plano-trapezion-giortis.html'])
+    for (const f of ['index.html', 'plano-trapezion-gamou.html', 'plano-trapezion-vaptisis.html', 'plano-trapezion-giortis.html', 'plano-trapezion-etairikis-ekdilosis.html'])
       ok(!/mailto:info@takeaseat\.gr\?/.test(read(f)) && /href="\/epikoinonia\.html\?kind=/.test(read(f)), 'page: ' + f + ' — every «write to us» button opens the form');
     ok(/epikoinonia\.html/.test(read('sitemap.xml')), 'page: the form is in the sitemap');
     ok(/φόρμα επικοινωνίας/.test(read('privacy.html')) && /contact form/.test(read('privacy.html')), 'page: privacy names the contact form, in both languages');
@@ -4206,13 +4206,13 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
       // what a new due says is what the pages say: every euro figure on a public page is one of the two prices
       const fs = await import('node:fs'), read = f => fs.readFileSync(path.join(root, f), 'utf8');
       const P = (await first(await couple({}))).amount / 100, S = (await first(await venue({}))).amount / 100;
-      for (const [f, both] of [['index.html', true], ['terms.html', true], ['plano-trapezion-gamou.html', false], ['plano-trapezion-vaptisis.html', false], ['plano-trapezion-giortis.html', false]]) {
+      for (const [f, both] of [['index.html', true], ['terms.html', true], ['plano-trapezion-gamou.html', false], ['plano-trapezion-vaptisis.html', false], ['plano-trapezion-giortis.html', false], ['plano-trapezion-etairikis-ekdilosis.html', false]]) {
         const got = [...read(f).matchAll(/(\d[\d.,]*) ?(?:€|&euro;)|(?:€|&euro;) ?(\d[\d.,]*)/g)].map(e => e[1] || e[2]);
         ok(got.includes(String(P)) && (!both || got.includes(String(S))) && got.every(e => ['0', String(P), String(S)].includes(e)), 'price: ' + f + ' names only what a new due says', got);
       }
       for (const [f, says] of [['terms.html', S + ' € τον χρόνο, πλέον ΦΠΑ'], ['terms.html', S + ' € per year, plus VAT'], ['terms.html', P + ' € εφάπαξ, με ΦΠΑ'], ['terms.html', P + ' € one-off, VAT included'],
         ['index.html', S + ' € πλέον ΦΠΑ'], ['index.html', P + ' € εφάπαξ με ΦΠΑ'], ['index.html', '"price":"' + S + '","priceCurrency":"EUR","valueAddedTaxIncluded":false'], ['index.html', '"price":"' + P + '","priceCurrency":"EUR","valueAddedTaxIncluded":true'],
-        ['plano-trapezion-gamou.html', P + ' € εφάπαξ με ΦΠΑ'], ['plano-trapezion-vaptisis.html', P + ' € εφάπαξ με ΦΠΑ'], ['plano-trapezion-giortis.html', P + ' € εφάπαξ με ΦΠΑ'],
+        ['plano-trapezion-gamou.html', P + ' € εφάπαξ με ΦΠΑ'], ['plano-trapezion-vaptisis.html', P + ' € εφάπαξ με ΦΠΑ'], ['plano-trapezion-giortis.html', P + ' € εφάπαξ με ΦΠΑ'], ['plano-trapezion-etairikis-ekdilosis.html', P + ' € εφάπαξ με ΦΠΑ'],
         ['admin.html', 'κοστίζει ' + P + ' € (με ΦΠΑ)'], ['admin.html', '(' + P + ' € με ΦΠΑ)'], ['admin.html', 'μετά ' + S + ' € + ΦΠΑ τον χρόνο'], ['admin.html', 'placeholder="π.χ. ' + P + ',00"']])
         ok(read(f).includes(says), 'price: ' + f + ' says «' + says + '»');
     }
@@ -4739,6 +4739,14 @@ function leadStageOf(l) { return l.lost ? 8 : l.stage || 1; }
     const say = (await call('GET', '/admin/today', undefined, OWN));
     ok(say.status === 200, 'company: «Σήμερα» still answers with the fourth kind on the books', say.status);
     ok(/company:\s*\["εταιρική εκδήλωση", "εταιρικές εκδηλώσεις"\]/.test(wsrc), 'company: the weekend line has its singular and its plural');
+    // the pages: its own guide, and the γιορτή pages stop speaking for it
+    const guide = read('plano-trapezion-etairikis-ekdilosis.html'), dock = read('server/Dockerfile');
+    ok(dock.split('plano-trapezion-etairikis-ekdilosis.html').length === 3 && read('sitemap.xml').includes('plano-trapezion-etairikis-ekdilosis.html'), 'company: the guide is in both Dockerfile lists and the sitemap');
+    ok(/lab\.html\?ev=company/.test(guide) && /epikoinonia\.html\?kind=company/.test(guide) && !/ev=party|kind=party/.test(guide) && !/γιορτή|γάμος|διοργανωτ|class="head"/.test(guide.slice(guide.indexOf('<section class="hero">'), guide.indexOf('<section id="times">'))),
+      'company: the guide opens the company demo and the company form, and speaks of an event, with no head table in its picture');
+    ok(/8 τραπέζια/.test(guide) && /σβήνονται/.test(guide) && /CSV πριν από την εκδήλωση/.test(guide), 'company: the guide says up to 8 tables are free, and how to keep the notes');
+    ok(['plano-trapezion-giortis.html', 'index.html'].every(f => !/εταιρικό δείπνο/.test(read(f))) && read('plano-trapezion-giortis.html').includes('plano-trapezion-etairikis-ekdilosis.html') && read('index.html').includes('plano-trapezion-etairikis-ekdilosis.html'), 'company: the γιορτή pages stop naming the company dinner, and link to its guide');
+    ok(['terms.html', 'privacy.html'].every(f => /εταιρικό δείπνο/.test(read(f)) && /company dinner/.test(read(f))), 'company: terms and privacy define it, in both languages');
   } finally {
     m.clear(); for (const [k, v] of saved) m.set(k, v);
   }
