@@ -32,6 +32,7 @@
   .nav .links{ margin-left:auto; display:flex; align-items:center; gap:4px; }
   .nav .links a{ padding:8px 10px; color:var(--soft); font-weight:600; font-size:14px; border-radius:8px; text-decoration:none; white-space:nowrap; }
   .nav .links a:hover{ color:var(--ink); background:var(--paper-2); }
+  @media (max-width:520px){ .nav .wrap{ gap:8px; } .nav .links a{ padding:8px 6px; } .nav .links a.hide-sm{ display:none; } }
 
   main{ padding:30px 0 56px; }
   h1{ font-family:var(--serif); font-weight:600; letter-spacing:-.01em; font-size:clamp(28px,5vw,38px); line-height:1.12; margin:4px 0 8px; }
@@ -93,7 +94,7 @@
   <div class="wrap">
     <a class="brand" href="/">Take<span class="dot">a</span>Seat</a>
     <nav class="links">
-      <a href="/" data-t="home">Αρχική</a>
+      <a class="hide-sm" href="/" data-t="home">Αρχική</a>
       <a href="/lab.html" data-t="try">Δωρεάν δοκιμή</a>
       <a id="langlink" href="?lang=en" hreflang="en" lang="en">English</a>
     </nav>

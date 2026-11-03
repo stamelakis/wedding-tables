@@ -4524,6 +4524,7 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     ok(chips.length === leadTypes.length && chips.every(t => leadTypes.includes(t)) && chips.every(t => new RegExp('\\b' + t + ':"').test(adm.match(/const C_TYPE=\{[^}]*\}/)[0])), '«+ Νέα επαφή»: its chips, the sheet\'s words and the server name the same six', chips);
     ok(/\["organisers","Γραφεία εκδηλώσεων"\]/.test(adm) && /\["companies","Εταιρείες"\]/.test(adm), '«Πελάτες»: a filter for each');
     ok(![adm, form].some(s => /διοργανωτ/i.test(s)), 'the word is «Γραφείο εκδηλώσεων», never «διοργανωτής», on both pages');
+    ok(/Εταιρείες και γραφεία εκδηλώσεων: επωνυμία, ΑΦΜ/.test(read('privacy.html')) && /Companies and event agencies: business name, tax number/.test(read('privacy.html')), 'privacy.html says we keep the ΑΦΜ of a company or γραφείο, in both languages');
   } finally {
     env.MAIL = keepMail; if (!keepMail) delete env.MAIL;
     m.clear(); for (const [k, v] of saved) m.set(k, v);
