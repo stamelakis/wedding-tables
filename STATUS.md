@@ -19,7 +19,7 @@ yet seen live: a real form sent as a company, a real new due on «Πληρωμέ
 
 ## Next
 
-1. **Five more sentences still list only γάμους, βαπτίσεις και γιορτές** as what a venue's subscription covers: index.html:350 and :424, venue.html:383 and :591,
+1. **Six more sentences still name only γάμους, βαπτίσεις και γιορτές** as what a venue's subscription covers: the text under the new heading at index.html:348, index.html:350 and :424, venue.html:383 and :591,
    and admin.html:2982 (the copied text for a venue). The home page's `<title>` too, left alone so as not to disturb its Google ranking. Andreas approved only the line at index.html:348, now live; the rest need his Greek and a deploy.
 2. **Phases 3–4 of `COMPANIES-PLAN.md`**, each in its own session: one console with saved rooms and
    old designs, then the organiser in public. Each has its own "done when" there.
