@@ -67,6 +67,15 @@
   #labKinds button{ font:inherit; font-size:11px; font-weight:600; border:1px solid var(--line); background:#fff; color:var(--ink);
     border-radius:20px; padding:3px 10px; cursor:pointer; white-space:nowrap; }
   #labKinds button[aria-pressed="true"]{ background:var(--accent); border-color:var(--accent); color:#fff; cursor:default; }
+  /* A phone or small window has no room for four buttons: only the kind you are on shows, with an invisible picker over it (16px, or iOS zooms on tap), as the plan name does. */
+  #labKinds{ position:relative; }
+  #labKinds select{ display:none; }
+  #labKinds option{ background:#fff; color:var(--ink); }
+  @media (max-width:1100px){
+    #labKinds button:not([aria-pressed="true"]), #labKinds .lk-rest{ display:none; }
+    #labKinds button[aria-pressed="true"]::after{ content:" ▾"; }
+    #labKinds select{ display:block; position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; }
+  }
   #roleBadge{ font:inherit; font-size:11.5px; font-weight:700; border-radius:20px; padding:3px 10px; white-space:nowrap; cursor:pointer; border:1px solid var(--line); background:var(--card); color:var(--soft); max-width:220px; overflow:hidden; text-overflow:ellipsis; }
   #roleBadge.r-venue{ background:var(--accent-soft); color:var(--accent-ink); border-color:#d9c7e2; }
   #roleBadge.r-support{ background:#fff1d6; color:#8a5a00; border-color:#f0cf8a; }
@@ -1477,7 +1486,7 @@ el:{
   supOpened:"Υποστήριξη: «{n}» — η πρόσβαση είναι προσωρινή.", supEnded:"Η πρόσβαση υποστήριξης έληξε ή σταμάτησε.", accLost:"Αυτή η συσκευή δεν έχει πια πρόσβαση στο σχέδιο — ανοίξτε τον πιο πρόσφατο σύνδεσμο.", accViewExpired:"Αυτός ο σύνδεσμος δεν ισχύει πια — ζητήστε νέο από το ζευγάρι ή το κτήμα.",
   claimUsed:"Αυτός ο σύνδεσμος έχει ήδη ανοιχτεί. Ανοίξτε το σχέδιο από τη συσκευή που το ανοίξατε πρώτη φορά, ή γράψτε μας στο info@takeaseat.gr.", claimWelcome:"Καλώς ήρθατε! Το «{n}» είναι δικό σας — η TakeaSeat δεν το ανοίγει χωρίς πρόσκλησή σας. Κρατήστε τον σύνδεσμο (☁) για τις άλλες συσκευές σας.",
   cVenueLinks:"Είστε συνδεδεμένοι ως κτήμα. Τον σύνδεσμο του ζευγαριού τον αντιγράφετε από την κονσόλα του κτήματος.", cSupportNoLinks:"Προσωρινή πρόσβαση υποστήριξης — χωρίς συνδέσμους κοινής χρήσης.",
-  labSwitch:"Αλλαγή σε {e}; Το δοκιμαστικό σχέδιο ξαναστήνεται από την αρχή.", labBadge:"🧪 Εργαστήριο", labHint:"Δοκιμαστικός χώρος — ό,τι αλλάζετε εδώ μένει μόνο σε αυτή τη συσκευή.",
+  labKindsAria:"Είδος εκδήλωσης", labSwitch:"Αλλαγή σε {e}; Το δοκιμαστικό σχέδιο ξαναστήνεται από την αρχή.", labBadge:"🧪 Εργαστήριο", labHint:"Δοκιμαστικός χώρος — ό,τι αλλάζετε εδώ μένει μόνο σε αυτή τη συσκευή.",
   switchPlan:"Αλλαγή ζευγαριού / εκδήλωσης", newPlan:"Νέο σχέδιο (ζευγάρι / εκδήλωση)", planMore:"Μετονομασία · αντιγραφή · διαγραφή",
   shareTitle:"Κοινή χρήση & συγχρονισμός", fontDown:"Μικρότερα ονόματα", fontUp:"Μεγαλύτερα ονόματα", fit:"Προσαρμογή", zoomIn:"Μεγέθυνση", zoomOut:"Σμίκρυνση", print:"Εκτύπωση", more:"Περισσότερα",
   tsTitle:"Τραπέζια", tsAll:"Όλα", tsToggle:"Εμφάνιση / απόκρυψη λίστας τραπεζιών",
@@ -1543,7 +1552,7 @@ el:{
   pRename:"Μετονομασία", pDup:"Αντιγραφή", pDel:"Διαγραφή",
   // the type is corrected by exactly whoever may rename the event — here, the customer who bought their own plan
  
-  askKind:"Να γίνει {e} αυτή η εκδήλωση; Αλλάζουν μόνο οι λέξεις — η ημερομηνία, το σχέδιο, οι καλεσμένοι και οι σύνδεσμοι μένουν ακριβώς όπως είναι.", pKindTo:"Να γίνει {e}", evNom:"γάμος",
+  askKind:"Να γίνει {e}; Αλλάζουν μόνο οι λέξεις — η ημερομηνία, το σχέδιο, οι καλεσμένοι και οι σύνδεσμοι μένουν ακριβώς όπως είναι.", pKindTo:"Να γίνει {e}", evNom:"γάμος",
   
   tKindSaved:"Αποθηκεύτηκε — άλλαξαν μόνο οι λέξεις.", tKindFailed:"Το είδος δεν άλλαξε — δοκιμάστε ξανά.",
   promptNewGroup:"Όνομα νέας ομάδας:", groupN:"Ομάδα {n}", promptRenameGroup:"Μετονομασία ομάδας:", confirmDeleteGroup:"Διαγραφή ομάδας «{n}»; Οι καλεσμένοι κρατούν τις θέσεις τους αλλά χάνουν το χρώμα.",
@@ -1667,6 +1676,7 @@ el:{
   p_tLockedWed:"Η γιορτή έγινε — το σχέδιο είναι μόνο για προβολή.", p_tPreviewOn:"Βλέπετε όσα βλέπει ο διοργανωτής.",
   p_tRenameVenue:"Το όνομα της γιορτής το ορίζει {v}.", p_evNom:"γιορτή", p_title:"Οργάνωση Τραπεζιών Γιορτής",
   // ---- εταιρικές εκδηλώσεις: the twins of the fourth kind (COMPANIES-PLAN.md phase 2). The customer is «η εταιρεία», the event «η εκδήλωση».
+  c_claimKeep:"Κρατήστε αυτόν τον προσωπικό σύνδεσμο και στείλτε τον σε όποιον άλλον δουλεύει το σχέδιο στην εταιρεία:", c_claimUsedAt:"Αυτός ο σύνδεσμος άνοιξε ήδη ({t}). Αν τον άνοιξε συνάδελφός σας, ζητήστε του τον «Σύνδεσμο επεξεργασίας» (☁). Αλλιώς ζητήστε νέο σύνδεσμο στο email σας.", c_tRotated:"Νέοι σύνδεσμοι έτοιμοι — στείλτε τον νέο σε όποιον άλλον δουλεύει το σχέδιο.", c_gePartyPh:"π.χ. Alpha ΑΕ", c_invNewPh:"Όνομα προσκλητηρίου (π.χ. Alpha ΑΕ)", c_invEmpty:"Δεν υπάρχουν ακόμη προσκλητήρια. Πατήστε «Νέο προσκλητήριο» — ή γράψτε «Alpha ΑΕ:» πάνω από τα ονόματα όταν τα προσθέτετε στη λίστα.", c_namesPh:"Ένα όνομα ανά γραμμή…\nAlpha ΑΕ:\nΓιώργος\nΜαρία", c_switchPlan:"Αλλαγή εκδήλωσης", c_newPlan:"Νέο σχέδιο (εκδήλωση)", c_promptNewProfile:"Νέο σχέδιο — όνομα εκδήλωσης:",
   c_labCap:"Η δωρεάν δοκιμή έχει έως {n} τραπέζια. Για ολόκληρη την εκδήλωσή σας:", c_labPlan:"Δοκιμαστική εκδήλωση", c_ourWedding:"Η εκδήλωσή μας",
   c_weddingN:"Εκδήλωση {n}", c_labBride:"Διευθύνουσα σύμβουλος", c_labGroom:"Πρόεδρος", c_accCouplePerms:"Τι μπορεί να αλλάξει η εταιρεία",
   c_accDate:"Ημερομηνία εκδήλωσης", c_accDateConfirm:"Ημερομηνία εκδήλωσης: {d}. Μετά μπορείτε να την αλλάξετε έως {n} φορές. Συνέχεια;",
@@ -1758,7 +1768,7 @@ en:{
   supOpened:"Support: “{n}” — access is temporary.", supEnded:"Support access has expired or was ended.", accLost:"This device no longer has access to the plan — open the latest link.", accViewExpired:"This link no longer works — ask the couple or the venue for a new one.",
   claimUsed:"This link has already been opened. Open the plan on the device you first used, or write to info@takeaseat.gr.", claimWelcome:"Welcome! “{n}” is yours — TakeaSeat never opens it without your invitation. Keep the link (☁) for your other devices.",
   cVenueLinks:"You are signed in as the venue. Copy the couple's link from the venue console.", cSupportNoLinks:"Temporary support access — no sharing links.",
-  labSwitch:"Switch to a {e}? The demo plan is built again from scratch.", labBadge:"🧪 Lab", labHint:"Sandbox — whatever you change here stays on this device only.",
+  labKindsAria:"Kind of event", labSwitch:"Switch to a {e}? The demo plan is built again from scratch.", labBadge:"🧪 Lab", labHint:"Sandbox — whatever you change here stays on this device only.",
   switchPlan:"Switch couple / event", newPlan:"New plan (couple / event)", planMore:"Rename · duplicate · delete",
   shareTitle:"Share & sync", fontDown:"Smaller names", fontUp:"Larger names", fit:"Fit", zoomIn:"Zoom in", zoomOut:"Zoom out", print:"Print", more:"More",
   tsTitle:"Tables", tsAll:"All", tsToggle:"Show / hide the table list",
@@ -1823,7 +1833,7 @@ en:{
   gmRename:"Rename “{n}”", gmRecolor:"Change colour", gmDelete:"Delete group", noGroup:"No group", geName:"Guest name", geType:"Group",
   pRename:"Rename", pDup:"Duplicate", pDel:"Delete",
  
-  askKind:"Make this event a {e}? Only the words change — the date, the plan, the guests and the links stay exactly as they are.", pKindTo:"Make it a {e}", evNom:"wedding",
+  askKind:"Make this a {e}? Only the words change — the date, the plan, the guests and the links stay exactly as they are.", pKindTo:"Make it a {e}", evNom:"wedding",
   
   tKindSaved:"Saved — only the words changed.", tKindFailed:"The type did not change — please try again.",
   promptNewGroup:"New group name:", groupN:"Group {n}", promptRenameGroup:"Rename group:", confirmDeleteGroup:"Delete group “{n}”? Guests keep their seats but lose the colour.",
@@ -1944,6 +1954,7 @@ en:{
   p_tDateSet:"Celebration date: {d}", p_tHeadAdded:"Celebration table added", p_tLockedWed:"The celebration is over — the plan is view-only.",
   p_tPreviewOn:"You now see what the host sees.", p_tRenameVenue:"The celebration's name is set by {v}.", p_evNom:"celebration", p_title:"Celebration Seating Planner",
   // ---- company events: the twins of the fourth kind. The customer is the company, the event is the event.
+  c_claimKeep:"Keep this personal link and send it to whoever else works on the plan at your company:", c_claimUsedAt:"This link was already opened ({t}). If a colleague opened it, ask them for the “Edit link” (☁). Otherwise ask for a new link by email.", c_tRotated:"New links are ready — send the new one to whoever else works on the plan.", c_gePartyPh:"e.g. Alpha Ltd", c_invNewPh:"Invitation name (e.g. Alpha Ltd)", c_invEmpty:"No invitations yet. Press “New invitation” — or type “Alpha Ltd:” above the names when you add them to the list.", c_namesPh:"One name per line…\nAlpha Ltd:\nJohn\nMary", c_switchPlan:"Switch event", c_newPlan:"New plan (event)", c_promptNewProfile:"New plan — event name:",
   c_labCap:"The free trial has up to {n} tables. For your whole event:", c_labPlan:"Demo company event", c_ourWedding:"Our event",
   c_weddingN:"Event {n}", c_labBride:"CEO", c_labGroom:"Chair", c_accCouplePerms:"What the company may change", c_accDate:"Event date",
   c_accDateConfirm:"Event date: {d}. You can change it up to {n} times afterwards. Continue?",
@@ -2031,7 +2042,7 @@ de:{
   supOpened:"Support: „{n}“ — der Zugriff ist vorübergehend.", supEnded:"Der Support-Zugriff ist abgelaufen oder wurde beendet.", accLost:"Dieses Gerät hat keinen Zugriff mehr auf den Plan — öffnen Sie den neuesten Link.", accViewExpired:"Dieser Link gilt nicht mehr — bitten Sie das Paar oder die Location um einen neuen.",
   claimUsed:"Dieser Link wurde bereits geöffnet. Öffnen Sie den Plan auf dem Gerät, das Sie zuerst benutzt haben, oder schreiben Sie an info@takeaseat.gr.", claimWelcome:"Willkommen! „{n}“ gehört Ihnen — TakeaSeat öffnet ihn nie ohne Ihre Einladung. Bewahren Sie den Link (☁) für Ihre anderen Geräte auf.",
   cVenueLinks:"Sie sind als Location angemeldet. Den Link des Paares kopieren Sie in der Location-Konsole.", cSupportNoLinks:"Vorübergehender Support-Zugriff — keine Freigabelinks.",
-  labSwitch:"Zu {e} wechseln? Der Demo-Plan wird neu aufgebaut.", labBadge:"🧪 Labor", labHint:"Sandbox — alles, was Sie hier ändern, bleibt nur auf diesem Gerät.",
+  labKindsAria:"Art der Veranstaltung", labSwitch:"Zu {e} wechseln? Der Demo-Plan wird neu aufgebaut.", labBadge:"🧪 Labor", labHint:"Sandbox — alles, was Sie hier ändern, bleibt nur auf diesem Gerät.",
   switchPlan:"Paar / Veranstaltung wechseln", newPlan:"Neuer Plan (Paar / Veranstaltung)", planMore:"Umbenennen · duplizieren · löschen",
   shareTitle:"Teilen & synchronisieren", fontDown:"Kleinere Namen", fontUp:"Größere Namen", fit:"Einpassen", zoomIn:"Vergrößern", zoomOut:"Verkleinern", print:"Drucken", more:"Mehr",
   tsTitle:"Tische", tsAll:"Alle", tsToggle:"Tischliste ein-/ausblenden",
@@ -2096,7 +2107,7 @@ de:{
   gmRename:"„{n}“ umbenennen", gmRecolor:"Farbe ändern", gmDelete:"Gruppe löschen", noGroup:"Keine Gruppe", geName:"Gastname", geType:"Gruppe",
   pRename:"Umbenennen", pDup:"Duplizieren", pDel:"Löschen",
  
-  askKind:"Diese Veranstaltung in {e} ändern? Nur die Wörter ändern sich — Datum, Plan, Gäste und Links bleiben genau wie sie sind.", pKindTo:"In {e} ändern", evNom:"eine Hochzeit",
+  askKind:"In {e} ändern? Nur die Wörter ändern sich — Datum, Plan, Gäste und Links bleiben genau wie sie sind.", pKindTo:"In {e} ändern", evNom:"eine Hochzeit",
   
   tKindSaved:"Gespeichert — nur die Wörter haben sich geändert.", tKindFailed:"Die Art wurde nicht geändert — bitte erneut versuchen.",
   promptNewGroup:"Name der neuen Gruppe:", groupN:"Gruppe {n}", promptRenameGroup:"Gruppe umbenennen:", confirmDeleteGroup:"Gruppe „{n}“ löschen? Die Gäste behalten ihre Plätze, verlieren aber die Farbe.",
@@ -2218,6 +2229,7 @@ de:{
   p_tDateSet:"Datum der Feier: {d}", p_tHeadAdded:"Festtisch hinzugefügt", p_tLockedWed:"Die Feier ist vorbei — der Plan ist nur noch zum Ansehen.",
   p_tPreviewOn:"Sie sehen jetzt, was der Gastgeber sieht.", p_tRenameVenue:"Den Namen der Feier legt {v} fest.", p_evNom:"eine Feier", p_title:"Feier-Sitzplan",
   // ---- Firmenveranstaltungen: die Zwillinge der vierten Art.
+  c_claimKeep:"Bewahren Sie diesen persönlichen Link auf und senden Sie ihn allen, die in Ihrer Firma am Plan arbeiten:", c_claimUsedAt:"Dieser Link wurde bereits geöffnet ({t}). Wenn ein Kollege ihn geöffnet hat, fragen Sie nach dem „Bearbeitungslink“ (☁). Sonst fordern Sie per E-Mail einen neuen Link an.", c_tRotated:"Neue Links sind bereit — senden Sie den neuen allen, die am Plan arbeiten.", c_gePartyPh:"z. B. Alpha GmbH", c_invNewPh:"Name der Einladung (z. B. Alpha GmbH)", c_invEmpty:"Noch keine Einladungen. Tippen Sie auf „Neue Einladung“ — oder schreiben Sie „Alpha GmbH:“ über die Namen, wenn Sie sie zur Liste hinzufügen.", c_namesPh:"Ein Name pro Zeile…\nAlpha GmbH:\nHans\nMaria", c_switchPlan:"Veranstaltung wechseln", c_newPlan:"Neuer Plan (Veranstaltung)", c_promptNewProfile:"Neuer Plan — Name der Veranstaltung:",
   c_labCap:"Die kostenlose Testversion hat bis zu {n} Tische. Für Ihre ganze Veranstaltung:", c_labPlan:"Demo-Firmenveranstaltung",
   c_ourWedding:"Unsere Veranstaltung", c_weddingN:"Veranstaltung {n}", c_labBride:"Geschäftsführerin", c_labGroom:"Vorsitzender",
   c_accCouplePerms:"Was die Firma ändern darf", c_accDate:"Datum der Veranstaltung",
@@ -2498,13 +2510,19 @@ function labState(ev){
 function renderLabKinds(){
   const box=$("labKinds"); if(!box||!IS_LAB) return;
   box.innerHTML="";
+  const sel=document.createElement("select"); sel.setAttribute("aria-label",tr("labKindsAria"));
   for(const k of Object.keys(KIND_PFX)){
-    const nom=wordFor(k,"evNom"), b=document.createElement("button");
-    b.type="button"; b.textContent=nom.charAt(0).toUpperCase()+nom.slice(1);
+    const nom=wordFor(k,"evNom"), word=nom.charAt(0).toUpperCase()+nom.slice(1), b=document.createElement("button");
+    b.type="button"; const cut=word.indexOf(" ");
+    b.textContent=cut<0?word:word.slice(0,cut);
+    if(cut>=0){ const rest=document.createElement("span"); rest.className="lk-rest"; rest.textContent=word.slice(cut); b.appendChild(rest); }
     b.setAttribute("aria-pressed", String(k===LAB_EV));
     if(k!==LAB_EV) b.onclick=()=>switchLabKind(k);
     box.appendChild(b);
+    sel.add(new Option(word,k,k===LAB_EV,k===LAB_EV));
   }
+  sel.onchange=()=>{ const k=sel.value; sel.value=LAB_EV; switchLabKind(k); };   // a refused confirm leaves it on the kind you are on
+  box.appendChild(sel);
 }
 function switchLabKind(k){
   if(!IS_LAB || k===LAB_EV || KIND_PFX[k]===undefined) return;

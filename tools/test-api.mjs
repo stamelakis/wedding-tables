@@ -4645,6 +4645,10 @@ function leadStageOf(l) { return l.lost ? 8 : l.stage || 1; }
     const bad = said.filter(([, v]) => WRONG[l].test(v)).map(([k]) => k);
     ok(bad.length === 0, 'company: no ' + l + ' string names another event or its people', bad);
   }
+  // A word with no twin is shown as it is: anything on the list above needs a company twin, or the company reads about somebody's partner.
+  // The three left out are never shown to a company as its own: the party's bar, the kids' corner in the decor menu, and the venue's list of what it may lock.
+  const untwinned = Object.keys(T_ALL.el).filter(k => !/^(b_|p_|c_)/.test(k) && !['tour', 'featFloor', 'featKids', 'permDecor'].includes(k) && (WRONG.el.test(JSON.stringify(T_ALL.el[k])) || /ζευγαρ|σύντροφ|Οικ\./.test(JSON.stringify(T_ALL.el[k]))) && T_ALL.el['c_' + k] == null);
+  ok(untwinned.length === 0, 'company: no plain string that names another event or a family reaches a company screen without its own twin', untwinned);
   // -- the starter --
   const groups = l => T_ALL[l].c_groupsDefault;
   ok(LANGS.every(l => groups(l).length === 4), 'company: four starter groups, as the demo and the palette expect');
