@@ -130,6 +130,6 @@ three languages) is accepted knowingly.
 | Phase | Status |
 |---|---|
 | 1. A company as a customer | Live 2026-11-03 (`924490c`, `deploy-2026-11-03-1`) |
-| 2. The fourth kind | Built 2026-11-03, not deployed; Andreas reads the Greek first |
+| 2. The fourth kind | Live 2026-11-03 (`deploy-2026-11-03-4`) |
 | 3. One console, saved rooms, old designs | Not started |
 | 4. The organiser in public | Not started |

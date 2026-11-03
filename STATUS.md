@@ -2,29 +2,25 @@
 
 Updated: 2026-11-03
 
-**Status:** Phase 2 of `COMPANIES-PLAN.md` (the fourth kind, «Εταιρική εκδήλωση») is built and committed on the local copy, **not deployed**: it waits for
-Andreas to read the Greek. 1629 checks pass on the local copy; checked on screen from demo to PDF, details under "In progress". Live runs `2fb509c` (deployed 2026-11-03, tag `deploy-2026-11-03-3`, pre-deploy backup
-`/opt/backups/takeaseat-20261103-142329.db.gz.age`), healthy. «Πληρωμές» now writes a new customer's due as 25 € or
-349 € + ΦΠΑ, what the site says. Phase 1 of `COMPANIES-PLAN.md` (a company and a γραφείο
-εκδηλώσεων as customers) went live after Andreas's yes; phases 3–4 are not built. That deploy's 1497 checks passed, on the local copy and
-in the server's build; checked on screen at phone width on the local copy; `/security-review` found nothing. Live smoke
-test, read-only: health, eight pages with no console errors, the prices on the pages, the new example in admin.html,
-`/admin/customers` and `/admin/payments` refuse without a key. Not checked live: a real form sent as a company, and the
-signed-in screens, so no real new due has been seen on the live «Πληρωμές». Operations phases 1–6 are live. On 2026-11-03 Andreas looked at «Σήμερα», «Πληρωμές», «Πελάτες», the
-card and «+ Νέα επαφή» live and all looked fine. Not yet seen live: a real morning mail (none goes while the list is empty).
+**Status:** Live runs `bf431d9` (deployed 2026-11-03, tag `deploy-2026-11-03-4`, pre-deploy backup
+`/opt/backups/takeaseat-20261103-153612.db.gz.age`), healthy. The fourth kind, «Εταιρική εκδήλωση» (phase 2 of `COMPANIES-PLAN.md`), is live after Andreas
+read the Greek and said yes; phases 3–4 are not built. 1630 checks pass, on the local copy and in the server's build. Operations phases 1–6 are live.
+
+**Live smoke test of phase 2, read-only, passed:** the company demo at desktop, 1000px and 375px, the γιορτή demo, the new guide, the home page's four cards,
+the γιορτή guide, terms, privacy, dpa, and six more pages load with no console errors, the sitemap lists the guide, `/health` ok, `/admin/customers` refuses
+without a key. On the local copy only: converting between the four kinds, the PDFs in el, en and de, the admin dialogs, the venue console. **Not checked
+live:** a company plan bought and used for real (signed-in screens, its PDF, its mail), and a real iPhone tapping the kind picker in the demo. Also not
+yet seen live: a real form sent as a company, a real new due on «Πληρωμές», a real morning mail.
 
 ## In progress / unfinished
 
-- **Phase 2, built, not live.** Checked on screen on the local copy: the demo (`lab.html?ev=company`) in el/en/de words, the phone and small-window kind picker,
-  converting between the four kinds with a custom label kept, print titles, the note about guest notes (shown online, hidden device-only), the new guide and its
-  links, the home page's four cards, the admin dialogs, the venue console; the PDFs in el, en and de. Not checked: on the live site, a real mail, an actual iPhone
-  tap on the invisible picker (only an emulated phone width).
 - Party plans created before 2026-10-17 keep the label «Τραπέζι της γιορτής» until the customer renames it
   (deliberately not rewritten on load). Converting such a plan to another kind still works (LEGACY_HEADS).
 
 ## Next
 
-1. **Deploy phase 2** once Andreas has read the Greek and said yes (`/ship`).
+1. **The home page does not yet say a venue's subscription covers company events:** the line «Γάμοι, βαπτίσεις και γιορτές, χωρίς όριο» (index.html:348) and the
+   page's `<title>`. venue.html already says it. Small, but it needs Andreas's Greek and a deploy.
 2. **Phases 3–4 of `COMPANIES-PLAN.md`**, each in its own session: one console with saved rooms and
    old designs, then the organiser in public. Each has its own "done when" there.
 3. **Phase 7 (online payment)** waits on the company, accountant and lawyer. The page's remaining English sections move
@@ -67,7 +63,7 @@ card and «+ Νέα επαφή» live and all looked fine. Not yet seen live: a 
   buys a γιορτή for its own company dinner is a business, and §8 gives every direct buyer the consumer-law 14-day
   withdrawal (ν. 2251/1994), with the planner opening only after it, a business included. And: terms §8's
   «άμεση έναρξη» names only a γάμος under 21 days away, while the payment reply says «εκδήλωση»; confirm it may
-  cover a βάπτιση or γιορτή and widen §8's wording. The terms' opening now says «ιδιώτες και εταιρείες» while §8 still gives every direct buyer the 14-day withdrawal, so this is more visible once phase 2 is live. And the four points for companies in `COMPANIES-PLAN.md` §4: the
+  cover a βάπτιση or γιορτή and widen §8's wording. The terms' opening now says «ιδιώτες και εταιρείες» while §8 still gives every direct buyer the 14-day withdrawal, and phase 2 is live, so this matters more now. And the four points for companies in `COMPANIES-PLAN.md` §4: the
   1–5 year choice, a company accepting `dpa.html`, no consumer withdrawal for a company, table labels in saved rooms.
 
 ## Known problems
@@ -80,11 +76,12 @@ card and «+ Νέα επαφή» live and all looked fine. Not yet seen live: a 
   `TakeaSeatHermes.lnk` and check the file (HANDOFF). The cause is in Hermes's `hermes_control.py`, another project.
 - **This PC's C: drive is 98 % full** (9.7 GB free on 2026-10-23). Not the server's; the server is at 24 %.
 - The 🛟 on the «Υποστήριξη έως …» badge shows as an empty box on Windows 10 browsers (no such emoji there).
-- **`lab.html` at 375px: the ⋯ button's clipped edge is fixed on the local copy by phase 2** (it now ends at 367px); live keeps it until that deploy.
 - **The tour once threw a `TypeError … 'prep'`** when «Επόμενο» was pressed past its last step (planner around line 5502, seen 2026-11-03 in a screen check, not
   company-specific). Probably a stale double click; not reproduced by hand and not fixed.
 
 ## History
+
+- 2026-11-03: Phase 2 of `COMPANIES-PLAN.md`, the fourth kind «Εταιρική εκδήλωση», live (`bf431d9`, `deploy-2026-11-03-4`). The first deploy died in the server's build: two files a new test reads were not in the check stage; nothing went live, and a check now refuses that on the local copy. Fixed the clipped ⋯ button at 375px on the way.
 
 - 2026-11-03 — «Πληρωμές» now expects what the site says, 25 € with ΦΠΑ and 349 € + ΦΠΑ, after Andreas's yes (it said 19 € and
   129 € since the ledger was written). Deployed the same day (`2fb509c`, `deploy-2026-11-03-3`) after his second yes. The live database had no ledger rows, no couples and one venue with
