@@ -4745,6 +4745,10 @@ function leadStageOf(l) { return l.lost ? 8 : l.stage || 1; }
     ok(/company:\s*\["εταιρική εκδήλωση", "εταιρικές εκδηλώσεις"\]/.test(wsrc), 'company: the weekend line has its singular and its plural');
     // the pages: its own guide, and the γιορτή pages stop speaking for it
     const guide = read('plano-trapezion-etairikis-ekdilosis.html'), dock = read('server/Dockerfile');
+    // A file a test names but the build's check stage does not copy kills the deploy on the server, and only there. Twice now.
+    const named = [...read('tools/test-api.mjs').matchAll(/\bread\('([^']+)'\)|path\.join\(root, '([^']+)'(?:, '([^']+)')?\)/g)].map(m => m[1] || (m[3] ? m[2] + '/' + m[3] : m[2]));
+    const carried = dock.slice(dock.lastIndexOf('COPY server/package.json'));
+    ok(named.length > 15 && named.every(f => carried.includes(f)), 'every file a test reads is copied into the build check stage', named.filter(f => !carried.includes(f)));
     ok(dock.split('plano-trapezion-etairikis-ekdilosis.html').length === 3 && read('sitemap.xml').includes('plano-trapezion-etairikis-ekdilosis.html'), 'company: the guide is in both Dockerfile lists and the sitemap');
     ok(/lab\.html\?ev=company/.test(guide) && /epikoinonia\.html\?kind=company/.test(guide) && !/ev=party|kind=party/.test(guide) && !/γιορτή|γάμος|διοργανωτ|class="head"/.test(guide.slice(guide.indexOf('<section class="hero">'), guide.indexOf('<section id="times">'))),
       'company: the guide opens the company demo and the company form, and speaks of an event, with no head table in its picture');
