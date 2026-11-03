@@ -2,8 +2,8 @@
 
 Updated: 2026-11-03
 
-**Status:** Live runs `bf431d9` (deployed 2026-11-03, tag `deploy-2026-11-03-4`, pre-deploy backup
-`/opt/backups/takeaseat-20261103-153612.db.gz.age`), healthy. The fourth kind, «Εταιρική εκδήλωση» (phase 2 of `COMPANIES-PLAN.md`), is live after Andreas
+**Status:** Live runs `1ade6c9` (deployed 2026-11-03, tag `deploy-2026-11-03-5`, pre-deploy backup
+`/opt/backups/takeaseat-20261103-154703.db.gz.age`), healthy. The fourth kind, «Εταιρική εκδήλωση» (phase 2 of `COMPANIES-PLAN.md`), is live after Andreas
 read the Greek and said yes; phases 3–4 are not built. 1630 checks pass, on the local copy and in the server's build. Operations phases 1–6 are live.
 
 **Live smoke test of phase 2, read-only, passed:** the company demo at desktop, 1000px and 375px, the γιορτή demo, the new guide, the home page's four cards,
@@ -19,8 +19,8 @@ yet seen live: a real form sent as a company, a real new due on «Πληρωμέ
 
 ## Next
 
-1. **The home page does not yet say a venue's subscription covers company events:** the line «Γάμοι, βαπτίσεις και γιορτές, χωρίς όριο» (index.html:348) and the
-   page's `<title>`. venue.html already says it. Small, but it needs Andreas's Greek and a deploy.
+1. **Five more sentences still list only γάμους, βαπτίσεις και γιορτές** as what a venue's subscription covers: index.html:350 and :424, venue.html:383 and :591,
+   and admin.html:2982 (the copied text for a venue). The home page's `<title>` too, left alone so as not to disturb its Google ranking. Andreas approved only the line at index.html:348, now live; the rest need his Greek and a deploy.
 2. **Phases 3–4 of `COMPANIES-PLAN.md`**, each in its own session: one console with saved rooms and
    old designs, then the organiser in public. Each has its own "done when" there.
 3. **Phase 7 (online payment)** waits on the company, accountant and lawyer. The page's remaining English sections move
@@ -81,6 +81,7 @@ yet seen live: a real form sent as a company, a real new due on «Πληρωμέ
 
 ## History
 
+- 2026-11-03: The home page's subscription line now names company events (`1ade6c9`, `deploy-2026-11-03-5`).
 - 2026-11-03: Phase 2 of `COMPANIES-PLAN.md`, the fourth kind «Εταιρική εκδήλωση», live (`bf431d9`, `deploy-2026-11-03-4`). The first deploy died in the server's build: two files a new test reads were not in the check stage; nothing went live, and a check now refuses that on the local copy. Fixed the clipped ⋯ button at 375px on the way.
 
 - 2026-11-03 — «Πληρωμές» now expects what the site says, 25 € with ΦΠΑ and 349 € + ΦΠΑ, after Andreas's yes (it said 19 € and
