@@ -304,8 +304,16 @@ const EVW = {
             changes:"αλλάζει", sets:"στήνει", sees:"βλέπει", writes:"γράφει", puts:"βάζει", alone:"μόνος του", poss:"της",
             nameLbl:"Όνομα γιορτής", namePh:"Όνομα γιορτής (π.χ. Τα 40ά της Μαρίας)", nameAsk:"Γράψτε το όνομα της γιορτής",
             notOpened:"Δεν έχει ανοίξει τον σύνδεσμο" },
+  company:{ nomA:"η εκδήλωση", genA:"της εκδήλωσης", accA:"την εκδήλωση", accT:"αυτή την εκδήλωση", inA:"στην εκδήλωση", bareG:"εκδήλωσης", created:"Η εκδήλωση δημιουργήθηκε",
+            made:"Η εκδήλωση έγινε", over:"Η εκδήλωση έχει ολοκληρωθεί", started:"Η εκδήλωση ξεκίνησε", deleted:"Η εκδήλωση διαγράφηκε",
+            notFound:"Η εκδήλωση δεν βρέθηκε.", isOver:"Η εκδήλωση έχει ολοκληρωθεί.", nw:"Νέα εταιρική εκδήλωση",
+            details:"Στοιχεία εκδήλωσης", del:"Διαγραφή εκδήλωσης", dateLbl:"Ημερομηνία εκδήλωσης", dateShort:"Ημ/νία εκδήλωσης",
+            custN:"η εταιρεία", custA:"την εταιρεία", custG:"εταιρείας", custTo:"στην εταιρεία",
+            changes:"αλλάζει", sets:"στήνει", sees:"βλέπει", writes:"γράφει", puts:"βάζει", alone:"μόνη της", poss:"της",
+            nameLbl:"Όνομα εκδήλωσης", namePh:"Όνομα εκδήλωσης (π.χ. Χριστουγεννιάτικο δείπνο Alpha)", nameAsk:"Γράψτε το όνομα της εκδήλωσης",
+            notOpened:"Δεν έχει ανοίξει τον σύνδεσμο" },
 };
-const EVNAME = { wedding:"Γάμος", baptism:"Βάπτιση", party:"Γιορτή" };   // what the «Είδος» selects show
+const EVNAME = { wedding:"Γάμος", baptism:"Βάπτιση", party:"Γιορτή", company:"Εταιρική εκδήλωση" };   // what the «Είδος» selects show
 const kindOptions = (sel) => Object.keys(EVW).map(k => `<option value="${k}" ${k===sel?"selected":""}>${EVNAME[k]}</option>`).join("");
 const evKind = w => (w && EVW[w.kind]) ? w.kind : "wedding";   // anything we do not know is a wedding
 const EV = w => EVW[evKind(w)];

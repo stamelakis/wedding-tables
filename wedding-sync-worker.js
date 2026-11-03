@@ -79,10 +79,10 @@ function normPerms(p, fallback) {
 // ONE field on the plan record. A venue's licence and a couple's purchase cover both kinds; the date, the phases, the
 // retention and the door list are identical — only the words follow this. Anything without it is a wedding, which is
 // what every plan made before today is, so no stored plan changes meaning.
-const EVENT_KINDS = ["wedding", "baptism", "party"];
+const EVENT_KINDS = ["wedding", "baptism", "party", "company"];
 // One place decides which dictionary a kind reads from. A wedding is the unprefixed original, so adding a kind is a
 // row here plus its twins — never a new `=== "baptism"` test somewhere, which is how the second kind leaked.
-const KIND_PFX = { wedding: "", baptism: "b_", party: "p_" };
+const KIND_PFX = { wedding: "", baptism: "b_", party: "p_", company: "c_" };
 const normKind = k => (typeof k === "string" && EVENT_KINDS.includes(k)) ? k : "wedding";
 const kindOf = rec => normKind(rec && rec.kind);
 // `undefined` when the body did not mention it (leave it alone), otherwise the normalised kind.
@@ -296,6 +296,8 @@ const MAILS = {
     // Greeks actually say at a baptism — «να σας ζήσει» — not the couple's.
     b_keepsake: ["Το αναμνηστικό της βάπτισης — TakeaSeat", "Συγχαρητήρια!\n\nΣας στέλνουμε, ως μικρό αναμνηστικό, το τραπεζολόγιο της βάπτισης «{name}» ({date}): όλοι όσοι γιόρτασαν μαζί σας και πού κάθισαν. Θα το βρείτε συνημμένο σε PDF.\n\nΤο σχέδιο είναι πλέον μόνο για προβολή και θα διαγραφεί οριστικά στις {until}. Αν θέλετε να το κρατήσετε, αποθηκεύστε το συνημμένο αρχείο.\n\nΝα σας ζήσει!\nTakeaSeat"],
     b_keepsakeKeep: ["Το αναμνηστικό της βάπτισης — TakeaSeat", "Συγχαρητήρια!\n\nΣας στέλνουμε, ως μικρό αναμνηστικό, το τραπεζολόγιο της βάπτισης «{name}» ({date}): όλοι όσοι γιόρτασαν μαζί σας και πού κάθισαν. Θα το βρείτε συνημμένο σε PDF.\n\nΝα σας ζήσει!\nTakeaSeat"],
+    c_keepsake: ["Το τραπεζολόγιο της εκδήλωσης — TakeaSeat", "Γεια σας,\n\nΣας στέλνουμε το τραπεζολόγιο της εκδήλωσης «{name}» ({date}): όλοι οι καλεσμένοι και πού κάθισαν. Θα το βρείτε συνημμένο σε PDF.\n\nΤο σχέδιο είναι πλέον μόνο για προβολή και θα διαγραφεί οριστικά στις {until}. Αν θέλετε να το κρατήσετε, αποθηκεύστε το συνημμένο αρχείο.\n\nΜε εκτίμηση,\nTakeaSeat"],
+    c_keepsakeKeep: ["Το τραπεζολόγιο της εκδήλωσης — TakeaSeat", "Γεια σας,\n\nΣας στέλνουμε το τραπεζολόγιο της εκδήλωσης «{name}» ({date}): όλοι οι καλεσμένοι και πού κάθισαν. Θα το βρείτε συνημμένο σε PDF.\n\nΜε εκτίμηση,\nTakeaSeat"],
     p_keepsake: ["Το αναμνηστικό της γιορτής — TakeaSeat", "Γεια σας,\n\nΣας στέλνουμε, ως μικρό αναμνηστικό, το τραπεζολόγιο της γιορτής «{name}» ({date}): όλοι όσοι γιόρτασαν μαζί σας και πού κάθισαν. Θα το βρείτε συνημμένο σε PDF.\n\nΤο σχέδιο είναι πλέον μόνο για προβολή και θα διαγραφεί οριστικά στις {until}. Αν θέλετε να το κρατήσετε, αποθηκεύστε το συνημμένο αρχείο.\n\nΜε τις καλύτερες ευχές,\nTakeaSeat"],
     p_keepsakeKeep: ["Το αναμνηστικό της γιορτής — TakeaSeat", "Γεια σας,\n\nΣας στέλνουμε, ως μικρό αναμνηστικό, το τραπεζολόγιο της γιορτής «{name}» ({date}): όλοι όσοι γιόρτασαν μαζί σας και πού κάθισαν. Θα το βρείτε συνημμένο σε PDF.\n\nΜε τις καλύτερες ευχές,\nTakeaSeat"],
     // ---- self-signup. The API answers every signup the same way; what really happened is said HERE, to the address
@@ -336,6 +338,8 @@ const MAILS = {
     keepsakeKeep: ["A keepsake of your wedding — TakeaSeat", "Congratulations!\n\nAs a small keepsake, here is the seating plan of your wedding “{name}” ({date}): everyone who celebrated with you and where they sat. You will find it attached as a PDF.\n\nWishing you every happiness!\nTakeaSeat"],
     b_keepsake: ["A keepsake of the christening — TakeaSeat", "Congratulations!\n\nAs a small keepsake, here is the seating plan of the christening “{name}” ({date}): everyone who celebrated with you and where they sat. You will find it attached as a PDF.\n\nThe plan is now view-only and will be deleted for good on {until}. If you want to keep it, save the attached file.\n\nMay the little one have a long and happy life!\nTakeaSeat"],
     b_keepsakeKeep: ["A keepsake of the christening — TakeaSeat", "Congratulations!\n\nAs a small keepsake, here is the seating plan of the christening “{name}” ({date}): everyone who celebrated with you and where they sat. You will find it attached as a PDF.\n\nMay the little one have a long and happy life!\nTakeaSeat"],
+    c_keepsake: ["The seating plan of your event — TakeaSeat", "Hello,\n\nHere is the seating plan of “{name}” ({date}): all your guests and where they sat. You will find it attached as a PDF.\n\nThe plan is now view-only and will be permanently deleted on {until}. If you want to keep it, save the attached file.\n\nKind regards,\nTakeaSeat"],
+    c_keepsakeKeep: ["The seating plan of your event — TakeaSeat", "Hello,\n\nHere is the seating plan of “{name}” ({date}): all your guests and where they sat. You will find it attached as a PDF.\n\nKind regards,\nTakeaSeat"],
     p_keepsake: ["A keepsake of the celebration — TakeaSeat", "Hello,\n\nAs a small keepsake, here is the seating plan of “{name}” ({date}): everyone who celebrated with you and where they sat. You will find it attached as a PDF.\n\nThe plan is now view-only and will be deleted for good on {until}. If you want to keep it, save the attached file.\n\nWith our best wishes,\nTakeaSeat"],
     p_keepsakeKeep: ["A keepsake of the celebration — TakeaSeat", "Hello,\n\nAs a small keepsake, here is the seating plan of “{name}” ({date}): everyone who celebrated with you and where they sat. You will find it attached as a PDF.\n\nWith our best wishes,\nTakeaSeat"],
     afmUsed: ["This business has already had its free year — TakeaSeat", "Hello,\n\nWe received a signup for a free first year with the tax number (ΑΦΜ) {afm}. This business has already had its free year — it is given once per ΑΦΜ.\n\nNo second account was created and you were not charged. To continue with a subscription, or if you think this is a mistake, write to info@takeaseat.gr or call +30 697 735 5378 (10:00–14:00 and 17:00–21:00, Greek time).\n\nTakeaSeat"],
@@ -370,6 +374,8 @@ const MAILS = {
     keepsakeKeep: ["Eine Erinnerung an Ihre Hochzeit — TakeaSeat", "Herzlichen Glückwunsch!\n\nAls kleine Erinnerung senden wir Ihnen den Sitzplan Ihrer Hochzeit „{name}“ ({date}): alle, die mit Ihnen gefeiert haben, und wo sie saßen. Sie finden ihn als PDF im Anhang.\n\nAlles Glück der Welt!\nTakeaSeat"],
     b_keepsake: ["Eine Erinnerung an die Taufe — TakeaSeat", "Herzlichen Glückwunsch!\n\nAls kleine Erinnerung senden wir Ihnen den Sitzplan der Taufe „{name}“ ({date}): alle, die mit Ihnen gefeiert haben, und wo sie saßen. Sie finden ihn als PDF im Anhang.\n\nDer Plan ist jetzt nur noch lesbar und wird am {until} endgültig gelöscht. Wenn Sie ihn behalten möchten, speichern Sie die angehängte Datei.\n\nAlles Gute für Ihr Kind!\nTakeaSeat"],
     b_keepsakeKeep: ["Eine Erinnerung an die Taufe — TakeaSeat", "Herzlichen Glückwunsch!\n\nAls kleine Erinnerung senden wir Ihnen den Sitzplan der Taufe „{name}“ ({date}): alle, die mit Ihnen gefeiert haben, und wo sie saßen. Sie finden ihn als PDF im Anhang.\n\nAlles Gute für Ihr Kind!\nTakeaSeat"],
+    c_keepsake: ["Der Sitzplan Ihrer Veranstaltung — TakeaSeat", "Hallo,\n\nhier ist der Sitzplan von „{name}“ ({date}): alle Ihre Gäste und wo sie saßen. Sie finden ihn als PDF im Anhang.\n\nDer Plan ist jetzt nur noch zum Ansehen und wird am {until} endgültig gelöscht. Wenn Sie ihn behalten möchten, speichern Sie die angehängte Datei.\n\nMit freundlichen Grüßen\nTakeaSeat"],
+    c_keepsakeKeep: ["Der Sitzplan Ihrer Veranstaltung — TakeaSeat", "Hallo,\n\nhier ist der Sitzplan von „{name}“ ({date}): alle Ihre Gäste und wo sie saßen. Sie finden ihn als PDF im Anhang.\n\nMit freundlichen Grüßen\nTakeaSeat"],
     p_keepsake: ["Eine Erinnerung an die Feier — TakeaSeat", "Hallo,\n\nAls kleine Erinnerung senden wir Ihnen den Sitzplan von „{name}“ ({date}): alle, die mit Ihnen gefeiert haben, und wo sie saßen. Sie finden ihn als PDF im Anhang.\n\nDer Plan ist jetzt nur noch lesbar und wird am {until} endgültig gelöscht. Wenn Sie ihn behalten möchten, speichern Sie die angehängte Datei.\n\nMit den besten Wünschen,\nTakeaSeat"],
     p_keepsakeKeep: ["Eine Erinnerung an die Feier — TakeaSeat", "Hallo,\n\nAls kleine Erinnerung senden wir Ihnen den Sitzplan von „{name}“ ({date}): alle, die mit Ihnen gefeiert haben, und wo sie saßen. Sie finden ihn als PDF im Anhang.\n\nMit den besten Wünschen,\nTakeaSeat"],
     afmUsed: ["Dieses Unternehmen hatte sein Gratisjahr bereits — TakeaSeat", "Hallo,\n\nwir haben eine Anmeldung für ein kostenloses erstes Jahr mit der Steuernummer (ΑΦΜ) {afm} erhalten. Dieses Unternehmen hat sein Gratisjahr bereits erhalten — es wird einmal pro ΑΦΜ vergeben.\n\nEs wurde kein zweites Konto angelegt und Ihnen nichts berechnet. Für ein Abonnement, oder wenn Sie das für einen Fehler halten, schreiben Sie an info@takeaseat.gr oder rufen Sie +30 697 735 5378 an (10:00–14:00 und 17:00–21:00, griechische Zeit).\n\nTakeaSeat"],
@@ -1019,13 +1025,16 @@ const LEGACY_HEADS = [["Τραπέζι της γιορτής"], [], []];
 const STARTER_WORDS = [
   { wedding: { head: "Νυφικό τραπέζι", groups: ["Πλευρά νύφης", "Πλευρά γαμπρού", "Φίλοι", "Οικογένεια"] },
     baptism: { head: "Τραπέζι της οικογένειας", groups: ["Πλευρά μητέρας", "Πλευρά πατέρα", "Νονοί", "Φίλοι"] },
-    party: { head: "Κεντρικό τραπέζι", groups: ["Οικογένεια", "Φίλοι", "Συνάδελφοι", "Παιδιά"] } },
+    party: { head: "Κεντρικό τραπέζι", groups: ["Οικογένεια", "Φίλοι", "Συνάδελφοι", "Παιδιά"] },
+    company: { head: "Κεντρικό τραπέζι", groups: ["Διοίκηση", "Συνάδελφοι", "Πελάτες", "Συνεργάτες"] } },
   { wedding: { head: "Head table", groups: ["Bride's side", "Groom's side", "Friends", "Family"] },
     baptism: { head: "Family table", groups: ["Mother's side", "Father's side", "Godparents", "Friends"] },
-    party: { head: "Celebration table", groups: ["Family", "Friends", "Colleagues", "Children"] } },
+    party: { head: "Celebration table", groups: ["Family", "Friends", "Colleagues", "Children"] },
+    company: { head: "Main table", groups: ["Management", "Colleagues", "Clients", "Partners"] } },
   { wedding: { head: "Brauttisch", groups: ["Seite der Braut", "Seite des Bräutigams", "Freunde", "Familie"] },
     baptism: { head: "Familientisch", groups: ["Seite der Mutter", "Seite des Vaters", "Paten", "Freunde"] },
-    party: { head: "Festtisch", groups: ["Familie", "Freunde", "Kollegen", "Kinder"] } },
+    party: { head: "Festtisch", groups: ["Familie", "Freunde", "Kollegen", "Kinder"] },
+    company: { head: "Haupttisch", groups: ["Geschäftsleitung", "Kollegen", "Kunden", "Partner"] } },
 ];
 function retypeStarter(plan, kind) {
   if (!plan) return plan;
@@ -1574,8 +1583,8 @@ async function venueCard(env, v, focus) {
 // 6 Ανανέωση · 7 Ολοκληρώθηκε); a contact of phase 4 has the ones he sets by hand (1–3, 8). Keys: v:<venueId> · c:<coupleId>
 // · s:<signupId> · l:<leadId>.
 const CUST_LINK_DAYS = 3, CUST_FIRST_EVENT_DAYS = 14, CUST_ENDING_DAYS = 60;
-const CUST_TYPE = { wedding: "couple", baptism: "parents", party: "party" };
-// COMPANIES-PLAN.md phase 1: until phase 3 a company is sold as a γιορτή and a γραφείο εκδηλώσεων as a venue, on those same
+const CUST_TYPE = { wedding: "couple", baptism: "parents", party: "party", company: "company" };
+// COMPANIES-PLAN.md phase 1: until phase 3 a company is sold on a couple record and a γραφείο εκδηλώσεων as a venue, on those same
 // records, told apart by `custType` alone. The sheet, the payments and the ΑΦΜ read it; no plan, price or permission does.
 const venueType = v => (v && v.custType === "organiser") ? "organiser" : "venue";
 const coupleType = (c, kind) => (c && c.custType === "company") ? "company" : (CUST_TYPE[kind] || "couple");
@@ -1669,7 +1678,7 @@ const LEAD_YEARS = 2, LEAD_MAX = 3000, LEAD_NAME_MAX = 120, LEAD_PLACE_MAX = 120
 // "form" is the site's contact form: only POST /contact writes it (admin.html never offers it as a chip)
 const LEAD_SOURCES = ["phone", "email", "viber", "whatsapp", "facebook", "instagram", "amelie", "referral", "other", "form"];
 const LEAD_TYPES = ["venue", "couple", "parents", "party", "company", "organiser"], LEAD_STAGES = [1, 2, 3], LEAD_LOST = ["price", "no_reply", "other_tool", "cancelled", "other"];
-const LEAD_KIND = { couple: "wedding", parents: "baptism", party: "party", company: "party" };   // a company buys a γιορτή until phase 2 of COMPANIES-PLAN.md
+const LEAD_KIND = { couple: "wedding", parents: "baptism", party: "party", company: "company" };
 const AFM_TYPES = ["venue", "company", "organiser"];   // the businesses: anyone else's ΑΦΜ would only be a number nobody asked for
 const LEAD_ID = /^[A-Za-z0-9]{1,64}$/;
 const leadStage = l => l.lost ? 8 : LEAD_STAGES.includes(l.stage) ? l.stage : 1;
@@ -2192,7 +2201,7 @@ const TODAY_RENEW_DAYS = 30, TODAY_MONEY_DAYS = 7, TODAY_SWEEP_HOURS = 3, TODAY_
 const MORNING_HOUR = 8, MORNING_LAST_HOUR = 11;   // the first sweep from 08:00 Athens; a server down all morning skips the day
 const TODAY_CARD_DONE = ["lead", "next"], TODAY_MONEY = ["late", "receipt"];
 const STUCK_WORDS = { setup_unopened: "δεν άνοιξε τον σύνδεσμο ρύθμισης", claim_unused: "δεν άνοιξε τον σύνδεσμο του σχεδίου", no_event: "δεν έχει φτιάξει καμία εκδήλωση" };
-const KIND_MANY = { wedding: ["γάμος", "γάμοι"], baptism: ["βάπτιση", "βαπτίσεις"], party: ["γιορτή", "γιορτές"] };
+const KIND_MANY = { wedding: ["γάμος", "γάμοι"], baptism: ["βάπτιση", "βαπτίσεις"], party: ["γιορτή", "γιορτές"], company: ["εταιρική εκδήλωση", "εταιρικές εκδηλώσεις"] };
 const eur = c => (c / 100).toLocaleString("el-GR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 const dm = ymd => ymdOk(ymd) ? (+ymd.slice(8, 10)) + "/" + (+ymd.slice(5, 7)) : "";
 const inDays = n => n === 0 ? "σήμερα" : n === 1 ? "αύριο" : "σε " + n + " ημέρες";
@@ -2205,7 +2214,7 @@ function weekendOf(today) {
   return { from: fri < today ? today : fri, fri, to: addDays(fri, 2) };
 }
 async function todayList(env, now = Date.now(), sweeping = false) {   // sweeping: called by the sweep itself, which is running
-  const today = athensYmd(now), items = [], wk = weekendOf(today), kinds = { wedding: 0, baptism: 0, party: 0 };
+  const today = athensYmd(now), items = [], wk = weekendOf(today), kinds = { wedding: 0, baptism: 0, party: 0, company: 0 };
   const add = (group, id, o) => items.push({ id, group, ...o });
   await customerList(env, ({ row, x, rec, ps }) => {
     const key = row.key, name = row.name || "(χωρίς όνομα)", who = { key, name, type: row.type }, fl = row.flags || [];
@@ -2269,7 +2278,7 @@ async function todayList(env, now = Date.now(), sweeping = false) {   // sweepin
   }
   const order = it => TODAY_GROUPS.findIndex(g => g[0] === it.group);
   shown.sort((a, b) => order(a) - order(b));
-  const n = kinds.wedding + kinds.baptism + kinds.party;
+  const n = kinds.wedding + kinds.baptism + kinds.party + kinds.company;
   const weekend = n ? { from: wk.from, to: wk.to, n, kinds, text: (wk.from === wk.fri ? "Αυτό το Σαββατοκύριακο: " : "Μέχρι την Κυριακή: ") + n + (n === 1 ? " εκδήλωση" : " εκδηλώσεις")
     + " (" + Object.entries(kinds).filter(([, c]) => c).map(([k, c]) => c + " " + KIND_MANY[k][c === 1 ? 0 : 1]).join(", ") + ")" } : null;
   return { at: now, today, count: shown.length, top: shown.slice(0, 3).map(it => it.text), weekend,
@@ -3391,7 +3400,7 @@ export default {
             if (startNow && b.weddingDate >= addDays(todayAthens(), START_NOW_MAX_DAYS)) return json({ error: "start_now_too_early" }, 400);
             const paidAt = Date.now(), opensAt = startNow ? null : athensMidnight(addDays(todayAthens(), OPEN_DELAY_DAYS));
             if (opensAt && opensAt >= athensMidnight(b.weddingDate)) return json({ error: "never_opens" }, 400);   // it would open only after the wedding: "start now" or check the date
-            const company = b.custType === "company", afm = company && String(b.afm || "").trim() ? validAfm(b.afm) : "";   // a private buyer's ΑΦΜ is never kept
+            const company = b.custType === "company" || normKind(b.kind) === "company", afm = company && String(b.afm || "").trim() ? validAfm(b.afm) : "";   // a private buyer's ΑΦΜ is never kept
             if (company && String(b.afm || "").trim() && !afm) return json({ error: "bad_afm" }, 400);
             const lead = await leadToAdopt(env, b);
             if (lead === false) return json({ error: "lead_gone" }, 409);
@@ -3438,7 +3447,10 @@ export default {
             }
             const r = await kvUpdate(env, "couple:" + parts[2], c => { if (!c) return null; const old = c.email || "";
               if (b.name != null) c.name = String(b.name).slice(0, 120);
-              if (newKind !== undefined) c.kind = newKind;
+              if (newKind !== undefined) { c.kind = newKind;
+                // the company kind makes the customer a company; a correction to a γάμος or βάπτιση undoes it, ΑΦΜ included (a private buyer's is never kept)
+                if (newKind === "company") c.custType = "company";
+                else if (newKind !== "party" && c.custType === "company") { delete c.custType; delete c.afm; } }
               if (b.contact != null) c.contact = String(b.contact).slice(0, NOTES_MAX);   // his private notes (the card's notes box)
               if (b.lang != null) c.lang = langOf(b.lang);
               if (b.afm != null && c.custType === "company") { if (afm) c.afm = afm; else delete c.afm; }

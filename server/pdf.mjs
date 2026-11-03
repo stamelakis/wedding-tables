@@ -46,7 +46,7 @@ const GROUP_FALLBACK = '#9a8c7d';
 // ---------------------------------------------------------------- words
 // Which dictionary each event kind reads from — the same map the worker and the planner keep. A wedding is the
 // unprefixed original, so a new kind is a row here plus its twins, never a new test against a kind name.
-const KIND_PFX = { wedding: '', baptism: 'b_', party: 'p_' };
+const KIND_PFX = { wedding: '', baptism: 'b_', party: 'p_', company: 'c_' };
 const L10N = {
   el: {
     days: ['Κυριακή', 'Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο'],
@@ -58,6 +58,7 @@ const L10N = {
     table: 'Τραπέζι', warm: 'Όλοι όσοι γιόρτασαν μαζί σας.', ourWedding: 'Ο γάμος μας', seatingPlan: 'Σχέδιο τραπεζιών',
     b_ourWedding: 'Η βάπτισή μας',
     p_ourWedding: 'Η γιορτή μας',
+    c_ourWedding: 'Η εκδήλωσή μας', c_warm: 'Όλοι όσοι ήταν μαζί σας.', c_brandWarm: 'Φτιάχτηκε με TakeaSeat · takeaseat.gr',
     floor: 'Η κάτοψη', whoSat: 'Ποιος κάθισε πού', index: 'Αλφαβητικός κατάλογος', namesByTable: 'Ονόματα ανά τραπέζι',
     unseated: 'Χωρίς θέση', cancelled: 'ακυρώθηκε', cont: 'συνέχεια',
     brand: 'Φτιάχτηκε με TakeaSeat · takeaseat.gr', brandWarm: 'Φτιαγμένο με αγάπη · TakeaSeat · takeaseat.gr',
@@ -74,6 +75,7 @@ const L10N = {
     table: 'Table', warm: 'Everyone who celebrated with you.', ourWedding: 'Our wedding', seatingPlan: 'Seating plan',
     b_ourWedding: 'Our christening',
     p_ourWedding: 'Our celebration',
+    c_ourWedding: 'Our event', c_warm: 'Everyone who was there with you.', c_brandWarm: 'Made with TakeaSeat · takeaseat.gr',
     floor: 'The floor plan', whoSat: 'Who sat where', index: 'Alphabetical index', namesByTable: 'Names by table',
     unseated: 'Without a seat', cancelled: 'cancelled', cont: 'continued',
     brand: 'Made with TakeaSeat · takeaseat.gr', brandWarm: 'Made with love · TakeaSeat · takeaseat.gr',
@@ -90,6 +92,7 @@ const L10N = {
     table: 'Tisch', warm: 'Alle, die mit Ihnen gefeiert haben.', ourWedding: 'Unsere Hochzeit', seatingPlan: 'Sitzplan',
     b_ourWedding: 'Unsere Taufe',
     p_ourWedding: 'Unsere Feier',
+    c_ourWedding: 'Unsere Veranstaltung', c_warm: 'Alle, die dabei waren.', c_brandWarm: 'Erstellt mit TakeaSeat · takeaseat.gr',
     floor: 'Der Sitzplan', whoSat: 'Wer saß wo', index: 'Alphabetisches Verzeichnis', namesByTable: 'Namen pro Tisch',
     unseated: 'Ohne Platz', cancelled: 'abgesagt', cont: 'Fortsetzung',
     brand: 'Erstellt mit TakeaSeat · takeaseat.gr', brandWarm: 'Mit Liebe erstellt · TakeaSeat · takeaseat.gr',
@@ -420,8 +423,12 @@ function star(doc, cx, cy, size, color) {
     .path('M0,-0.5 L0.1234,-0.1699 L0.4755,-0.1545 L0.1997,0.0649 L0.2939,0.4045 L0,0.21 L-0.2939,0.4045 L-0.1997,0.0649 L-0.4755,-0.1545 L-0.1234,-0.1699 Z')
     .fill(color).restore();
 }
+// A company event has no one being celebrated, so its mark says nothing about anyone: a plain diamond.
+function diamond(doc, cx, cy, size, color) {
+  doc.save().translate(cx, cy).scale(size).path('M0,-0.5 L0.36,0 L0,0.5 L-0.36,0 Z').fill(color).restore();
+}
 // Every ornament in the document goes through here, so the event's kind decides the shape in one place.
-const MARKS = { wedding: heart, baptism: petals, party: star };
+const MARKS = { wedding: heart, baptism: petals, party: star, company: diamond };
 const mark = (K, doc, cx, cy, size, color) => (MARKS[K && K.kind] || heart)(doc, cx, cy, size, color);
 function flourish(doc, cx, cy, halfW, color, K) {   // ——— ♥ ———  with tapering hairlines (a baptism gets the flower)
   doc.save().lineWidth(0.5).strokeColor(color).strokeOpacity(0.85);

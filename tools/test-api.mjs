@@ -2411,6 +2411,21 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     const meta = KR.slice(rb).find(x => x.mode === 'keepsake');
     ok(meta && meta.kind === 'baptism' && meta.lang === lang, 'kind: … and the keepsake PDF is rendered as a baptism', meta && { k: meta.kind, l: meta.lang });
   }
+  // A company event has its plan, not a keepsake: no wish, no «γιόρτασαν», and the date of the deletion still said.
+  for (const [lang, subj, sign, word, none] of [['el', 'τραπεζολόγιο της εκδήλωσης', 'Με εκτίμηση', 'όλοι οι καλεσμένοι', /γιορτ|γιόρτ|γάμ|αναμνηστικ|ευχ/i],
+                                                ['en', 'seating plan of your event', 'Kind regards', 'all your guests', /celebrat|wedding|keepsake|wishes/i],
+                                                ['de', 'Sitzplan Ihrer Veranstaltung', 'Mit freundlichen Grüßen', 'alle Ihre Gäste', /Feier|gefeiert|Hochzeit|Erinnerung/]]) {
+    const before = KM.length, rb = KR.length;
+    const kc = (await call('POST', '/admin/couples', { name: 'Εταιρική ' + lang, email: 'keep-co-' + lang + '@example.gr', lang, kind: 'company', weddingDate: kday(2), startNow: true }, OWN)).d.couple;
+    const pid = raw('couple:' + kc.id).planId;
+    patchRaw('plan:' + pid, o => { o.weddingDate = kday(-2); o.plan = layout({ guests: { g1: { name: 'Α' } } }); o.plan.tables[0].seats[0] = 'g1'; });
+    await mod.sweep(env);
+    const mail = KM.slice(before).find(x => x.attachments);
+    ok(mail && mail.subject.includes(subj) && mail.text.includes(sign) && mail.text.includes(word) && !none.test(mail.subject + ' ' + mail.text),
+      'company: the ' + lang + ' mail after the event is the plan for the records, with no wish and no celebration', mail && mail.subject);
+    const meta = KR.slice(rb).find(x => x.mode === 'keepsake');
+    ok(meta && meta.kind === 'company' && meta.lang === lang, 'company: … and its PDF is rendered as a company event', meta && { k: meta.kind, l: meta.lang });
+  }
   {   // the same mail for a wedding is untouched
     const before = KM.length;
     const kw = (await call('POST', '/admin/couples', { name: 'Γάμος ελέγχου', email: 'keep-w@example.gr', lang: 'el', weddingDate: kday(2), startNow: true }, OWN)).d.couple;
@@ -2462,7 +2477,7 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     const trr = (lang, kind, k) => { const T = T_ALL[lang], p = PFX[kind];
       let s; if (p) { s = T[p + k]; if (s == null) s = T_ALL.el[p + k]; }
       if (s == null) s = T[k]; if (s == null) s = T_ALL.el[k]; return s; };
-    ok(Object.keys(PFX).join(',') === 'wedding,baptism,party',
+    ok(Object.keys(PFX).join(',') === 'wedding,baptism,party,company',
       'planner: the planner knows exactly the kinds the server does', Object.keys(PFX));
     const twins = Object.keys(T_ALL.el).filter(k => k.startsWith('b_'));
     ok(twins.length >= 30, 'planner: the baptism dictionary exists', twins.length);
@@ -2595,7 +2610,7 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
       const blk = wsrc.slice(wsrc.indexOf('const STARTER_WORDS'), wsrc.indexOf('function retypeStarter'));
       const SW = eval(blk.replace('const STARTER_WORDS =', '(').replace(/;\s*$/, ')'));
       const LI = { el: 0, en: 1, de: 2 };
-      for (const l of LANGS) for (const k of ['wedding', 'baptism', 'party']) {
+      for (const l of LANGS) for (const k of Object.keys(PFX)) {
         ok(SW[LI[l]][k].head === trr(l, k, 'headTable'),
           `kind: the server and the planner write the same ${k} head table in ${l}`, [SW[LI[l]][k].head, trr(l, k, 'headTable')]);
         ok(SW[LI[l]][k].groups.join('·') === trr(l, k, 'groupsDefault').join('·'),
@@ -2616,7 +2631,7 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
       ok(!!n, 'planner: … on exactly the six positions the clearances were measured for');
       // A wedding and a baptism have one table the evening is about; a γιορτή may have none, so it starts without
       // and the toolbar adds one (CLAUDE.md → Decisions). The lab must then seat its hosts somewhere else.
-      ok(/const KIND_HEAD=\{ wedding:true, baptism:true, party:false \};/.test(src) && /if\(KIND_HEAD\[ev\]!==false\) tables\.push\(makeHeadTable/.test(ds),
+      ok(/const KIND_HEAD=\{ wedding:true, baptism:true, party:false, company:false \};/.test(src) && /if\(KIND_HEAD\[ev\]!==false\) tables\.push\(makeHeadTable/.test(ds),
         'planner: … and with no head table, while a wedding and a baptism start with one');
       const ls = src.slice(src.indexOf('function labState('), src.indexOf('function renderLabKinds('));
       ok(/if\(head\)\{/.test(ls) && /else \{/.test(ls), 'planner: … so the lab seats a party\'s hosts at a guest table instead of throwing');
@@ -2639,7 +2654,7 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
       const door = src.slice(src.indexOf('function labDoor('), src.indexOf('// First run: adopt'));
       ok(/if\(existing\)\{ if\(IS_LAB\) labDoor\(existing\); return existing; \}/.test(src),
         'lab: a returning visitor goes through the door, not straight to the last plan they saved');
-      ok(/ev=\(wedding\|baptism\|party\)/.test(src) && /if\(!LAB_EV_URL\)\{ LAB_EV=kindOf\(cur\); return; \}/.test(door),
+      ok(/ev=\(wedding\|baptism\|party\|company\)/.test(src) && /if\(!LAB_EV_URL\)\{ LAB_EV=kindOf\(cur\); return; \}/.test(door),
         'lab: … a bare lab.html keeps their plan and the buttons follow it; ?ev=wedding is a kind like the others');
       ok(/p\.profiles\.find\(x=>kindOf\(x\)===LAB_EV_URL\)/.test(door) && /p\.profiles\.push\(/.test(door) && !/removeItem|splice/.test(door),
         'lab: … ?ev= opens their demo of that kind or adds a new one, and never overwrites or drops the old one');
@@ -4440,7 +4455,7 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     const LO = raw('lead:' + r.d.lead.id);
     ok(r.status === 200 && LO.type === 'organiser' && LO.afm === AFM_OF, 'contact: a γραφείο εκδηλώσεων keeps its ΑΦΜ', LO);
     let cd = await cardOf('l:' + LC.id);
-    ok(cd.customer.type === 'company' && cd.customer.afm === AFM_CO && cd.customer.next === when && cd.customer.nextKind === 'party', 'contact: a company on the sheet, its evening a γιορτή until phase 2', cd.customer);
+    ok(cd.customer.type === 'company' && cd.customer.afm === AFM_CO && cd.customer.next === when && cd.customer.nextKind === 'company', 'contact: a company on the sheet, its evening a company event', cd.customer);
     ok((await cardOf('l:' + LO.id)).customer.type === 'organiser', 'contact: a γραφείο on the sheet, under its own type');
     for (const t of ['company', 'organiser']) ok((await lead({ type: t, name: 'Εταιρ. Κακό', afm: BAD })).d.error === 'bad_afm', 'contact: ' + t + ' with an ΑΦΜ whose check digit is wrong is refused');
     // -- nobody else keeps one --
@@ -4606,5 +4621,127 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
   }
 }
 function leadStageOf(l) { return l.lost ? 8 : l.stage || 1; }
+
+// ---------- 29. COMPANIES-PLAN.md phase 2: the fourth kind, «Εταιρική εκδήλωση» ----------
+{
+  const fs = await import('node:fs');
+  const read = f => fs.readFileSync(path.join(root, f), 'utf8');
+  const src = read('planner.src.html'), wsrc = read('wedding-sync-worker.js'), pdf = read('server/pdf.mjs');
+  const a = src.indexOf('const T_ALL='), b = src.indexOf('const T=T_ALL[LANG]');
+  const T_ALL = new Function('return (' + src.slice(a + 'const T_ALL='.length, b).trim().replace(/;$/, '') + ')')();
+  const LANGS = ['el', 'en', 'de'];
+  // -- one map of kinds, everywhere --
+  const mapOf = (s, re) => eval('(' + re.exec(s)[1] + ')');
+  const PFX = mapOf(src, /const KIND_PFX=(\{[^}]*\})/);
+  ok(PFX.company === 'c_' && JSON.stringify(mapOf(wsrc, /const KIND_PFX = (\{[^}]*\})/)) === JSON.stringify(PFX) && JSON.stringify(mapOf(pdf, /const KIND_PFX = (\{[^}]*\})/)) === JSON.stringify(PFX),
+    'company: the planner, the server and the PDF share one map of kinds');
+  ok(!Object.keys(T_ALL.el).some(k => k.startsWith('c_') && !(k.slice(2) in T_ALL.el)), 'company: every c_ word has a real key behind it (no orphan twins)',
+    Object.keys(T_ALL.el).filter(k => k.startsWith('c_') && !(k.slice(2) in T_ALL.el)));
+  ok(LANGS.every(l => Object.keys(T_ALL.el).filter(k => k.startsWith('c_')).every(k => T_ALL[l][k] != null)) && LANGS.every(l => T_ALL[l].tour.c_dFloorNames), 'company: every c_ word exists in all three languages');
+  // -- it never speaks another event's words. «διοργανωτής» means the venue's client on γιορτή screens: here she is «η εταιρεία» --
+  const WRONG = { el: /γιορτ|γιόρτ|γάμ|νύφ|γαμπρ|ζευγάρ|βάπτισ|διοργανωτ|αναμνηστικ|οικογέν/i, en: /celebrat|wedding|bride|groom|couple|christening|host|keepsake|household/i, de: /Feier|gefeiert|Hochzeit|Braut|Paar|Taufe|Gastgeber|Erinnerung|Haushalt/ };
+  for (const l of LANGS) {
+    const said = Object.keys(T_ALL[l]).filter(k => k.startsWith('c_')).map(k => [k, JSON.stringify(T_ALL[l][k])]).concat([['tour', JSON.stringify(T_ALL[l].tour.c_dFloorNames)]]);
+    const bad = said.filter(([, v]) => WRONG[l].test(v)).map(([k]) => k);
+    ok(bad.length === 0, 'company: no ' + l + ' string names another event or its people', bad);
+  }
+  // -- the starter --
+  const groups = l => T_ALL[l].c_groupsDefault;
+  ok(LANGS.every(l => groups(l).length === 4), 'company: four starter groups, as the demo and the palette expect');
+  ok(!/Οικογένεια|Παιδιά/.test(groups('el').join()) && !/Family|Children/.test(groups('en').join()) && !/Familie|Kinder/.test(groups('de').join()), 'company: no «Οικογένεια» or «Παιδιά»', groups('el'));
+  ok(T_ALL.el.c_headTable === 'Κεντρικό τραπέζι' && !LANGS.some(l => T_ALL[l].c_headTable === 'Τραπέζι τιμής'), 'company: if a main table is added it is «Κεντρικό τραπέζι»');
+  const df = src.slice(src.indexOf('function defaultFeatures('), src.indexOf('// Convert an old'));
+  ok(/\(ev\|\|EVK\)==="company"/.test(df) && /f-dj/.test(df) && /featStage/.test(df) && /!legacy && \(ev\|\|EVK\)==="company"/.test(df), 'company: a stage in place of the dance floor and the DJ, never on a migration');
+  ok(LANGS.every(l => T_ALL[l].featStage), 'company: the stage is named in all three languages');
+  ok(/company:"diamond"/.test(src) && /id="i-diamond"/.test(src) && /company: diamond/.test(pdf), 'company: its mark exists on the screen and in the PDF');
+  // -- the door and the demo --
+  ok(/\[\?&\]ev=\(wedding\|baptism\|party\|company\)/.test(src), 'company: lab.html?ev=company opens its demo');
+  const tz = read('trapezi.html');
+  ok(/company: \{\s*el: \{ closedSub: "[^"]*εκδήλωση/.test(tz), 'company: the guest page names the event when it is closed');
+  // -- decision 6: online, before the event, the import says the notes go and how to keep a copy --
+  ok(/CSV/.test(T_ALL.el.c_csvNoteGone) && /CSV/.test(T_ALL.en.c_csvNoteGone) && /CSV/.test(T_ALL.de.c_csvNoteGone) && /επομένη της εκδήλωσης/.test(T_ALL.el.c_csvNoteGone),
+    'company: the import says the notes go the day after and that the CSV keeps a copy');
+  ok(/\$\("csvNoteGone"\)\.hidden=!\(currentProfile\(\)\|\|\{\}\)\.cloudId/.test(src), 'company: … only on an online plan: a device-only plan keeps its notes');
+  // -- converting between all four kinds: the real functions of the planner, on a plan --
+  {
+    const fn = name => { const i = src.indexOf('function ' + name + '('); let d = 0, j = src.indexOf('{', i); const st = j; for (; j < src.length; j++) { if (src[j] === '{') d++; else if (src[j] === '}' && --d === 0) break; } return src.slice(i, j + 1); };
+    const LEG = /const LEGACY_HEADS=(\[[^\]]*\]);/.exec(src)[1];
+    for (const LANG of LANGS) {
+      const run = new Function('T_ALL', 'LANG', 'KIND_PFX', 'state', 'const LEGACY_HEADS=' + LEG + ';' + fn('wordFor') + fn('retypeStarterWords') + ';return { wordFor, retypeStarterWords, get state(){ return state; } };');
+      const kinds = Object.keys(PFX);
+      const word = (k, w) => { const box = run(T_ALL, LANG, PFX, {}); return box.wordFor(k, w); };
+      for (const from of kinds) for (const to of kinds) {
+        if (from === to) continue;
+        const plan = { tables: [{ shape: 'head', label: word(from, 'headTable') }, { shape: 'head', label: 'Τραπέζι τιμής' }, { shape: 'round', label: '1' }], groups: word(from, 'groupsDefault').map((name, i) => ({ id: 'g' + i, name })) };
+        const box = run(T_ALL, LANG, PFX, plan); box.retypeStarterWords(to);
+        const s1 = box.state;
+        ok(s1.tables[0].label === word(to, 'headTable') && s1.groups.map(g => g.name).join() === word(to, 'groupsDefault').join() && s1.tables[1].label === 'Τραπέζι τιμής' && s1.tables[2].label === '1',
+          'convert ' + LANG + ' ' + from + ' → ' + to + ': the starter words follow, a label the customer typed stays', s1.tables.map(t => t.label));
+        const own = { tables: [{ shape: 'head', label: word(from, 'headTable') }], groups: [{ id: 'g0', name: 'Τμήμα πωλήσεων' }, ...word(from, 'groupsDefault').slice(1).map((name, i) => ({ id: 'g' + (i + 1), name }))] };
+        const box2 = run(T_ALL, LANG, PFX, own); box2.retypeStarterWords(to);
+        ok(box2.state.groups[0].name === 'Τμήμα πωλήσεων' && box2.state.groups[1].name === word(from, 'groupsDefault')[1], 'convert ' + LANG + ' ' + from + ' → ' + to + ': groups somebody renamed are all left alone', box2.state.groups.map(g => g.name));
+      }
+    }
+  }
+  // -- the server --
+  const saved = new Map(m), day = n => athensDay(n), AFM = '999000006';
+  try {
+    const cop = (body) => call('POST', '/admin/couples', { name: 'Alpha ΑΕ', weddingDate: day(40), ...body }, OWN);
+    let r = await cop({ kind: 'company', afm: AFM, contact: '210 000 0000' });
+    const co = r.d.couple;
+    ok(r.status === 200 && raw('couple:' + co.id).kind === 'company' && raw('plan:' + raw('couple:' + co.id).planId).kind === 'company', 'company: sold as the fourth kind; the licence and the plan both say so', r.d.couple);
+    ok(raw('couple:' + co.id).custType === 'company' && raw('couple:' + co.id).afm === AFM, 'company: the kind makes the customer a company, ΑΦΜ kept, with no separate word needed');
+    const rows = (await call('GET', '/admin/customers', undefined, OWN)).d.customers;
+    ok(rows.filter(x => x.key === 'c:' + co.id).length === 1 && rows.find(x => x.key === 'c:' + co.id).type === 'company', 'company: once on the sheet, as a company');
+    const due = (await call('GET', '/admin/customers/' + encodeURIComponent('c:' + co.id), undefined, OWN)).d.payments.dues[0];
+    const plain = (await call('GET', '/admin/customers/' + encodeURIComponent('c:' + (await cop({ kind: 'party' })).d.couple.id), undefined, OWN)).d.payments.dues[0];
+    ok(due.kind === 'company' && due.amount === plain.amount && due.plusVat === plain.plusVat, 'company: expected to pay what any other event pays (decision 2)', due);
+    r = await cop({ kind: 'company', afm: '123456789' });
+    ok(r.status === 400 && r.d.error === 'bad_afm', 'company: a bad ΑΦΜ refuses the sale, whichever way the company was named');
+    // an old company dinner stays a γιορτή until someone changes it, and can then be changed
+    const old = (await cop({ kind: 'party', custType: 'company', afm: AFM })).d.couple;
+    ok(raw('couple:' + old.id).kind === 'party' && raw('couple:' + old.id).custType === 'company', 'company: a company dinner sold as a γιορτή stays one');
+    r = await call('PUT', '/admin/couples/' + old.id, { kind: 'company' }, OWN);
+    ok(r.status === 200 && raw('couple:' + old.id).kind === 'company' && raw('plan:' + raw('couple:' + old.id).planId).kind === 'company' && raw('couple:' + old.id).afm === AFM, 'company: … and it becomes a company event when someone changes it, ΑΦΜ intact');
+    // a private row corrected to the kind becomes a company; corrected back to a γάμος it is private again, its ΑΦΜ gone
+    const pv = (await cop({ kind: 'wedding' })).d.couple;
+    ok(!raw('couple:' + pv.id).custType, 'company: a wedding is nobody\'s company');
+    await call('PUT', '/admin/couples/' + pv.id, { kind: 'company', afm: AFM }, OWN);
+    ok(raw('couple:' + pv.id).custType === 'company' && raw('couple:' + pv.id).afm === AFM, 'company: corrected to the kind, a private row can hold an ΑΦΜ');
+    await call('PUT', '/admin/couples/' + pv.id, { kind: 'party' }, OWN);
+    ok(raw('couple:' + pv.id).custType === 'company' && raw('couple:' + pv.id).afm === AFM, 'company: moved to a γιορτή it is still a company');
+    await call('PUT', '/admin/couples/' + pv.id, { kind: 'wedding' }, OWN);
+    ok(!raw('couple:' + pv.id).custType && !('afm' in raw('couple:' + pv.id)), 'company: corrected to a γάμος, the word and the ΑΦΜ go (a private buyer\'s is never kept)', raw('couple:' + pv.id));
+    // a venue makes one from its room: the starter words follow, what it typed stays, and the kind can be corrected both ways
+    const V = (await call('POST', '/admin/venues', { name: 'Ξενοδοχείο Δοκιμή', license: { type: 'seasonal', seasonStart: day(-30), seasonEnd: day(300) } }, OWN)).d;
+    const HV = { 'X-Venue-Key': V.key };
+    const TPL = (await call('POST', '/venues/' + V.id + '/template', {}, HV)).d;
+    const room = layout({
+      tables: [{ id: 2000, shape: 'head', x: 600, y: 200, label: 'Νυφικό τραπέζι', capacity: 6, seats: Array(6).fill(null) },
+        { id: 3, shape: 'round', x: 900, y: 400, label: 'Τραπέζι VIP', capacity: 8, seats: Array(8).fill(null) }],
+      groups: [{ id: 'grp1', name: 'Πλευρά νύφης', color: '#e26d8a' }, { id: 'grp2', name: 'Πλευρά γαμπρού', color: '#4a90d9' },
+        { id: 'grp3', name: 'Φίλοι', color: '#3aa657' }, { id: 'grp4', name: 'Οικογένεια', color: '#e0a030' }],
+    });
+    await call('PUT', '/plans/' + TPL.planId, { plan: room }, { 'X-Edit-Key': TPL.venueKey });
+    const e = (await call('POST', '/venues/' + V.id + '/weddings', { label: 'Χριστουγεννιάτικο δείπνο', date: day(50), kind: 'company' }, HV)).d;
+    const pc = raw('plan:' + e.planId);
+    ok(pc.kind === 'company' && raw('venue:' + V.id).weddings.find(w => w.planId === e.planId).kind === 'company', 'company: a venue can make one, and it stays one');
+    ok(pc.plan.tables.find(t => t.shape === 'head').label === 'Κεντρικό τραπέζι' && pc.plan.groups.map(g => g.name).join('·') === T_ALL.el.c_groupsDefault.join('·') && pc.plan.tables.find(t => t.label === 'Τραπέζι VIP'),
+      'company: from the venue room the starter words become the company ones, what the venue typed stays', { t: pc.plan.tables.map(t => t.label), g: pc.plan.groups.map(g => g.name) });
+    r = await call('GET', '/plans/' + e.planId, undefined, { 'X-View-Key': pc.readKey });
+    ok(r.status === 200 && r.d.kind === 'company', 'company: a view link is told the kind, for the lists and the print', r.d.kind);
+    for (const [from, to] of [['company', 'party'], ['party', 'baptism'], ['baptism', 'wedding'], ['wedding', 'company']]) {
+      r = await call('PATCH', '/venues/' + V.id + '/weddings/' + e.planId, { kind: to }, HV);
+      ok(r.status === 200 && raw('plan:' + e.planId).kind === to && raw('plan:' + e.planId).plan.tables.find(t => t.label === 'Τραπέζι VIP'), 'company: the venue corrects ' + from + ' → ' + to + ', and its own label stays', r.d);
+    }
+    ok(raw('plan:' + e.planId).plan.tables.find(t => t.shape === 'head').label === 'Κεντρικό τραπέζι' && raw('plan:' + e.planId).plan.groups[0].name === T_ALL.el.c_groupsDefault[0], 'company: … and round all four kinds the starter words come back', raw('plan:' + e.planId).plan.groups.map(g => g.name));
+    // the morning line counts it
+    const say = (await call('GET', '/admin/today', undefined, OWN));
+    ok(say.status === 200, 'company: «Σήμερα» still answers with the fourth kind on the books', say.status);
+    ok(/company:\s*\["εταιρική εκδήλωση", "εταιρικές εκδηλώσεις"\]/.test(wsrc), 'company: the weekend line has its singular and its plural');
+  } finally {
+    m.clear(); for (const [k, v] of saved) m.set(k, v);
+  }
+}
 
 console.log(`\nall ${n} checks passed`);

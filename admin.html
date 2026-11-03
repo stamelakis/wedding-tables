@@ -293,11 +293,11 @@ function supportLink(planId, key){ const u=new URL(PLANNER_FILE.el, location.hre
 // only a wedding has a partner.
 const CLAIM_MSG={
   el:{ text:"Γεια σας! Ο σύνδεσμος για το τραπεζολόγιό σας: {link}\nΑνοίξτε τον στο Chrome ή στο Safari (όχι μέσα από Viber/Messenger/Instagram) και πατήστε «Άνοιγμα του σχεδίου μου». Ο σύνδεσμος ανοίγει μία φορά· μετά θα δείτε τον προσωπικό σας σύνδεσμο — κρατήστε τον και {share}.",
-       share:{ wedding:"στείλτε τον στον/στη σύντροφό σας", baptism:"στείλτε τον σε όποιον ετοιμάζει μαζί σας τη βάπτιση", party:"στείλτε τον σε όποιον ετοιμάζει μαζί σας τη γιορτή" } },
+       share:{ wedding:"στείλτε τον στον/στη σύντροφό σας", baptism:"στείλτε τον σε όποιον ετοιμάζει μαζί σας τη βάπτιση", party:"στείλτε τον σε όποιον ετοιμάζει μαζί σας τη γιορτή", company:"στείλτε τον σε όποιον ετοιμάζει μαζί σας την εκδήλωση" } },
   en:{ text:"Hello! Here is the link to your seating plan: {link}\nOpen it in Chrome or Safari (not inside Viber/Messenger/Instagram) and press “Open my plan”. The link opens once; after that you will see your personal link — keep it and {share}.",
-       share:{ wedding:"send it to your partner", baptism:"send it to whoever is planning the christening with you", party:"send it to whoever is planning the celebration with you" } },
+       share:{ wedding:"send it to your partner", baptism:"send it to whoever is planning the christening with you", party:"send it to whoever is planning the celebration with you", company:"send it to whoever is planning the event with you" } },
   de:{ text:"Hallo! Hier ist der Link zu Ihrem Sitzplan: {link}\nÖffnen Sie ihn in Chrome oder Safari (nicht in Viber/Messenger/Instagram) und tippen Sie auf „Meinen Plan öffnen“. Der Link öffnet einmal; danach sehen Sie Ihren persönlichen Link — bewahren Sie ihn auf und {share}.",
-       share:{ wedding:"schicken Sie ihn Ihrem Partner oder Ihrer Partnerin", baptism:"schicken Sie ihn an alle, die die Taufe mit Ihnen vorbereiten", party:"schicken Sie ihn an alle, die die Feier mit Ihnen vorbereiten" } } };
+       share:{ wedding:"schicken Sie ihn Ihrem Partner oder Ihrer Partnerin", baptism:"schicken Sie ihn an alle, die die Taufe mit Ihnen vorbereiten", party:"schicken Sie ihn an alle, die die Feier mit Ihnen vorbereiten", company:"schicken Sie ihn an alle, die die Veranstaltung mit Ihnen vorbereiten" } } };
 function claimMessage(link, lang, ev){
   const M=CLAIM_MSG[lang]||CLAIM_MSG.el;
   return M.text.replace("{link}", ()=>link).replace("{share}", ()=>M.share[evKind({ kind:ev })]);
@@ -365,14 +365,16 @@ const isYmd=s=>/^\d{4}-\d{2}-\d{2}$/.test(String(s||""));
 const todayYmd=()=>{ try{ const s=new Intl.DateTimeFormat("en-CA",{ timeZone:"Europe/Athens", year:"numeric", month:"2-digit", day:"2-digit" }).format(new Date()); if(isYmd(s)) return s; }catch(e){}
   const t=new Date(); return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`; };
 const MAX_KEEP_DAYS=3650;   // the server's limit for "delete N days after the event"
-// ---- what a customer bought for: a wedding, a baptism or a γιορτή. One field (`kind`) on the plan; everything else
+// ---- what a customer bought for: a wedding, a baptism, a γιορτή or a company event. One field (`kind`) on the plan; everything else
 // about the sale — the price, the 14-day wait, the phases, the retention — is identical, so only labels read it.
 const EVW={ wedding:{ date:"Ημερομηνία γάμου",    name:"Όνομα ζευγαριού",   ph:"π.χ. Μαρία & Νίκος",     askName:"Γράψε το όνομα του ζευγαριού" },
             baptism:{ date:"Ημερομηνία βάπτισης", name:"Όνομα παιδιού",     ph:"π.χ. Ελένη",             askName:"Γράψε το όνομα του παιδιού" },
-            party:{   date:"Ημερομηνία γιορτής",  name:"Όνομα της γιορτής", ph:"π.χ. 40ά γενέθλια Κώστα", askName:"Γράψε το όνομα της γιορτής" } };
-// A company buys a γιορτή until phase 2 of COMPANIES-PLAN.md, so where it is the customer its own words replace the γιορτή's.
-const CO_WORDS={ date:"Ημερομηνία εκδήλωσης", name:"Όνομα εταιρείας", ph:"π.χ. Αφοί Παπαδάκη ΑΕ", askName:"Γράψε το όνομα της εταιρείας" };
-const kindOptions=sel=>[["wedding","Γάμος"],["baptism","Βάπτιση"],["party","Γιορτή"]]
+            party:{   date:"Ημερομηνία γιορτής",  name:"Όνομα της γιορτής", ph:"π.χ. 40ά γενέθλια Κώστα", askName:"Γράψε το όνομα της γιορτής" },
+            company:{ date:"Ημερομηνία εκδήλωσης", name:"Όνομα εταιρείας",  ph:"π.χ. Αφοί Παπαδάκη ΑΕ", askName:"Γράψε το όνομα της εταιρείας" } };
+// A company may still hold a γιορτή (every company dinner sold before the fourth kind is one), and its own words stay on it.
+const CO_WORDS=EVW.company;
+const isCo=(custType, kind)=>kind==="company" || (custType==="company" && kind==="party");   // a γάμος or βάπτιση is never a company's: the server drops the word and the ΑΦΜ
+const kindOptions=sel=>[["wedding","Γάμος"],["baptism","Βάπτιση"],["party","Γιορτή"],["company","Εταιρική εκδήλωση"]]
   .map(([k,l])=>`<option value="${k}"${k===sel?" selected":""}>${l}</option>`).join("");
 const evKind=x=>(x && EVW[x.kind]) ? x.kind : "wedding";   // anything we do not know is a wedding
 const EV=x=>EVW[evKind(x)];
@@ -1057,15 +1059,15 @@ function convertDone(res, key){
 // «+ Ιδιώτης» on «Πελάτες»: the old list's form, in a dialog. It stays open after a sale, with the link to hand over.
 function openNewCouple(pre){
   convertFrom=pre ? { lead:pre.lead, name:pre.name } : null;
-  const co=!!(pre && pre.custType==="company");   // the field #cafm is how createCouple knows
+  const co=!!(pre && pre.custType==="company"), preType=co ? "company" : "";
   const d=openDialog(`${dlgHead(co ? "Νέα εταιρεία" : "Νέος ιδιώτης πελάτης")}
     <div class="dbody">${fromLeadHtml(pre)}
       <div class="grid">
-        <div><label for="ckind">Εκδήλωση${co ? ` <span class="hint">— γιορτή, μέχρι να υπάρξει εταιρική εκδήλωση</span>` : ""}</label><select id="ckind"${co ? " disabled" : ""}>${kindOptions("wedding")}</select></div>
+        <div><label for="ckind">Εκδήλωση</label><select id="ckind">${kindOptions("wedding")}</select></div>
         <div><label for="cname" id="cnamelbl">${EVW.wedding.name}</label><input id="cname" maxlength="120" placeholder="${EVW.wedding.ph}"></div>
         <div><label for="cemail">Email <span class="hint">— προαιρετικό</span></label><input id="cemail" type="email" placeholder="για τον σύνδεσμό του και την ανάκτηση" autocomplete="off"></div>
         <div><label for="cdate" id="cdatelbl">${EVW.wedding.date}</label><input id="cdate" type="date" required min="${esc(todayYmd())}"></div>
-        ${co ? `<div><label for="cafm">ΑΦΜ <span class="hint">— αν το έχεις</span></label><input id="cafm" inputmode="numeric" maxlength="9" autocomplete="off" value="${esc(pre.afm||"")}"></div>` : ""}
+        <div id="cafmw" style="display:none" data-type="${preType}"><label for="cafm">ΑΦΜ <span class="hint">— αν το έχεις</span></label><input id="cafm" inputmode="numeric" maxlength="9" autocomplete="off" value="${esc(pre&&pre.afm||"")}"></div>
         <div><label for="clang">Γλώσσα</label><select id="clang">${langOptions("el")}</select></div>
         <div class="full"><label for="ccontact">Σημειώσεις <span class="hint">— μόνο εσύ τις βλέπεις · χωρίς πληροφορίες υγείας</span></label><textarea id="ccontact" maxlength="${NOTES_MAX}" rows="2" placeholder="τηλέφωνο, πώς μας βρήκε, τι ζήτησε…"></textarea></div>
         <div class="full"><label class="chk"><input type="checkbox" id="cstart" disabled> <span>Άμεση έναρξη
@@ -1081,9 +1083,9 @@ function openNewCouple(pre){
   ["input","change"].forEach(t=>d.querySelector("#cdate").addEventListener(t,syncStartNow));
   d.querySelector("#cstart").addEventListener("change",syncStartNow); syncStartNow();
   const k=d.querySelector("#ckind");   // the two labels say what is being sold, before it is sold
-  k.addEventListener("change",()=>{ const K=EV({ kind:k.value });
+  k.addEventListener("change",()=>{ const c=isCo(preType, k.value), K=c ? CO_WORDS : EV({ kind:k.value });
     d.querySelector("#cnamelbl").textContent=K.name; d.querySelector("#cdatelbl").textContent=K.date;
-    d.querySelector("#cname").placeholder=K.ph; });
+    d.querySelector("#cname").placeholder=K.ph; d.querySelector("#cafmw").style.display=c ? "" : "none"; });
   if(pre){
     k.value=evKind({ kind:pre.kind }); k.dispatchEvent(new Event("change"));
     d.querySelector("#cname").value=pre.plan||""; d.querySelector("#cemail").value=pre.email||"";
@@ -1096,8 +1098,8 @@ function openNewCouple(pre){
 async function createCouple(){
   const nameEl=document.getElementById("cname"), btn=document.getElementById("createC");
   const kindEl=document.getElementById("ckind"), kind=evKind({ kind:kindEl&&kindEl.value });
-  const afmEl=document.getElementById("cafm"), afm=afmEl ? afmEl.value.replace(/\s/g,"") : "";
-  const name=nameEl.value.trim(); if(!name){ invalid(nameEl, afmEl ? CO_WORDS.askName : EVW[kind].askName); return; }
+  const co=isCo(document.getElementById("cafmw").dataset.type, kind), afmEl=document.getElementById("cafm"), afm=co ? afmEl.value.replace(/\s/g,"") : "";
+  const name=nameEl.value.trim(); if(!name){ invalid(nameEl, co ? CO_WORDS.askName : EVW[kind].askName); return; }
   if(afm && !/^\d{9}$/.test(afm)){ invalid(afmEl, "Το ΑΦΜ έχει 9 ψηφία"); return; }
   if(btn.disabled) return;
   const contact=document.getElementById("ccontact").value.trim();
@@ -1113,7 +1115,7 @@ async function createCouple(){
   const startNow=!!(startEl.checked && !startEl.disabled);
   if(!startNow && daysUntil(weddingDate)<=OPEN_DAYS){ invalid(dateEl, NEVER_OPENS); return; }
   btn.disabled=true;
-  const res=await req("/admin/couples",{ method:"POST", body:JSON.stringify({ name, contact, email, lang, kind, weddingDate, ...(startNow?{ startNow:true }:{}), ...(afmEl?{ custType:"company", afm }:{}),
+  const res=await req("/admin/couples",{ method:"POST", body:JSON.stringify({ name, contact, email, lang, kind, weddingDate, ...(startNow?{ startNow:true }:{}), ...(co?{ custType:"company", afm }:{}),
     ...(convertFrom?{ fromLead:convertFrom.lead }:{}) }) });
   if(!document.getElementById("createC")) return;
   btn.disabled=false;
@@ -1209,15 +1211,15 @@ function lifeLineHtml(L){
   return `<div class="muted" style="margin-top:6px">${lock} ${esc(gD(L.lockAt))}${L.fallback?" (χωρίς ημερομηνία — 18 μήνες αφότου φτιάχτηκε)":""} · ${L.keep?"κρατιέται, δεν σβήνεται ποτέ":"σβήνεται στις "+esc(gD(L.deleteAt))}</div>`;
 }
 function openCoupleEdit(c){
-  const co=c.custType==="company", W=co ? CO_WORDS : EV(c);
+  const co=isCo(c.custType, evKind(c)), W=co ? CO_WORDS : EV(c);
   const d=openDialog(`${dlgHead("Επεξεργασία πελάτη")}
     <div class="dbody">
       <div class="grid">
         <div class="full"><label for="ce_kind">Εκδήλωση</label>
-          <select id="ce_kind" style="max-width:220px"${co ? " disabled" : ""}>${kindOptions(evKind(c))}</select>
-          <div class="muted" style="margin-top:4px">${co ? "Μια εταιρεία αγοράζει γιορτή, μέχρι να υπάρξει εταιρική εκδήλωση." : "Μπήκε λάθος; Διόρθωσέ το εδώ — αλλάζουν μόνο οι λέξεις, ποτέ οι ημερομηνίες ή οι φάσεις."}</div></div>
+          <select id="ce_kind" style="max-width:220px">${kindOptions(evKind(c))}</select>
+          <div class="muted" style="margin-top:4px">Μπήκε λάθος; Διόρθωσέ το εδώ — αλλάζουν μόνο οι λέξεις, ποτέ οι ημερομηνίες ή οι φάσεις.</div></div>
         <div class="full"><label for="ce_name" id="ce_namelbl">${esc(W.name)}</label><input id="ce_name" maxlength="120" value="${esc(c.name)}"></div>
-        ${co ? `<div class="full"><label for="ce_afm">ΑΦΜ</label><input id="ce_afm" inputmode="numeric" maxlength="9" autocomplete="off" style="max-width:220px" value="${esc(c.afm||"")}"></div>` : ""}
+        <div class="full" id="ce_afmw"${co ? "" : ` style="display:none"`}><label for="ce_afm">ΑΦΜ</label><input id="ce_afm" inputmode="numeric" maxlength="9" autocomplete="off" style="max-width:220px" value="${esc(c.afm||"")}"></div>
         <div class="full"><label for="ce_date" id="ce_datelbl">${esc(W.date)}</label>
           <div class="row"><input type="date" id="ce_date" value="${esc(isYmd(c.weddingDate)?c.weddingDate:"")}" style="max-width:220px"><button type="button" class="linkbtn" id="ce_clear">Χωρίς ημερομηνία</button></div>
           <div class="muted" style="margin-top:4px">Μπορείς να βάλεις όποια ημερομηνία θέλεις ή να τη σβήσεις, όσες φορές χρειαστεί — η δική σου αλλαγή δεν παγώνει ποτέ το σχέδιο και ξεπαγώνει όποιο πάγωμα υπάρχει. Ο πελάτης μπορεί να την αλλάξει μόνο μία φορά (από σήμερα ως δύο χρόνια μπροστά)· μετά το σχέδιό του μένει μόνο για προβολή ως 14 μέρες πριν από τη νέα ημερομηνία.</div>
@@ -1230,15 +1232,16 @@ function openCoupleEdit(c){
     <div class="dfoot"><button class="btn" data-dclose>Άκυρο</button><button class="btn primary" id="ce_save">Αποθήκευση</button></div>`);
   wireRetention("ce_", d);
   d.querySelector("#ce_clear").onclick=()=>{ d.querySelector("#ce_date").value=""; };
-  d.querySelector("#ce_kind").onchange=e=>{ const K=EV({ kind:e.target.value });   // the labels follow the pick
-    d.querySelector("#ce_namelbl").textContent=K.name; d.querySelector("#ce_datelbl").textContent=K.date; };
+  d.querySelector("#ce_kind").onchange=e=>{ const co=isCo(c.custType, e.target.value), K=co ? CO_WORDS : EV({ kind:e.target.value });   // the labels follow the pick
+    d.querySelector("#ce_namelbl").textContent=K.name; d.querySelector("#ce_datelbl").textContent=K.date; d.querySelector("#ce_afmw").style.display=co ? "" : "none"; };
   d.querySelector("#ce_save").onclick=()=>saveCoupleEdit(c, d);
 }
 async function saveCoupleEdit(c, d){
   const q=s=>d.querySelector(s), btn=q("#ce_save"); if(btn.disabled) return;
   const kind=evKind({ kind:q("#ce_kind").value });
-  const name=q("#ce_name").value.trim(); if(!name){ invalid(q("#ce_name"), c.custType==="company" ? CO_WORDS.askName : EVW[kind].askName); return; }
-  const afmEl=q("#ce_afm"), afm=afmEl ? afmEl.value.replace(/\s/g,"") : "";
+  const co=isCo(c.custType, kind);
+  const name=q("#ce_name").value.trim(); if(!name){ invalid(q("#ce_name"), co ? CO_WORDS.askName : EVW[kind].askName); return; }
+  const afmEl=co ? q("#ce_afm") : null, afm=afmEl ? afmEl.value.replace(/\s/g,"") : "";
   if(afm && !/^\d{9}$/.test(afm)){ invalid(afmEl, "Το ΑΦΜ έχει 9 ψηφία"); return; }
   const dateEl=q("#ce_date"); if(dateEl.validity && dateEl.validity.badInput){ invalid(dateEl, "Η ημερομηνία δεν είναι πλήρης"); return; }
   const date=dateEl.value||"", oldDate=isYmd(c.weddingDate)?c.weddingDate:"";
@@ -1872,7 +1875,7 @@ const C_TYPE_ORDER={ venue:0, couple:1, parents:2, party:3, company:4, organiser
 const C_BUSINESS=["venue", "company", "organiser"];   // they keep an ΑΦΜ; everyone else is «Ιδιώτες»
 // 1–3 and 8 are a contact's (phase 4), set by him on its card; 4–7 the system works out for a customer.
 const C_STAGE={ 1:"Νέα επαφή", 2:"Σε συζήτηση", 3:"Αναμένεται πληρωμή", 4:"Ενεργοποίηση", 5:"Ενεργός", 6:"Ανανέωση", 7:"Ολοκληρώθηκε", 8:"Δεν προχώρησε" };
-const C_KIND={ wedding:"γάμος", baptism:"βάπτιση", party:"γιορτή" };
+const C_KIND={ wedding:"γάμος", baptism:"βάπτιση", party:"γιορτή", company:"εταιρική εκδήλωση" };
 // Each «Θέλουν εμένα» flag: the few words on the row, and the sentence on the card.
 const C_FLAG={
   setup_unopened:["δεν άνοιξε τον σύνδεσμο", "Ο σύνδεσμος ρύθμισης στάλθηκε πριν από 3+ μέρες και δεν έχει ανοίξει."],
@@ -2735,7 +2738,7 @@ function exportLogistis(){
   const vis=pVisible().filter(p=>!p.cancelled && !p.receipt), rows=vis.filter(p=>!p.refundOf), refunds=vis.length-rows.length;
   if(!rows.length){ toast(refunds ? "Μόνο επιστροφές χωρίς πιστωτικό εδώ — αυτές γίνονται πιστωτικό μέσα στον Λογιστή" : "Καμία πληρωμή χωρίς απόδειξη εδώ"); return; }
   const lg=v=>cCsvCell(String(v==null ? "" : v).replace(/[|\r\n\t]/g, " ").trim());
-  const P_KIND_GEN={ wedding:"γάμο", baptism:"βάπτιση", party:"γιορτή" };   // the line printed on the receipt itself
+  const P_KIND_GEN={ wedding:"γάμο", baptism:"βάπτιση", party:"γιορτή", company:"εταιρική εκδήλωση" };   // the line printed on the receipt itself
   const desc=p=>"TakeaSeat — "+(p.what==="season" ? "σεζόν"+(seasonWord(p.from, p.to) ? " "+seasonWord(p.from, p.to) : "")
     : p.what==="plan" ? "σχέδιο θέσεων"+(p.kind ? " για "+(P_KIND_GEN[p.kind]||p.kind) : "") : p.what==="extra" ? "επιπλέον σχέδιο θέσεων" : (p.about||"υπηρεσία"));
   const head=["RID","DATE","AMOUNT","NAME","CUSTOMER_AFM","EMAIL","SERVICE","DESCRIPTION","PAYMENT","NOTES"];
@@ -2755,7 +2758,7 @@ const C_SRC={ phone:"Τηλέφωνο", viber:"Viber", whatsapp:"WhatsApp", emai
 // "form" is written only by the site's contact form, so it is a word for the card and the timeline, never a chip he taps
 const SRC_WORD={ ...C_SRC, form:"Φόρμα σελίδας" };
 const C_LTYPE=[["couple","Ζευγάρι"],["parents","Γονείς"],["party","Γιορτή"],["company","Εταιρεία"],["venue","Κτήμα"],["organiser","Γραφείο εκδηλώσεων"]];
-const LEAD_KINDS={ couple:"wedding", parents:"baptism", party:"party", company:"party" };   // what a contact with an event would buy for
+const LEAD_KINDS={ couple:"wedding", parents:"baptism", party:"party", company:"company" };   // what a contact with an event would buy for
 const cOwner=t=>t==="venue" || t==="organiser";   // a business to run, not one evening to date: no date, and it buys through «+ Κτήμα»
 // What the form says for each type; the private ones share the last line.
 const LEAD_WORDS={
@@ -2798,7 +2801,7 @@ function wireLeadForm(d, except, onKnown){
   const sync=()=>{ const t=pick("type"), own=cOwner(t), W=LEAD_WORDS[t]||LEAD_WORDS.other;
     q("#ld_namel").textContent=W.name; q("#ld_name").placeholder=W.ph;
     q("#ld_afmw").style.display=C_BUSINESS.includes(t) ? "" : "none"; q("#ld_datew").style.display=own ? "none" : "";
-    if(!own) q("#ld_datel").textContent=t==="company" ? CO_WORDS.date : EVW[LEAD_KINDS[t]].date;
+    if(!own) q("#ld_datel").textContent=EVW[LEAD_KINDS[t]].date;
     q("#ld_placel").innerHTML=`${W.place} <span class="hint">— ${W.hint}</span>`;
     q("#ld_place").placeholder=W.placePh; };
   // only what could already be someone's: a whole address, a whole number, nine digits
@@ -2934,7 +2937,7 @@ async function leadAction(key, x, a, btn){
 const REPLY_PAY={ holder:"[ΣΥΜΠΛΗΡΩΣΕ: δικαιούχος]", iban:"[ΣΥΜΠΛΗΡΩΣΕ: IBAN]", iris:"[ΣΥΜΠΛΗΡΩΣΕ: IRIS]" };
 const REPLY_SIGN="Ανδρέας — TakeaSeat\n697 735 5378 · takeaseat.gr";
 const REPLY_FOR={ wedding:"τον γάμο σας", baptism:"τη βάπτιση", party:"τη γιορτή σας", company:"την εκδήλωσή σας" };
-const REPLY_LAB=k=>"https://takeaseat.gr/lab.html?ev="+(k==="company" ? "party" : k);   // it has no demo of its own until phase 2 of COMPANIES-PLAN.md
+const REPLY_LAB=k=>"https://takeaseat.gr/lab.html?ev="+k;
 const REPLIES=[
   { id:"price", venue:false, title:"Τιμή", subject:"TakeaSeat — το σχέδιο τραπεζιών", text:k=>`Καλησπέρα σας,
 
@@ -2997,7 +3000,7 @@ ${REPLY_SIGN}` },
 ];
 function showReply(btn, x){
   const r=REPLIES.find(t=>t.id===btn.dataset.tpl), p=btn.closest(".dbody").querySelector(".cardpanel"); if(!r || !p) return;
-  const l=x.lead||{}, kind=l.type==="company" ? "company" : LEAD_KINDS[l.type]||"wedding", to=x.customer.email;
+  const l=x.lead||{}, kind=LEAD_KINDS[l.type]||"wedding", to=x.customer.email;
   p.innerHTML=`<div class="cbox tplbox"><label for="tp_text"><span>${esc(r.title)} <span class="hint">— διόρθωσέ το αν θέλεις, και μετά αντέγραψέ το</span></span></label>
     <textarea id="tp_text" rows="12">${esc(r.text(kind))}</textarea>
     <div class="tlbtns"><button class="btn sm primary" data-k="tpl_copy">Αντιγραφή</button>${to ? `<button class="btn sm" data-k="tpl_mail" data-tpl="${r.id}" title="Ανοίγει το email σου με το κείμενο, προς ${esc(to)}">✉ Email</button>` : ""}<button class="btn sm ghost" data-k="panel_close">Κλείσιμο</button></div></div>`;
