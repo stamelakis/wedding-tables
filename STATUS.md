@@ -1,15 +1,12 @@
 # TakeaSeat — STATUS
 
-Updated: 2026-10-23
+Updated: 2026-11-03
 
-**Status:** Live runs `01eb974` (deployed 2026-10-23, tag `deploy-2026-10-23-2`, pre-deploy backup
-`/opt/backups/takeaseat-20261023-154554.db.gz.age`), healthy. Operations phases 1–6 are live; phase 6 («Σήμερα», the
-08:00 mail, Hermes «τι έχει σήμερα το TakeaSeat;») went live after Andreas read its Greek. 1398 checks pass; the screen
-was checked on the local copy at desktop and phone width. Live: smoke test 5/5 (home, admin with the new code,
-contact form, lab, sitemap; `/admin/today` and `/admin/today/hide` refuse without the owner key), the new `backup.sh`
-installed as `/opt/takeaseat-backup.sh` and run once («backup ok», stamp read by the app), live «Σήμερα» is empty,
-and Hermes answers «Στο TakeaSeat σήμερα δεν σε περιμένει τίποτα.» from the live server. Not checked live: the
-signed-in «Σήμερα» screen on his phone, and a real morning mail (none goes while the list is empty).
+**Status:** Companies and organisers are planned and approved in `COMPANIES-PLAN.md`; nothing of it is built. Live still
+runs `01eb974` (deployed 2026-10-23, tag `deploy-2026-10-23-2`, pre-deploy backup
+`/opt/backups/takeaseat-20261023-154554.db.gz.age`); the last health check was that day. Operations phases 1–6 are live.
+On 2026-11-03 Andreas looked at «Σήμερα», «Πληρωμές», «Πελάτες», the card and «+ Νέα επαφή» live and all looked fine.
+Not yet seen live: a real morning mail (none goes while the list is empty).
 
 ## In progress / unfinished
 
@@ -18,44 +15,43 @@ signed-in «Σήμερα» screen on his phone, and a real morning mail (none go
 
 ## Next
 
-1. **Nothing scheduled.** Phase 7 (online payment) waits on the company, accountant and lawyer. The page's remaining
-   English sections move to Greek as each is touched.
-2. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today (checked
+1. **Phase 1 of `COMPANIES-PLAN.md`: a company as a customer** («Εταιρεία» and «Γραφείο εκδηλώσεων» in admin and on the
+   contact form, ΑΦΜ kept). Done when: each can be added, found by ΑΦΜ and turned into a customer, appearing exactly
+   once, and a form sent as a company arrives with that type.
+2. **Phases 2–4 of that plan**, each in its own session: the fourth kind, then one console with saved rooms and old
+   designs, then the organiser in public. Each has its own "done when" there.
+3. **Phase 7 (online payment)** waits on the company, accountant and lawyer. The page's remaining English sections move
+   to Greek as each is touched.
+4. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today (checked
    2026-10-18): every plan on the server comes from a purchase, a venue licence or free year, or a paying couple.
 
 ## Waiting on Andreas
 
-- **A look at «Σήμερα» live on your phone** (admin.html, owner key): it is the first section and should say «✓ Σήμερα
-  δεν σε περιμένει τίποτα.» today. When something comes up, try «αύριο» on a line and «Επαναφορά» under «Κρυμμένα».
-  The 08:00 mail comes only on days the list is not empty, so no mail tomorrow is normal. When one does come, say if
-  the wording reads right in your mail app.
-
-- **A look at «Πληρωμές» live** (admin.html, owner key): the screen at the bottom should be empty with 0,00 € this
-  year, and the one real venue's card should show its «Πληρωμές» box. When the next real payment comes in, record it
-  there («+ Πληρωμή», only the amount is needed) and say if anything is off.
+- **Answer on guest notes** (`COMPANIES-PLAN.md` §2, decision 6): you asked if a company could choose to keep them. The
+  recommendation is no, with the company keeping its own file through the CSV download instead. Say yes, or what you'd
+  rather do. Phase 3 is the first that depends on it.
+- **When something comes up in «Σήμερα»:** try «αύριο» on a line and «Επαναφορά» under «Κρυμμένα». The 08:00 mail comes
+  only on days the list is not empty. When one does come, say if the wording reads right in your mail app.
+- **When the next real payment comes in:** record it in «Πληρωμές» («+ Πληρωμή», only the amount is needed) and say if
+  anything is off.
 - **Send one real form from the live site** with your own email: https://takeaseat.gr/epikoinonia.html. Check that
   you get the "we got it" mail, that the mail to info@ arrives and Reply answers your own address, and that the
   contact shows in «Πελάτες» as «Νέα επαφή». Then «Σβήσε την επαφή…» on its card. Tell the session if anything is off.
 - **Send the bank details for the payment text**: δικαιούχος, IBAN and IRIS number (put them in chat; they are not
   secret, they go on every payment message). Until then the live payment reply shows «[ΣΥΜΠΛΗΡΩΣΕ…]» and warns on
   copy. Then fill `REPLY_PAY` in admin.html and deploy.
-- **Try «+ Νέα επαφή» on your phone** (live, admin.html, owner key): add a test contact, open its card, tap a ready
-  message, then «Σβήσε την επαφή…». It was only checked on the local copy.
 - **Nothing to do for phase 3.** Not checked after the deploy: the one real venue's console on the new sheet (that
   needs the venue's own key). The same code was checked on the local copy. The three new dates are recorded from
   today only, so the venue's existing events show their stage without «δεν στάλθηκε / δεν έχει ανοίξει» (by design).
   If the venue says anything about the new screen, pass it on.
-- **A look at «Πελάτες» and the card on your phone** (phases 1–2, live): open https://takeaseat.gr/admin.html, sign
-  in with the owner key, tap the one real venue. Try a note, an «Επόμενο βήμα» and a «📞 Τηλεφώνησα» line, and look
-  at «Μνήμη» at the bottom. Also open «+ Ιδιώτης» and, on the venue, «Επεξεργασία…» (close both without saving):
-  they are Greek since 2026-10-21 and were only checked on a local copy. Next time a customer is waiting on a
-  link, paste «Αντιγραφή μηνύματος» to yourself first: the βάπτιση/γιορτή endings and the English and German texts
-  (`CLAIM_MSG` in admin.html) have not been read by a native speaker.
+- **Next time a customer is waiting on a link,** paste «Αντιγραφή μηνύματος» to yourself first: the βάπτιση/γιορτή
+  endings and the English and German texts (`CLAIM_MSG` in admin.html) have not been read by a native speaker.
 - **A design question for later, no rush:** while a venue has not set its own key, the owner key can read that
   key in admin.html, and with it the venue's client cards. A venue that sets its own key closes this. If «the
   admin never sees a venue's clients» must hold strictly, say so and the admin box will stop showing the key.
 - **Accountant, add:** how long the «Για τα λογιστικά» records (name and purchase dates of a forgotten customer)
-  must be kept. Today they have no end date and no delete button.
+  must be kept. Today they have no end date and no delete button. Also: invoices to companies at 25 € per event
+  (`COMPANIES-PLAN.md` §4).
 - **Accountant** (€10,000 VAT threshold, and who issues receipts for TakeaSeat sales until the company
   exists; also how many years payment records must be kept), **company registration** — later. Phase 5 is built
   around the answers: receipt numbers can be added to a payment later, the «Πληρωμές» screen counts the year against
@@ -67,7 +63,8 @@ signed-in «Σήμερα» screen on his phone, and a real morning mail (none go
   buys a γιορτή for its own company dinner is a business, and §8 gives every direct buyer the consumer-law 14-day
   withdrawal (ν. 2251/1994), with the planner opening only after it, a business included. And: terms §8's
   «άμεση έναρξη» names only a γάμος under 21 days away, while the payment reply says «εκδήλωση»; confirm it may
-  cover a βάπτιση or γιορτή and widen §8's wording.
+  cover a βάπτιση or γιορτή and widen §8's wording. And the four points for companies in `COMPANIES-PLAN.md` §4: the
+  1–5 year choice, a company accepting `dpa.html`, no consumer withdrawal for a company, table labels in saved rooms.
 
 ## Known problems
 
@@ -82,6 +79,8 @@ signed-in «Σήμερα» screen on his phone, and a real morning mail (none go
 
 ## History
 
+- 2026-11-03 — `COMPANIES-PLAN.md` written and approved by Andreas (a fourth kind, «Γραφείο εκδηλώσεων», old designs, a 1–5
+  year choice); no code changed. Andreas's live look at «Σήμερα», «Πληρωμές», «Πελάτες», the card and «+ Νέα επαφή»: fine.
 - 2026-10-23 — phase 6 («Σήμερα», morning mail, Hermes) built (`122e233`, `d81e3ff`, `dc987a2`, `01eb974`) and deployed
   (`deploy-2026-10-23-2`) after Andreas read the Greek; `backup.sh` with the backup stamp installed on the host; the
   Hermes shim restarted (its registration had pointed at a dead port since 2026-10-19).
