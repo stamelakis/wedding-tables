@@ -9,7 +9,7 @@
 <link rel="canonical" href="https://takeaseat.gr/epikoinonia.html">
 <!-- OPERATIONS-PLAN.md phase 4: this form replaced every prefilled mailto on the site. A message becomes a «Νέα επαφή» in
      admin.html (POST /contact); the sender gets a fixed «we got it», Andreas gets the message with Reply-To set to them.
-     The links into it say what was asked: ?kind=wedding|baptism|party|venue &q=start|ask|demo|other (&lang=en). -->
+     The links into it say what was asked: ?kind=wedding|baptism|party|company|venue|organiser &q=start|ask|demo|other (&lang=en). -->
 <style>
   :root{
     --paper:#f7f4f1; --paper-2:#efe9e2; --card:#fffdfb;
@@ -113,7 +113,9 @@
             <button type="button" class="chip" data-v="wedding" data-t="kWedding">Γάμος</button>
             <button type="button" class="chip" data-v="baptism" data-t="kBaptism">Βάπτιση</button>
             <button type="button" class="chip" data-v="party" data-t="kParty">Γιορτή</button>
+            <button type="button" class="chip" data-v="company" data-t="kCompany">Εταιρεία</button>
             <button type="button" class="chip" data-v="venue" data-t="kVenue">Κτήμα ή χώρος εκδηλώσεων</button>
+            <button type="button" class="chip" data-v="organiser" data-t="kOrganiser">Γραφείο εκδηλώσεων</button>
           </div>
         </div>
         <div class="field">
@@ -169,12 +171,12 @@
 const T = {
   el: {
     title:"Επικοινωνία — TakeaSeat", home:"Αρχική", try:"Δωρεάν δοκιμή", h1:"Επικοινωνία", lead:"Γράψτε μας και θα σας απαντήσουμε σύντομα, συνήθως την ίδια ή την επόμενη μέρα.",
-    qKind:"Για τι μας γράφετε;", kWedding:"Γάμος", kBaptism:"Βάπτιση", kParty:"Γιορτή", kVenue:"Κτήμα ή χώρος εκδηλώσεων", qTopic:"Τι θέλετε;",
-    tStart:"Θέλουμε το TakeaSeat", tAskVenue:"Έχει το κτήμα μας TakeaSeat;", tAskPlace:"Έχει ο χώρος μας TakeaSeat;", tDemo:"Ένα demo για το κτήμα μου", tOther:"Κάτι άλλο",
+    qKind:"Για τι μας γράφετε;", kWedding:"Γάμος", kBaptism:"Βάπτιση", kParty:"Γιορτή", kCompany:"Εταιρεία", kVenue:"Κτήμα ή χώρος εκδηλώσεων", kOrganiser:"Γραφείο εκδηλώσεων", qTopic:"Τι θέλετε;",
+    tStart:"Θέλουμε το TakeaSeat", tAskVenue:"Έχει το κτήμα μας TakeaSeat;", tAskPlace:"Έχει ο χώρος μας TakeaSeat;", tDemo:"Ένα demo για το κτήμα μου", tDemoOffice:"Ένα demo για το γραφείο μου", tOther:"Κάτι άλλο",
     name:"Το όνομά σας", phone:"Τηλέφωνο", optional:"(προαιρετικό)", message:"Μήνυμα",
-    dWedding:"Ημερομηνία γάμου", dBaptism:"Ημερομηνία βάπτισης", dParty:"Ημερομηνία γιορτής",
-    pVenue:"Σε ποιο κτήμα γίνεται", pPlace:"Σε ποιον χώρο γίνεται", pOwn:"Το κτήμα ή ο χώρος σας", pOwnPh:"π.χ. Κτήμα Ηλιοβασίλεμα, Μαραθώνας", pPh:"π.χ. Κτήμα Ηλιοβασίλεμα",
-    mStart:"π.χ. πόσα άτομα περίπου, τι θα θέλατε να μάθετε", mAsk:"Γράψτε μας το κτήμα και την ημερομηνία· θα σας πούμε αν δουλεύει με το TakeaSeat.", mDemo:"π.χ. πόσες αίθουσες έχετε, πότε σας βολεύει ένα σύντομο demo", mOther:"Γράψτε μας τι θέλετε να μάθετε",
+    dWedding:"Ημερομηνία γάμου", dBaptism:"Ημερομηνία βάπτισης", dParty:"Ημερομηνία γιορτής", dCompany:"Ημερομηνία εκδήλωσης",
+    pVenue:"Σε ποιο κτήμα γίνεται", pPlace:"Σε ποιον χώρο γίνεται", pOwn:"Το κτήμα ή ο χώρος σας", pOwnPh:"π.χ. Κτήμα Ηλιοβασίλεμα, Μαραθώνας", pPh:"π.χ. Κτήμα Ηλιοβασίλεμα", pOffice:"Το γραφείο σας", pOfficePh:"π.χ. Ορίζων Events, Χαλάνδρι",
+    mStart:"π.χ. πόσα άτομα περίπου, τι θα θέλατε να μάθετε", mStartCo:"π.χ. ποια εταιρεία είστε, πόσα άτομα περίπου, τι θα θέλατε να μάθετε", mAsk:"Γράψτε μας το κτήμα και την ημερομηνία· θα σας πούμε αν δουλεύει με το TakeaSeat.", mDemo:"π.χ. πόσες αίθουσες έχετε, πότε σας βολεύει ένα σύντομο demo", mDemoOffice:"π.χ. πόσες εκδηλώσεις κάνετε τον χρόνο, πότε σας βολεύει ένα σύντομο demo", mOther:"Γράψτε μας τι θέλετε να μάθετε",
     nomail:"Αν γίνετε πελάτες μας, μπορεί κάποτε να σας γράψουμε για μια σχετική εκδήλωση, π.χ. μετά τον γάμο για τη βάπτιση. <b>Αν δεν το θέλετε, τσεκάρετε εδώ.</b> Μπορείτε να μας το πείτε και αργότερα.",
     fine:"Κρατάμε ό,τι γράψετε εδώ για να σας απαντήσουμε. Αν δεν γίνετε πελάτες μας, σβήνεται 2 χρόνια μετά την τελευταία μας επαφή. <a href=\"/privacy.html\">Πολιτική Απορρήτου</a>",
     send:"Αποστολή", sending:"Αποστέλλεται…", direct:"Ή απευθείας, 10:00–14:00 και 17:00–21:00:", privacy:"Απόρρητο", terms:"Όροι",
@@ -186,12 +188,12 @@ const T = {
   },
   en: {
     title:"Contact — TakeaSeat", home:"Home", try:"Free demo", h1:"Contact us", lead:"Write to us and we will answer soon, usually the same day or the next.",
-    qKind:"What are you writing about?", kWedding:"Wedding", kBaptism:"Baptism", kParty:"Party", kVenue:"A venue", qTopic:"What would you like?",
-    tStart:"We want TakeaSeat", tAskVenue:"Does our venue use TakeaSeat?", tAskPlace:"Does our venue use TakeaSeat?", tDemo:"A demo for my venue", tOther:"Something else",
+    qKind:"What are you writing about?", kWedding:"Wedding", kBaptism:"Baptism", kParty:"Party", kCompany:"A company", kVenue:"A venue", kOrganiser:"An event agency", qTopic:"What would you like?",
+    tStart:"We want TakeaSeat", tAskVenue:"Does our venue use TakeaSeat?", tAskPlace:"Does our venue use TakeaSeat?", tDemo:"A demo for my venue", tDemoOffice:"A demo for my agency", tOther:"Something else",
     name:"Your name", phone:"Phone", optional:"(optional)", message:"Message",
-    dWedding:"Wedding date", dBaptism:"Baptism date", dParty:"Date of the party",
-    pVenue:"Which venue", pPlace:"Which venue", pOwn:"Your venue", pOwnPh:"e.g. Ktima Iliovasilema, Marathonas", pPh:"e.g. Ktima Iliovasilema",
-    mStart:"e.g. roughly how many guests, what you would like to know", mAsk:"Tell us the venue and the date, and we will tell you whether it works with TakeaSeat.", mDemo:"e.g. how many halls you have, when a short demo suits you", mOther:"Tell us what you would like to know",
+    dWedding:"Wedding date", dBaptism:"Baptism date", dParty:"Date of the party", dCompany:"Date of the event",
+    pVenue:"Which venue", pPlace:"Which venue", pOwn:"Your venue", pOwnPh:"e.g. Ktima Iliovasilema, Marathonas", pPh:"e.g. Ktima Iliovasilema", pOffice:"Your agency", pOfficePh:"e.g. Orizon Events, Halandri",
+    mStart:"e.g. roughly how many guests, what you would like to know", mStartCo:"e.g. which company you are, roughly how many guests, what you would like to know", mAsk:"Tell us the venue and the date, and we will tell you whether it works with TakeaSeat.", mDemo:"e.g. how many halls you have, when a short demo suits you", mDemoOffice:"e.g. how many events you run a year, when a short demo suits you", mOther:"Tell us what you would like to know",
     nomail:"If you become our customer, we may one day write to you about a related event, e.g. a baptism after the wedding. <b>If you would rather we did not, tick here.</b> You can also tell us later.",
     fine:"We keep what you write here so that we can answer you. If you do not become our customer, it is deleted 2 years after our last contact. <a href=\"/privacy.html#en\">Privacy Policy</a>",
     send:"Send", sending:"Sending…", direct:"Or directly, 10:00–14:00 and 17:00–21:00 (Greek time):", privacy:"Privacy", terms:"Terms",
@@ -205,7 +207,8 @@ const T = {
 const qs = new URLSearchParams(location.search);
 const lang = qs.get("lang") === "en" ? "en" : "el", t = k => T[lang][k];
 const $ = id => document.getElementById(id);
-const KINDS = ["wedding", "baptism", "party", "venue"];
+const KINDS = ["wedding", "baptism", "party", "company", "venue", "organiser"];
+const hasNoDate = () => kind === "venue" || kind === "organiser";   // they write about their business, not about one evening
 const TOPICS = { venue: ["demo", "other"], other: ["start", "ask", "other"] };
 let kind = KINDS.includes(qs.get("kind")) ? qs.get("kind") : "wedding";
 let topic = qs.get("q");
@@ -220,21 +223,21 @@ if (lang === "en") {
 
 const press = (group, v) => document.querySelectorAll(`[data-pick="${group}"] .chip`).forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === v)));
 function drawTopics() {
-  const list = TOPICS[kind === "venue" ? "venue" : "other"];
+  const list = TOPICS[hasNoDate() ? "venue" : "other"];
   if (!list.includes(topic)) topic = list[0];
-  const word = { start: t("tStart"), ask: t(kind === "party" ? "tAskPlace" : "tAskVenue"), demo: t("tDemo"), other: t("tOther") };
+  const word = { start: t("tStart"), ask: t(kind === "party" || kind === "company" ? "tAskPlace" : "tAskVenue"), demo: t(kind === "organiser" ? "tDemoOffice" : "tDemo"), other: t("tOther") };
   $("topics").innerHTML = list.map(v => `<button type="button" class="chip" data-v="${v}">${word[v]}</button>`).join("");
   press("topic", topic);
 }
 function sync() {
   press("kind", kind); drawTopics();
-  const venue = kind === "venue";
-  $("w_date").style.display = venue ? "none" : "";
-  if (!venue) $("l_date").textContent = t({ wedding: "dWedding", baptism: "dBaptism", party: "dParty" }[kind]);
-  $("l_place").textContent = venue ? t("pOwn") : t(kind === "party" ? "pPlace" : "pVenue");
-  $("o_place").style.display = venue ? "none" : "";
-  $("f_place").placeholder = venue ? t("pOwnPh") : t("pPh");
-  $("f_message").placeholder = t({ start: "mStart", ask: "mAsk", demo: "mDemo", other: "mOther" }[topic]);
+  const noDate = hasNoDate(), office = kind === "organiser";
+  $("w_date").style.display = noDate ? "none" : "";
+  if (!noDate) $("l_date").textContent = t({ wedding: "dWedding", baptism: "dBaptism", party: "dParty", company: "dCompany" }[kind]);
+  $("l_place").textContent = office ? t("pOffice") : noDate ? t("pOwn") : t(kind === "party" || kind === "company" ? "pPlace" : "pVenue");
+  $("o_place").style.display = noDate ? "none" : "";
+  $("f_place").placeholder = office ? t("pOfficePh") : noDate ? t("pOwnPh") : t("pPh");
+  $("f_message").placeholder = t({ start: kind === "company" ? "mStartCo" : "mStart", ask: "mAsk", demo: office ? "mDemoOffice" : "mDemo", other: "mOther" }[topic]);
 }
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-pick] .chip"); if (!b) return;
@@ -256,12 +259,12 @@ $("form").addEventListener("submit", async e => {
   e.preventDefault();
   errBox.classList.remove("on");
   const v = id => $(id).value.trim();
-  const body = { kind, topic, name: v("f_name"), email: v("f_email"), phone: v("f_phone"), date: kind === "venue" ? "" : $("f_date").value,
+  const body = { kind, topic, name: v("f_name"), email: v("f_email"), phone: v("f_phone"), date: hasNoDate() ? "" : $("f_date").value,
     place: v("f_place"), message: $("f_message").value.trim(), noMail: $("f_nomail").checked, website: $("f_website").value, lang };
   if (!body.name) return fail(t("eName"), $("f_name"));
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(body.email)) return fail(t("eEmail"), $("f_email"));
   if (body.phone && body.phone.replace(/\D/g, "").length < 10) return fail(t("ePhone"), $("f_phone"));
-  if (kind !== "venue" && $("f_date").validity && $("f_date").validity.badInput) return fail(t("eDate"), $("f_date"));
+  if (!hasNoDate() && $("f_date").validity && $("f_date").validity.badInput) return fail(t("eDate"), $("f_date"));
   if (body.date && body.date < $("f_date").min) return fail(t("eDate"), $("f_date"));
   const btn = $("send"); btn.disabled = true; btn.textContent = t("sending");
   let r = null, d = {};

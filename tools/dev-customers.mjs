@@ -179,6 +179,14 @@ const dow = new Date(day(0) + 'T12:00:00Z').getUTCDay(), sun = (dow === 0 ? -2 :
 const c7 = await couple({ name: 'Χριστίνα & Πέτρος', email: 'christina.p@example.gr', weddingDate: day(sun), startNow: true });   // a wedding this Sunday
 await call('POST', C('c:' + c7) + '/dues/' + due1('c:' + c7) + '/waive', { reason: 'Δώρο' }, OWN);
 
+// ---- COMPANIES-PLAN.md phase 1: a company and a γραφείο εκδηλώσεων, each once as a contact and once sold ----
+await lead({ source: 'phone', type: 'company', name: 'Αφοί Παπαδάκη ΑΕ', phone: '2108 123 456', afm: '999000006', date: day(75), place: 'Ξενοδοχείο Αίγλη', text: 'εταιρικό δείπνο, 120 άτομα' });
+await lead({ source: 'email', type: 'organiser', name: 'Ορίζων Events', email: 'info@orizon.example', afm: '999001377', place: 'Χαλάνδρι', stage: 2, text: 'κάνουν 30 εκδηλώσεις τον χρόνο, σε διάφορους χώρους' });
+const c8 = await couple({ name: 'Μεσόγειος Logistics ΕΠΕ', custType: 'company', afm: '999002743', kind: 'party', email: 'office@mesogeios.example', contact: '2310 456 789', weddingDate: day(50) });
+const d8 = raw('ledger:c:' + c8).dues[0];
+await call('POST', P('c:' + c8), { dueId: d8.id, amount: d8.amount, date: day(-1), method: 'bank' }, OWN);        // paid, no receipt yet: it shows in «Για τον Λογιστή», with its ΑΦΜ
+await venue('Στιγμή Εκδηλώσεις', 'hello@stigmi.example', { custType: 'organiser', afm: '999004110', contact: '210 777 8899' });
+
 db.close();
 console.log('dev-customers: seeded ' + DB);
 console.log('dev-customers: venue console «Κτήμα Ροδακινιά» at http://localhost:' + PORT + '/venue.html, key ' + VK);

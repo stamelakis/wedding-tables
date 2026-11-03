@@ -1575,6 +1575,10 @@ async function venueCard(env, v, focus) {
 // · s:<signupId> · l:<leadId>.
 const CUST_LINK_DAYS = 3, CUST_FIRST_EVENT_DAYS = 14, CUST_ENDING_DAYS = 60;
 const CUST_TYPE = { wedding: "couple", baptism: "parents", party: "party" };
+// COMPANIES-PLAN.md phase 1: until phase 3 a company is sold as a γιορτή and a γραφείο εκδηλώσεων as a venue, on those same
+// records, told apart by `custType` alone. The sheet, the payments and the ΑΦΜ read it; no plan, price or permission does.
+const venueType = v => (v && v.custType === "organiser") ? "organiser" : "venue";
+const coupleType = (c, kind) => (c && c.custType === "company") ? "company" : (CUST_TYPE[kind] || "couple");
 const ymdOfMs = t => t ? normYmd(new Date(t).toISOString()) : null;
 const daysTo = (from, to) => Math.round((Date.parse(to + "T00:00:00Z") - Date.parse(from + "T00:00:00Z")) / DAY);
 // A number to call, from a field or from free text («τηλ. 697 735 5378 · info@…»): a Greek number as +30 and ten digits,
@@ -1626,7 +1630,7 @@ async function venueCustomer(env, v, now, today) {
   if (vc.weddings.some(p => p.support) || (vc.template && vc.template.support)) flags.push("support_open");
   const stage = !on ? 7 : flags.includes("renew_skipped") ? 6 : over ? 7
     : (lic.invoiceDue || (seasonal && left <= CUST_ENDING_DAYS)) ? 6 : !started ? 4 : 5;
-  const row = custRow({ key: "v:" + v.id, type: "venue", name: v.name || "", stage, flags, events,
+  const row = custRow({ key: "v:" + v.id, type: venueType(v), name: v.name || "", stage, flags, events,
     until: seasonal ? lic.seasonEnd : null, untilKind: seasonal ? (trial ? "trial" : "season") : null,
     last: Math.max(v.createdAt || 0, (v.trial && v.trial.verifiedAt) || 0, (s && s.createdAt) || 0, (vc.template && vc.template.updated) || 0,
       ...(v.weddings || []).map(w => w.createdAt || 0), ...events.map(custTouch)) || null,
@@ -1644,10 +1648,10 @@ async function coupleCustomer(env, c, now) {
   if (couple.pendingClaim && !done && now - (couple.claimIssuedAt || couple.createdAt || now) > CUST_LINK_DAYS * DAY) flags.push("claim_unused");
   if (events.some(e => e.support)) flags.push("support_open");
   const stage = done ? 7 : (couple.pendingClaim || main.phase === "waiting") ? 4 : 5;
-  const row = custRow({ key: "c:" + c.id, type: CUST_TYPE[couple.kind] || "couple", name: c.name || "", stage, flags, events,
+  const row = custRow({ key: "c:" + c.id, type: coupleType(c, couple.kind), name: c.name || "", stage, flags, events,
     until: (main && !main.keep && main.deleteAt) ? ymdOfMs(main.deleteAt - 1) : null, untilKind: main ? (main.keep ? "keep" : "plan") : null,
     last: Math.max(c.createdAt || 0, c.claimedAt || 0, ...events.map(custTouch)) || null,
-    email: c.email || "", phone: phoneOf(c.contact), afm: "", createdAt: c.createdAt || null, active: true, nextStep: c.nextStep, contactAt: c.contactAt });
+    email: c.email || "", phone: phoneOf(c.contact), afm: c.afm || "", createdAt: c.createdAt || null, active: true, nextStep: c.nextStep, contactAt: c.contactAt });
   return { row, card: { couple, events } };
 }
 async function signupCustomer(env, s, now) {   // only a pending signup whose venue is gone: every other one IS its venue's row
@@ -1664,8 +1668,9 @@ async function signupCustomer(env, s, now) {   // only a pending signup whose ve
 const LEAD_YEARS = 2, LEAD_MAX = 3000, LEAD_NAME_MAX = 120, LEAD_PLACE_MAX = 120, MOVES_MAX = 50;
 // "form" is the site's contact form: only POST /contact writes it (admin.html never offers it as a chip)
 const LEAD_SOURCES = ["phone", "email", "viber", "whatsapp", "facebook", "instagram", "amelie", "referral", "other", "form"];
-const LEAD_TYPES = ["venue", "couple", "parents", "party"], LEAD_STAGES = [1, 2, 3], LEAD_LOST = ["price", "no_reply", "other_tool", "cancelled", "other"];
-const LEAD_KIND = { couple: "wedding", parents: "baptism", party: "party" };
+const LEAD_TYPES = ["venue", "couple", "parents", "party", "company", "organiser"], LEAD_STAGES = [1, 2, 3], LEAD_LOST = ["price", "no_reply", "other_tool", "cancelled", "other"];
+const LEAD_KIND = { couple: "wedding", parents: "baptism", party: "party", company: "party" };   // a company buys a γιορτή until phase 2 of COMPANIES-PLAN.md
+const AFM_TYPES = ["venue", "company", "organiser"];   // the businesses: anyone else's ΑΦΜ would only be a number nobody asked for
 const LEAD_ID = /^[A-Za-z0-9]{1,64}$/;
 const leadStage = l => l.lost ? 8 : LEAD_STAGES.includes(l.stage) ? l.stage : 1;
 // The fields of «+ Νέα επαφή» and its «Επεξεργασία…», checked; `cur` is the lead being edited (a field left out stays).
@@ -1681,7 +1686,7 @@ function leadFields(b, cur) {
   if (has("email")) { const e = normEmail(b.email); if (String(b.email).trim() && !e) return { error: "bad_email" }; o.email = e; }
   if (has("phone")) { const p = String(b.phone).trim() ? phoneOf(b.phone) : ""; if (String(b.phone).trim() && !p) return { error: "bad_phone" }; o.phone = p; }
   if (has("afm")) { const a = String(b.afm).trim() ? validAfm(b.afm) : ""; if (String(b.afm).trim() && !a) return { error: "bad_afm" }; o.afm = a; }
-  if (o.type !== "venue") o.afm = "";   // an ΑΦΜ is a business's: a couple's would only be a number nobody asked for
+  if (!AFM_TYPES.includes(o.type)) o.afm = "";
   if (!o.name && !o.email && !o.phone) return { error: "empty" };   // someone he can find again: a name, a phone or an address
   return { lead: o };
 }
@@ -1691,14 +1696,16 @@ const leadOut = l => ({ id: l.id, name: l.name || "", source: l.source || "other
 // ---- the site's contact form (POST /contact) ----
 // A fixed list of fields, each with its own cap; anything else in the body is ignored. Typed by a stranger, so every
 // one-line field loses its control characters (a line break in a name would otherwise reach a mail subject).
-const CONTACT_KINDS = { wedding: "couple", baptism: "parents", party: "party", venue: "venue" };
+const CONTACT_KINDS = { wedding: "couple", baptism: "parents", party: "party", company: "company", venue: "venue", organiser: "organiser" };
+const CONTACT_NO_DATE = ["venue", "organiser"];   // they write about their business, not about one evening
 const CONTACT_TOPICS = ["start", "ask", "demo", "other"];
 // how the timeline and his mail say what they asked for; he reads Greek, whatever language the form was in
 const CONTACT_TOPIC_EL = { start: "Θέλει το TakeaSeat", ask: "Ρωτά αν το κτήμα του δουλεύει με το TakeaSeat", demo: "Ζητά demo για το κτήμα", other: "Ερώτηση" };
+const contactTopicEl = f => (f.kind === "organiser" && f.topic === "demo") ? "Ζητά demo για το γραφείο" : CONTACT_TOPIC_EL[f.topic];   // a γραφείο has no κτήμα
 const CONTACT_WORDS = {
-  el: { wedding: "γάμος", baptism: "βάπτιση", party: "γιορτή", venue: "κτήμα ή χώρος εκδηλώσεων", none: "—" },
-  en: { wedding: "wedding", baptism: "baptism", party: "party", venue: "venue", none: "—" },
-  de: { wedding: "Hochzeit", baptism: "Taufe", party: "Feier", venue: "Location", none: "—" },
+  el: { wedding: "γάμος", baptism: "βάπτιση", party: "γιορτή", company: "εταιρεία", venue: "κτήμα ή χώρος εκδηλώσεων", organiser: "γραφείο εκδηλώσεων", none: "—" },
+  en: { wedding: "wedding", baptism: "baptism", party: "party", company: "company", venue: "venue", organiser: "event agency", none: "—" },
+  de: { wedding: "Hochzeit", baptism: "Taufe", party: "Feier", company: "Firma", venue: "Location", organiser: "Eventagentur", none: "—" },
 };
 const oneLine = (x, max) => (typeof x === "string" ? x : "").replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
 const manyLines = (x, max) => (typeof x === "string" ? x : "").replace(/\r\n?/g, "\n").replace(/[\u0000-\u0009\u000b-\u001f\u007f\u2028\u2029]/g, " ")
@@ -1713,13 +1720,13 @@ function contactFields(b) {
   const phoneIn = oneLine(b.phone, 40), phone = phoneIn ? phoneOf(phoneIn) : "";
   if (phoneIn && !phone) return { error: "bad_phone" };
   const date = typeof b.date === "string" && b.date ? b.date : "";
-  if (date && (!ymdOk(date) || kind === "venue" || date < todayAthens() || date > addYears(todayAthens(), 5))) return { error: "bad_date" };
+  if (date && (!ymdOk(date) || CONTACT_NO_DATE.includes(kind) || date < todayAthens() || date > addYears(todayAthens(), 5))) return { error: "bad_date" };
   return { f: { kind, type: CONTACT_KINDS[kind], name, email, phone, date: date || null, place: oneLine(b.place, LEAD_PLACE_MAX),
     topic: CONTACT_TOPICS.includes(b.topic) ? b.topic : "other", message: manyLines(b.message, CONTACT_MSG_MAX),
     noMail: b.noMail === true, lang: b.lang === "en" ? "en" : "el" } };
 }
 // the line on the timeline: what they asked for, then their own words
-const contactText = f => CONTACT_TOPIC_EL[f.topic] + (f.message ? " — " + f.message : "");
+const contactText = f => contactTopicEl(f) + (f.message ? " — " + f.message : "");
 function leadCustomer(l) {
   const stage = leadStage(l), type = LEAD_TYPES.includes(l.type) ? l.type : "couple", today = todayAthens();
   const row = custRow({ key: "l:" + l.id, type, name: l.name || "", stage, flags: stage === 1 ? ["lead_new"] : [], events: [], until: null, untilKind: null,
@@ -1776,7 +1783,7 @@ async function knownCustomers(env, q, except) {
   }
   for (const cid of (safeParse(await env.PLANS.get("couples:index")) || [])) {
     const c = safeParse(await env.PLANS.get("couple:" + cid));
-    if (c) test("c:" + c.id, [c.email], phonesOf(c.contact), []);
+    if (c) test("c:" + c.id, [c.email], phonesOf(c.contact), [c.afm || ""]);
   }
   for (const sid of (safeParse(await env.PLANS.get("signups:index")) || [])) {
     const s = safeParse(await env.PLANS.get("signup:" + sid));
@@ -1946,11 +1953,11 @@ async function customerCard(env, key) {   // → {customer, …details} or null
 function venueBooks(v) {   // a venue that only ever had its free year bought nothing, so there is nothing to keep
   if (!v || isTest(v) || (v.trial && !v.trial.endedAt && !(v.renewals || []).length)) return null;
   const lic = v.license || {};
-  return { type: "venue", name: v.name || "", licence: lic.type === "per_wedding" ? "per_wedding" : "seasonal", since: ymdOfMs(v.createdAt),
+  return { type: "venue", ...(v.custType ? { custType: v.custType } : {}), name: v.name || "", licence: lic.type === "per_wedding" ? "per_wedding" : "seasonal", since: ymdOfMs(v.createdAt),
     paidFrom: (v.trial && v.trial.endedAt) ? ymdOfMs(v.trial.endedAt) : null, season: { from: lic.seasonStart || null, to: lic.seasonEnd || null },
     renewals: (v.renewals || []).filter(Boolean).map(r => ({ at: ymdOfMs(r.at), from: r.from || null, to: r.to || null })) };
 }
-const coupleBooks = c => ({ type: "couple", name: c.name || "", kind: normKind(c.kind), paidAt: ymdOfMs(c.paidAt || c.createdAt) });
+const coupleBooks = c => ({ type: "couple", ...(c.custType ? { custType: c.custType } : {}), name: c.name || "", kind: normKind(c.kind), paidAt: ymdOfMs(c.paidAt || c.createdAt) });
 async function keepBooks(env, key, o, why) {
   if (!o) return false;
   await env.PLANS.put("books:" + key, JSON.stringify({ key, ...o, erasedAt: Date.now(), why }));
@@ -2101,7 +2108,7 @@ function paySummary(t, rec, ledger, today) {
 }
 const withPay = (row, ps) => ({ ...row, pay: { state: ps.state, owed: ps.owed }, flags: ps.state === "late" ? [...row.flags, "pay_overdue"] : row.flags });
 const seasonName = (from, to) => (ymdOk(from) && ymdOk(to)) ? (from.slice(0, 4) === to.slice(0, 4) ? from.slice(0, 4) : from.slice(0, 4) + "–" + to.slice(2, 4)) : "";   // «2027», «2026–27»
-const payType = (t, rec) => t === "v" ? "venue" : (CUST_TYPE[normKind(rec && rec.kind)] || "couple");
+const payType = (t, rec) => t === "v" ? venueType(rec) : coupleType(rec, normKind(rec && rec.kind));
 // A new due, written once: one per season (its first day) and one per purchase.
 async function addDue(env, key, rec, d) {
   const t = key[0];
@@ -3010,7 +3017,7 @@ export default {
         if (o.email && o.emailVerified) {
           const L = langOf(o.lang), W = CONTACT_WORDS[L] || CONTACT_WORDS.el, M = MAILS[L];
           const known = (await knownCustomers(env, { email: f.email, phone: f.phone }, "l:" + lead.id)).slice(0, 3).map(k => k.name || k.email || k.phone).filter(Boolean);
-          send(env, o.email, { ...mailMsg(L, "ownerContact", { topic: CONTACT_TOPIC_EL[f.topic], name: f.name, kind: W[f.kind],
+          send(env, o.email, { ...mailMsg(L, "ownerContact", { topic: contactTopicEl(f), name: f.name, kind: W[f.kind],
             date: f.date ? fmtDay(Date.parse(f.date + "T12:00:00Z"), L) : W.none, place: f.place || W.none, email: f.email, phone: f.phone || W.none,
             message: f.message || W.none, nomail: lead.noMail ? M.contactNoMail : "", known: known.length ? fill(M.contactKnown, { list: known.join(", ") }) : "",
             again: again ? M.contactAgain : "", link: baseUrl(env) + "/admin.html" }), replyTo: f.email });
@@ -3208,6 +3215,7 @@ export default {
             if (lead === false) return json({ error: "lead_gone" }, 409);
             const v = { id, name: String(b.name || "Venue").slice(0, 120), contact: String(b.contact || "").slice(0, 200), notes: String(b.notes || "").slice(0, NOTES_MAX), email, lang,
               key, keyRotated: false, license: normLicense(b.license), used: 0, weddings: [], active: true, createdAt: Date.now(), defaultPerms: { ...VENUE_DEFAULT },
+              ...(b.custType === "organiser" ? { custType: "organiser" } : {}),
               ...(afm ? { afm } : {}) };   // shown and matched («Γνωστός πελάτης»); the free-year fence is the signup's own `afm:` row, not this
             // With mail and an address, the venue sets its own key from the e-mailed link: the admin never sees one.
             let mailed = false;
@@ -3285,12 +3293,16 @@ export default {
             const b = await readBody(request);
             const email = b.email != null ? normEmail(b.email) : null;
             if (b.email != null && String(b.email).trim() && !email) return json({ error: "bad_email" }, 400);
+            const afm = String(b.afm || "").trim() ? validAfm(b.afm) : "";
+            if (String(b.afm || "").trim() && !afm) return json({ error: "bad_afm" }, 400);
             let trialEnd = null;   // set when this edit turns a free year into a paid season
             const r = await kvUpdate(env, "venue:" + parts[2], v => { if (!v) return null; const old = v.email || "";
               trialEnd = null; const freeTo = (v.trial && !v.trial.endedAt) ? v.trial.seasonEnd : null;   // before a licence edit moves it
               if (b.name != null) v.name = String(b.name).slice(0, 120);
               if (b.contact != null) v.contact = String(b.contact).slice(0, 200);   // PUBLIC: shown to this venue's couples
               if (b.notes != null) v.notes = String(b.notes).slice(0, NOTES_MAX);   // private: admin only (the card's notes box)
+              // only a γραφείο's: a Κτήμα's ΑΦΜ may be its free-year claim (`afm:`), which this edit would leave behind
+              if (b.afm != null && v.custType === "organiser") { if (afm) v.afm = afm; else delete v.afm; }
               if (b.retention !== undefined) { const ret = normRetention(b.retention); if (ret) v.retention = ret; else delete v.retention; }
               if (b.active != null) v.active = !!b.active;
               // Editing the dates of a venue that is on its free year MOVES the free year ("two more months"); it does
@@ -3379,6 +3391,8 @@ export default {
             if (startNow && b.weddingDate >= addDays(todayAthens(), START_NOW_MAX_DAYS)) return json({ error: "start_now_too_early" }, 400);
             const paidAt = Date.now(), opensAt = startNow ? null : athensMidnight(addDays(todayAthens(), OPEN_DELAY_DAYS));
             if (opensAt && opensAt >= athensMidnight(b.weddingDate)) return json({ error: "never_opens" }, 400);   // it would open only after the wedding: "start now" or check the date
+            const company = b.custType === "company", afm = company && String(b.afm || "").trim() ? validAfm(b.afm) : "";   // a private buyer's ΑΦΜ is never kept
+            if (company && String(b.afm || "").trim() && !afm) return json({ error: "bad_afm" }, 400);
             const lead = await leadToAdopt(env, b);
             if (lead === false) return json({ error: "lead_gone" }, 409);
             const cid = rnd(10), planId = rnd(22), token = rnd(32);
@@ -3386,7 +3400,8 @@ export default {
             const name = String(b.name || (kind === "baptism" ? "Baptism" : "Wedding")).slice(0, 120);
             await env.PLANS.put("plan:" + planId, JSON.stringify({ name, plan: null, editKey: rnd(28), readKey: rnd(24), owner: { type: "couple" }, coupleId: cid, kind, keyGen: 0,
               weddingDate: b.weddingDate, opensAt, createdAt: paidAt, updated: paidAt, audit: [] }));
-            const c = { id: cid, name, kind, contact: String(b.contact || "").slice(0, NOTES_MAX), email, lang, createdAt: paidAt, paidAt, startNow, claimAt: paidAt, planId, claimToken: token, claimedAt: null };
+            const c = { id: cid, name, kind, contact: String(b.contact || "").slice(0, NOTES_MAX), email, lang, createdAt: paidAt, paidAt, startNow, claimAt: paidAt, planId, claimToken: token, claimedAt: null,
+              ...(company ? { custType: "company", ...(afm ? { afm } : {}) } : {}) };
             const cret = normRetention(b.retention); if (cret) c.retention = cret;
             const mailed = !!(email && mailOn(env)) && mailClaim(c, token);
             c.mailed = mailed; if (mailed) c.mailedTo = email;
@@ -3409,6 +3424,8 @@ export default {
             const email = b.email != null ? normEmail(b.email) : null;
             if (b.email != null && String(b.email).trim() && !email) return json({ error: "bad_email" }, 400);
             if (b.weddingDate !== undefined && b.weddingDate !== null && b.weddingDate !== "" && !ymdOk(b.weddingDate)) return json({ error: "bad_date" }, 400);
+            const afm = String(b.afm || "").trim() ? validAfm(b.afm) : "";
+            if (String(b.afm || "").trim() && !afm) return json({ error: "bad_afm" }, 400);
             const newKind = kindIn(b);
             if (b.weddingDate !== undefined || b.unfreeze === true || newKind !== undefined) {   // the admin may set any date (or clear it) — it never freezes; and may unfreeze
               const cc = safeParse(await env.PLANS.get("couple:" + parts[2]));
@@ -3424,6 +3441,7 @@ export default {
               if (newKind !== undefined) c.kind = newKind;
               if (b.contact != null) c.contact = String(b.contact).slice(0, NOTES_MAX);   // his private notes (the card's notes box)
               if (b.lang != null) c.lang = langOf(b.lang);
+              if (b.afm != null && c.custType === "company") { if (afm) c.afm = afm; else delete c.afm; }
               if (b.retention !== undefined) { const ret = normRetention(b.retention); if (ret) c.retention = ret; else delete c.retention; }
               if (email != null && email !== old) { c.email = email; c.emailVerified = false; c.pendingVerify = null; nextGen(c); }   // links sent to the old address retire
               return { __obj: c, __res: old }; });
@@ -4401,12 +4419,12 @@ function publicVenue(v) {   // returned to the venue itself (no key)
 }
 function adminVenue(v) {     // returned to the owner — counts only: no plan ids, no keys, no wedding names
   return { ...publicVenue(v), email: v.email || "", emailVerified: !!v.emailVerified, lang: v.lang || "el", notes: v.notes || "", retention: v.retention || null,
-    afm: v.afm || "", phone: v.phone || "", selfSignup: !!v.selfSignup, signupId: v.signupId || null,
+    afm: v.afm || "", custType: v.custType || "", phone: v.phone || "", selfSignup: !!v.selfSignup, signupId: v.signupId || null,
     license: v.license ? { autoRenew: true, ...v.license } : v.license, trashCount: (v.trash || []).length, renewals: (v.renewals || []).slice(-5) };
 }
 async function adminCouple(env, c) {   // licence metadata only — never the plan id, a key, or anything inside the plan
   const rec = safeParse(await env.PLANS.get("plan:" + c.planId));
-  return { id: c.id, name: c.name, kind: rec ? kindOf(rec) : normKind(c.kind), contact: c.contact, email: c.email || "", emailVerified: !!c.emailVerified, lang: c.lang || "el", mailed: !!c.mailed,
+  return { id: c.id, name: c.name, custType: c.custType || "", afm: c.afm || "", kind: rec ? kindOf(rec) : normKind(c.kind), contact: c.contact, email: c.email || "", emailVerified: !!c.emailVerified, lang: c.lang || "el", mailed: !!c.mailed,
     // `mailed` only ever meant "queued"; these two say what SMTP finally did with it (see mailOutcome).
     mailFailedAt: c.mailFailedAt || null, mailError: c.mailError || null,
     createdAt: c.createdAt, claimedAt: c.claimedAt || null, resetAt: c.resetAt || null,

@@ -370,6 +370,8 @@ const MAX_KEEP_DAYS=3650;   // the server's limit for "delete N days after the e
 const EVW={ wedding:{ date:"Ημερομηνία γάμου",    name:"Όνομα ζευγαριού",   ph:"π.χ. Μαρία & Νίκος",     askName:"Γράψε το όνομα του ζευγαριού" },
             baptism:{ date:"Ημερομηνία βάπτισης", name:"Όνομα παιδιού",     ph:"π.χ. Ελένη",             askName:"Γράψε το όνομα του παιδιού" },
             party:{   date:"Ημερομηνία γιορτής",  name:"Όνομα της γιορτής", ph:"π.χ. 40ά γενέθλια Κώστα", askName:"Γράψε το όνομα της γιορτής" } };
+// A company buys a γιορτή until phase 2 of COMPANIES-PLAN.md, so where it is the customer its own words replace the γιορτή's.
+const CO_WORDS={ date:"Ημερομηνία εκδήλωσης", name:"Όνομα εταιρείας", ph:"π.χ. Αφοί Παπαδάκη ΑΕ", askName:"Γράψε το όνομα της εταιρείας" };
 const kindOptions=sel=>[["wedding","Γάμος"],["baptism","Βάπτιση"],["party","Γιορτή"]]
   .map(([k,l])=>`<option value="${k}"${k===sel?" selected":""}>${l}</option>`).join("");
 const evKind=x=>(x && EVW[x.kind]) ? x.kind : "wedding";   // anything we do not know is a wedding
@@ -919,7 +921,7 @@ function bookHtml(b){
     ] : [
       ["Αγορά", `${d(b.paidAt)} · ${esc(C_KIND[b.kind]||b.kind||"—")}`],
     ];
-  return `<div class="ccard"><div class="row fw" style="gap:6px;margin-bottom:4px"><strong>${esc(b.name||"—")}</strong><span class="badge tpl">${b.type==="venue" ? "Κτήμα" : "Ιδιώτης"}</span></div>`
+  return `<div class="ccard"><div class="row fw" style="gap:6px;margin-bottom:4px"><strong>${esc(b.name||"—")}</strong><span class="badge tpl">${b.custType ? esc(cap(C_TYPE[b.custType]||b.custType)) : b.type==="venue" ? "Κτήμα" : "Ιδιώτης"}</span></div>`
     +fieldsHtml(lines)+`<div class="muted" style="margin-top:4px">${esc(BOOK_WHY[b.why]||"ξεχάστηκε")} · ${esc(gD(b.erasedAt))}</div></div>`;
 }
 async function toolsBooks(btn){
@@ -1055,13 +1057,15 @@ function convertDone(res, key){
 // «+ Ιδιώτης» on «Πελάτες»: the old list's form, in a dialog. It stays open after a sale, with the link to hand over.
 function openNewCouple(pre){
   convertFrom=pre ? { lead:pre.lead, name:pre.name } : null;
-  const d=openDialog(`${dlgHead("Νέος ιδιώτης πελάτης")}
+  const co=!!(pre && pre.custType==="company");   // the field #cafm is how createCouple knows
+  const d=openDialog(`${dlgHead(co ? "Νέα εταιρεία" : "Νέος ιδιώτης πελάτης")}
     <div class="dbody">${fromLeadHtml(pre)}
       <div class="grid">
-        <div><label for="ckind">Εκδήλωση</label><select id="ckind">${kindOptions("wedding")}</select></div>
+        <div><label for="ckind">Εκδήλωση${co ? ` <span class="hint">— γιορτή, μέχρι να υπάρξει εταιρική εκδήλωση</span>` : ""}</label><select id="ckind"${co ? " disabled" : ""}>${kindOptions("wedding")}</select></div>
         <div><label for="cname" id="cnamelbl">${EVW.wedding.name}</label><input id="cname" maxlength="120" placeholder="${EVW.wedding.ph}"></div>
         <div><label for="cemail">Email <span class="hint">— προαιρετικό</span></label><input id="cemail" type="email" placeholder="για τον σύνδεσμό του και την ανάκτηση" autocomplete="off"></div>
         <div><label for="cdate" id="cdatelbl">${EVW.wedding.date}</label><input id="cdate" type="date" required min="${esc(todayYmd())}"></div>
+        ${co ? `<div><label for="cafm">ΑΦΜ <span class="hint">— αν το έχεις</span></label><input id="cafm" inputmode="numeric" maxlength="9" autocomplete="off" value="${esc(pre.afm||"")}"></div>` : ""}
         <div><label for="clang">Γλώσσα</label><select id="clang">${langOptions("el")}</select></div>
         <div class="full"><label for="ccontact">Σημειώσεις <span class="hint">— μόνο εσύ τις βλέπεις · χωρίς πληροφορίες υγείας</span></label><textarea id="ccontact" maxlength="${NOTES_MAX}" rows="2" placeholder="τηλέφωνο, πώς μας βρήκε, τι ζήτησε…"></textarea></div>
         <div class="full"><label class="chk"><input type="checkbox" id="cstart" disabled> <span>Άμεση έναρξη
@@ -1086,12 +1090,15 @@ function openNewCouple(pre){
     d.querySelector("#ccontact").value=pre.notes||"";
     if(isYmd(pre.date) && pre.date>=todayYmd()){ d.querySelector("#cdate").value=pre.date; syncStartNow(); }
   }
+  if(co){ d.querySelector("#cnamelbl").textContent=CO_WORDS.name; d.querySelector("#cdatelbl").textContent=CO_WORDS.date; d.querySelector("#cname").placeholder=CO_WORDS.ph; }
   d.querySelector(pre && pre.plan && !d.querySelector("#cdate").value ? "#cdate" : "#cname").focus();
 }
 async function createCouple(){
   const nameEl=document.getElementById("cname"), btn=document.getElementById("createC");
   const kindEl=document.getElementById("ckind"), kind=evKind({ kind:kindEl&&kindEl.value });
-  const name=nameEl.value.trim(); if(!name){ invalid(nameEl, EVW[kind].askName); return; }
+  const afmEl=document.getElementById("cafm"), afm=afmEl ? afmEl.value.replace(/\s/g,"") : "";
+  const name=nameEl.value.trim(); if(!name){ invalid(nameEl, afmEl ? CO_WORDS.askName : EVW[kind].askName); return; }
+  if(afm && !/^\d{9}$/.test(afm)){ invalid(afmEl, "Το ΑΦΜ έχει 9 ψηφία"); return; }
   if(btn.disabled) return;
   const contact=document.getElementById("ccontact").value.trim();
   const email=document.getElementById("cemail").value.trim();
@@ -1106,7 +1113,7 @@ async function createCouple(){
   const startNow=!!(startEl.checked && !startEl.disabled);
   if(!startNow && daysUntil(weddingDate)<=OPEN_DAYS){ invalid(dateEl, NEVER_OPENS); return; }
   btn.disabled=true;
-  const res=await req("/admin/couples",{ method:"POST", body:JSON.stringify({ name, contact, email, lang, kind, weddingDate, ...(startNow?{ startNow:true }:{}),
+  const res=await req("/admin/couples",{ method:"POST", body:JSON.stringify({ name, contact, email, lang, kind, weddingDate, ...(startNow?{ startNow:true }:{}), ...(afmEl?{ custType:"company", afm }:{}),
     ...(convertFrom?{ fromLead:convertFrom.lead }:{}) }) });
   if(!document.getElementById("createC")) return;
   btn.disabled=false;
@@ -1114,6 +1121,7 @@ async function createCouple(){
   if(convertDone(res, c && "c:"+c.id)) return;
   if(!res.ok || !c || !(res.d.mailed || res.d.claimToken)){
     const err=res.d && res.d.error;
+    if(err==="bad_afm"){ invalid(afmEl, "Αυτό το ΑΦΜ δεν είναι έγκυρο"); return; }
     if(err==="past_date"){ invalid(dateEl, PAST_DATE); return; }
     if(err==="missing_date"){ invalid(dateEl, NO_DATE); return; }
     if(err==="start_now_too_early"){ syncStartNow(); invalid(dateEl, TOO_EARLY); return; }
@@ -1122,7 +1130,7 @@ async function createCouple(){
   rememberLang(c.id, lang);
   if(res.d.mailed) showCoupleSent(c.id, `✅ Ο πελάτης δημιουργήθηκε — ο σύνδεσμος στάλθηκε στο ${esc(c.email||email)}`, CLAIM_NOTE);
   else showClaimPanel(c.id, c.name, res.d.claimToken, "new", c.kind||kind);
-  nameEl.value=""; document.getElementById("ccontact").value=""; document.getElementById("cemail").value=""; dateEl.value=""; startEl.checked=false; syncStartNow();
+  nameEl.value=""; document.getElementById("ccontact").value=""; document.getElementById("cemail").value=""; dateEl.value=""; startEl.checked=false; syncStartNow(); if(afmEl) afmEl.value="";
   toast(res.d.mailed?"Ο σύνδεσμος στάλθηκε στο "+(c.email||email):"Ο πελάτης δημιουργήθηκε"); refreshCouples(); refreshCustomers();
 }
 // Every admin action on a couple, in one place — the customer card and the support card in «Εργαλεία» both call it.
@@ -1201,14 +1209,16 @@ function lifeLineHtml(L){
   return `<div class="muted" style="margin-top:6px">${lock} ${esc(gD(L.lockAt))}${L.fallback?" (χωρίς ημερομηνία — 18 μήνες αφότου φτιάχτηκε)":""} · ${L.keep?"κρατιέται, δεν σβήνεται ποτέ":"σβήνεται στις "+esc(gD(L.deleteAt))}</div>`;
 }
 function openCoupleEdit(c){
+  const co=c.custType==="company", W=co ? CO_WORDS : EV(c);
   const d=openDialog(`${dlgHead("Επεξεργασία πελάτη")}
     <div class="dbody">
       <div class="grid">
         <div class="full"><label for="ce_kind">Εκδήλωση</label>
-          <select id="ce_kind" style="max-width:220px">${kindOptions(evKind(c))}</select>
-          <div class="muted" style="margin-top:4px">Μπήκε λάθος; Διόρθωσέ το εδώ — αλλάζουν μόνο οι λέξεις, ποτέ οι ημερομηνίες ή οι φάσεις.</div></div>
-        <div class="full"><label for="ce_name" id="ce_namelbl">${esc(EV(c).name)}</label><input id="ce_name" maxlength="120" value="${esc(c.name)}"></div>
-        <div class="full"><label for="ce_date" id="ce_datelbl">${esc(EV(c).date)}</label>
+          <select id="ce_kind" style="max-width:220px"${co ? " disabled" : ""}>${kindOptions(evKind(c))}</select>
+          <div class="muted" style="margin-top:4px">${co ? "Μια εταιρεία αγοράζει γιορτή, μέχρι να υπάρξει εταιρική εκδήλωση." : "Μπήκε λάθος; Διόρθωσέ το εδώ — αλλάζουν μόνο οι λέξεις, ποτέ οι ημερομηνίες ή οι φάσεις."}</div></div>
+        <div class="full"><label for="ce_name" id="ce_namelbl">${esc(W.name)}</label><input id="ce_name" maxlength="120" value="${esc(c.name)}"></div>
+        ${co ? `<div class="full"><label for="ce_afm">ΑΦΜ</label><input id="ce_afm" inputmode="numeric" maxlength="9" autocomplete="off" style="max-width:220px" value="${esc(c.afm||"")}"></div>` : ""}
+        <div class="full"><label for="ce_date" id="ce_datelbl">${esc(W.date)}</label>
           <div class="row"><input type="date" id="ce_date" value="${esc(isYmd(c.weddingDate)?c.weddingDate:"")}" style="max-width:220px"><button type="button" class="linkbtn" id="ce_clear">Χωρίς ημερομηνία</button></div>
           <div class="muted" style="margin-top:4px">Μπορείς να βάλεις όποια ημερομηνία θέλεις ή να τη σβήσεις, όσες φορές χρειαστεί — η δική σου αλλαγή δεν παγώνει ποτέ το σχέδιο και ξεπαγώνει όποιο πάγωμα υπάρχει. Ο πελάτης μπορεί να την αλλάξει μόνο μία φορά (από σήμερα ως δύο χρόνια μπροστά)· μετά το σχέδιό του μένει μόνο για προβολή ως 14 μέρες πριν από τη νέα ημερομηνία.</div>
           ${couplePhaseHtml(c.life)?`<div class="muted" style="margin-top:6px">Τώρα: ${couplePhaseHtml(c.life)}</div>`:""}
@@ -1227,11 +1237,14 @@ function openCoupleEdit(c){
 async function saveCoupleEdit(c, d){
   const q=s=>d.querySelector(s), btn=q("#ce_save"); if(btn.disabled) return;
   const kind=evKind({ kind:q("#ce_kind").value });
-  const name=q("#ce_name").value.trim(); if(!name){ invalid(q("#ce_name"), EVW[kind].askName); return; }
+  const name=q("#ce_name").value.trim(); if(!name){ invalid(q("#ce_name"), c.custType==="company" ? CO_WORDS.askName : EVW[kind].askName); return; }
+  const afmEl=q("#ce_afm"), afm=afmEl ? afmEl.value.replace(/\s/g,"") : "";
+  if(afm && !/^\d{9}$/.test(afm)){ invalid(afmEl, "Το ΑΦΜ έχει 9 ψηφία"); return; }
   const dateEl=q("#ce_date"); if(dateEl.validity && dateEl.validity.badInput){ invalid(dateEl, "Η ημερομηνία δεν είναι πλήρης"); return; }
   const date=dateEl.value||"", oldDate=isYmd(c.weddingDate)?c.weddingDate:"";
   const r=readRetention("ce_", d); if(r.error){ invalid(r.el, r.error); return; }
   const body={ name, retention:r.ret };   // the notes are the card's own box, saved as he types
+  if(afmEl && afm!==(c.afm||"")) body.afm=afm;
   if(kind!==evKind(c)) body.kind=kind;    // the type, corrected (it was picked here but never sent, until phase 2)
   if(date!==oldDate){
     if(date && date<todayYmd() && !confirm(`Η ${gYmd(date)} είναι στο παρελθόν.\n\nΤο σχέδιο γίνεται μόνο για προβολή και — αν δεν κρατιέται — μπορεί να σβηστεί στον επόμενο ωριαίο έλεγχο. Συνέχεια;`)) return;
@@ -1241,6 +1254,7 @@ async function saveCoupleEdit(c, d){
   btn.disabled=true;
   const res=await req("/admin/couples/"+encodeURIComponent(c.id),{ method:"PATCH", body:JSON.stringify(body) });
   btn.disabled=false;
+  if(res.d && res.d.error==="bad_afm"){ invalid(afmEl, "Αυτό το ΑΦΜ δεν είναι έγκυρο"); return; }
   if(!res.ok){ failToast(res, res.d&&res.d.error==="bad_date"?"Η ημερομηνία δεν είναι έγκυρη":res.status===404?"Αυτός ο πελάτης δεν υπάρχει πια — ανανεώνω":"Δεν αποθηκεύτηκε"); if(res.status===404){ closeDialog(); refreshCouples(); } return; }
   closeDialog(); toast("Αποθηκεύτηκε"); refreshCouples();
 }
@@ -1313,21 +1327,25 @@ async function resetVenueKey(v){
   toast("Το νέο κλειδί είναι έτοιμο"); refreshVenues();
 }
 // «+ Κτήμα» on «Πελάτες»: the old list's form, in a dialog. It stays open after a sale, with the key or the sent link.
+// A γραφείο εκδηλώσεων goes through it until phase 4 of COMPANIES-PLAN.md, on the same record, with its own word on these screens.
+const vWord=office=>office ? { of:"γραφείου", is:"γραφείο" } : { of:"κτήματος", is:"κτήμα" };
 function openNewVenue(pre){
   convertFrom=pre ? { lead:pre.lead, name:pre.name } : null;
-  const d=openDialog(`${dlgHead("Νέο κτήμα")}
+  const office=!!(pre && pre.custType==="organiser"), W=vWord(office);   // the field #ncust is how createVenue knows
+  const d=openDialog(`${dlgHead(office ? "Νέο γραφείο εκδηλώσεων" : "Νέο κτήμα")}
     <div class="dbody">${fromLeadHtml(pre)}
       <div class="grid">
-        <div><label for="nname">Όνομα κτήματος</label><input id="nname" maxlength="120" placeholder="π.χ. Κτήμα Ηλιοβασίλεμα" value="${esc(pre&&pre.name||"")}"></div>
+        ${office ? `<input type="hidden" id="ncust" value="organiser">` : ""}
+        <div><label for="nname">Όνομα ${W.of}</label><input id="nname" maxlength="120" placeholder="${office ? "π.χ. Ορίζων Events" : "π.χ. Κτήμα Ηλιοβασίλεμα"}" value="${esc(pre&&pre.name||"")}"></div>
         <div><label for="nemail">Email <span class="hint">— προαιρετικό</span></label><input id="nemail" type="email" placeholder="για τον σύνδεσμο ρύθμισης και την ανάκτηση" autocomplete="off" value="${esc(pre&&pre.email||"")}"></div>
-        <div><label for="ncontact">Δημόσια επικοινωνία <span class="hint">— τη βλέπουν οι πελάτες του κτήματος</span></label><input id="ncontact" maxlength="200" placeholder="π.χ. 210 123 4567 · info@venue.gr"></div>
+        <div><label for="ncontact">Δημόσια επικοινωνία <span class="hint">— τη βλέπουν οι πελάτες του ${W.of}</span></label><input id="ncontact" maxlength="200" placeholder="π.χ. 210 123 4567 · info@venue.gr"></div>
         <div><label for="nafm">ΑΦΜ <span class="hint">— προαιρετικό</span></label><input id="nafm" inputmode="numeric" maxlength="9" autocomplete="off" value="${esc(pre&&pre.afm||"")}"></div>
         <div><label for="nlang">Γλώσσα</label><select id="nlang">${langOptions("el")}</select></div>
         <div class="full"><label for="nnotes">Σημειώσεις <span class="hint">— μόνο εσύ τις βλέπεις · χωρίς πληροφορίες υγείας</span></label><textarea id="nnotes" maxlength="${NOTES_MAX}" rows="2" placeholder="υπεύθυνος, τηλέφωνο, τιμή που συμφωνήσατε, στοιχεία τιμολόγησης…">${esc(pre&&pre.notes||"")}</textarea></div>
       </div>
       <div style="margin-top:12px" id="licwrap">${licenseFields("n")}</div>
-      <div class="row fw" style="margin-top:14px"><button class="btn primary" id="createV">Δημιουργία κτήματος</button>
-        ${mailOn()?`<span class="muted">Αν έχει email, το κτήμα παίρνει σύνδεσμο ρύθμισης και ορίζει μόνο του το κλειδί — εσύ δεν το βλέπεις.</span>`:""}</div>
+      <div class="row fw" style="margin-top:14px"><button class="btn primary" id="createV">Δημιουργία ${W.of}</button>
+        ${mailOn()?`<span class="muted">Αν έχει email, το ${W.is} παίρνει σύνδεσμο ρύθμισης και ορίζει μόνο του το κλειδί — εσύ δεν το βλέπεις.</span>`:""}</div>
       <div id="newkey"></div>
     </div>`);
   wireLicenseToggle("n", d.querySelector("#licwrap"));
@@ -1335,7 +1353,8 @@ function openNewVenue(pre){
   d.querySelector("#nname").focus();
 }
 async function createVenue(){
-  const nameEl=document.getElementById("nname"), name=nameEl.value.trim(); if(!name){ invalid(nameEl, "Γράψε το όνομα του κτήματος"); return; }
+  const office=!!document.getElementById("ncust"), W=vWord(office);
+  const nameEl=document.getElementById("nname"), name=nameEl.value.trim(); if(!name){ invalid(nameEl, `Γράψε το όνομα του ${W.of}`); return; }
   const contact=document.getElementById("ncontact").value.trim(), notes=document.getElementById("nnotes").value.trim();
   const email=document.getElementById("nemail").value.trim(), lang=document.getElementById("nlang").value;
   const afmEl=document.getElementById("nafm"), afm=afmEl.value.replace(/\s/g,"");
@@ -1343,7 +1362,7 @@ async function createVenue(){
   const lic=readLicense("n", document.getElementById("licwrap")); if(lic.error){ invalid(lic.el, lic.error); return; }
   const license=lic.license;
   const btn=document.getElementById("createV"); if(btn.disabled) return; btn.disabled=true;
-  const res=await req("/admin/venues",{method:"POST",body:JSON.stringify({name,contact,notes,email,lang,license,afm,...(convertFrom?{ fromLead:convertFrom.lead }:{})})});
+  const res=await req("/admin/venues",{method:"POST",body:JSON.stringify({name,contact,notes,email,lang,license,afm,...(office?{ custType:"organiser" }:{}),...(convertFrom?{ fromLead:convertFrom.lead }:{})})});
   if(!document.getElementById("createV")) return;
   btn.disabled=false;
   const vid=res.d && (res.d.id || (res.d.venue && res.d.venue.id));
@@ -1353,14 +1372,14 @@ async function createVenue(){
   const box=document.getElementById("newkey");
   if(res.d.mailed){
     const to=(res.d.venue && res.d.venue.email) || email;
-    showSent(box, `✅ Το κτήμα δημιουργήθηκε — ο σύνδεσμος ρύθμισης στάλθηκε στο ${esc(to)}`, "Με αυτόν το κτήμα ορίζει το δικό του κλειδί (ο σύνδεσμος ισχύει 7 μέρες). Εσύ δεν βλέπεις το κλειδί.");
+    showSent(box, `✅ Το ${W.is} δημιουργήθηκε — ο σύνδεσμος ρύθμισης στάλθηκε στο ${esc(to)}`, `Με αυτόν το ${W.is} ορίζει το δικό του κλειδί (ο σύνδεσμος ισχύει 7 μέρες). Εσύ δεν βλέπεις το κλειδί.`);
   } else {
-    box.innerHTML=venueKeyBoxHtml("✅ Το κτήμα δημιουργήθηκε — δώσε του αυτά τα δύο:", res.d.key, "", false);
+    box.innerHTML=venueKeyBoxHtml(`✅ Το ${W.is} δημιουργήθηκε — δώσε του αυτά τα δύο:`, res.d.key, "", false);
     wireKeyBox(box, res.d.key, null);
   }
   ["nname","ncontact","nemail","nnotes","nafm"].forEach(id=>{ document.getElementById(id).value=""; });
   const lw=document.getElementById("licwrap"); lw.innerHTML=licenseFields("n"); wireLicenseToggle("n", lw);   // the next venue starts clean
-  toast(res.d.mailed?"Ο σύνδεσμος ρύθμισης στάλθηκε":"Το κτήμα δημιουργήθηκε"); refreshVenues(); refreshCustomers();
+  toast(res.d.mailed?"Ο σύνδεσμος ρύθμισης στάλθηκε":`Το ${W.is} δημιουργήθηκε`); refreshVenues(); refreshCustomers();
 }
 // «Επεξεργασία…» on a venue: everything the admin sets but the notes, which are the card's own box (the email change keeps its confirmation).
 function renewalsHtml(v){
@@ -1373,21 +1392,23 @@ function formState(box){ return box ? JSON.stringify([...box.querySelectorAll("i
 // The dialog is filled from a fresh GET, not the cached list: the venue may have changed things since (e.g. cancelled its renewal).
 async function openVenueEdit(v){
   const ctx="venue:"+v.id;
-  let d=openDialog(`${dlgHead(`Επεξεργασία κτήματος — ${esc(v.name)}`)}<div class="dbody"><div class="empty">Φορτώνει…</div></div>
+  let d=openDialog(`${dlgHead(`Επεξεργασία ${vWord(v.custType==="organiser").of} — ${esc(v.name)}`)}<div class="dbody"><div class="empty">Φορτώνει…</div></div>
     <div class="dfoot"><button class="btn" data-dclose>Άκυρο</button></div>`);
   d.dataset.ctx=ctx;
   const res=await req("/admin/venues/"+encodeURIComponent(v.id));
   if(!d.open || d.dataset.ctx!==ctx) return;
   const fv=res.ok && res.d && res.d.venue;
   if(!fv){ if(res.status!==403){ closeDialog(); failToast(res, res.status===404?"Αυτό το κτήμα δεν υπάρχει πια — ανανεώνω":"Δεν φορτώθηκε το κτήμα — δοκίμασε ξανά"); if(res.status===404) refreshVenues(); } return; }
-  d=openDialog(`${dlgHead(`Επεξεργασία κτήματος — ${esc(fv.name)}`)}
+  const office=fv.custType==="organiser", W=vWord(office);
+  d=openDialog(`${dlgHead(`Επεξεργασία ${W.of} — ${esc(fv.name)}`)}
     <div class="dbody">
       <div class="grid">
-        <div class="full"><label for="ve_name">Όνομα κτήματος</label><input id="ve_name" maxlength="120" value="${esc(fv.name)}"></div>
+        <div class="full"><label for="ve_name">Όνομα ${W.of}</label><input id="ve_name" maxlength="120" value="${esc(fv.name)}"></div>
+        ${office ? `<div class="full"><label for="ve_afm">ΑΦΜ</label><input id="ve_afm" inputmode="numeric" maxlength="9" autocomplete="off" style="max-width:220px" value="${esc(fv.afm||"")}"></div>` : ""}
         <div><label for="ve_email">Email <span class="hint">— σύνδεσμοι ρύθμισης και ανάκτησης</span></label><input id="ve_email" type="email" autocomplete="off" value="${esc(fv.email||"")}"></div>
         <div><label for="ve_lang">Γλώσσα</label><select id="ve_lang">${langOptions(PLANNER_FILE[fv.lang]?fv.lang:"el")}</select></div>
-        <div class="full"><label for="ve_contact">Δημόσια επικοινωνία <span class="hint">— τη βλέπουν οι πελάτες του κτήματος</span></label><input id="ve_contact" maxlength="200" value="${esc(fv.contact||"")}" placeholder="π.χ. 210 123 4567 · info@venue.gr"></div>
-        <div class="full"><label class="chk"><input type="checkbox" id="ve_active"${fv.active?" checked":""}> <span>Ενεργό <span class="muted">— όταν δεν είναι, το κτήμα δεν μπορεί να φτιάξει νέες εκδηλώσεις</span></span></label></div>
+        <div class="full"><label for="ve_contact">Δημόσια επικοινωνία <span class="hint">— τη βλέπουν οι πελάτες του ${W.of}</span></label><input id="ve_contact" maxlength="200" value="${esc(fv.contact||"")}" placeholder="π.χ. 210 123 4567 · info@venue.gr"></div>
+        <div class="full"><label class="chk"><input type="checkbox" id="ve_active"${fv.active?" checked":""}> <span>Ενεργό <span class="muted">— όταν δεν είναι, το ${W.is} δεν μπορεί να φτιάξει νέες εκδηλώσεις</span></span></label></div>
       </div>
       <div class="subh">Άδεια</div>
       ${(fv.trial&&fv.trial.inForce)?`<div class="keybox note" style="margin:0 0 10px">
@@ -1411,8 +1432,11 @@ async function openVenueEdit(v){
 async function saveVenueEdit(v, d, initial){
   const q=s=>d.querySelector(s), btn=q("#ve_save"); if(btn.disabled) return;
   const body={};
-  const name=q("#ve_name").value.trim(); if(!name){ invalid(q("#ve_name"), "Γράψε το όνομα του κτήματος"); return; }
+  const name=q("#ve_name").value.trim(); if(!name){ invalid(q("#ve_name"), `Γράψε το όνομα του ${vWord(v.custType==="organiser").of}`); return; }
   if(name!==(v.name||"")) body.name=name;
+  const afmEl=q("#ve_afm"), afm=afmEl ? afmEl.value.replace(/\s/g,"") : "";
+  if(afm && !/^\d{9}$/.test(afm)){ invalid(afmEl, "Το ΑΦΜ έχει 9 ψηφία"); return; }
+  if(afmEl && afm!==(v.afm||"")) body.afm=afm;
   const contact=q("#ve_contact").value.trim(); if(contact!==(v.contact||"")) body.contact=contact;
   const sel=q("#ve_lang").value, lang=PLANNER_FILE[sel]?sel:"el"; if(lang!==(PLANNER_FILE[v.lang]?v.lang:"el")) body.lang=lang;
   const active=q("#ve_active").checked; if(active!==!!v.active) body.active=active;
@@ -1429,6 +1453,7 @@ async function saveVenueEdit(v, d, initial){
   const res=await req("/admin/venues/"+encodeURIComponent(v.id),{ method:"PATCH", body:JSON.stringify(body) });
   btn.disabled=false;
   if(!res.ok){
+    if(res.d && res.d.error==="bad_afm"){ invalid(afmEl, "Αυτό το ΑΦΜ δεν είναι έγκυρο"); return; }
     if(badEmail(res)){ invalid(q("#ve_email"), BAD_EMAIL); return; }
     failToast(res, res.status===404?"Αυτό το κτήμα δεν υπάρχει πια — ανανεώνω":"Δεν αποθηκεύτηκε");
     if(res.status===404){ closeDialog(); refreshVenues(); }
@@ -1842,8 +1867,9 @@ function planFieldsHtml(p){
 // card behind a row. The server has already left out everything inside a plan (no guest, no plan id, no key, no link,
 // no label of a venue's wedding), so this part hides nothing — it only arranges. Phase 2 made the card where he works:
 // the old lists' buttons, his notes, the next step, his contacts on the timeline, and «Ξέχασε τον πελάτη».
-const C_TYPE={ venue:"κτήμα", couple:"ζευγάρι", parents:"γονείς", party:"γιορτή" };
-const C_TYPE_ORDER={ venue:0, couple:1, parents:2, party:3 };
+const C_TYPE={ venue:"κτήμα", couple:"ζευγάρι", parents:"γονείς", party:"γιορτή", company:"εταιρεία", organiser:"γραφείο εκδηλώσεων" };
+const C_TYPE_ORDER={ venue:0, couple:1, parents:2, party:3, company:4, organiser:5 };
+const C_BUSINESS=["venue", "company", "organiser"];   // they keep an ΑΦΜ; everyone else is «Ιδιώτες»
 // 1–3 and 8 are a contact's (phase 4), set by him on its card; 4–7 the system works out for a customer.
 const C_STAGE={ 1:"Νέα επαφή", 2:"Σε συζήτηση", 3:"Αναμένεται πληρωμή", 4:"Ενεργοποίηση", 5:"Ενεργός", 6:"Ανανέωση", 7:"Ολοκληρώθηκε", 8:"Δεν προχώρησε" };
 const C_KIND={ wedding:"γάμος", baptism:"βάπτιση", party:"γιορτή" };
@@ -1861,7 +1887,7 @@ const C_FLAG={
   pay_overdue:["καθυστερεί πληρωμή", "Μια αναμενόμενη πληρωμή πέρασε την ημερομηνία της — δες «Πληρωμές» πιο κάτω."] };
 const C_UNTIL={ season:"τέλος σεζόν", trial:"τέλος δωρεάν χρόνου", plan:"διαγραφή σχεδίου", keep:"κρατιέται" };
 const C_SIGNUP={ pending:"περιμένει να ανοίξει τον σύνδεσμο", verified:"επιβεβαιώθηκε", expired:"έληξε", deleted:"διαγράφηκε" };
-const C_CHIPS=[["all","Όλοι"],["want","Θέλουν εμένα"],["leads","Επαφές"],["venues","Κτήματα"],["private","Ιδιώτες"],["soon","Εκδήλωση σε 14 ημέρες"],["ending","Λήγουν σε 60 ημέρες"],["archive","Αρχείο"]];
+const C_CHIPS=[["all","Όλοι"],["want","Θέλουν εμένα"],["leads","Επαφές"],["venues","Κτήματα"],["organisers","Γραφεία εκδηλώσεων"],["companies","Εταιρείες"],["private","Ιδιώτες"],["soon","Εκδήλωση σε 14 ημέρες"],["ending","Λήγουν σε 60 ημέρες"],["archive","Αρχείο"]];
 const C_COLS=[["name","Πελάτης",1],["type","Τύπος",1],["stage","Στάδιο",1],["pay","Πληρωμή",1],["next","Επόμενη εκδήλωση",1],["events","Εκδηλώσεις",-1],
   ["until","Λήξη",1],["last","Τελευταία κίνηση",-1],["reach","Επαφή",1]];   // key, header, the direction a first tap sorts in
 let custData=null, custFilter="all", custSortBy={ col:"next", dir:1 };
@@ -1875,7 +1901,9 @@ function cMatch(c, f, today){
   if(f==="want") return (c.flags||[]).length>0;
   if(f==="leads") return c.stage>=1 && c.stage<=3;   // contacts still in play: not yet customers
   if(f==="venues") return !archived && c.type==="venue";
-  if(f==="private") return !archived && c.type!=="venue";
+  if(f==="organisers") return !archived && c.type==="organiser";
+  if(f==="companies") return !archived && c.type==="company";
+  if(f==="private") return !archived && !C_BUSINESS.includes(c.type);
   if(f==="soon") return !!c.next && c.next>=today && cDays(today, c.next)<=14;
   if(f==="ending") return (c.untilKind==="season" || c.untilKind==="trial") && !!c.until && c.until>=today && cDays(today, c.until)<=60;
   if(f==="archive") return archived;
@@ -2183,7 +2211,7 @@ async function cardForget(key, x, btn){
     : t==="l"
     ? `Να σβηστεί η επαφή «${name}»;\n\nΣβήνονται για πάντα τα στοιχεία της, οι σημειώσεις και το ιστορικό. Δεν κρατιέται τίποτα — δεν αγόρασε κάτι.\n\nΔεν αναιρείται.`
     : t==="v"
-    ? `Να ξεχαστεί το κτήμα «${name}»;\n\nΣβήνονται για πάντα όλες οι εκδηλώσεις του (${(x.venue && x.venue.weddingCount)||0}) με τους καλεσμένους τους, ο κάδος, το πρότυπο αίθουσας, η καρτέλα, οι σημειώσεις και το ιστορικό.${c.afm ? " Το ΑΦΜ του μπορεί να ξαναπάρει δωρεάν χρόνο." : ""} Για τα λογιστικά μένουν μόνο η επωνυμία και οι ημερομηνίες όσων αγόρασε.\n\nΔεν αναιρείται.`
+    ? `Να ξεχαστεί το ${vWord(c.type==="organiser").is} «${name}»;\n\nΣβήνονται για πάντα όλες οι εκδηλώσεις του (${(x.venue && x.venue.weddingCount)||0}) με τους καλεσμένους τους, ο κάδος, το πρότυπο αίθουσας, η καρτέλα, οι σημειώσεις και το ιστορικό.${c.afm ? " Το ΑΦΜ του μπορεί να ξαναπάρει δωρεάν χρόνο." : ""} Για τα λογιστικά μένουν μόνο η επωνυμία και οι ημερομηνίες όσων αγόρασε.\n\nΔεν αναιρείται.`
     : `Να διαγραφεί η εγγραφή «${name}»${c.afm ? ` (ΑΦΜ ${c.afm})` : ""};\n\nΤο ΑΦΜ μπορεί να εγγραφεί ξανά. Δεν αναιρείται.`;
   if(!confirm(msg)) return;
   if(cardNotes && cardNotes.key===key) clearTimeout(cardNotes.timer);
@@ -2258,13 +2286,14 @@ function cardActsHtml(x){
     const st=x.customer.stage;
     if(st===8) out.push(b("st2", "Ξανά σε συζήτηση"));
     else { if(st!==2) out.push(b("st2", "Σε συζήτηση")); if(st!==3) out.push(b("st3", "Αναμένεται πληρωμή")); }
-    out.push(b("convert", "Έγινε πελάτης…", "primary", (x.lead||{}).type==="venue" ? "Ανοίγει το «+ Κτήμα» συμπληρωμένο" : "Ανοίγει το «+ Ιδιώτης» συμπληρωμένο"));
+    out.push(b("convert", "Έγινε πελάτης…", "primary", cOwner((x.lead||{}).type) ? "Ανοίγει το «+ Κτήμα» συμπληρωμένο" : "Ανοίγει το «+ Ιδιώτης» συμπληρωμένο"));
     if(st!==8) out.push(b("lost", "Δεν προχώρησε…"));
     out.push(b("ledit", "Επεξεργασία…", "", "Πώς ήρθε, τι είναι, στοιχεία, ημερομηνία"));
   }
   out.push(b("forget", t==="s" ? "Διαγραφή εγγραφής…" : t==="l" ? "Σβήσε την επαφή…" : "Ξέχασε τον πελάτη…", "danger",
     t==="l" ? "Σβήνει την επαφή, τις σημειώσεις και το ιστορικό" : "Σβήνει τα πάντα· για τα λογιστικά μένουν μόνο το όνομα και οι ημερομηνίες αγορών"));
-  const tpls=t==="l" ? REPLIES.filter(r=>r.venue===((x.lead||{}).type==="venue")) : [];   // the ready replies: for someone still deciding
+  // the ready replies, for someone still deciding. None for a γραφείο until phase 4 of COMPANIES-PLAN.md: the κτήμα's say «κτήμα» and link its sign-up.
+  const lt=(x.lead||{}).type, tpls=(t==="l" && lt!=="organiser") ? REPLIES.filter(r=>r.venue===(lt==="venue")) : [];
   return `<div class="cacts">${out.join("")}</div>`
     +(tpls.length ? `<div class="tlbtns"><span class="muted" style="align-self:center">Έτοιμο μήνυμα:</span>${tpls.map(r=>`<button class="btn sm" data-a="tpl" data-tpl="${r.id}" title="Το κείμενο, για να το διορθώσεις και να το αντιγράψεις">${esc(r.title)}</button>`).join("")}</div>` : "")
     +`<div class="cardpanel"></div>`;
@@ -2341,8 +2370,8 @@ function customerCardHtml(x){
     ["Τηλέφωνο", c.phone ? cReach({ phone:c.phone }, true) : "—"],
     c.afm ? ["ΑΦΜ", `<span class="mono">${esc(c.afm)}</span>`] : null,
     v && v.contact ? ["Δημόσια επαφή", esc(v.contact)] : null,
-    lk ? [EVW[lk].date, l.date ? `${esc(gYmd(l.date))} <span class="muted">(${esc(cInDays(l.date))})</span>` : "—"] : null,
-    l && l.place ? [l.type==="venue" ? "Περιοχή" : "Πού γίνεται", esc(l.place)] : null,
+    lk ? [l.type==="company" ? CO_WORDS.date : EVW[lk].date, l.date ? `${esc(gYmd(l.date))} <span class="muted">(${esc(cInDays(l.date))})</span>` : "—"] : null,
+    l && l.place ? [cOwner(l.type) ? "Περιοχή" : "Πού γίνεται", esc(l.place)] : null,
     x.source ? ["Πώς μας βρήκε", esc(SRC_WORD[x.source]||x.source)] : null,
     x.noMail ? ["Άλλη εκδήλωση", "όχι μηνύματα — το ζήτησε στη φόρμα"] : null,
     l ? null : ["Γλώσσα", esc(LANG_NAME[(v||cp||s||{}).lang]||LANG_NAME.el)],
@@ -2725,8 +2754,15 @@ function exportLogistis(){
 const C_SRC={ phone:"Τηλέφωνο", viber:"Viber", whatsapp:"WhatsApp", email:"Email", facebook:"Facebook", instagram:"Instagram", amelie:"Amelie", referral:"Σύσταση", other:"Άλλο" };
 // "form" is written only by the site's contact form, so it is a word for the card and the timeline, never a chip he taps
 const SRC_WORD={ ...C_SRC, form:"Φόρμα σελίδας" };
-const C_LTYPE=[["couple","Ζευγάρι"],["parents","Γονείς"],["party","Γιορτή"],["venue","Κτήμα"]];
-const LEAD_KINDS={ couple:"wedding", parents:"baptism", party:"party" };   // what a private contact would buy for
+const C_LTYPE=[["couple","Ζευγάρι"],["parents","Γονείς"],["party","Γιορτή"],["company","Εταιρεία"],["venue","Κτήμα"],["organiser","Γραφείο εκδηλώσεων"]];
+const LEAD_KINDS={ couple:"wedding", parents:"baptism", party:"party", company:"party" };   // what a contact with an event would buy for
+const cOwner=t=>t==="venue" || t==="organiser";   // a business to run, not one evening to date: no date, and it buys through «+ Κτήμα»
+// What the form says for each type; the private ones share the last line.
+const LEAD_WORDS={
+  venue:{ name:"Όνομα κτήματος", ph:"π.χ. Κτήμα Ηλιοβασίλεμα", place:"Περιοχή", hint:"πού είναι το κτήμα", placePh:"π.χ. Μαραθώνας" },
+  organiser:{ name:"Όνομα γραφείου", ph:"π.χ. Ορίζων Events", place:"Περιοχή", hint:"πού είναι το γραφείο", placePh:"π.χ. Χαλάνδρι" },
+  company:{ name:CO_WORDS.name, ph:CO_WORDS.ph, place:"Πού γίνεται", hint:"χώρος ή περιοχή", placePh:"π.χ. Ξενοδοχείο Αίγλη" },
+  other:{ name:"Όνομα", ph:"π.χ. Μαρία Παπαδάκη", place:"Πού γίνεται", hint:"κτήμα ή περιοχή", placePh:"π.χ. Κτήμα Ηλιοβασίλεμα" } };
 const C_LOST={ price:"η τιμή", no_reply:"δεν απάντησε ξανά", other_tool:"πήγε αλλού", cancelled:"ακυρώθηκε η εκδήλωση", other:"άλλος λόγος" };
 const C_HOW={ email:"ίδιο email", phone:"ίδιο τηλέφωνο", afm:"ίδιο ΑΦΜ" };
 const cap=s=>s ? s[0].toUpperCase()+s.slice(1) : s;
@@ -2759,15 +2795,15 @@ function wireLeadForm(d, except, onKnown){
   const q=s=>d.querySelector(s); let stageTouched=false, timer=null, seq=0;
   const pick=g=>{ const b=q(`.pick[data-pick="${g}"] .chip.on`); return b ? b.dataset.v : null; };
   const set=(g, v)=>d.querySelectorAll(`.pick[data-pick="${g}"] .chip`).forEach(b=>{ const on=b.dataset.v===String(v); b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); });
-  const sync=()=>{ const t=pick("type"), venue=t==="venue";
-    q("#ld_namel").textContent=venue ? "Όνομα κτήματος" : "Όνομα"; q("#ld_name").placeholder=venue ? "π.χ. Κτήμα Ηλιοβασίλεμα" : "π.χ. Μαρία Παπαδάκη";
-    q("#ld_afmw").style.display=venue ? "" : "none"; q("#ld_datew").style.display=venue ? "none" : "";
-    if(!venue) q("#ld_datel").textContent=EVW[LEAD_KINDS[t]].date;
-    q("#ld_placel").innerHTML=venue ? `Περιοχή <span class="hint">— πού είναι το κτήμα</span>` : `Πού γίνεται <span class="hint">— κτήμα ή περιοχή</span>`;
-    q("#ld_place").placeholder=venue ? "π.χ. Μαραθώνας" : "π.χ. Κτήμα Ηλιοβασίλεμα"; };
+  const sync=()=>{ const t=pick("type"), own=cOwner(t), W=LEAD_WORDS[t]||LEAD_WORDS.other;
+    q("#ld_namel").textContent=W.name; q("#ld_name").placeholder=W.ph;
+    q("#ld_afmw").style.display=C_BUSINESS.includes(t) ? "" : "none"; q("#ld_datew").style.display=own ? "none" : "";
+    if(!own) q("#ld_datel").textContent=t==="company" ? CO_WORDS.date : EVW[LEAD_KINDS[t]].date;
+    q("#ld_placel").innerHTML=`${W.place} <span class="hint">— ${W.hint}</span>`;
+    q("#ld_place").placeholder=W.placePh; };
   // only what could already be someone's: a whole address, a whole number, nine digits
   async function look(){
-    const email=q("#ld_email").value.trim(), phone=q("#ld_phone").value.trim(), afm=pick("type")==="venue" ? q("#ld_afm").value.replace(/\s/g,"") : "";
+    const email=q("#ld_email").value.trim(), phone=q("#ld_phone").value.trim(), afm=C_BUSINESS.includes(pick("type")) ? q("#ld_afm").value.replace(/\s/g,"") : "";
     const body={ email:/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? email : "", phone:phone.replace(/\D/g,"").length>=10 ? phone : "", afm:/^\d{9}$/.test(afm) ? afm : "", except:except||"" };
     const box=q("#ld_known"), my=++seq;
     if(!body.email && !body.phone && !body.afm){ box.innerHTML=""; return; }
@@ -2799,16 +2835,16 @@ function knownHtml(list, canAdd){
       return `<div class="kc"><div class="row fw" style="gap:6px"><strong>${esc(m.name||"—")}</strong><span class="badge tpl">${esc(C_TYPE[m.type]||m.type)}</span><span class="badge st${esc(m.stage)}">${esc(C_STAGE[m.stage]||m.stage)}</span>
           <span class="muted">${esc((m.how||[]).map(h=>C_HOW[h]||h).join(" · "))}</span></div>
         ${fieldsHtml([ m.phone ? ["Τηλέφωνο", esc(m.phone)] : null, m.email ? ["Email", esc(m.email)] : null, evs ? ["Εκδηλώσεις", esc(evs)] : null,
-          ask ? [m.type==="venue" ? "Περιοχή" : "Ζήτησε για", esc(ask)] : null, m.last ? ["Τελευταία κίνηση", esc(gWhen(m.last))] : null, m.notes ? ["Σημειώσεις", esc(m.notes)] : null ])}
+          ask ? [cOwner(m.type) ? "Περιοχή" : "Ζήτησε για", esc(ask)] : null, m.last ? ["Τελευταία κίνηση", esc(gWhen(m.last))] : null, m.notes ? ["Σημειώσεις", esc(m.notes)] : null ])}
         ${(m.said||[]).length ? `<ul class="tl">${m.said.map(s=>`<li><time>${esc(gDT(s.at))}</time><span class="w">${esc(s.text)}</span></li>`).join("")}</ul>` : ""}
         <div class="row fw" style="margin-top:8px">${canAdd ? `<button type="button" class="btn sm primary" data-known="add" data-key="${esc(m.key)}">Πρόσθεσε στην καρτέλα του</button>` : ""}
           <button type="button" class="btn sm" data-known="open" data-key="${esc(m.key)}">Άνοιξε την καρτέλα</button></div></div>`; }).join("")}</div>`;
 }
 // → {lead} or {error, el}
 function readLeadForm(d, f){
-  const v=id=>d.querySelector("#"+id).value.trim(), type=f.pick("type"), venue=type==="venue", dateEl=d.querySelector("#ld_date");
-  if(!venue && dateEl.validity && dateEl.validity.badInput) return { error:"Η ημερομηνία δεν είναι ολόκληρη", el:dateEl };
-  const o={ source:f.pick("source"), type, name:v("ld_name"), phone:v("ld_phone"), email:v("ld_email"), afm:venue ? v("ld_afm").replace(/\s/g,"") : "", date:venue ? "" : dateEl.value, place:v("ld_place") };
+  const v=id=>d.querySelector("#"+id).value.trim(), type=f.pick("type"), own=cOwner(type), dateEl=d.querySelector("#ld_date");
+  if(!own && dateEl.validity && dateEl.validity.badInput) return { error:"Η ημερομηνία δεν είναι ολόκληρη", el:dateEl };
+  const o={ source:f.pick("source"), type, name:v("ld_name"), phone:v("ld_phone"), email:v("ld_email"), afm:C_BUSINESS.includes(type) ? v("ld_afm").replace(/\s/g,"") : "", date:own ? "" : dateEl.value, place:v("ld_place") };
   if(!o.name && !o.phone && !o.email) return { error:LEAD_ERR.empty[1], el:d.querySelector("#ld_name") };
   if(o.afm && !/^\d{9}$/.test(o.afm)) return { error:"Το ΑΦΜ έχει 9 ψηφία", el:d.querySelector("#ld_afm") };
   return { lead:o };
@@ -2866,14 +2902,14 @@ async function leadAction(key, x, a, btn){
   if(a==="ledit"){ dlgBack=key; return openLeadEdit(key, l); }
   if(a==="convert"){
     await flushNotes();
-    const notes=[[l.phone ? "Τηλ. "+l.phone : "", l.place ? (l.type==="venue" ? "Περιοχή: " : "Πού: ")+l.place : ""].filter(Boolean).join(" · "), x.notes||""]
+    const notes=[[l.phone ? "Τηλ. "+l.phone : "", l.place ? (cOwner(l.type) ? "Περιοχή: " : "Πού: ")+l.place : ""].filter(Boolean).join(" · "), x.notes||""]
       .filter(Boolean).join("\n").slice(0, NOTES_MAX);
     const pre={ lead:l.id, name:l.name, email:l.email, notes };
     dlgBack=key;   // cancelled: back to the contact; created: convertDone points it at the new customer
-    if(l.type==="venue") return openNewVenue({ ...pre, afm:l.afm });
-    // a βάπτιση's plan is named after the child and a γιορτή's after the event: the person who called goes in the notes
-    const own=l.type==="couple";
-    return openNewCouple({ ...pre, kind:LEAD_KINDS[l.type]||"wedding", date:l.date, plan:own ? l.name : "",
+    if(cOwner(l.type)) return openNewVenue({ ...pre, afm:l.afm, custType:l.type==="organiser" ? "organiser" : "" });
+    // a βάπτιση's plan is named after the child and a γιορτή's after the event: the person who called goes in the notes. A company's is its own name.
+    const own=l.type==="couple" || l.type==="company";
+    return openNewCouple({ ...pre, kind:LEAD_KINDS[l.type]||"wedding", date:l.date, plan:own ? l.name : "", ...(l.type==="company" ? { custType:"company", afm:l.afm } : {}),
       notes:(own || !l.name ? notes : ["Επαφή: "+l.name, notes].filter(Boolean).join("\n")).slice(0, NOTES_MAX) });
   }
   if(a==="lost"){
@@ -2897,8 +2933,8 @@ async function leadAction(key, x, a, btn){
 // history). Nothing is sent by the server. The payment details are left as gaps until he gives them once (REPLY_PAY).
 const REPLY_PAY={ holder:"[ΣΥΜΠΛΗΡΩΣΕ: δικαιούχος]", iban:"[ΣΥΜΠΛΗΡΩΣΕ: IBAN]", iris:"[ΣΥΜΠΛΗΡΩΣΕ: IRIS]" };
 const REPLY_SIGN="Ανδρέας — TakeaSeat\n697 735 5378 · takeaseat.gr";
-const REPLY_FOR={ wedding:"τον γάμο σας", baptism:"τη βάπτιση", party:"τη γιορτή σας" };
-const REPLY_LAB=k=>"https://takeaseat.gr/lab.html?ev="+k;
+const REPLY_FOR={ wedding:"τον γάμο σας", baptism:"τη βάπτιση", party:"τη γιορτή σας", company:"την εκδήλωσή σας" };
+const REPLY_LAB=k=>"https://takeaseat.gr/lab.html?ev="+(k==="company" ? "party" : k);   // it has no demo of its own until phase 2 of COMPANIES-PLAN.md
 const REPLIES=[
   { id:"price", venue:false, title:"Τιμή", subject:"TakeaSeat — το σχέδιο τραπεζιών", text:k=>`Καλησπέρα σας,
 
@@ -2961,7 +2997,7 @@ ${REPLY_SIGN}` },
 ];
 function showReply(btn, x){
   const r=REPLIES.find(t=>t.id===btn.dataset.tpl), p=btn.closest(".dbody").querySelector(".cardpanel"); if(!r || !p) return;
-  const l=x.lead||{}, kind=LEAD_KINDS[l.type]||"wedding", to=x.customer.email;
+  const l=x.lead||{}, kind=l.type==="company" ? "company" : LEAD_KINDS[l.type]||"wedding", to=x.customer.email;
   p.innerHTML=`<div class="cbox tplbox"><label for="tp_text"><span>${esc(r.title)} <span class="hint">— διόρθωσέ το αν θέλεις, και μετά αντέγραψέ το</span></span></label>
     <textarea id="tp_text" rows="12">${esc(r.text(kind))}</textarea>
     <div class="tlbtns"><button class="btn sm primary" data-k="tpl_copy">Αντιγραφή</button>${to ? `<button class="btn sm" data-k="tpl_mail" data-tpl="${r.id}" title="Ανοίγει το email σου με το κείμενο, προς ${esc(to)}">✉ Email</button>` : ""}<button class="btn sm ghost" data-k="panel_close">Κλείσιμο</button></div></div>`;

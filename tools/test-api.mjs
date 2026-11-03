@@ -4344,6 +4344,191 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     m.clear(); for (const [k, v] of saved) m.set(k, v);
   }
 }
+// ---------- 28. COMPANIES-PLAN.md phase 1: a company and a γραφείο εκδηλώσεων, on the records of what they buy today ----------
+{
+  const keepMail = env.MAIL, saved = new Map(m), mails = [];
+  const on = (method, key, sub, body) => call(method, '/admin/customers/' + encodeURIComponent(key) + '/' + sub, body, OWN);
+  const lead = b => call('POST', '/admin/leads', { source: 'phone', ...b }, OWN);
+  const match = async (b, except) => (await call('POST', '/admin/match', { ...b, ...(except ? { except } : {}) }, OWN)).d.matches;
+  const sheet = async () => (await call('GET', '/admin/customers', undefined, OWN)).d.customers;
+  const cardOf = async key => (await call('GET', '/admin/customers/' + encodeURIComponent(key), undefined, OWN)).d;
+  const clearRl = () => { for (const k of [...m.keys()]) if (k.startsWith('rl:contact:') || k.startsWith('rlmail:contact') || k.startsWith('rlmailday:contact')) m.delete(k); };
+  const when = athensDay(60), BAD = '123456789';
+  const AFM_CO = '999000006', AFM_OF = '999001377', AFM_X = '999002743', AFM_Y = '999004110';
+  try {
+    delete env.MAIL;
+    // -- «+ Νέα επαφή»: both keep an ΑΦΜ --
+    let r = await lead({ type: 'company', name: 'Εταιρ. Αφοί Α ΑΕ', afm: AFM_CO, date: when, place: 'Ξενοδοχείο Αίγλη', text: 'εταιρικό δείπνο' });
+    const LC = raw('lead:' + r.d.lead.id);
+    ok(r.status === 200 && LC.type === 'company' && LC.afm === AFM_CO && LC.date === when && LC.place === 'Ξενοδοχείο Αίγλη', 'contact: a company keeps its ΑΦΜ and its date', LC);
+    r = await lead({ type: 'organiser', name: 'Εταιρ. Γραφείο Β', afm: AFM_OF, place: 'Χαλάνδρι' });
+    const LO = raw('lead:' + r.d.lead.id);
+    ok(r.status === 200 && LO.type === 'organiser' && LO.afm === AFM_OF, 'contact: a γραφείο εκδηλώσεων keeps its ΑΦΜ', LO);
+    let cd = await cardOf('l:' + LC.id);
+    ok(cd.customer.type === 'company' && cd.customer.afm === AFM_CO && cd.customer.next === when && cd.customer.nextKind === 'party', 'contact: a company on the sheet, its evening a γιορτή until phase 2', cd.customer);
+    ok((await cardOf('l:' + LO.id)).customer.type === 'organiser', 'contact: a γραφείο on the sheet, under its own type');
+    for (const t of ['company', 'organiser']) ok((await lead({ type: t, name: 'Εταιρ. Κακό', afm: BAD })).d.error === 'bad_afm', 'contact: ' + t + ' with an ΑΦΜ whose check digit is wrong is refused');
+    // -- nobody else keeps one --
+    for (const t of ['couple', 'parents', 'party']) { r = await lead({ type: t, name: 'Εταιρ. Ιδιώτης ' + t, afm: AFM_X }); ok(raw('lead:' + r.d.lead.id).afm === '', 'contact: a private ' + t + ' never keeps an ΑΦΜ'); await on('POST', 'l:' + r.d.lead.id, 'forget', {}); }
+    r = await lead({ type: 'company', name: 'Εταιρ. Αλλάζει', afm: AFM_X });
+    const LX = r.d.lead.id;
+    await on('PATCH', 'l:' + LX, 'lead', { type: 'organiser' });
+    ok(raw('lead:' + LX).type === 'organiser' && raw('lead:' + LX).afm === AFM_X, 'contact: from company to γραφείο, the ΑΦΜ stays');
+    await on('PATCH', 'l:' + LX, 'lead', { type: 'party' });
+    ok(raw('lead:' + LX).type === 'party' && raw('lead:' + LX).afm === '', 'contact: changed to a private γιορτή, the ΑΦΜ goes');
+    await on('POST', 'l:' + LX, 'forget', {});
+
+    // -- «Γνωστός πελάτης» --
+    let hit = await match({ afm: AFM_CO });
+    ok(hit.length === 1 && hit[0].key === 'l:' + LC.id && hit[0].how.includes('afm') && hit[0].type === 'company', '«Γνωστός πελάτης»: finds the company by ΑΦΜ', hit);
+    hit = await match({ afm: AFM_OF });
+    ok(hit.length === 1 && hit[0].key === 'l:' + LO.id && hit[0].how.includes('afm') && hit[0].type === 'organiser', '«Γνωστός πελάτης»: finds the γραφείο by ΑΦΜ', hit);
+    ok(!(await match({ afm: AFM_CO }, 'l:' + LC.id)).length, '«Γνωστός πελάτης»: not itself, while it is being edited');
+
+    // -- «Έγινε πελάτης»: a company through «+ Ιδιώτης» --
+    const plain = (await call('POST', '/admin/couples', { name: 'Εταιρ. Απλή γιορτή', kind: 'party', weddingDate: when }, OWN)).d.couple;
+    r = await call('POST', '/admin/couples', { name: 'Εταιρ. Αφοί Α ΑΕ', kind: 'party', custType: 'company', afm: AFM_CO, contact: '210 123 4567', weddingDate: when, fromLead: LC.id }, OWN);
+    const CO = r.d.couple, coToken = r.d.claimToken, KC = 'c:' + CO.id;
+    ok(r.status === 200 && !m.has('lead:' + LC.id) && raw('couple:' + CO.id).custType === 'company' && raw('couple:' + CO.id).afm === AFM_CO && raw('couple:' + CO.id).kind === 'party',
+      '«Έγινε πελάτης» as a company: a γιορτή underneath, its word and ΑΦΜ on the record, the contact gone', raw('couple:' + CO.id));
+    let rows = await sheet();
+    ok(rows.filter(x => x.name === 'Εταιρ. Αφοί Α ΑΕ').length === 1 && rows.filter(x => x.afm === AFM_CO).length === 1 && rows.find(x => x.afm === AFM_CO).key === KC && rows.find(x => x.afm === AFM_CO).type === 'company',
+      'a company appears exactly once on the sheet, as a company, with its ΑΦΜ (where the accountant file reads it)', rows.filter(x => x.afm === AFM_CO));
+    ok(rows.find(x => x.key === 'c:' + plain.id).type === 'party' && rows.find(x => x.key === 'c:' + plain.id).afm === '', 'a plain γιορτή stays a γιορτή, with no ΑΦΜ');
+    hit = await match({ afm: AFM_CO });
+    ok(hit.length === 1 && hit[0].key === KC && hit[0].type === 'company', '«Γνωστός πελάτης»: finds the customer, once', hit);
+    cd = await cardOf(KC);
+    const plainDue = (await cardOf('c:' + plain.id)).payments.dues[0], dueC = cd.payments.dues[0];
+    ok(cd.customer.afm === AFM_CO && cd.source === 'phone' && cd.timeline.some(e => e.act === 'contact' && e.text === 'εταιρικό δείπνο'), 'the card: ΑΦΜ, source and history moved across', cd.customer);
+    ok(cd.payments.dues.length === 1 && dueC.what === 'plan' && dueC.kind === 'party' && dueC.amount === plainDue.amount && dueC.plusVat === plainDue.plusVat, 'a company is expected to pay what the γιορτή it buys costs', dueC);
+
+    // -- «Έγινε πελάτης»: a γραφείο through «+ Κτήμα» --
+    const season = { type: 'seasonal', seasonStart: athensDay(-1), seasonEnd: athensDay(200) };
+    const plainV = (await call('POST', '/admin/venues', { name: 'Εταιρ. Απλό Κτήμα', afm: AFM_Y, license: season }, OWN)).d;
+    r = await call('POST', '/admin/venues', { name: 'Εταιρ. Γραφείο Β', custType: 'organiser', afm: AFM_OF, license: season, fromLead: LO.id }, OWN);
+    const OF = r.d, KO = 'v:' + OF.id, VH = { 'X-Venue-Key': OF.key };
+    ok(r.status === 200 && !m.has('lead:' + LO.id) && raw('venue:' + OF.id).custType === 'organiser' && raw('venue:' + OF.id).afm === AFM_OF && !m.has('afm:' + AFM_OF),
+      '«Έγινε πελάτης» as a γραφείο: its word and ΑΦΜ on the record, the contact gone, and no free year claimed by it', raw('venue:' + OF.id));
+    rows = await sheet();
+    ok(rows.filter(x => x.name === 'Εταιρ. Γραφείο Β').length === 1 && rows.filter(x => x.afm === AFM_OF).length === 1 && rows.find(x => x.afm === AFM_OF).key === KO && rows.find(x => x.afm === AFM_OF).type === 'organiser',
+      'a γραφείο appears exactly once on the sheet, as a γραφείο, with its ΑΦΜ', rows.filter(x => x.afm === AFM_OF));
+    ok(rows.find(x => x.key === 'v:' + plainV.id).type === 'venue', 'a plain κτήμα stays a κτήμα');
+    hit = await match({ afm: AFM_OF });
+    ok(hit.length === 1 && hit[0].key === KO && hit[0].type === 'organiser', '«Γνωστός πελάτης»: finds the γραφείο, once', hit);
+    const dueO = (await cardOf(KO)).payments.dues[0], dueV = (await cardOf('v:' + plainV.id)).payments.dues[0];
+    ok(dueO.what === 'season' && dueO.amount === dueV.amount && dueO.plusVat === dueV.plusVat, 'a γραφείο is expected to pay what a κτήμα pays', dueO);
+
+    // -- what cannot get in --
+    const n0 = (raw('couples:index') || []).length, nv0 = (raw('venues:index') || []).length;
+    const LB = (await lead({ type: 'company', name: 'Εταιρ. Μένει', phone: '6900000028' })).d.lead.id;
+    r = await call('POST', '/admin/couples', { name: 'Εταιρ. Κακό', kind: 'party', custType: 'company', afm: BAD, weddingDate: when, fromLead: LB }, OWN);
+    ok(r.status === 400 && r.d.error === 'bad_afm' && (raw('couples:index') || []).length === n0 && m.has('lead:' + LB), 'a company with a bad ΑΦΜ: nothing is made and the contact is not spent', r.d);
+    r = await call('POST', '/admin/venues', { name: 'Εταιρ. Κακό', custType: 'organiser', afm: BAD, fromLead: LB }, OWN);
+    ok(r.status === 400 && r.d.error === 'bad_afm' && (raw('venues:index') || []).length === nv0 && m.has('lead:' + LB), 'a γραφείο with a bad ΑΦΜ: nothing is made and the contact is not spent', r.d);
+    await on('POST', 'l:' + LB, 'forget', {});
+    const pc = id => raw('couple:' + id);
+    r = await call('POST', '/admin/couples', { name: 'Εταιρ. Ιδιώτης με ΑΦΜ', kind: 'party', afm: AFM_X, weddingDate: when }, OWN);
+    ok(!pc(r.d.couple.id).afm && !pc(r.d.couple.id).custType, 'a private buyer: an ΑΦΜ sent along is never kept');
+    r = await call('POST', '/admin/couples', { name: 'Εταιρ. Λάθος λέξη', kind: 'party', custType: 'organiser', afm: AFM_X, weddingDate: when }, OWN);
+    ok(!pc(r.d.couple.id).afm && !pc(r.d.couple.id).custType, 'a couple record takes no other word than «company»');
+    r = await call('POST', '/admin/venues', { name: 'Εταιρ. Λάθος λέξη 2', custType: 'company' }, OWN);
+    ok(!raw('venue:' + r.d.id).custType && (await cardOf('v:' + r.d.id)).customer.type === 'venue', 'a venue record takes no other word than «organiser»');
+
+    // -- «Επεξεργασία» --
+    const setC = (id, b) => call('PATCH', '/admin/couples/' + id, b, OWN), setV = (id, b) => call('PATCH', '/admin/venues/' + id, b, OWN);
+    r = await setC(CO.id, { afm: BAD });
+    ok(r.status === 400 && r.d.error === 'bad_afm' && pc(CO.id).afm === AFM_CO, 'edit a company: a bad ΑΦΜ changes nothing');
+    r = await setC(CO.id, { afm: AFM_X });
+    ok(r.status === 200 && pc(CO.id).afm === AFM_X && (await match({ afm: AFM_X })).length === 1 && !(await match({ afm: AFM_CO })).length, 'edit a company: found by the new ΑΦΜ, not the old');
+    await setC(CO.id, { afm: '' });
+    ok(!('afm' in pc(CO.id)) && (await cardOf(KC)).customer.afm === '', 'edit a company: the ΑΦΜ can be cleared');
+    await setC(CO.id, { afm: AFM_CO });
+    await setC(plain.id, { afm: AFM_X });
+    ok(!pc(plain.id).afm, 'edit a plain γιορτή: an ΑΦΜ is ignored');
+    r = await setV(OF.id, { afm: BAD });
+    ok(r.status === 400 && r.d.error === 'bad_afm' && raw('venue:' + OF.id).afm === AFM_OF, 'edit a γραφείο: a bad ΑΦΜ changes nothing');
+    await setV(OF.id, { afm: AFM_X });
+    ok(raw('venue:' + OF.id).afm === AFM_X && (await match({ afm: AFM_X })).length === 1 && !(await match({ afm: AFM_OF })).length, 'edit a γραφείο: found by the new ΑΦΜ, not the old');
+    await setV(OF.id, { afm: '' });
+    ok(!('afm' in raw('venue:' + OF.id)), 'edit a γραφείο: the ΑΦΜ can be cleared');
+    await setV(OF.id, { afm: AFM_OF });
+    await setV(plainV.id, { afm: AFM_X });
+    ok(raw('venue:' + plainV.id).afm === AFM_Y, 'edit a plain κτήμα: its ΑΦΜ stays (it may be its free-year claim)');
+
+    // -- payments --
+    r = await on('POST', KC, 'pay', { dueId: dueC.id, amount: dueC.amount, date: athensDay(0), method: 'bank' });
+    ok(r.status === 200, 'a company pays', r.d);
+    r = await on('POST', KO, 'pay', { dueId: dueO.id, amount: dueO.amount, date: athensDay(0), method: 'bank' });
+    ok(r.status === 200, 'a γραφείο pays', r.d);
+    const L = (await call('GET', '/admin/payments', undefined, OWN)).d;
+    ok(L.payments.find(p => p.key === KC).type === 'company' && L.payments.find(p => p.key === KO).type === 'organiser', '«Πληρωμές»: each under its own type', L.payments.map(p => [p.key, p.type]));
+
+    // -- what their own people and clients can read: never the ΑΦΜ, never the word --
+    const clean = (o, ...afms) => { const s = JSON.stringify(o); return !afms.some(a => s.includes(a)) && !s.includes('custType') && !s.includes('organiser'); };
+    const K = await call('POST', '/claim', { token: coToken, nonce: 'co-28' });
+    const P = await call('GET', '/plans/' + K.d.id, undefined, { 'X-Edit-Key': K.d.editKey });
+    ok(K.status === 200 && P.status === 200 && clean(K.d, AFM_CO) && clean(P.d, AFM_CO), "a company's plan link carries no ΑΦΜ and no customer type");
+    const con = await call('GET', '/venues/' + OF.id, undefined, VH);
+    ok(con.status === 200 && clean(con.d, AFM_OF), "a γραφείο's console carries no ΑΦΜ and no customer type");
+    const W = (await call('POST', '/venues/' + OF.id + '/weddings', { label: 'Εταιρ. Εκδήλωση', date: when }, VH)).d;
+    const CP = await call('GET', '/plans/' + W.planId, undefined, { 'X-Edit-Key': raw('plan:' + W.planId).editKey });
+    ok(CP.status === 200 && clean(CP.d, AFM_OF), "the plan a γραφείο's client opens carries neither");
+
+    // -- forgotten: only the books remain, and no ΑΦΜ anywhere --
+    r = await on('POST', KC, 'forget', {});
+    const bkC = raw('books:' + KC);
+    ok(r.status === 200 && !m.has('couple:' + CO.id) && bkC.custType === 'company' && !JSON.stringify(bkC).includes(AFM_CO), 'forgetting a company: the books keep the word, never the ΑΦΜ', bkC);
+    ok(![...m.values()].some(v => String(v).includes(AFM_CO)) && !(await match({ afm: AFM_CO })).length, "forgetting a company: its ΑΦΜ is nowhere in the store");
+    r = await on('POST', KO, 'forget', {});
+    const bkO = raw('books:' + KO);
+    ok(r.status === 200 && !m.has('venue:' + OF.id) && bkO.custType === 'organiser' && !JSON.stringify(bkO).includes(AFM_OF), 'forgetting a γραφείο: the books keep the word, never the ΑΦΜ', bkO);
+    ok(![...m.values()].some(v => String(v).includes(AFM_OF)) && !(await match({ afm: AFM_OF })).length, "forgetting a γραφείο: its ΑΦΜ is nowhere in the store");
+    const bl = (await call('GET', '/admin/books', undefined, OWN)).d.books;
+    ok(bl.find(b => b.key === KC).custType === 'company' && bl.find(b => b.key === KO).custType === 'organiser', '«Για τα λογιστικά» can tell them apart');
+
+    // -- the site's form --
+    env.MAIL = { enabled: true, from: 'TakeaSeat <hello@takeaseat.gr>', send: msg => { mails.push(msg); return true; } };
+    m.set('meta:owner', JSON.stringify({ email: 'andreas@example.gr', emailVerified: true, lang: 'el' }));
+    clearRl();
+    let ipN = 0;
+    const send = b => call('POST', '/contact', b, { 'X-Real-IP': '192.0.2.' + (100 + (++ipN)) });
+    const leadBy = e => (raw('leads:index') || []).map(id => m.has('lead:' + id) && raw('lead:' + id)).find(l => l && l.email === e);
+    const lastToOwner = () => JSON.stringify(mails.filter(x => x.to === 'andreas@example.gr').at(-1));
+    r = await send({ kind: 'company', topic: 'start', name: 'Εταιρ. Φόρμα', email: 'co-form-28@example.gr', date: when, place: 'Ξενοδοχείο Αίγλη', message: 'εταιρικό δείπνο', lang: 'el', noMail: true, afm: AFM_X, type: 'venue', custType: 'organiser' });
+    const FC = leadBy('co-form-28@example.gr');
+    ok(r.status === 200 && FC.type === 'company' && FC.source === 'form' && FC.date === when && FC.afm === '' && FC.noMail === true && !FC.custType,
+      'form: sent as a company it arrives as a company, with its date and the no-mails tick; an ΑΦΜ it does not ask for is ignored', FC);
+    ok(lastToOwner().includes('Εκδήλωση: εταιρεία'), 'form: the mail to Andreas says «εταιρεία»', lastToOwner());
+    r = await call('POST', '/admin/couples', { name: 'Εταιρ. Φόρμα', kind: 'party', custType: 'company', afm: AFM_X, email: 'co-form-28@example.gr', weddingDate: when, fromLead: FC.id }, OWN);
+    rows = await sheet();
+    ok(r.status === 200 && !m.has('lead:' + FC.id) && raw('couple:' + r.d.couple.id).noMail === true && rows.filter(x => x.email === 'co-form-28@example.gr').length === 1,
+      'form to customer: once on the sheet, and the no-mails tick came along', raw('couple:' + r.d.couple.id));
+    const organiserForm = { kind: 'organiser', topic: 'demo', name: 'Εταιρ. Γραφείο Φόρμα', email: 'of-form-28@example.gr', place: 'Ορίζων Events, Χαλάνδρι', message: '30 εκδηλώσεις τον χρόνο', lang: 'el' };
+    r = await send({ ...organiserForm, date: when });
+    ok(r.status === 400 && r.d.error === 'bad_date', 'form: a γραφείο writes about its business, so a date is refused, as for a κτήμα', r.d);
+    r = await send(organiserForm);
+    const FO = leadBy('of-form-28@example.gr');
+    ok(r.status === 200 && FO.type === 'organiser' && !FO.noMail, 'form: sent as a γραφείο it arrives as a γραφείο; no tick, no opt-out', FO);
+    ok((await cardOf('l:' + FO.id)).timeline[0].text.startsWith('Ζητά demo για το γραφείο'), 'form: its first line says «γραφείο», it has no κτήμα');
+    ok(lastToOwner().includes('Εκδήλωση: γραφείο εκδηλώσεων') && lastToOwner().includes('Ζητά demo για το γραφείο') && !lastToOwner().includes('κτήμα'), 'form: the mail to Andreas says so too', lastToOwner());
+
+    // -- the pages agree with the server, and never say «διοργανωτής» --
+    const fs = await import('node:fs');
+    const read = f => fs.readFileSync(path.join(root, f), 'utf8');
+    const adm = read('admin.html'), form = read('epikoinonia.html'), wsrc = read('wedding-sync-worker.js');
+    const serverKinds = Object.keys(eval('(' + wsrc.match(/const CONTACT_KINDS = (\{[^}]*\})/)[1] + ')'));
+    const formKinds = JSON.parse(form.match(/const KINDS = (\[[^\]]*\])/)[1]);
+    ok(serverKinds.length === formKinds.length && formKinds.every(k => serverKinds.includes(k)) && formKinds.every(k => form.includes('data-v="' + k + '"')), 'form: its kinds, its chips and the server name the same six', [serverKinds, formKinds]);
+    const leadTypes = JSON.parse(wsrc.match(/const LEAD_TYPES = (\[[^\]]*\])/)[1]);
+    const chips = [...adm.match(/const C_LTYPE=(\[.*?\]\]);/)[1].matchAll(/\["(\w+)","/g)].map(x => x[1]);
+    ok(chips.length === leadTypes.length && chips.every(t => leadTypes.includes(t)) && chips.every(t => new RegExp('\\b' + t + ':"').test(adm.match(/const C_TYPE=\{[^}]*\}/)[0])), '«+ Νέα επαφή»: its chips, the sheet\'s words and the server name the same six', chips);
+    ok(/\["organisers","Γραφεία εκδηλώσεων"\]/.test(adm) && /\["companies","Εταιρείες"\]/.test(adm), '«Πελάτες»: a filter for each');
+    ok(![adm, form].some(s => /διοργανωτ/i.test(s)), 'the word is «Γραφείο εκδηλώσεων», never «διοργανωτής», on both pages');
+  } finally {
+    env.MAIL = keepMail; if (!keepMail) delete env.MAIL;
+    m.clear(); for (const [k, v] of saved) m.set(k, v);
+  }
+}
 function leadStageOf(l) { return l.lost ? 8 : l.stage || 1; }
 
 console.log(`\nall ${n} checks passed`);

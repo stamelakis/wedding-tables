@@ -9,7 +9,7 @@ decisions a future session might undo by mistake. `STATUS.md` says where we are.
 ```bash
 node tools/build-planner.mjs            # regenerate the planner outputs
 node tools/build-planner.mjs --check    # must print "all planner outputs up to date"
-node tools/test-api.mjs                 # the whole suite (1398 checks today)
+node tools/test-api.mjs                 # the whole suite (1458 checks today)
 node tools/dev.mjs                      # local stack on :8080 — never `node server/server.mjs`
 node tools/dev-customers.mjs            # the same, seeded with one customer per «Θέλουν εμένα» flag and stage
 ```
@@ -64,10 +64,14 @@ build runs the full suite), restarts and health-checks; on failure it rolls back
 
 ## Decisions
 
-- **Companies and organisers follow `COMPANIES-PLAN.md`** (Andreas, 2026-11-03, not built yet; its §2 has the decisions). A
+- **Companies and organisers follow `COMPANIES-PLAN.md`** (Andreas, 2026-11-03; phase 1 built, the rest not; its §2 has the decisions). A
   fourth kind, chosen after hearing the cheaper option, and a «Γραφείο εκδηλώσεων», never «διοργανωτής», which already means
   the venue's client on γιορτή screens. Rejected: a small separate charge for saving designs (payments are by hand for now), and a company choosing to keep guest
   notes (health data; it keeps its own CSV instead).
+- **Until phase 3 a sold company is a `couple:` row and a sold γραφείο a `venue:` row, each with a `custType` word** (phase 1, 2026-11-03).
+  `custType` only names and files the customer: no plan, price or permission reads it. Rejected: a new record type now, since phase 3
+  decides the real shape. The ΑΦΜ can be edited only on a `custType` row, because on a Κτήμα the `afm:` row is the free-year fence.
+  The form asks no ΑΦΜ or company name (Andreas adds them at the sale). `books:` keeps the word, never the ΑΦΜ.
 - **One third kind, `party` («γιορτή»)**, covering γενέθλια, ονομαστική and επέτειος, and a company dinner until phase 2 of
   `COMPANIES-PLAN.md` — not several kinds. A nameday and a 40th are the same room on the same evening, and each extra kind
   costs ~135 strings in three languages. *Andreas asked for this after hearing the argument against
