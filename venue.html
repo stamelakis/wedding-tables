@@ -463,7 +463,7 @@ function renderLogin(err){
   DATA=null;
   app.innerHTML=`<div class="card login">
     <h1>Κονσόλα Κτήματος</h1>
-    <p>Διαχειριστείτε τους γάμους, τις βαπτίσεις και τις γιορτές σας και μοιραστείτε το τραπεζολόγιο με κάθε πελάτη σας.</p>
+    <p>Διαχειριστείτε τους γάμους, τις βαπτίσεις, τις γιορτές και τις εταιρικές εκδηλώσεις σας και μοιραστείτε το τραπεζολόγιο με κάθε πελάτη σας.</p>
     <input id="key" placeholder="Κωδικός κτήματος" autocomplete="off">
     ${err?`<div class="hint" style="color:var(--danger);margin-top:8px">${esc(err)}</div>`:""}
     <div class="row"><button class="btn primary" id="go" style="flex:1">Σύνδεση</button></div>
