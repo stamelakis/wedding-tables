@@ -2,13 +2,14 @@
 
 Updated: 2026-11-03
 
-**Status:** Live runs `40204ad` (deployed 2026-11-03, tag `deploy-2026-11-03-2`, pre-deploy backup
-`/opt/backups/takeaseat-20261103-141351.db.gz.age`), healthy. Phase 1 of `COMPANIES-PLAN.md` (a company and a γραφείο
-εκδηλώσεων as customers) went live after Andreas's yes; phases 2–4 are not built. 1459 checks pass, on the local copy and
+**Status:** Live runs `2fb509c` (deployed 2026-11-03, tag `deploy-2026-11-03-3`, pre-deploy backup
+`/opt/backups/takeaseat-20261103-142329.db.gz.age`), healthy. «Πληρωμές» now writes a new customer's due as 25 € or
+349 € + ΦΠΑ, what the site says. Phase 1 of `COMPANIES-PLAN.md` (a company and a γραφείο
+εκδηλώσεων as customers) went live after Andreas's yes; phases 2–4 are not built. 1497 checks pass, on the local copy and
 in the server's build; checked on screen at phone width on the local copy; `/security-review` found nothing. Live smoke
-test, read-only: health, the key pages with no console errors, the form's new chips and links, the new admin page served,
-`/admin/customers` and `/admin/today` refuse without a key; the second deploy's header fix and privacy line seen live. Not checked live: a real form sent as a company, and the
-signed-in screens. Operations phases 1–6 are live. On 2026-11-03 Andreas looked at «Σήμερα», «Πληρωμές», «Πελάτες», the
+test, read-only: health, eight pages with no console errors, the prices on the pages, the new example in admin.html,
+`/admin/customers` and `/admin/payments` refuse without a key. Not checked live: a real form sent as a company, and the
+signed-in screens, so no real new due has been seen on the live «Πληρωμές». Operations phases 1–6 are live. On 2026-11-03 Andreas looked at «Σήμερα», «Πληρωμές», «Πελάτες», the
 card and «+ Νέα επαφή» live and all looked fine. Not yet seen live: a real morning mail (none goes while the list is empty).
 
 ## In progress / unfinished
@@ -27,13 +28,10 @@ card and «+ Νέα επαφή» live and all looked fine. Not yet seen live: a 
 
 ## Waiting on Andreas
 
-- **Say yes to deploy the new prices.** «Πληρωμές» expecting 25 € and 349 € + ΦΠΑ is committed on the local copy, not pushed
-  and not deployed (see History). Until it goes live, a customer made on the live site still gets a due of 19 € or 129 € + ΦΠΑ.
-  Live had no dues at all on 2026-11-03; read it again just before deploying, in case one was added.
 - **When something comes up in «Σήμερα»:** try «αύριο» on a line and «Επαναφορά» under «Κρυμμένα». The 08:00 mail comes
   only on days the list is not empty. When one does come, say if the wording reads right in your mail app.
 - **When the next real payment comes in:** record it in «Πληρωμές» («+ Πληρωμή», only the amount is needed) and say if
-  anything is off.
+  anything is off. A new customer's card should read 25 € or 349 € + ΦΠΑ; that has not been seen on live with a real one.
 - **Send one real form from the live site** with your own email, choosing «Εταιρεία» so it covers the new type too
   (sending was only tested on the local copy): https://takeaseat.gr/epikoinonia.html. Check that you get the "we got it" mail, that the mail to info@ arrives and Reply answers your own address, and that the
   contact shows in «Πελάτες» as «Νέα επαφή». Then «Σβήσε την επαφή…» on its card. Tell the session if anything is off.
@@ -76,14 +74,17 @@ card and «+ Νέα επαφή» live and all looked fine. Not yet seen live: a 
   `TakeaSeatHermes.lnk` and check the file (HANDOFF). The cause is in Hermes's `hermes_control.py`, another project.
 - **This PC's C: drive is 98 % full** (9.7 GB free on 2026-10-23). Not the server's; the server is at 24 %.
 - The 🛟 on the «Υποστήριξη έως …» badge shows as an empty box on Windows 10 browsers (no such emoji there).
+- **`lab.html` at 375px: the ⋯ button in the top bar (`#moreBtn`) ends at 379px**, so its edge is clipped by a few pixels
+  (found live 2026-11-03). No sideways scroll. That deploy did not touch the planner; not known when it began.
 
 ## History
 
 - 2026-11-03 — «Πληρωμές» now expects what the site says, 25 € with ΦΠΑ and 349 € + ΦΠΑ, after Andreas's yes (it said 19 € and
-  129 € since the ledger was written). Not deployed yet. The live database had no ledger rows, no couples and one venue with
+  129 € since the ledger was written). Deployed the same day (`2fb509c`, `deploy-2026-11-03-3`) after his second yes. The live database had no ledger rows, no couples and one venue with
   nothing owed, so no recorded due needed correcting; none was changed. 1497 checks pass; a new one fails the build if the
   pages and the ledger ever differ again (replayed against the old numbers: it fails). Seen at phone width on the local
-  copy: a new couple 25,00 €, a new venue 349,00 € + ΦΠΑ. `/security-review` found nothing.
+  copy: a new couple 25,00 €, a new venue 349,00 € + ΦΠΑ. `/security-review` found nothing. After the deploy the ledger was
+  still empty, the running code held the new numbers, and the two other sites on the box answered.
 - 2026-11-03 — second deploy the same day (`40204ad`, `deploy-2026-11-03-2`): the contact page's header fits a phone (under
   520px it drops «Αρχική», since the logo links home), and `privacy.html` says we keep a company's or γραφείο's ΑΦΜ (new
   version date, 3 November 2026).
