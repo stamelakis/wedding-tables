@@ -18,7 +18,7 @@ card and «+ Νέα επαφή» live and all looked fine. Not yet seen live: a 
 - **Phase 2, built, not live.** Checked on screen on the local copy: the demo (`lab.html?ev=company`) in el/en/de words, the phone and small-window kind picker,
   converting between the four kinds with a custom label kept, print titles, the note about guest notes (shown online, hidden device-only), the new guide and its
   links, the home page's four cards, the admin dialogs, the venue console; the PDFs in el, en and de. Not checked: on the live site, a real mail, an actual iPhone
-  tap on the invisible picker (only an emulated phone width). Open: `REVIEW-GREEK-company.md` is temporary, delete it when Andreas approves.
+  tap on the invisible picker (only an emulated phone width).
 - Party plans created before 2026-10-17 keep the label «Τραπέζι της γιορτής» until the customer renames it
   (deliberately not rewritten on load). Converting such a plan to another kind still works (LEGACY_HEADS).
 
@@ -34,8 +34,6 @@ card and «+ Νέα επαφή» live and all looked fine. Not yet seen live: a 
 
 ## Waiting on Andreas
 
-- **Read the Greek of the company event:** `REVIEW-GREEK-company.md` (87 numbered lines; the first four are the decisions: the room with a «Σκηνή», the
-  groups, the two demo names, the note on the Excel import) and the guide page `plano-trapezion-etairikis-ekdilosis.html`. Reply with the numbers to change.
 - **When something comes up in «Σήμερα»:** try «αύριο» on a line and «Επαναφορά» under «Κρυμμένα». The 08:00 mail comes
   only on days the list is not empty. When one does come, say if the wording reads right in your mail app.
 - **When the next real payment comes in:** record it in «Πληρωμές» («+ Πληρωμή», only the amount is needed) and say if
