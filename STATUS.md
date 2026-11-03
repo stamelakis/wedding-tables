@@ -2,8 +2,8 @@
 
 Updated: 2026-11-03
 
-**Status:** Live runs `5d48212` (deployed 2026-11-03, tag `deploy-2026-11-03-6`, pre-deploy backup
-`/opt/backups/takeaseat-20261103-160840.db.gz.age`), healthy. The fourth kind, «Εταιρική εκδήλωση» (phase 2 of `COMPANIES-PLAN.md`), is live after Andreas
+**Status:** Live runs `507b44f` (deployed 2026-11-03, tag `deploy-2026-11-03-7`, pre-deploy backup
+`/opt/backups/takeaseat-20261103-162910.db.gz.age`), healthy. The fourth kind, «Εταιρική εκδήλωση» (phase 2 of `COMPANIES-PLAN.md`), is live after Andreas
 read the Greek and said yes; phases 3–4 are not built. 1630 checks pass, on the local copy and in the server's build. Operations phases 1–6 are live.
 
 **Live smoke test of phase 2, read-only, passed:** the company demo at desktop, 1000px and 375px, the γιορτή demo, the new guide, the home page's four cards,
@@ -19,8 +19,8 @@ yet seen live: a real form sent as a company, a real new due on «Πληρωμέ
 
 ## Next
 
-1. **Twelve more lines still name only γάμους, βαπτίσεις και γιορτές,** waiting for Andreas's call: index.html:244, :249, :287 and :431 (what a visitor reads), index.html:15 and :25
-   (what Google and link previews show, like the page's `<title>`), and the γιορτή and βάπτιση guides, three lines each (giortis :44, :259, :434; vaptisis :42, :256, :409, where «η συνδρομή του καλύπτει…» says what a venue's subscription covers). Not false, but incomplete.
+1. **Five more lines still name only γάμος, βάπτιση, γιορτή,** waiting for Andreas's Greek: index.html:293 (the 25 € price line) and :344 («νέος γάμος», «νέα βάπτιση» ή «νέα γιορτή»), venue.html:466 (the console's welcome),
+   plano-trapezion-giortis.html:362, and terms.html:107 (who the Πελάτης is; lawyer list too). **Left on purpose by Andreas:** what Google and link previews show (index.html:7, 8, 14, 15, 25, epikoinonia.html:8), to change only when companies start looking.
 2. **Phases 3–4 of `COMPANIES-PLAN.md`**, each in its own session: one console with saved rooms and
    old designs, then the organiser in public. Each has its own "done when" there.
 3. **Phase 7 (online payment)** waits on the company, accountant and lawyer. The page's remaining English sections move
@@ -81,6 +81,7 @@ yet seen live: a real form sent as a company, a real new due on «Πληρωμέ
 
 ## History
 
+- 2026-11-03: Ten more lines on the home page and the γιορτή and βάπτιση guides name company events (`507b44f`, `deploy-2026-11-03-7`).
 - 2026-11-03: Six more sentences on the home page, venue console and admin's copied text name company events (`5d48212`, `deploy-2026-11-03-6`).
 - 2026-11-03: The home page's subscription line now names company events (`1ade6c9`, `deploy-2026-11-03-5`).
 - 2026-11-03: Phase 2 of `COMPANIES-PLAN.md`, the fourth kind «Εταιρική εκδήλωση», live (`bf431d9`, `deploy-2026-11-03-4`). The first deploy died in the server's build: two files a new test reads were not in the check stage; nothing went live, and a check now refuses that on the local copy. Fixed the clipped ⋯ button at 375px on the way.
