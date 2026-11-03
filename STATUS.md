@@ -27,10 +27,9 @@ card and «+ Νέα επαφή» live and all looked fine. Not yet seen live: a 
 
 ## Waiting on Andreas
 
-- **Which prices are right?** Every new due in «Πληρωμές» says 19 € and 129 € + ΦΠΑ (`PRICE_PLAN`, `PRICE_SEASON` in
-  `wedding-sync-worker.js`, and tests assert them), while the site, terms, ready replies and `COMPANIES-PLAN.md` §2 say
-  25 € and 349 € + ΦΠΑ. The site moved on 2026-09-23, and the ledger was written with the old numbers on 2026-10-22. Its
-  own session is open, waiting for your answer. It is live today for every customer, not only companies.
+- **Say yes to deploy the new prices.** «Πληρωμές» expecting 25 € and 349 € + ΦΠΑ is committed on the local copy, not pushed
+  and not deployed (see History). Until it goes live, a customer made on the live site still gets a due of 19 € or 129 € + ΦΠΑ.
+  Live had no dues at all on 2026-11-03; read it again just before deploying, in case one was added.
 - **When something comes up in «Σήμερα»:** try «αύριο» on a line and «Επαναφορά» under «Κρυμμένα». The 08:00 mail comes
   only on days the list is not empty. When one does come, say if the wording reads right in your mail app.
 - **When the next real payment comes in:** record it in «Πληρωμές» («+ Πληρωμή», only the amount is needed) and say if
@@ -80,6 +79,11 @@ card and «+ Νέα επαφή» live and all looked fine. Not yet seen live: a 
 
 ## History
 
+- 2026-11-03 — «Πληρωμές» now expects what the site says, 25 € with ΦΠΑ and 349 € + ΦΠΑ, after Andreas's yes (it said 19 € and
+  129 € since the ledger was written). Not deployed yet. The live database had no ledger rows, no couples and one venue with
+  nothing owed, so no recorded due needed correcting; none was changed. 1497 checks pass; a new one fails the build if the
+  pages and the ledger ever differ again (replayed against the old numbers: it fails). Seen at phone width on the local
+  copy: a new couple 25,00 €, a new venue 349,00 € + ΦΠΑ. `/security-review` found nothing.
 - 2026-11-03 — second deploy the same day (`40204ad`, `deploy-2026-11-03-2`): the contact page's header fits a phone (under
   520px it drops «Αρχική», since the logo links home), and `privacy.html` says we keep a company's or γραφείο's ΑΦΜ (new
   version date, 3 November 2026).

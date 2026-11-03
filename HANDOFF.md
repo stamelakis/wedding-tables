@@ -20,9 +20,9 @@ their guests at tables. Live at **https://takeaseat.gr**.
 - **Venue console** (a κτήμα manages its weddings): https://takeaseat.gr/venue.html
 - **Legal**: `/privacy.html`, `/terms.html`, `/dpa.html`
 
-**Pricing on the site (2026-09-20):** venues **season only, 129 €/season + VAT** (unlimited weddings; the 9 €/wedding tier
-was dropped — old per-wedding licences still work), couples **19 € one-off incl. VAT** (their planner opens after the 14-day
-withdrawal period — §1e). Free public demo: `/lab.html` (up to 8 tables). Numbers live only in `index.html` + `terms.html`. Couples currently sign up by e-mail (the CTA is a mailto);
+**Pricing on the site (since 2026-09-23):** venues **season only, 349 €/year + VAT** (unlimited events; the 9 €/wedding tier
+was dropped — old per-wedding licences still work), direct buyers **25 € one-off incl. VAT** (their planner opens after the 14-day
+withdrawal period — §1e). Free public demo: `/lab.html` (up to 8 tables). The numbers live in `index.html`, `terms.html`, the three guides, the ready replies in `admin.html`, and `PRICE_PLAN` / `PRICE_SEASON` in the worker (what «Πληρωμές» expects); a test fails if they differ. Couples currently sign up by e-mail (the CTA is a mailto);
 fulfil in `admin.html` → **Couples (direct)** → create **with their email** (the claim link is mailed to them when mail
 is on — §1c; otherwise send the **claim link** yourself, §1b). Never again as a wedding under a
 "Direct couples" venue: those weddings are venue-owned, so the admin could open them.

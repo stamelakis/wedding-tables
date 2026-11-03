@@ -3901,14 +3901,14 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
   try {
     delete env.MAIL;
     // -- the worked example, done by hand first (OPERATIONS-PLAN.md §4, phase 5 «done when») --
-    //   Κτήμα Α, season 2025 (129 € + ΦΠΑ):  2025-03-10 μεταφορά 159,96 € of which ΦΠΑ 30,96 €        → the season paid
-    //   Ζεύγος Β, plan 19 €:                 2025-03-28 IRIS 19,00 €  · 2025-04-02 refund 19,00 € (withdrawal)
-    //   Ζεύγος Γ, plan 19 €:                 2025-11-02 μετρητά 19,00 € · 2025-11-03 μετρητά 19,00 € again, then cancelled
+    //   Κτήμα Α, season 2025 (349 € + ΦΠΑ):  2025-03-10 μεταφορά 432,76 € of which ΦΠΑ 83,76 €        → the season paid
+    //   Ζεύγος Β, plan 25 €:                 2025-03-28 IRIS 25,00 €  · 2025-04-02 refund 25,00 € (withdrawal)
+    //   Ζεύγος Γ, plan 25 €:                 2025-11-02 μετρητά 25,00 € · 2025-11-03 μετρητά 25,00 € again, then cancelled
     //   Κτήμα Α, other:                      2026-01-05 κάρτα 50,00 € of which ΦΠΑ 9,68 €, «Εκπαίδευση προσωπικού»
-    //   2025-03: in 178,96 · out 0 · net 178,96 · ΦΠΑ 30,96 · 2 entries      2025-04: out 19,00 · net −19,00 · 1 entry
-    //   2025-11: in 19,00 · net 19,00 · 1 entry (the cancelled one counts nowhere)   2026-01: in 50,00 · ΦΠΑ 9,68 · 1 entry
-    //   2025: in 197,96 · out 19,00 · net 178,96 · ΦΠΑ 30,96 · 4 entries      2026: in 50,00 · net 50,00 · ΦΠΑ 9,68 · 1 entry
-    //   season «2025»: in 159,96 · net 159,96 · ΦΠΑ 30,96 · 1 entry
+    //   2025-03: in 457,76 · out 0 · net 457,76 · ΦΠΑ 83,76 · 2 entries      2025-04: out 25,00 · net −25,00 · 1 entry
+    //   2025-11: in 25,00 · net 25,00 · 1 entry (the cancelled one counts nowhere)   2026-01: in 50,00 · ΦΠΑ 9,68 · 1 entry
+    //   2025: in 482,76 · out 25,00 · net 457,76 · ΦΠΑ 83,76 · 4 entries      2026: in 50,00 · net 50,00 · ΦΠΑ 9,68 · 1 entry
+    //   season «2025»: in 432,76 · net 432,76 · ΦΠΑ 83,76 · 1 entry
     const VA = (await call('POST', '/admin/venues', { name: 'Πληρ. Κτήμα Α', license: { type: 'seasonal', seasonStart: '2025-04-01', seasonEnd: '2025-10-31' } }, OWN)).d;
     const KA = 'v:' + VA.id;
     const CB = (await call('POST', '/admin/couples', { name: 'Πληρ. Ζεύγος Β', email: 'pay-b@example.gr', weddingDate: athensDay(60) }, OWN)).d.couple;
@@ -3921,21 +3921,21 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     // -- dues appear by themselves --
     let c = await cardOf(KB);
     let due = c.payments.dues[0];
-    ok(c.payments.dues.length === 1 && due.what === 'plan' && due.amount === 1900 && !due.plusVat && due.due === athensDay(7) && due.state === 'due' && due.left === 1900 && due.src === 'couple',
-      'dues: a new direct customer is expected to pay 19 € (ΦΠΑ included), late a week after', c.payments);
-    ok(c.payments.state === 'due' && c.payments.owed === 1900 && (await rowOf(KB)).pay.state === 'due' && !(await rowOf(KB)).flags.includes('pay_overdue'), 'dues: the sheet says «αναμένεται», not late yet');
+    ok(c.payments.dues.length === 1 && due.what === 'plan' && due.amount === 2500 && !due.plusVat && due.due === athensDay(7) && due.state === 'due' && due.left === 2500 && due.src === 'couple',
+      'dues: a new direct customer is expected to pay 25 € (ΦΠΑ included), late a week after', c.payments);
+    ok(c.payments.state === 'due' && c.payments.owed === 2500 && (await rowOf(KB)).pay.state === 'due' && !(await rowOf(KB)).flags.includes('pay_overdue'), 'dues: the sheet says «αναμένεται», not late yet');
     ok((await cardOf(KG)).payments.dues[0].kind === 'baptism', 'dues: a baptism bought is a baptism expected');
     c = await cardOf(KA);
     const dueA = c.payments.dues[0];
-    ok(c.payments.dues.length === 1 && dueA.what === 'season' && dueA.amount === 12900 && dueA.plusVat && dueA.from === '2025-04-01' && dueA.to === '2025-10-31' && dueA.due === athensDay(7) && dueA.src === 'venue',
-      'dues: a venue made by hand with a season is expected to pay 129 € + ΦΠΑ for it', c.payments);
+    ok(c.payments.dues.length === 1 && dueA.what === 'season' && dueA.amount === 34900 && dueA.plusVat && dueA.from === '2025-04-01' && dueA.to === '2025-10-31' && dueA.due === athensDay(7) && dueA.src === 'venue',
+      'dues: a venue made by hand with a season is expected to pay 349 € + ΦΠΑ for it', c.payments);
     const VN = (await call('POST', '/admin/venues', { name: 'Πληρ. Κτήμα χωρίς σεζόν' }, OWN)).d;
     ok(!(await cardOf('v:' + VN.id)).payments.dues.length && (await cardOf('v:' + VN.id)).payments.state === null && !m.has('ledger:v:' + VN.id),
       'dues: a venue with no season dates owes nothing yet (no ledger row at all)');
 
     // -- the owner only, on every new route; contacts and signups have no payments --
-    const PR = [['POST', 'pay', { amount: 1900, date: today, method: 'bank', what: 'plan' }], ['PATCH', 'pay/x', { receipt: '1' }], ['POST', 'pay/x/refund', { amount: 1, date: today, method: 'bank', reason: 'x' }],
-      ['POST', 'pay/x/cancel', { reason: 'x' }], ['POST', 'dues', { what: 'plan', amount: 1900, due: today }], ['POST', 'dues/x/waive', { reason: 'x' }], ['POST', 'dues/x/unwaive', {}]];
+    const PR = [['POST', 'pay', { amount: 2500, date: today, method: 'bank', what: 'plan' }], ['PATCH', 'pay/x', { receipt: '1' }], ['POST', 'pay/x/refund', { amount: 1, date: today, method: 'bank', reason: 'x' }],
+      ['POST', 'pay/x/cancel', { reason: 'x' }], ['POST', 'dues', { what: 'plan', amount: 2500, due: today }], ['POST', 'dues/x/waive', { reason: 'x' }], ['POST', 'dues/x/unwaive', {}]];
     for (const [h, what] of [[{}, 'no key'], [{ 'X-Owner-Key': 'wrong' }, 'a wrong key'], [{ 'X-Venue-Key': VA.key }, "a venue's key"], [{ 'X-Owner-Key': VA.key }, "a venue's key as the owner's"]]) {
       const st = [];
       for (const [mth, sub, body] of PR) st.push((await on(mth, KB, sub, body, h)).status);
@@ -3944,14 +3944,14 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     }
     ok(nPays() === 0 && raw('ledger:' + KB).dues.length === 1, 'payments: … and none of those refused calls wrote anything');
     const LD = (await call('POST', '/admin/leads', { name: 'Πληρ. Επαφή', source: 'phone', type: 'couple' }, OWN)).d.key;
-    ok((await on('POST', LD, 'pay', { amount: 1900, date: today, method: 'bank', what: 'plan' })).d.error === 'no_payments' && !m.has('ledger:' + LD),
+    ok((await on('POST', LD, 'pay', { amount: 2500, date: today, method: 'bank', what: 'plan' })).d.error === 'no_payments' && !m.has('ledger:' + LD),
       'payments: a contact has no payments — «Έγινε πελάτης» comes first');
-    ok((await on('POST', 'c:nope', 'pay', { amount: 1900, date: today, method: 'bank', what: 'plan' })).status === 404, 'payments: an unknown customer takes none');
+    ok((await on('POST', 'c:nope', 'pay', { amount: 2500, date: today, method: 'bank', what: 'plan' })).status === 404, 'payments: an unknown customer takes none');
 
     // -- every field is checked --
-    const P = (o = {}) => ({ amount: 1900, date: '2025-03-28', method: 'iris', what: 'plan', ...o });
-    const bad = [[{ amount: 0 }, 'bad_amount', 'zero'], [{ amount: -1900 }, 'bad_amount', 'negative'], [{ amount: 19.5 }, 'bad_amount', 'not whole cents'],
-      [{ amount: '1900' }, 'bad_amount', 'text'], [{ amount: 10000001 }, 'bad_amount', 'over 100.000 €'], [{ vat: 2000 }, 'bad_vat', 'ΦΠΑ above the amount'],
+    const P = (o = {}) => ({ amount: 2500, date: '2025-03-28', method: 'iris', what: 'plan', ...o });
+    const bad = [[{ amount: 0 }, 'bad_amount', 'zero'], [{ amount: -2500 }, 'bad_amount', 'negative'], [{ amount: 25.5 }, 'bad_amount', 'not whole cents'],
+      [{ amount: '2500' }, 'bad_amount', 'text'], [{ amount: 10000001 }, 'bad_amount', 'over 100.000 €'], [{ vat: 2501 }, 'bad_vat', 'ΦΠΑ above the amount'],
       [{ vat: -1 }, 'bad_vat', 'negative ΦΠΑ'], [{ date: athensDay(1) }, 'bad_date', 'tomorrow'], [{ date: '2019-12-31' }, 'bad_date', 'before 2020'],
       [{ date: '2025-02-30' }, 'bad_date', 'a day that does not exist'], [{ method: 'bitcoin' }, 'bad_method', 'an unknown method'],
       [{ what: 'gift' }, 'bad_what', 'an unknown purpose'], [{ what: 'other' }, 'bad_about', '«άλλο» without saying what']];
@@ -3960,20 +3960,20 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     ok((await on('POST', KB, 'pay', P({ dueId: 'nope' }))).status === 404, 'payments: against a due that does not exist: refused');
 
     // -- the worked example, entered --
-    let x = await on('POST', KA, 'pay', { amount: 15996, vat: 3096, date: '2025-03-10', method: 'bank', dueId: dueA.id, receipt: 'Α-17', note: 'από τον λογαριασμό της εταιρείας' });
-    ok(x.status === 200 && x.d.payments.state === 'paid' && x.d.payments.owed === 0 && x.d.payments.dues[0].state === 'paid' && x.d.payments.dues[0].paid === 12900,
-      'paid: 159,96 € with 30,96 € ΦΠΑ pays the 129 € + ΦΠΑ season exactly', x.d.payments);
+    let x = await on('POST', KA, 'pay', { amount: 43276, vat: 8376, date: '2025-03-10', method: 'bank', dueId: dueA.id, receipt: 'Α-17', note: 'από τον λογαριασμό της εταιρείας' });
+    ok(x.status === 200 && x.d.payments.state === 'paid' && x.d.payments.owed === 0 && x.d.payments.dues[0].state === 'paid' && x.d.payments.dues[0].paid === 34900,
+      'paid: 432,76 € with 83,76 € ΦΠΑ pays the 349 € + ΦΠΑ season exactly', x.d.payments);
     const p1 = x.d.payments.pays[0];
     ok(p1.what === 'season' && p1.from === '2025-04-01' && p1.to === '2025-10-31' && p1.dueId === dueA.id && p1.receipt === 'Α-17' && p1.refunded === 0, 'paid: the payment carries what its due was for', p1);
     x = await on('POST', KB, 'pay', P({ dueId: due.id }));
-    ok(x.d.payments.state === 'paid' && (await rowOf(KB)).pay.state === 'paid' && (await rowOf(KB)).pay.owed === 0, 'paid: 19 € pays a couple\'s plan; the sheet says «πληρωμένος»');
+    ok(x.d.payments.state === 'paid' && (await rowOf(KB)).pay.state === 'paid' && (await rowOf(KB)).pay.owed === 0, 'paid: 25 € pays a couple\'s plan; the sheet says «πληρωμένος»');
     const p2 = x.d.payments.pays[0];
-    ok((await on('POST', KB, 'pay/' + p2.id + '/refund', { amount: 1900, date: '2025-04-02', method: 'bank' })).d.error === 'bad_reason', 'refund: needs a reason');
-    ok((await on('POST', KB, 'pay/' + p2.id + '/refund', { amount: 1901, date: '2025-04-02', method: 'bank', reason: 'υπαναχώρηση' })).d.error === 'more_than_paid', 'refund: never more than was paid');
-    ok((await on('POST', KB, 'pay/' + p2.id + '/refund', { amount: 1900, date: '2025-03-27', method: 'bank', reason: 'υπαναχώρηση' })).d.error === 'bad_date', 'refund: never before the payment');
-    ok((await on('POST', KB, 'pay/nope/refund', { amount: 1900, date: '2025-04-02', method: 'bank', reason: 'υπαναχώρηση' })).status === 404, 'refund: of a payment that does not exist: refused');
-    x = await on('POST', KB, 'pay/' + p2.id + '/refund', { amount: 1900, date: '2025-04-02', method: 'bank', reason: 'υπαναχώρηση εντός 14 ημερών' });
-    ok(x.status === 200 && x.d.payments.pays.find(p => p.id === p2.id).refunded === 1900
+    ok((await on('POST', KB, 'pay/' + p2.id + '/refund', { amount: 2500, date: '2025-04-02', method: 'bank' })).d.error === 'bad_reason', 'refund: needs a reason');
+    ok((await on('POST', KB, 'pay/' + p2.id + '/refund', { amount: 2501, date: '2025-04-02', method: 'bank', reason: 'υπαναχώρηση' })).d.error === 'more_than_paid', 'refund: never more than was paid');
+    ok((await on('POST', KB, 'pay/' + p2.id + '/refund', { amount: 2500, date: '2025-03-27', method: 'bank', reason: 'υπαναχώρηση' })).d.error === 'bad_date', 'refund: never before the payment');
+    ok((await on('POST', KB, 'pay/nope/refund', { amount: 2500, date: '2025-04-02', method: 'bank', reason: 'υπαναχώρηση' })).status === 404, 'refund: of a payment that does not exist: refused');
+    x = await on('POST', KB, 'pay/' + p2.id + '/refund', { amount: 2500, date: '2025-04-02', method: 'bank', reason: 'υπαναχώρηση εντός 14 ημερών' });
+    ok(x.status === 200 && x.d.payments.pays.find(p => p.id === p2.id).refunded === 2500
       && x.d.payments.pays.some(p => p.refundOf === p2.id && p.reason === 'υπαναχώρηση εντός 14 ημερών' && p.dueId === due.id),
       'refund: recorded against the payment', x.d.payments);
     ok(x.d.payments.dues[0].state === 'refunded' && x.d.payments.owed === 0 && x.d.payments.state === null,
@@ -3992,16 +3992,16 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     ok((await on('POST', KB, 'pay', P({ dueId: dB.id, date: today }))).d.error === 'waived', 'waive: nothing is paid against a waived due');
 
     const dG = (await cardOf(KG)).payments.dues[0];
-    x = await on('POST', KG, 'pay', { amount: 1900, date: '2025-11-02', method: 'cash', dueId: dG.id });
-    ok(x.d.payments.state === 'paid', 'twice: the first 19 € pays the plan');
-    x = await on('POST', KG, 'pay', { amount: 1900, date: '2025-11-03', method: 'cash', dueId: dG.id });
-    ok(x.status === 409 && x.d.error === 'already_paid' && x.d.paid === 1900 && nPays() === 4, 'twice: the same plan again is refused until he confirms', x.d);
-    x = await on('POST', KG, 'pay', { amount: 1900, date: '2025-11-03', method: 'cash', dueId: dG.id, force: true });
+    x = await on('POST', KG, 'pay', { amount: 2500, date: '2025-11-02', method: 'cash', dueId: dG.id });
+    ok(x.d.payments.state === 'paid', 'twice: the first 25 € pays the plan');
+    x = await on('POST', KG, 'pay', { amount: 2500, date: '2025-11-03', method: 'cash', dueId: dG.id });
+    ok(x.status === 409 && x.d.error === 'already_paid' && x.d.paid === 2500 && nPays() === 4, 'twice: the same plan again is refused until he confirms', x.d);
+    x = await on('POST', KG, 'pay', { amount: 2500, date: '2025-11-03', method: 'cash', dueId: dG.id, force: true });
     const p4 = x.d.payments.pays[0];
-    ok(x.status === 200 && x.d.payments.dues[0].paid === 3800 && x.d.payments.dues[0].left === 0, 'twice: … and recorded when he does (paid 38 € for 19 €)', x.d.payments);
+    ok(x.status === 200 && x.d.payments.dues[0].paid === 5000 && x.d.payments.dues[0].left === 0, 'twice: … and recorded when he does (paid 50 € for 25 €)', x.d.payments);
     ok((await on('POST', KG, 'pay/' + p4.id + '/cancel', {})).d.error === 'bad_reason', 'cancel: needs a reason');
     x = await on('POST', KG, 'pay/' + p4.id + '/cancel', { reason: 'διπλή καταχώρηση' });
-    ok(x.d.payments.dues[0].paid === 1900 && x.d.payments.pays.find(p => p.id === p4.id).cancelled.reason === 'διπλή καταχώρηση' && nPays() === 5,
+    ok(x.d.payments.dues[0].paid === 2500 && x.d.payments.pays.find(p => p.id === p4.id).cancelled.reason === 'διπλή καταχώρηση' && nPays() === 5,
       'cancel: the second one is cancelled, never deleted, and counts nowhere', x.d.payments);
     ok((await on('POST', KG, 'pay/' + p4.id + '/cancel', { reason: 'ξανά' })).d.error === 'already_cancelled', 'cancel: once');
     ok((await on('POST', KG, 'pay/' + p4.id + '/refund', { amount: 100, date: today, method: 'cash', reason: 'x' })).d.error === 'cancelled', 'refund: nothing is refunded from a cancelled payment');
@@ -4014,13 +4014,13 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     let L = await list();
     const T = L.totals, B = (o, k) => o[k] || {};
     const same = (b, e) => Object.entries(e).every(([k, v]) => b[k] === v);
-    ok(same(B(T.months, '2025-03'), { in: 17896, out: 0, net: 17896, vat: 3096, count: 2 }), 'totals: March 2025', T.months['2025-03']);
-    ok(same(B(T.months, '2025-04'), { in: 0, out: 1900, net: -1900, vat: 0, count: 1 }), 'totals: April 2025 — the refund', T.months['2025-04']);
-    ok(same(B(T.months, '2025-11'), { in: 1900, out: 0, net: 1900, vat: 0, count: 1 }), 'totals: November 2025 — the cancelled payment counts nowhere', T.months['2025-11']);
+    ok(same(B(T.months, '2025-03'), { in: 45776, out: 0, net: 45776, vat: 8376, count: 2 }), 'totals: March 2025', T.months['2025-03']);
+    ok(same(B(T.months, '2025-04'), { in: 0, out: 2500, net: -2500, vat: 0, count: 1 }), 'totals: April 2025 — the refund', T.months['2025-04']);
+    ok(same(B(T.months, '2025-11'), { in: 2500, out: 0, net: 2500, vat: 0, count: 1 }), 'totals: November 2025 — the cancelled payment counts nowhere', T.months['2025-11']);
     ok(same(B(T.months, '2026-01'), { in: 5000, net: 5000, vat: 968, count: 1 }), 'totals: January 2026', T.months['2026-01']);
     ok(Object.keys(T.months).length === 4, 'totals: no other month', Object.keys(T.months));
-    ok(same(B(T.years, '2025'), { in: 19796, out: 1900, net: 17896, vat: 3096, count: 4 }) && same(B(T.years, '2026'), { in: 5000, net: 5000, vat: 968, count: 1 }), 'totals: per year', T.years);
-    ok(same(B(T.seasons, '2025'), { in: 15996, net: 15996, vat: 3096, count: 1 }) && Object.keys(T.seasons).length === 1, 'totals: per season — only season payments', T.seasons);
+    ok(same(B(T.years, '2025'), { in: 48276, out: 2500, net: 45776, vat: 8376, count: 4 }) && same(B(T.years, '2026'), { in: 5000, net: 5000, vat: 968, count: 1 }), 'totals: per year', T.years);
+    ok(same(B(T.seasons, '2025'), { in: 43276, net: 43276, vat: 8376, count: 1 }) && Object.keys(T.seasons).length === 1, 'totals: per season — only season payments', T.seasons);
     ok(L.ytd.year === today.slice(0, 4) && L.ytd.net === ((T.years[today.slice(0, 4)] || {}).net || 0), 'totals: the year so far is this year\'s net', L.ytd);
     ok(L.payments.length === 6 && L.payments[0].date === '2026-01-05' && L.payments.every(p => p.name && p.type && !p.gone)
       && L.payments.find(p => p.id === p1.id).type === 'venue' && L.payments.find(p => p.id === p4.id).type === 'parents',
@@ -4029,23 +4029,23 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     // -- the receipt number comes later; the amount never changes --
     x = await on('PATCH', KG, 'pay/' + (await cardOf(KG)).payments.pays.find(p => !p.cancelled).id, { receipt: '  ΑΠΥ-203  ', amount: 1, note: 'πλήρωσε η γιαγιά' });
     const pg = x.d.payments.pays.find(p => !p.cancelled);
-    ok(pg.receipt === 'ΑΠΥ-203' && pg.amount === 1900 && pg.note === 'πλήρωσε η γιαγιά', 'receipt: added later; an amount in the same call is ignored', pg);
+    ok(pg.receipt === 'ΑΠΥ-203' && pg.amount === 2500 && pg.note === 'πλήρωσε η γιαγιά', 'receipt: added later; an amount in the same call is ignored', pg);
     ok((await on('PATCH', KG, 'pay/' + pg.id, { amount: 1 })).status === 400, 'receipt: a call that only tries to change the amount is refused');
 
     // -- late: «Θέλουν εμένα» --
     const CL = (await call('POST', '/admin/couples', { name: 'Πληρ. Αργοπορημένοι', weddingDate: athensDay(40) }, OWN)).d.couple, KL = 'c:' + CL.id;
     patchRaw('ledger:' + KL, o => { o.dues[0].due = athensDay(-1); });
     let row = await rowOf(KL);
-    ok(row.pay.state === 'late' && row.pay.owed === 1900 && row.flags.includes('pay_overdue'), 'late: a due a day past its date is «καθυστερεί» and joins «Θέλουν εμένα»', row);
+    ok(row.pay.state === 'late' && row.pay.owed === 2500 && row.flags.includes('pay_overdue'), 'late: a due a day past its date is «καθυστερεί» and joins «Θέλουν εμένα»', row);
     ok((await cardOf(KL)).customer.flags.includes('pay_overdue'), 'late: the card agrees with the row');
     x = await on('POST', KL, 'pay', { amount: 1000, date: today, method: 'bank', dueId: raw('ledger:' + KL).dues[0].id });
-    ok(x.d.payments.state === 'late' && x.d.payments.owed === 900 && x.d.payments.dues[0].paid === 1000, 'partial: 10 € of 19 € leaves 9 € owed, still late', x.d.payments);
-    x = await on('POST', KL, 'pay', { amount: 900, date: today, method: 'bank', dueId: raw('ledger:' + KL).dues[0].id });
+    ok(x.d.payments.state === 'late' && x.d.payments.owed === 1500 && x.d.payments.dues[0].paid === 1000, 'partial: 10 € of 25 € leaves 15 € owed, still late', x.d.payments);
+    x = await on('POST', KL, 'pay', { amount: 1500, date: today, method: 'bank', dueId: raw('ledger:' + KL).dues[0].id });
     row = await rowOf(KL);
     ok(x.d.payments.state === 'paid' && row.pay.state === 'paid' && !row.flags.includes('pay_overdue'), 'partial: the rest pays it, and the flag goes');
 
     // -- a due he adds by hand --
-    const DB = { what: 'season', amount: 12900, plusVat: true, due: athensDay(30), from: '2027-04-01', to: '2027-10-31' };
+    const DB = { what: 'season', amount: 34900, plusVat: true, due: athensDay(30), from: '2027-04-01', to: '2027-10-31' };
     for (const [o, err] of [[{ amount: 0 }, 'bad_amount'], [{ what: 'x' }, 'bad_what'], [{ due: '2027-13-01' }, 'bad_date'], [{ from: '2027-11-01' }, 'bad_season'], [{ what: 'other' }, 'bad_about']])
       ok((await on('POST', KA, 'dues', { ...DB, ...o })).d.error === err, 'manual due: refused — ' + err);
     x = await on('POST', KA, 'dues', DB);
@@ -4064,21 +4064,21 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     let v = raw('venue:' + VR.id);
     c = await cardOf(KR);
     const dR = c.payments.dues.find(d => d.src === 'renew');
-    ok(v.license.invoiceDue && dR && dR.from === '2026-04-01' && dR.to === '2026-10-31' && dR.due === '2026-05-01' && dR.amount === 12900 && dR.plusVat,
-      'renewal: an automatic renewal is expected, 129 € + ΦΠΑ, late a month into the new season', c.payments.dues);
-    x = await on('POST', KR, 'pay', { amount: 12900, date: today, method: 'bank', dueId: dR.id });
+    ok(v.license.invoiceDue && dR && dR.from === '2026-04-01' && dR.to === '2026-10-31' && dR.due === '2026-05-01' && dR.amount === 34900 && dR.plusVat,
+      'renewal: an automatic renewal is expected, 349 € + ΦΠΑ, late a month into the new season', c.payments.dues);
+    x = await on('POST', KR, 'pay', { amount: 34900, date: today, method: 'bank', dueId: dR.id });
     ok(x.d.payments.dues.find(d => d.id === dR.id).state === 'paid' && raw('venue:' + VR.id).license.invoiceDue === false, 'renewal: paying the season clears «invoice due»');
     // a renewal marked «invoice due» before payments existed: shown, and stored when paid
     const VI = (await call('POST', '/admin/venues', { name: 'Πληρ. Παλιό τιμολόγιο' }, OWN)).d, KI = 'v:' + VI.id;
     patchRaw('venue:' + VI.id, o => { o.license = { ...o.license, seasonStart: athensDay(-40), seasonEnd: athensDay(320), invoiceDue: true }; });
     c = await cardOf(KI);
     const dI = c.payments.dues[0];
-    ok(c.payments.dues.length === 1 && dI.derived && dI.src === 'invoice' && dI.due === athensDay(-10) && dI.state === 'late' && c.customer.flags.includes('pay_overdue') && !m.has('ledger:' + KI),
+    ok(c.payments.dues.length === 1 && dI.derived && dI.amount === 34900 && dI.plusVat && dI.src === 'invoice' && dI.due === athensDay(-10) && dI.state === 'late' && c.customer.flags.includes('pay_overdue') && !m.has('ledger:' + KI),
       'invoice due: an old «invoice due» shows as a season owed (and late), without writing anything', c.payments);
     x = await on('POST', KI, 'pay', { amount: 10000, date: today, method: 'iris', dueId: dI.id });
-    ok(raw('ledger:' + KI).dues.length === 1 && raw('ledger:' + KI).dues[0].id === dI.id && x.d.payments.owed === 2900 && raw('venue:' + VI.id).license.invoiceDue === true,
+    ok(raw('ledger:' + KI).dues.length === 1 && raw('ledger:' + KI).dues[0].id === dI.id && x.d.payments.owed === 24900 && raw('venue:' + VI.id).license.invoiceDue === true,
       'invoice due: a part payment stores it; «invoice due» stays until it is paid', x.d.payments);
-    await on('POST', KI, 'pay', { amount: 2900, date: today, method: 'iris', dueId: dI.id });
+    await on('POST', KI, 'pay', { amount: 24900, date: today, method: 'iris', dueId: dI.id });
     ok(raw('venue:' + VI.id).license.invoiceDue === false && (await cardOf(KI)).payments.dues.length === 1, 'invoice due: paid in full, cleared, and not shown twice');
 
     // -- the free year: «δωρεάν έτος», then expected, then the season bought --
@@ -4090,13 +4090,13 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     freeTo(20);
     c = await cardOf(KF);
     const dT = c.payments.dues[0];
-    ok(c.payments.state === 'due' && dT.prospect && dT.from === athensDay(21) && dT.amount === 12900 && !m.has('ledger:' + KF), 'free year: 60 days before its end the next season is expected', c.payments);
+    ok(c.payments.state === 'due' && dT.prospect && dT.from === athensDay(21) && dT.amount === 34900 && !m.has('ledger:' + KF), 'free year: 60 days before its end the next season is expected', c.payments);
     patchRaw('venue:' + VF.id, o => { o.license.seasonEnd = athensDay(-2); o.trial.seasonEnd = athensDay(-2); });
     ok((await cardOf(KF)).payments.state === null && !(await cardOf(KF)).payments.dues.length, 'free year: one that ended unconverted expects nothing (the stage says «Ολοκληρώθηκε»)');
     x = await call('PATCH', '/admin/venues/' + VF.id, { trial: false, license: { type: 'seasonal', seasonStart: athensDay(-1), seasonEnd: athensDay(363) } }, OWN);
     c = await cardOf(KF);
     const dC = c.payments.dues.find(d => d.src === 'convert');
-    ok(x.status === 200 && dC && dC.from === athensDay(-1) && dC.due === athensDay(7) && dC.state === 'due', 'free year: turned into a season, the season is expected (a week at least)', c.payments.dues);
+    ok(x.status === 200 && dC && dC.amount === 34900 && dC.plusVat && dC.from === athensDay(-1) && dC.due === athensDay(7) && dC.state === 'due', 'free year: turned into a season, the season is expected (a week at least)', c.payments.dues);
     await call('PATCH', '/admin/venues/' + VF.id, { trial: false }, OWN);
     ok(raw('ledger:' + KF).dues.filter(d => d.src === 'convert').length === 1, 'free year: converting twice expects it once');
 
@@ -4117,7 +4117,7 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     ok(lg.erasedAt && lg.name === 'Πληρ. Ζεύγος Γ' && !lg.dues.length && lg.pays.length === 2 && lg.pays.every(p => p.note === '') && lg.pays.some(p => p.receipt === 'ΑΠΥ-203')
       && lg.pays.some(p => p.cancelled && p.cancelled.reason === 'διπλή καταχώρηση'), 'erasure: the ledger keeps name, amounts, receipts and reasons; notes and dues go', lg);
     L = await list();
-    ok(L.payments.filter(p => p.key === KG).every(p => p.gone && p.name === 'Πληρ. Ζεύγος Γ' && p.type === 'parents') && L.totals.years['2025'].net === 17896,
+    ok(L.payments.filter(p => p.key === KG).every(p => p.gone && p.name === 'Πληρ. Ζεύγος Γ' && p.type === 'parents') && L.totals.years['2025'].net === 45776,
       'erasure: the payments screen still lists them, and the totals do not move');
     ok((await call('DELETE', '/admin/venues/' + VN.id, undefined, OWN)).status === 200 && !m.has('ledger:v:' + VN.id), 'erasure: a customer who never paid leaves no ledger');
     const CE = (await call('POST', '/admin/couples', { name: 'Πληρ. Χωρίς πληρωμή', weddingDate: athensDay(40) }, OWN)).d.couple;
@@ -4126,6 +4126,81 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     // -- the sheet, the cards and the payments screen carry no key, link or plan id --
     const all = JSON.stringify(await list()) + JSON.stringify(await cardOf(KA)) + JSON.stringify(await cardOf(KB));
     ok(!all.includes(VA.key) && !/"(planId|editKey|readKey|venueKey|token|claimToken)"/.test(all), 'privacy: no key, token or plan id on the payments screen or the card');
+
+    // -- the prices: 25 € with ΦΠΑ and 349 € + ΦΠΑ, for every customer who buys. The ledger was once written with numbers
+    //    the site had left a month before, so the last part compares the pages with what a new due really says --
+    {
+      const couple = async o => 'c:' + (await call('POST', '/admin/couples', { name: 'Τιμή Ζεύγος', weddingDate: athensDay(60), ...o }, OWN)).d.couple.id;
+      const venue = async o => 'v:' + (await call('POST', '/admin/venues', { name: 'Τιμή Κτήμα', license: { type: 'seasonal', seasonStart: athensDay(0), seasonEnd: athensDay(200) }, ...o }, OWN)).d.id;
+      const first = async key => (await cardOf(key)).payments.dues[0];
+      const pay = (key, d, o) => on('POST', key, 'pay', { date: today, method: 'bank', dueId: d.id, ...o });
+      for (const [o, what] of [[{}, 'a wedding'], [{ kind: 'baptism' }, 'a baptism'], [{ kind: 'party' }, 'a party'], [{ kind: 'party', custType: 'company' }, 'a company dinner']]) {
+        const d = await first(await couple(o));
+        ok(d.what === 'plan' && d.amount === 2500 && !d.plusVat && d.left === 2500, 'price: ' + what + ' bought directly is expected at 25 €, ΦΠΑ included', d);
+      }
+      for (const [o, what] of [[{}, 'a venue season'], [{ custType: 'organiser' }, 'a γραφείο season']]) {
+        const d = await first(await venue(o));
+        ok(d.what === 'season' && d.amount === 34900 && d.plusVat && d.left === 34900, 'price: ' + what + ' is expected at 349 € + ΦΠΑ', d);
+      }
+
+      // to the cent, and what he types about ΦΠΑ
+      let k = await couple({}), d = await first(k);
+      let x = await pay(k, d, { amount: 2499 });
+      ok(x.d.payments.state === 'due' && x.d.payments.dues[0].left === 1, 'price: 24,99 € leaves one cent owed', x.d.payments);
+      x = await pay(k, d, { amount: 1 });
+      ok(x.d.payments.state === 'paid' && x.d.payments.dues[0].left === 0, 'price: … and that cent pays the plan', x.d.payments);
+      k = await venue({}); d = await first(k);
+      x = await pay(k, d, { amount: 43275, vat: 8376 });
+      ok(x.d.payments.state === 'due' && x.d.payments.dues[0].left === 1, 'price: 432,75 € with 83,76 € ΦΠΑ leaves one cent of the season owed', x.d.payments);
+      k = await venue({}); d = await first(k);
+      x = await pay(k, d, { amount: 34900 });
+      ok(x.d.payments.state === 'paid' && x.d.payments.dues[0].paid === 34900, 'price: 349 € with no ΦΠΑ typed pays the season (only the amount is needed)', x.d.payments);
+
+      // the old prices no longer pay anything new
+      k = await couple({}); d = await first(k);
+      x = await pay(k, d, { amount: 1900 });
+      ok(x.d.payments.state === 'due' && x.d.payments.owed === 600, 'price: the old 19 € against a new plan leaves 6 € owed', x.d.payments);
+      k = await venue({}); d = await first(k);
+      x = await pay(k, d, { amount: 15996, vat: 3096 });
+      ok(x.d.payments.state === 'due' && x.d.payments.owed === 22000, 'price: the old 129 € + ΦΠΑ against a new season leaves 220 € owed', x.d.payments);
+
+      // what stays refused
+      k = await venue({}); d = await first(k);
+      await pay(k, d, { amount: 43276, vat: 8376 });
+      x = await pay(k, d, { amount: 43276, vat: 8376 });
+      ok(x.status === 409 && x.d.error === 'already_paid' && x.d.paid === 34900 && raw('ledger:' + k).pays.length === 1, 'price: a paid season paid again is refused until he confirms', x.d);
+      x = await on('PATCH', k, 'dues/' + d.id, { amount: 1 });
+      ok(x.status >= 400 && (await first(k)).amount === 34900, 'price: no route re-prices a due', x.status);
+
+      // a due already written keeps its number: a new price reaches new dues only, and what was paid stays as it was
+      k = await couple({}); d = await first(k);
+      patchRaw('ledger:' + k, o => { o.dues[0].amount = 1900; });
+      c = await cardOf(k);
+      ok(c.payments.dues[0].amount === 1900 && c.payments.owed === 1900, 'price: an unpaid plan written at 19 € still says 19 €', c.payments);
+      x = await pay(k, d, { amount: 1900 });
+      ok(x.d.payments.state === 'paid' && x.d.payments.dues[0].amount === 1900 && x.d.payments.pays[0].amount === 1900, 'price: … and 19 € pays it', x.d.payments);
+      k = await venue({ email: 'price-old@example.gr', license: { type: 'seasonal', seasonStart: '2025-04-01', seasonEnd: '2025-10-31' } }); d = await first(k);
+      patchRaw('ledger:' + k, o => { o.dues[0].amount = 12900; });
+      x = await pay(k, d, { amount: 15996, vat: 3096 });
+      ok(x.d.payments.state === 'paid' && x.d.payments.dues[0].paid === 12900, 'price: a season written at 129 € + ΦΠΑ is paid by 159,96 € with 30,96 € ΦΠΑ', x.d.payments);
+      patchRaw('venue:' + k.slice(2), o => { o.renewReminders = { '2025-10-31:7': Date.now() }; });
+      await mod.sweep(env);
+      const dues = (await cardOf(k)).payments.dues, old = dues.find(e => e.from === '2025-04-01'), next = dues.find(e => e.src === 'renew');
+      ok(old.amount === 12900 && old.state === 'paid' && next && next.from === '2026-04-01' && next.amount === 34900 && next.plusVat, 'price: its next season is expected at 349 € + ΦΠΑ, the paid one stays at 129 €', dues);
+
+      // what a new due says is what the pages say: every euro figure on a public page is one of the two prices
+      const fs = await import('node:fs'), read = f => fs.readFileSync(path.join(root, f), 'utf8');
+      const P = (await first(await couple({}))).amount / 100, S = (await first(await venue({}))).amount / 100;
+      for (const [f, both] of [['index.html', true], ['terms.html', true], ['plano-trapezion-gamou.html', false], ['plano-trapezion-vaptisis.html', false], ['plano-trapezion-giortis.html', false]]) {
+        const got = [...read(f).matchAll(/(\d[\d.,]*) ?(?:€|&euro;)|(?:€|&euro;) ?(\d[\d.,]*)/g)].map(e => e[1] || e[2]);
+        ok(got.includes(String(P)) && (!both || got.includes(String(S))) && got.every(e => ['0', String(P), String(S)].includes(e)), 'price: ' + f + ' names only what a new due says', got);
+      }
+      for (const [f, says] of [['terms.html', S + ' € τον χρόνο, πλέον ΦΠΑ'], ['terms.html', S + ' € per year, plus VAT'], ['terms.html', P + ' € εφάπαξ, με ΦΠΑ'], ['terms.html', P + ' € one-off, VAT included'],
+        ['index.html', S + ' € πλέον ΦΠΑ'], ['index.html', P + ' € εφάπαξ με ΦΠΑ'], ['index.html', '"price":"' + S + '","priceCurrency":"EUR","valueAddedTaxIncluded":false'], ['index.html', '"price":"' + P + '","priceCurrency":"EUR","valueAddedTaxIncluded":true'],
+        ['plano-trapezion-gamou.html', P + ' € εφάπαξ με ΦΠΑ'], ['plano-trapezion-vaptisis.html', P + ' € εφάπαξ με ΦΠΑ'], ['plano-trapezion-giortis.html', P + ' € εφάπαξ με ΦΠΑ'],
+        ['admin.html', 'κοστίζει ' + P + ' € (με ΦΠΑ)'], ['admin.html', '(' + P + ' € με ΦΠΑ)'], ['admin.html', 'μετά ' + S + ' € + ΦΠΑ τον χρόνο'], ['admin.html', 'placeholder="π.χ. ' + P + ',00"']])
+        ok(read(f).includes(says), 'price: ' + f + ' says «' + says + '»');
+    }
   } finally {
     env.MAIL = keepMail; if (!keepMail) delete env.MAIL;
   }
@@ -4180,7 +4255,7 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     ok(!item(await T(), 'late:' + KL), 'today: a payment expected but not late is not on the list');
     patchRaw('ledger:' + KL, o => { o.dues[0].due = athensDay(-1); });
     it = item(await T(), 'late:' + KL);
-    ok(it && it.amount === 1900 && it.text === 'Σήμ. Ζεύγος Πληρωμή — καθυστερεί πληρωμή 19,00 € από ' + (+athensDay(-1).slice(8)) + '/' + (+athensDay(-1).slice(5, 7)) && it.done === 'hide',
+    ok(it && it.amount === 2500 && it.text === 'Σήμ. Ζεύγος Πληρωμή — καθυστερεί πληρωμή 25,00 € από ' + (+athensDay(-1).slice(8)) + '/' + (+athensDay(-1).slice(5, 7)) && it.done === 'hide',
       'today: a late payment, with how much and since when', it);
     L = (await hide('late:' + KL, 'done')).d.today;
     ok(!item(L, 'late:' + KL) && later(L, 'late:' + KL).hidden.how === 'done' && later(L, 'late:' + KL).hidden.until === athensDay(7) && L.count === items(L).length,
@@ -4188,11 +4263,11 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     patchRaw('meta:today', o => { o.hide['late:' + KL].until = today; });
     ok(item(await T(), 'late:' + KL), 'today: … and a week later, still unpaid, it is back');
     const dueId = raw('ledger:' + KL).dues[0].id;
-    let x = await on('POST', KL, 'pay', { amount: 1900, date: today, method: 'iris', dueId });
+    let x = await on('POST', KL, 'pay', { amount: 2500, date: today, method: 'iris', dueId });
     const payId = x.d.payments.pays[0].id;
     L = await T();
     it = item(L, 'receipt:' + KL + ':' + payId);
-    ok(x.status === 200 && !item(L, 'late:' + KL) && it && it.group === 'receipt' && it.text === 'Σήμ. Ζεύγος Πληρωμή — 19,00 € στις ' + (+today.slice(8)) + '/' + (+today.slice(5, 7)) + ', χωρίς απόδειξη',
+    ok(x.status === 200 && !item(L, 'late:' + KL) && it && it.group === 'receipt' && it.text === 'Σήμ. Ζεύγος Πληρωμή — 25,00 € στις ' + (+today.slice(8)) + '/' + (+today.slice(5, 7)) + ', χωρίς απόδειξη',
       'today: paid, the late payment goes and a receipt to issue takes its place', L);
     ok((await on('PATCH', KL, 'pay/' + payId, { receipt: 'ΑΠΥ-61' })).status === 200 && !item(await T(), 'receipt:' + KL + ':' + payId), 'today: the receipt number typed, it leaves the list');
     x = await on('POST', KL, 'pay', { amount: 500, date: today, method: 'cash', what: 'other', about: 'Επιπλέον' });

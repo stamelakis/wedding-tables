@@ -88,7 +88,7 @@ are *events of that venue*, not separate customers: the venue is your customer, 
 2. You answer (template), send the lab link → *Σε συζήτηση*, with a follow-up date.
 3. It signs up for the free year → *Ενεργοποίηση*. Setup link unopened after 3 days → on your morning list.
 4. It opens the link and builds its space → *Ενεργός*. No wedding after 14 days → on your list (a call helps).
-5. The free year ends in 60 days → *Ανανέωση*: you send the season offer; the expected 129 € + VAT appears.
+5. The free year ends in 60 days → *Ανανέωση*: you send the season offer; the expected 349 € + VAT appears.
 6. Payment arrives → you record it (3 taps), issue the receipt in Λογιστής, tick «paid season».
 7. Every later season: renewal reminder mails (automatic) → invoice due → paid → receipt. If it cancels →
    *Ολοκληρώθηκε* with the reason.
@@ -107,7 +107,7 @@ are *events of that venue*, not separate customers: the venue is your customer, 
 6. Day after the event: locked, keepsake mailed (automatic) → *Ολοκληρώθηκε*.
 7. A year later the plan is deleted (automatic). **The memory card stays** for 5 years from the last contact.
 8. They write again for their child's baptism → the sheet recognises the email or phone: "γάμος 6/2026,
-   Κτήμα …, πλάνο 19 €". The new event joins the same card and the 5 years start again.
+   Κτήμα …, πλάνο 25 €". The new event joins the same card and the 5 years start again.
 9. A withdrawal within 14 days: you record the refund against the payment, Λογιστής issues the credit note.
 
 ## 4. What we build, phase by phase
@@ -224,7 +224,7 @@ Each phase is one session (two at most), ends deployed and checked on your phone
   day and never on an empty day; the Hermes answer is checked with `sim_match.py` and its tests.
 
 ### Phase 7 — Online payment (later)
-Couples pay the 19 € online (card, IRIS, Apple / Google Pay) and get their plan with no step from you;
+Couples pay the 25 € online (card, IRIS, Apple / Google Pay) and get their plan with no step from you;
 venues pay their season through a payment link; each payment lands in the ledger by itself.
 **Not scheduled.** It needs: the company (or the accountant's answer on who sells until then), a payment
 provider chosen after research at that time (Viva Wallet, Stripe, IRIS through a bank: fees, payouts, myDATA
@@ -366,7 +366,7 @@ options (HANDOFF §8.6).
   cents (1 … 10,000,000); `vat` is what he typed, never computed. A due `{id, what (season|plan|extra|other), about, from,
   to, amount, plusVat, due, src, waived {reason, at}?}`; a payment `{id, amount, vat, date, method (bank|iris|card|cash|
   other), what, about, dueId?, receipt, note, at, refundOf?, reason?, cancelled {reason, at}?}`. Dues appear by
-  themselves (`addDue`, once per season / purchase): a couple made by hand (19 €) and a venue made with a season,
+  themselves (`addDue`, once per season / purchase): a couple made by hand (25 €) and a venue made with a season,
   late 7 days after creation (`DUE_NEW_DAYS`); an automatic renewal, late 30 days into the season (`DUE_RENEW_DAYS`);
   a free year turned into a season, late at max(day after the free year, today + 7). Two are derived, not stored
   (`derivedDues`): `inv-<seasonStart>` for an old `invoiceDue`, and `trial-<seasonEnd>` (a «prospect», never late)

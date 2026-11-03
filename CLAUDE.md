@@ -9,7 +9,7 @@ decisions a future session might undo by mistake. `STATUS.md` says where we are.
 ```bash
 node tools/build-planner.mjs            # regenerate the planner outputs
 node tools/build-planner.mjs --check    # must print "all planner outputs up to date"
-node tools/test-api.mjs                 # the whole suite (1459 checks today)
+node tools/test-api.mjs                 # the whole suite (1497 checks today)
 node tools/dev.mjs                      # local stack on :8080 — never `node server/server.mjs`
 node tools/dev-customers.mjs            # the same, seeded with one customer per «Θέλουν εμένα» flag and stage
 ```
@@ -162,6 +162,10 @@ build runs the full suite), restarts and health-checks; on failure it rolls back
 - **The «Για τον Λογιστή» file leaves refunds out and lists only payments with no receipt** (2026-10-22). Λογιστής issues
   a refund as a credit note against the receipt, not as a negative import; RID is `TAS-<payment id>` so a second import
   adds nothing. Do not add refunds as negative rows, and do not edit Λογιστής's files from here (another project).
+- **The prices are written twice, and a test keeps the two equal** (Andreas confirmed 25 € with ΦΠΑ and 349 € + ΦΠΑ, 2026-11-03):
+  `PRICE_PLAN` / `PRICE_SEASON` for «Πληρωμές», and index.html, terms.html, the guides and the ready replies for the customer.
+  The ledger was once written with numbers the site had left a month before. A due already written keeps its amount, so a new
+  price reaches new dues only. Do not re-price a recorded due or payment.
 - **The site has one contact page, `epikoinonia.html`, not a form on each page** (phase 4 part B, 2026-10-22). Every
   «γράψτε μας» / «ζητήστε demo» link opens it with `?kind=…&q=…` preselected; venues use it too (Andreas). Rejected: a form
   pasted into index.html and the three guides (four copies of one form to keep in step).

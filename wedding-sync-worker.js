@@ -2048,7 +2048,7 @@ async function memorySweep(env, now) {
 // Dues appear by themselves for what is bought from now on (a couple, a venue made by hand, a free year turned into a
 // season, an automatic renewal); older customers owe nothing on screen, since nobody can know whether they paid —
 // except a renewal still marked «invoice due», and a free year ending within 60 days (expected, never late).
-const PRICE_SEASON = 12900, PRICE_PLAN = 1900;   // a venue's season (+ ΦΠΑ) · a couple's plan (ΦΠΑ included)
+const PRICE_SEASON = 34900, PRICE_PLAN = 2500;   // a venue's season (+ ΦΠΑ) · a couple's plan (ΦΠΑ included). What the site says; a test compares them. A new price reaches new dues only
 const PAY_METHODS = ["bank", "iris", "card", "cash", "other"], PAY_WHAT = ["season", "plan", "extra", "other"];
 const PAY_MAX = 500, DUE_MAX = 100, PAY_NOTE_MAX = 300, PAY_REASON_MAX = 200, PAY_ABOUT_MAX = 80, PAY_RECEIPT_MAX = 40;
 const PAY_AMOUNT_MAX = 10000000, PAY_FIRST_DAY = "2020-01-01";   // €100,000 · nothing older is a TakeaSeat payment
