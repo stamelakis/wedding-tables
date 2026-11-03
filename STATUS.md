@@ -2,12 +2,12 @@
 
 Updated: 2026-11-03
 
-**Status:** Live runs `924490c` (deployed 2026-11-03, tag `deploy-2026-11-03-1`, pre-deploy backup
-`/opt/backups/takeaseat-20261103-135618.db.gz.age`), healthy. Phase 1 of `COMPANIES-PLAN.md` (a company and a γραφείο
-εκδηλώσεων as customers) went live after Andreas's yes; phases 2–4 are not built. 1458 checks pass, on the local copy and
+**Status:** Live runs `40204ad` (deployed 2026-11-03, tag `deploy-2026-11-03-2`, pre-deploy backup
+`/opt/backups/takeaseat-20261103-141351.db.gz.age`), healthy. Phase 1 of `COMPANIES-PLAN.md` (a company and a γραφείο
+εκδηλώσεων as customers) went live after Andreas's yes; phases 2–4 are not built. 1459 checks pass, on the local copy and
 in the server's build; checked on screen at phone width on the local copy; `/security-review` found nothing. Live smoke
-test, read-only: health, six pages with no console errors, the form's new chips and links, the new admin page served,
-`/admin/customers` and `/admin/today` refuse without a key. Not checked live: a real form sent as a company, and the
+test, read-only: health, the key pages with no console errors, the form's new chips and links, the new admin page served,
+`/admin/customers` and `/admin/today` refuse without a key; the second deploy's header fix and privacy line seen live. Not checked live: a real form sent as a company, and the
 signed-in screens. Operations phases 1–6 are live. On 2026-11-03 Andreas looked at «Σήμερα», «Πληρωμές», «Πελάτες», the
 card and «+ Νέα επαφή» live and all looked fine. Not yet seen live: a real morning mail (none goes while the list is empty).
 
@@ -31,9 +31,6 @@ card and «+ Νέα επαφή» live and all looked fine. Not yet seen live: a 
   `wedding-sync-worker.js`, and tests assert them), while the site, terms, ready replies and `COMPANIES-PLAN.md` §2 say
   25 € and 349 € + ΦΠΑ. The site moved on 2026-09-23, and the ledger was written with the old numbers on 2026-10-22. Its
   own session is open, waiting for your answer. It is live today for every customer, not only companies.
-- **`privacy.html`, «Στοιχεία πελατών»** names only Κτήματα and Ζευγάρια, so a company's or γραφείο's ΑΦΜ on its card is
-  not mentioned (the «Ενδιαφερόμενοι» row already says it). Suggested line, not added: «Εταιρείες και γραφεία εκδηλώσεων:
-  επωνυμία, ΑΦΜ, στοιχεία επικοινωνίας, email ανάκτησης.» It went live without this line; say if you want it in.
 - **When something comes up in «Σήμερα»:** try «αύριο» on a line and «Επαναφορά» under «Κρυμμένα». The 08:00 mail comes
   only on days the list is not empty. When one does come, say if the wording reads right in your mail app.
 - **When the next real payment comes in:** record it in «Πληρωμές» («+ Πληρωμή», only the amount is needed) and say if
@@ -80,11 +77,12 @@ card and «+ Νέα επαφή» live and all looked fine. Not yet seen live: a 
   `TakeaSeatHermes.lnk` and check the file (HANDOFF). The cause is in Hermes's `hermes_control.py`, another project.
 - **This PC's C: drive is 98 % full** (9.7 GB free on 2026-10-23). Not the server's; the server is at 24 %.
 - The 🛟 on the «Υποστήριξη έως …» badge shows as an empty box on Windows 10 browsers (no such emoji there).
-- **`epikoinonia.html` at 375px is 7px wider than the screen** (found live 2026-11-03): the header links reach 382px and
-  «English» is cut at the right edge. The home page fits. Phase 1 did not touch the header.
 
 ## History
 
+- 2026-11-03 — second deploy the same day (`40204ad`, `deploy-2026-11-03-2`): the contact page's header fits a phone (under
+  520px it drops «Αρχική», since the logo links home), and `privacy.html` says we keep a company's or γραφείο's ΑΦΜ (new
+  version date, 3 November 2026).
 - 2026-11-03 — phase 1 of `COMPANIES-PLAN.md` built and deployed (`924490c`, `deploy-2026-11-03-1`) after Andreas's yes:
   «Εταιρεία» and «Γραφείο εκδηλώσεων» in «+ Νέα επαφή», «Πελάτες» and the contact form, ΑΦΜ kept and found by «Γνωστός
   πελάτης», sold through «+ Ιδιώτης» (γιορτή) and «+ Κτήμα».
