@@ -5005,6 +5005,7 @@ function leadStageOf(l) { return l.lost ? 8 : l.stage || 1; }
       ok(said.length === 3 && said.every(t => !/κτήμα|κτήματ|venue|location|ζευγάρ|couple|Paar|πελάτ/i.test(t)), 'planner: a company hears «' + k + '» in its own words, in three languages', said);
     }
     ok(/if\(CO_OWNER\)\{ s=T\["o_"\+k\]/.test(pl) && /couplePerms=prof\.company\?null:/.test(pl) && pl.indexOf('let CO_OWNER=false') < pl.indexOf('function tr(k,v)'), 'planner: a company\'s words come first, and nothing asks what a client may change');
+    ok(/CO_OWNER&&!p\.cloudId&&!p\.support/.test(pl) && !/<title>[^<]*Κτήματος/.test(vh), 'a company sees no empty «Ο γάμος μας» in its list, and a link to its console previews no Κτήμα');
     ok(/needsAgreement/.test(vh) && /Κονσόλα εταιρείας/.test(vh) && /Μαζί με τα ονόματα και τις θέσεις/.test(vh) && /keepYears/.test(vh), 'console: the agreement, the company words, the names tick and the keep choice are there');
     ok(/\+1 εκδήλωση \(25 €\)/.test(ad) && /newCompany/.test(ad) && /convertFrom=pre && pre\.lead/.test(ad), 'admin: «+ Εταιρεία» and «+1 εκδήλωση», and a company is not said to come from a contact');
     const reply = ad.slice(ad.indexOf('{ id:"pay"'), ad.indexOf('{ id:"remind"'));
