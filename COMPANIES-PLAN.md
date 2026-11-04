@@ -133,4 +133,4 @@ three languages) is accepted knowingly.
 | 1. A company as a customer | Live 2026-11-03 (`924490c`, `deploy-2026-11-03-1`) |
 | 2. The fourth kind | Live 2026-11-03 (`deploy-2026-11-03-4`) |
 | 3. One console, saved rooms, old designs | Live 2026-11-04 (`deploy-2026-11-04-1`) |
-| 4. The organiser in public | Built and tested on the local copy 2026-11-04; not live, and its "done when" needs the live run and Andreas's reading of the Greek |
+| 4. The organiser in public | Live 2026-11-04 (`deploy-2026-11-04-2`); Andreas read the Greek; its "done when" still needs a γραφείο signing up on live |

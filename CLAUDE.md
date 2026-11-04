@@ -66,7 +66,7 @@ build runs the full suite), restarts and health-checks; on failure it rolls back
 
 ## Decisions
 
-- **Companies and organisers follow `COMPANIES-PLAN.md`** (Andreas, 2026-11-03; phases 1–3 live, phase 4 built and not yet live; its §2 has the decisions). A
+- **Companies and organisers follow `COMPANIES-PLAN.md`** (Andreas, 2026-11-03; phases 1–4 live; its §2 has the decisions). A
   fourth kind, chosen after hearing the cheaper option, and a «Γραφείο εκδηλώσεων», never «διοργανωτής», which already means
   the venue's client on γιορτή screens. Rejected: a small separate charge for saving designs (payments are by hand for now), and a company choosing to keep guest
   notes (health data; it keeps its own CSV instead).
