@@ -3746,9 +3746,9 @@ $("decorModal").addEventListener("click",e=>{ if(e.target.id==="decorModal") clo
 function currentProfile(){ return profiles.profiles.find(p=>p.id===profiles.activeId); }
 function renderProfiles(){
   const sel=$("profileSelect");
-  // a company never sees the empty starter plan this device made before its first link: «Ο γάμος μας» is nobody here. Hidden, not deleted, since the plan is the device's
+  // a company or a γραφείο never sees the empty starter plan this device made before its first link: «Ο γάμος μας» is nobody here. Hidden, not deleted, since the plan is the device's
   const starterName=n=>["el","en","de"].some(l=>T_ALL[l].ourWedding===n);
-  sel.innerHTML=profiles.profiles.filter(p=>!(CO_OWNER&&!p.cloudId&&!p.support&&p.id!==profiles.activeId&&starterName(p.name))).map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("");
+  sel.innerHTML=profiles.profiles.filter(p=>!((CO_OWNER||OFFICE)&&!p.cloudId&&!p.support&&p.id!==profiles.activeId&&starterName(p.name))).map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("");
   sel.value=profiles.activeId;
   const cur=profiles.profiles.find(p=>p.id===profiles.activeId); $("planName").querySelector(".txt").textContent=cur?cur.name:"";   // phone label
 }

@@ -10,6 +10,18 @@
       "port": 8080
     },
     {
+      "name": "takeaseat-maillog",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/dev.mjs"
+      ],
+      "env": {
+        "MAIL_LOG": "1",
+        "MAIL_FROM": "TakeaSeat <hello@takeaseat.gr>"
+      },
+      "port": 8080
+    },
+    {
       "name": "takeaseat-customers",
       "runtimeExecutable": "node",
       "runtimeArgs": [
