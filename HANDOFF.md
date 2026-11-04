@@ -34,6 +34,7 @@ is on — §1c; otherwise send the **claim link** yourself, §1b). Never again a
 | **Admin** (Andreas) | `OWNER_KEY` in `admin.html` | venues + licences, sell plans to couples (claim links), see **support invitations**. **Cannot open any couple plan** — no API route returns a couple plan, id or key to the owner key. Two admin powers over a couple plan, both visible to the couple: **reset the access link** (lost link) and **erasure**. |
 | **Venue** | console key in `venue.html`; per-wedding venue link `#vkey=` | builds its **space once (template)**, decides **what couples may change** (default + per wedding), creates weddings (copied from the template, no guests), full rights on its weddings, can invite support for a wedding. |
 | **Company** (phase 3, 2026-11-04) | console key in `venue.html?co=1` | a `venue:` row with `custType:"company"` and a `per_wedding` licence: the console's rooms, events and old designs, with no client screens and its own words. Ticks `dpa.html` first. One event per «+1 εκδήλωση (25 €)». See section 1j. |
+| **Γραφείο εκδηλώσεων** (phase 4, 2026-11-04) | console key in `venue.html?of=1` | a `venue:` row with `custType:"organiser"`: everything a venue can do, with its own word on its and its client's screens. Signs up alone, ticks `dpa.html` first, and may copy names and seats from an old event. See section 1k. |
 | **Couple** | edit link `#key=` (from the venue, or claimed from TakeaSeat) | couple-owned plan: everything, incl. inviting support and making new links. Venue plan: guests, seating, groups, invitations, print — plus whatever the venue allows. |
 | **Support** | `#support=` link from the admin's support list, only while the owner's invitation lasts (24 h / 3 d / 7 d) | opens **view-only**, "Ενεργοποίηση επεξεργασίας" to fix things; nothing is stored in the helper's browser; cannot delete, rename, copy, extend, or keep access via sync codes. Every open/save is in the owner's access log. |
 | **Viewer** | view link `#view=` | read only. |
@@ -433,6 +434,18 @@ A company buys events, not a season. It is sold with «+ Εταιρεία» on �
   in `venue.html`. A company gets no keepsake mail.
 - **Not moved:** live had no `custType` rows when this was built, so there is no tool to move a `couple:` company to a console.
   Admin's dialogs no longer sell one as a `couple:` row, though the API still accepts it and a kind correction can still make one.
+
+## 1k. A γραφείο εκδηλώσεων (phase 4 of `COMPANIES-PLAN.md`, 2026-11-04)
+
+A Κτήμα in everything but its word: same console, rights, phases, price, and one free year per ΑΦΜ through the same `afm:` row.
+It signs up itself at `venue.html?of=1#signup`, or picks «Γραφείο εκδηλώσεων» on the form; the row and the signup carry
+`custType:"organiser"`. Admin's card says «γραφείο εκδηλώσεων» and its ready replies are «Τιμή γραφείου» and «Υπενθύμιση γραφείου».
+
+- **The agreement.** As a company: the tick at the first opening, `dpaAt`, and 403 `agreement_required` until then.
+- **Old designs.** As a company: names and seats on a tick, with a line that this is for the same client only. Notes never travel.
+- **The words.** Console: `isOf()`, `ownerW()`, `ownerG()` in `venue.html`. Mails: `setupOffice`, `ownerSignupOffice`. Planner: `OFFICE` and
+  the `g_` overlay, on for the γραφείο and for its client through `owner.office` in the plan GET.
+- **Public pages.** `grafeio-ekdiloseon.html`, `#grafeia` on the home page, and paragraphs in `terms.html`, `dpa.html` and `privacy.html`.
 
 ## 2. Architecture
 

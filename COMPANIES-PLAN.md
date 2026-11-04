@@ -107,7 +107,8 @@ three languages) is accepted knowingly.
 ## 4. For the lawyer and the accountant (add to the lists in `STATUS.md`)
 
 - **Lawyer:** the 1–5 year choice; a company as controller and the tick accepting `dpa.html`; no consumer withdrawal for
-  a company buying for itself, and the terms' «ιδιώτες» wording; a saved room's table labels can hold a person's name.
+  a company buying for itself, and the terms' «ιδιώτες» wording; a saved room's table labels can hold a person's name. Phase 4:
+  a γραφείο as controller and its tick accepting `dpa.html`; a γραφείο copying a client's guests to that client's next event.
 - **Accountant:** invoices to companies at 25 € per event, together with the open question of who issues receipts.
 
 ## 5. For the agent building it
@@ -132,4 +133,4 @@ three languages) is accepted knowingly.
 | 1. A company as a customer | Live 2026-11-03 (`924490c`, `deploy-2026-11-03-1`) |
 | 2. The fourth kind | Live 2026-11-03 (`deploy-2026-11-03-4`) |
 | 3. One console, saved rooms, old designs | Live 2026-11-04 (`deploy-2026-11-04-1`) |
-| 4. The organiser in public | Not started |
+| 4. The organiser in public | Built and tested on the local copy 2026-11-04; not live, and its "done when" needs the live run and Andreas's reading of the Greek |

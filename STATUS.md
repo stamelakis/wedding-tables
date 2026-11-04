@@ -3,7 +3,9 @@
 Updated: 2026-11-04
 
 **Status:** Live runs `9a092f8` (deployed 2026-11-04, tag `deploy-2026-11-04-1`, pre-deploy backup
-`/opt/backups/takeaseat-20261104-162620.db.gz.age`), healthy. **Phase 3 of `COMPANIES-PLAN.md` is live:** a company's console, saved rooms, old designs, the 1–5 year choice. Phase 4 is not built. 1736 checks pass, on the local copy and in the server's build. Operations phases 1–6 are live.
+`/opt/backups/takeaseat-20261104-162620.db.gz.age`), healthy. **Phase 3 of `COMPANIES-PLAN.md` is live:** a company's console, saved rooms, old designs, the 1–5 year choice. Operations phases 1–6 are live.
+
+**Phase 4 (the γραφείο εκδηλώσεων) is built on `main` and not live; not pushed.** 1796 checks pass on the local copy; `/security-review` found nothing. Seen at 375px on the local copy: sign-up, its mail, the agreement, console, two rooms, two events, the planner as γραφείο and as client, the old-design dialog, guide and home section, admin's card and ready replies. Rooms with tables were seen in a client's wedding and γιορτή, opened from their links, built through the API. **Not seen on screen:** a βάπτιση on a γραφείο's plan (scans only), English and German (tests only), the room saved from inside the planner and not through the API. **Not done** until Andreas has read `GRAFEIO-ELLINIKA.md` and a γραφείο has signed up on live. The file goes once he has read it.
 
 **Checked on live for phase 3:** read-only, `/health`, 14 pages, `/admin/customers` refusing without a key, the company login's words, terms 8Α, dpa, privacy and the company guide at 375px with no console errors, the company demo. Then a test company through the API on the running server, 32 of 32: agreement gate, rooms, an event from a room, the allowance (three requests at once made one event on the real database), «+1 εκδήλωση», an old design with names and no note, the keep choice, delete, forget. Afterwards it and its two `books:` rows were removed; nothing on live names it. Backup just before that delete: `/opt/backups/takeaseat-20261104-164035.db.gz.age`.
 
@@ -19,7 +21,7 @@ Updated: 2026-11-04
 
 1. **What Google and link previews show still names three kinds** (index.html:7, 8, 14, 15, 25, epikoinonia.html:8). Left on purpose by Andreas: those words affect the ranking, so change them
    deliberately, once companies start looking. Every other line found by a search for a baptism and a party named close together now includes company events.
-2. **Phase 4 of `COMPANIES-PLAN.md`**, in its own session: the organiser in public. It has its own "done when" there, and decides whether a γραφείο may copy names and seats.
+2. **Finish phase 4 of `COMPANIES-PLAN.md`:** Andreas's corrections to the Greek, the deploy, then a γραφείο signing up on live. That sign-up sends real mail and leaves a `books:` line unless it is removed by hand (see CLAUDE.md), so ask first.
 3. **Phase 7 (online payment)** waits on the company, accountant and lawyer. The page's remaining English sections move
    to Greek as each is touched.
 4. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today (checked
@@ -27,6 +29,7 @@ Updated: 2026-11-04
 
 ## Waiting on Andreas
 
+- **Read the new Greek in `GRAFEIO-ELLINIKA.md`** and send corrections with the section's number. Phase 4 does not go live before that.
 - **The first real company:** sell it with «+ Εταιρεία», press «+1 εκδήλωση (25 €)» when it buys another, and say if anything reads wrong. Its screens have not been seen signed in on live. You can also open «Πελάτες» once and check nothing named ΔΟΚΙΜΗ is there.
 - **When something comes up in «Σήμερα»:** try «αύριο» on a line and «Επαναφορά» under «Κρυμμένα». The 08:00 mail comes
   only on days the list is not empty. When one does come, say if the wording reads right in your mail app.
@@ -57,7 +60,7 @@ Updated: 2026-11-04
 - **Lawyer review** of terms — later. Add to the list: the customer-memory periods (5 years after the last
   contact for buyers, 2 for non-buyers, venues' client cards 1–5 years, default 5) and the «say no to related
   mails» line under ν. 3471/2006 άρθρο 11 §3 (`OPERATIONS-PLAN.md` §2.5 and §6). Both are built before the review;
-  the review may change the numbers. Also: the terms' opening calls direct buyers «ιδιώτες», but a company that
+  the review may change the numbers. Phase 4: a γραφείο as controller, its tick accepting `dpa.html`, and its copying a client's guests to that client's next event (terms, dpa and privacy state these once it is live). Also: the terms' opening calls direct buyers «ιδιώτες», but a company that
   buys a γιορτή for its own company dinner is a business, and §8 gives every direct buyer the consumer-law 14-day
   withdrawal (ν. 2251/1994), with the planner opening only after it, a business included. And: terms §8's
   «άμεση έναρξη» names only a γάμος under 21 days away, while the payment reply says «εκδήλωση»; confirm it may
