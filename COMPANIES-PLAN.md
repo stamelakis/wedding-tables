@@ -133,4 +133,4 @@ three languages) is accepted knowingly.
 | 1. A company as a customer | Live 2026-11-03 (`924490c`, `deploy-2026-11-03-1`) |
 | 2. The fourth kind | Live 2026-11-03 (`deploy-2026-11-03-4`) |
 | 3. One console, saved rooms, old designs | Live 2026-11-04 (`deploy-2026-11-04-1`) |
-| 4. The organiser in public | Live 2026-11-04 (`deploy-2026-11-04-2`); Andreas read the Greek; its "done when" still needs a γραφείο signing up on live |
+| 4. The organiser in public | Live 2026-11-04 (`deploy-2026-11-04-2`); Andreas read the Greek; run on live 2026-11-04 and the test customers removed (the second room's event made through the API) |

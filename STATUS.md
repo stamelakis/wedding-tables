@@ -1,11 +1,11 @@
 # TakeaSeat — STATUS
 
-Updated: 2026-11-04
+Updated: 2026-11-05
 
 **Status:** Live runs `61752df` (deployed 2026-11-04, tag `deploy-2026-11-04-2`, pre-deploy backup
 `/opt/backups/takeaseat-20261104-191356.db.gz.age`), healthy. **Phase 3 of `COMPANIES-PLAN.md` is live:** a company's console, saved rooms, old designs, the 1–5 year choice. Operations phases 1–6 are live.
 
-**Phase 4 (the γραφείο εκδηλώσεων) is live, and its signed-in run on live is still to do.** Checked on live, read-only with no sign-in and no form sent: `/health`, 13 pages, `/admin/customers` refusing without a key, the sitemap, the home section, the guide, the γραφείο's login and sign-up form at 375px with no console errors, a bare `venue.html` still saying Κτήμα, the new paragraphs in terms, dpa and privacy, the γιορτή demo loading. 1796 checks pass, on the local copy and in the server's build; `/security-review` found nothing. Seen at 375px on the local copy: sign-up, its mail, the agreement, console, two rooms, two events, the planner as γραφείο and as client, the old-design dialog, guide and home section, admin's card and ready replies. Rooms with tables were seen in a client's wedding and γιορτή, opened from their links, built through the API. **Not seen on screen:** a βάπτιση on a γραφείο's plan (scans only), English and German (tests only), the room saved from inside the planner and not through the API. Andreas read the new Greek on 2026-11-04 and changed nothing. **Not done** until a γραφείο has signed up on live.
+**Phase 4 (the γραφείο εκδηλώσεων) is live and done.** Andreas signed a test γραφείο up on the live site on 2026-11-04: the setup mail, the agreement at first opening, two saved rooms, a γάμος and a γιορτή from Αίγλη, and he reported no «κτήμα». The event from the second room, a βάπτιση from Ανατολή, was made by the session through the API on the running server with that γραφείο's own key, and it recorded Ανατολή. Both rooms had the same tables, so that proves the room's name and not different tables; the room dropdown itself worked on the local copy and was never chosen on live. Both test customers were then removed by hand: 15 rows, plus their entries in `venues:index` and `signups:index`; nothing on live names them, and Jockey's row is unchanged. Backup just before that delete: `/opt/backups/takeaseat-20261104-224121.db.gz.age`. Also checked on live, read-only with no sign-in and no form sent: `/health`, 13 pages, `/admin/customers` refusing without a key, the sitemap, the home section, the guide, the γραφείο's login and sign-up form at 375px with no console errors, a bare `venue.html` still saying Κτήμα, the new paragraphs in terms, dpa and privacy, the γιορτή demo loading. 1796 checks pass, on the local copy and in the server's build; `/security-review` found nothing. Seen at 375px on the local copy: sign-up, its mail, the agreement, console, two rooms, two events, the planner as γραφείο and as client, the old-design dialog, guide and home section, admin's card and ready replies. Rooms with tables were seen in a client's wedding and γιορτή, opened from their links, built through the API. **Not seen on screen:** a βάπτιση on a γραφείο's plan (scans only), English and German (tests only), the room saved from inside the planner and not through the API. Andreas read the new Greek on 2026-11-04 and changed nothing.
 
 **Checked on live for phase 3:** read-only, `/health`, 14 pages, `/admin/customers` refusing without a key, the company login's words, terms 8Α, dpa, privacy and the company guide at 375px with no console errors, the company demo. Then a test company through the API on the running server, 32 of 32: agreement gate, rooms, an event from a room, the allowance (three requests at once made one event on the real database), «+1 εκδήλωση», an old design with names and no note, the keep choice, delete, forget. Afterwards it and its two `books:` rows were removed; nothing on live names it. Backup just before that delete: `/opt/backups/takeaseat-20261104-164035.db.gz.age`.
 
@@ -21,15 +21,13 @@ Updated: 2026-11-04
 
 1. **What Google and link previews show still names three kinds** (index.html:7, 8, 14, 15, 25, epikoinonia.html:8). Left on purpose by Andreas: those words affect the ranking, so change them
    deliberately, once companies start looking. Every other line found by a search for a baptism and a party named close together now includes company events.
-2. **Finish phase 4 of `COMPANIES-PLAN.md`:** a γραφείο signing up on live (Andreas, on screen), then removing that test customer, its `afm:` row and its `books:` line by hand, after a backup and his OK (see CLAUDE.md).
-3. **Phase 7 (online payment)** waits on the company, accountant and lawyer. The page's remaining English sections move
+2. **Phase 7 (online payment)** waits on the company, accountant and lawyer. The page's remaining English sections move
    to Greek as each is touched.
-4. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today (checked
+3. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today (checked
    2026-10-18): every plan on the server comes from a purchase, a venue licence or free year, or a paying couple.
 
 ## Waiting on Andreas
 
-- **Sign up one test γραφείο on the live site** and go through two rooms, two events and the client's link, saying if «κτήμα» appears anywhere. The session asks before removing it afterwards.
 - **The first real company:** sell it with «+ Εταιρεία», press «+1 εκδήλωση (25 €)» when it buys another, and say if anything reads wrong. Its screens have not been seen signed in on live. You can also open «Πελάτες» once and check nothing named ΔΟΚΙΜΗ is there.
 - **When something comes up in «Σήμερα»:** try «αύριο» on a line and «Επαναφορά» under «Κρυμμένα». The 08:00 mail comes
   only on days the list is not empty. When one does come, say if the wording reads right in your mail app.
@@ -82,6 +80,7 @@ Updated: 2026-11-04
 
 ## History
 
+- 2026-11-05: Phase 4 of `COMPANIES-PLAN.md` finished: a test γραφείο went through the live site, then both test customers were removed by hand.
 - 2026-11-04: Phase 3 of `COMPANIES-PLAN.md` live: a company's console, saved rooms, old designs, the 1–5 year choice (`9a092f8`, `deploy-2026-11-04-1`). Live test company passed 32 of 32 through the API and was removed.
 - 2026-11-03: The last five lines name company events: the 25 € price, how a venue makes an event, the console's welcome, the γιορτή guide, the Greek terms (`be68c33`, `deploy-2026-11-03-8`).
 - 2026-11-03: Ten more lines on the home page and the γιορτή and βάπτιση guides name company events (`507b44f`, `deploy-2026-11-03-7`).
