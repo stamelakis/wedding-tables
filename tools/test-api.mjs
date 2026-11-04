@@ -4811,6 +4811,13 @@ function leadStageOf(l) { return l.lost ? 8 : l.stage || 1; }
     r = await made(A);
     ok(r.status === 403 && r.d.error === 'quota_reached', 'per event: the one it bought is used, no second', r.d);
     ok((await con(A)).d.canCreate === false, 'per event: the console knows');
+    const RACE = await sell('Παράλληλη ΑΕ', 'race@example.gr');
+    await accept(RACE);
+    const plans0 = [...m.keys()].filter(k => k.startsWith('plan:')).length;
+    const raced = await Promise.all([1, 2, 3, 4, 5].map(() => made(RACE)));
+    const venueNow = raw('venue:' + RACE.id);
+    ok(raced.filter(x => x.status === 200).length === 1 && raced.filter(x => x.d.error === 'quota_reached').length === 4 && venueNow.used === 1 && venueNow.weddings.length === 1, 'per event: five at the same moment make one event from one payment', raced.map(x => x.status));
+    ok([...m.keys()].filter(k => k.startsWith('plan:')).length === plans0 + 1, 'per event: the refused ones leave no plan behind');
     ok((await addEvent('nosuchvenue')).status === 404 && (await addEvent(KV.id)).status === 409, 'per event: «+1» is for a company only');
     ok((await call('POST', '/admin/venues/' + A.id + '/events', {})).status === 403, 'per event: «+1» needs the owner key');
     r = await addEvent(A.id);

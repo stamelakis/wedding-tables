@@ -4193,9 +4193,12 @@ export default {
           const rec = { name: label, plan, editKey, venueKey, readKey: rnd(24),
             owner: { type: "venue", venueId: v.id }, venueId: v.id, ...(isTest(v) ? { test: true } : {}), kind, perms, layoutAt: plan ? now : null, keyGen: 0, venueGen: 0, weddingDate: dated.weddingDate || null, createdAt: now, updated: now };
           await env.PLANS.put("plan:" + id, JSON.stringify(rec));
-          await kvUpdate(env, vkey, cur => { if (!cur) return null;
+          // The gate again, in the write that counts: an event a company paid for must not be made twice by two requests at once.
+          const { res: late } = await kvUpdate(env, vkey, cur => { if (!cur) return null;
+            const again = canCreateWedding(cur, rec.weddingDate); if (!again.ok) return { __res: again };
             cur.weddings = cur.weddings || []; cur.weddings.push({ planId: id, label: rec.name, kind, createdAt: now, editKey, venueKey, perms, layoutSet: !!plan, date: rec.weddingDate, ...(room ? { room } : {}), ...(isTest(cur) ? { test: true } : {}) });
             cur.used = (cur.used || 0) + 1; return cur; });
+          if (late) { await env.PLANS.delete("plan:" + id); return json({ error: late.reason }, 403); }
           return json({ planId: id, editKey, venueKey, kind, updated: now, fromTemplate: !!plan });
         }
         // Rename a wedding and/or change what its couple may change.
