@@ -1338,10 +1338,10 @@ const vWord=t=>t==="company" ? { of:"εταιρείας", is:"εταιρεία",
   : t==="organiser" ? { of:"γραφείου", is:"γραφείο", the:"το γραφείο", The:"Το γραφείο", ofThe:"του γραφείου", alone:"μόνο του", its:"του" }
   : { of:"κτήματος", is:"κτήμα", the:"το κτήμα", The:"Το κτήμα", ofThe:"του κτήματος", alone:"μόνο του", its:"του" };
 function openNewVenue(pre){
-  convertFrom=pre ? { lead:pre.lead, name:pre.name } : null;
+  convertFrom=pre && pre.lead ? { lead:pre.lead, name:pre.name } : null;   // «+ Εταιρεία» also passes a pre, with no contact behind it
   const cust=pre && pre.custType || "", office=cust==="organiser", co=cust==="company", W=vWord(cust);   // the field #ncust is how createVenue knows
   const d=openDialog(`${dlgHead(co ? "Νέα εταιρεία" : office ? "Νέο γραφείο εκδηλώσεων" : "Νέο κτήμα")}
-    <div class="dbody">${fromLeadHtml(pre)}
+    <div class="dbody">${fromLeadHtml(convertFrom)}
       <div class="grid">
         ${cust ? `<input type="hidden" id="ncust" value="${cust}">` : ""}
         <div><label for="nname">Όνομα ${W.of}</label><input id="nname" maxlength="120" placeholder="${co ? "π.χ. Alpha ΑΕ" : office ? "π.χ. Ορίζων Events" : "π.χ. Κτήμα Ηλιοβασίλεμα"}" value="${esc(pre&&pre.name||"")}"></div>
@@ -2352,12 +2352,12 @@ function cPastHtml(past){
     <ul class="tl">${past.map(p=>`<li><time>${esc(p.date ? gYmd(p.date) : "χωρίς ημερομηνία")}</time><span class="w">${esc(C_KIND[p.kind]||p.kind)}${p.extra ? " · επιπλέον σχέδιο" : ""} · το σχέδιο σβήστηκε ${esc(gD(p.goneAt))}</span></li>`).join("")}</ul>`;
 }
 const cFailed=(at, err)=>`<span style="color:var(--danger)">απέτυχε ${esc(gDT(at))}${err ? " — "+esc(err) : ""}</span>`;
-function cEventHtml(e){
+function cEventHtml(e, noPhase){
   return `<div class="ccard"><div class="row fw" style="gap:6px;margin-bottom:4px"><strong>${e.date ? esc(gYmd(e.date)) : "χωρίς ημερομηνία"}</strong>
       <span class="badge tpl">${esc(C_KIND[e.kind]||e.kind)}</span>${e.extra ? ` <span class="badge tpl">επιπλέον σχέδιο</span>` : ""}${e.over ? ` <span class="badge off">πέρασε</span>` : ""}${e.support ? ` <span class="badge sup">ζητά υποστήριξη</span>` : ""}</div>`
     +fieldsHtml([
       e.date && !e.over ? ["Πότε", esc(cInDays(e.date))] : null,
-      ["Φάση", `<strong>${esc(GR_PHASE[e.phase]||e.phase||"—")}</strong>${e.frozenUntil ? ` — παγωμένο ως ${esc(gDT(e.frozenUntil))}` : ""}`],
+      noPhase ? null : ["Φάση", `<strong>${esc(GR_PHASE[e.phase]||e.phase||"—")}</strong>${e.frozenUntil ? ` — παγωμένο ως ${esc(gDT(e.frozenUntil))}` : ""}`],
       ["Θέσεις", e.seatedPct!=null ? `${esc(e.seatedPct)} % των καλεσμένων έχουν θέση` : "δεν έχει καλεσμένους ακόμη"],
       e.opensAt && e.opensAt>Date.now() ? ["Ανοίγει", esc(gWhen(e.opensAt))] : null,
       ["Κλειδώνει", e.locked ? `κλειδωμένο από ${esc(gDT(e.lockAt))}` : esc(gWhen(e.lockAt))],
@@ -2411,7 +2411,7 @@ function customerCardHtml(x){
     ]));
     out.push(`<div class="subh">Ρύθμιση</div>`+fieldsHtml([
       v.custType==="company" ? ["Σύμβαση (DPA)", v.dpaAt ? "την αποδέχτηκε "+esc(gDT(v.dpaAt)) : "δεν έχει ανοίξει ακόμη την κονσόλα"] : null,
-      ["Κλειδί", st.keySet ? `${vWord(v.custType).the} έχει ορίσει δικό ${vWord(v.custType).its} κλειδί` : st.mailed ? "ο σύνδεσμος στάλθηκε — δεν έχει ανοίξει" : "το έδωσες εσύ, χωρίς email"],
+      ["Κλειδί", st.keySet ? `${vWord(v.custType).the} έχει ορίσει δικό ${vWord(v.custType).its} κλειδί` : v.custType==="company" && v.dpaAt ? "μπαίνει με το κλειδί που της δόθηκε" : st.mailed ? "ο σύνδεσμος στάλθηκε — δεν έχει ανοίξει" : "το έδωσες εσύ, χωρίς email"],
       st.resetAt ? ["Νέος σύνδεσμος", esc(gWhen(st.resetAt))] : null,
       st.failedAt ? ["Email", cFailed(st.failedAt, st.error)] : null,
       ["Χώροι", (x.rooms||[]).length ? `${x.rooms.length} · τελευταία αλλαγή ${esc(gWhen(Math.max(...x.rooms.map(r=>r.updated||0))))}${x.rooms.some(r=>r.support) ? ` <span class="badge sup">ζητά υποστήριξη</span>` : ""}` : "κανένας ακόμη"],
@@ -2440,7 +2440,7 @@ function customerCardHtml(x){
   }
   const evs=x.events||[], past=x.past||[];
   if(!l) out.push(`<div class="subh">Εκδηλώσεις <span class="muted">(${evs.length})</span></div>`
-    +(evs.length ? evs.map(cEventHtml).join("") : `<div class="muted">${past.length ? "Καμία με σχέδιο." : "Καμία εκδήλωση ακόμη."}</div>`)
+    +(evs.length ? evs.map(e=>cEventHtml(e, x.venue && x.venue.custType==="company")).join("") : `<div class="muted">${past.length ? "Καμία με σχέδιο." : "Καμία εκδήλωση ακόμη."}</div>`)
     +cPastHtml(past));
   out.push(`<div class="subh">Μνήμη <span class="muted">— για πόσο κρατάμε την καρτέλα</span></div>`+cMemoryHtml(x));
   return out.join("");

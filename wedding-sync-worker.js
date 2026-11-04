@@ -4140,7 +4140,7 @@ export default {
           }
           const id = rnd(22), name = String(b.name || "").trim().slice(0, 120) || String(v.name || "").slice(0, 120);
           const rec = { name, plan, editKey: rnd(28), venueKey: rnd(28), readKey: rnd(24),
-            owner: { type: "venue", venueId: v.id }, venueId: v.id, ...(isTest(v) ? { test: true } : {}), template: true, perms: { ...ALL_OPEN }, keyGen: 0, venueGen: 0, createdAt: Date.now(), updated: Date.now() };
+            owner: { type: "venue", venueId: v.id }, venueId: v.id, ...(isTest(v) ? { test: true } : {}), template: true, ...(isCompany(v) ? { kind: "company" } : {}), perms: { ...ALL_OPEN }, keyGen: 0, venueGen: 0, createdAt: Date.now(), updated: Date.now() };   // a company's room speaks of a stage and groups of colleagues, never of a bride
           await env.PLANS.put("plan:" + id, JSON.stringify(rec));
           await kvUpdate(env, vkey, cur => { if (!cur) return null; setRooms(cur, [...roomsOf(cur), { planId: id, name }]); return cur; });
           return json({ planId: id, name, venueKey: rec.venueKey, updated: rec.updated });
@@ -4188,7 +4188,7 @@ export default {
           // Locks apply once the venue has put its layout in: from the template now, or at the venue's first save.
           // A wedding made from the TEST venue's own console is test data too — the flag comes from the venue record,
           // never from the request body, so only the one venue the admin tools created can pass it on.
-          const label0 = String(b.label || (kind === "baptism" ? "Baptism" : "Wedding")).slice(0, 120);
+          const label0 = String(b.label || (co ? "Εκδήλωση" : kind === "baptism" ? "Baptism" : "Wedding")).slice(0, 120);
           const label = isTest(v) && !label0.includes(TEST_MARK) ? (TEST_MARK + " — " + label0).slice(0, 120) : label0;   // the mark travels with the record, in the test venue too
           const rec = { name: label, plan, editKey, venueKey, readKey: rnd(24),
             owner: { type: "venue", venueId: v.id }, venueId: v.id, ...(isTest(v) ? { test: true } : {}), kind, perms, layoutAt: plan ? now : null, keyGen: 0, venueGen: 0, weddingDate: dated.weddingDate || null, createdAt: now, updated: now };
