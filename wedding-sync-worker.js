@@ -116,6 +116,16 @@ const CONTACT_MSG_MAX = 1000, CONTACT_TEXT_MAX = 120;
 // venue a real season («Edit…», new dates), the trial stops governing and the venue is an ordinary subscriber again:
 // it renews, it is reminded like one, and its weddings are no longer judged on their date.
 const onTrial = v => !!(v && v.trial && v.trial.seasonEnd && v.license && v.license.seasonEnd === v.trial.seasonEnd);
+// COMPANIES-PLAN.md phase 3: a console holds a list of saved rooms, each a plan outside the weddings list (never counted,
+// never a client link). A venue from before the list has `templateId`: it reads as the first room, and the first write
+// turns it into the list. There is nothing to migrate.
+const MAX_ROOMS = 20;
+const roomsOf = v => Array.isArray(v && v.rooms) ? v.rooms : (v && v.templateId) ? [{ planId: v.templateId, name: "" }] : [];
+const setRooms = (v, rooms) => { v.rooms = rooms; delete v.templateId; };
+// A company has this console too, paying per event instead of per year. Every link it is sent carries ?co=1, so that the
+// login screen, which cannot know whose key will be typed, already speaks to a company.
+const isCompany = v => !!(v && v.custType === "company");
+const consolePath = v => "/venue.html" + (isCompany(v) ? "?co=1" : "");
 // The caller's address, as the ONE hop in front of us states it. server.mjs overwrites X-Real-IP with the address it
 // measured and drops any CF-Connecting-IP the client invented, so neither header can be forged from outside; without a
 // hop (tests, a direct call) everyone shares the bucket named "unknown", which is the strict side to fail on.
@@ -182,6 +192,10 @@ function policyOf(settings, ...layers) {   // global settings < venue / couple <
 const couplePolicyOf = (settings, ...layers) =>
   policyOf({ retention: { ...COUPLE_RETENTION, ...(normRetention(settings && settings.coupleRetention) || {}) } }, ...layers);
 const policyFor = (own, settings, ...layers) => (own.type === "venue" ? policyOf : couplePolicyOf)(settings, ...layers);
+// The 1–5 year choice in the console (COMPANIES-PLAN.md decision 3), written as `keepDays` so the sweep needs no new rule.
+// null when the owner has arranged something else for this venue: the console then offers no choice.
+const DAYS_PER_KEEP_YEAR = 365;
+function keepYearsOf(settings, v) { const pol = policyOf(settings, v.retention), y = pol.keepDays / DAYS_PER_KEEP_YEAR; return !pol.keep && VCLI_YEARS.includes(y) ? y : null; }
 async function getSettings(env) { return safeParse(await env.PLANS.get("meta:settings")) || {}; }
 async function lifecycleSince(env) {   // plans older than this feature count their fallback from its first day
   const m = safeParse(await env.PLANS.get("meta:lifecycle"));
@@ -279,6 +293,7 @@ const MAILS = {
     itemCouple: "Τραπεζολόγιο «{name}»: {link}", itemClaim: "Τραπεζολόγιο «{name}» (πρώτο άνοιγμα — ισχύει έως {until}): {link}", itemVenue: "Κονσόλα «{name}» — ορίστε νέο κωδικό: {link}",
     relink: ["Ο σύνδεσμός σας — TakeaSeat", "Γεια σας!\n\nΚατόπιν αιτήματός σας, ορίστε σύνδεσμος για να ανοίξετε ξανά το τραπεζολόγιο «{name}» σε αυτή ή σε νέα συσκευή:\n\n{link}\n\nΙσχύει 7 ημέρες και ανοίγει μία φορά. Αν δεν το ζητήσατε εσείς, αγνοήστε αυτό το μήνυμα.\n\nTakeaSeat"],
     venueReset: ["Νέος κωδικός κονσόλας — TakeaSeat", "Γεια σας,\n\nΟρίστε νέο κωδικό για την κονσόλα «{name}» εδώ (ο σύνδεσμος ισχύει 7 ημέρες και ανοίγει μία φορά):\n\n{link}\n\nΟ τωρινός κωδικός λειτουργεί μέχρι να χρησιμοποιήσετε τον σύνδεσμο. Αν δεν το ζητήσατε εσείς, γράψτε μας στο info@takeaseat.gr.\n\nTakeaSeat"],
+    setupCompany: ["Η κονσόλα της εταιρείας σας — TakeaSeat", "Καλώς ήρθατε στο TakeaSeat!\n\nΟρίστε τον κωδικό της κονσόλας για την εταιρεία «{name}» εδώ (ο σύνδεσμος ισχύει 7 ημέρες):\n\n{link}\n\nΑπό την κονσόλα φτιάχνετε τις εκδηλώσεις σας, κρατάτε τους χώρους σας και ξεκινάτε από παλιά σχέδια. Την πρώτη φορά θα σας ζητηθεί να αποδεχτείτε τη σύμβαση επεξεργασίας δεδομένων.\n\nΟ κωδικός δεν εμφανίζεται πουθενά αλλού — ούτε στη διαχείριση της TakeaSeat. Αν τον ξεχάσετε, ζητήστε νέο με αυτό το email από την κονσόλα.\n\nTakeaSeat"],
     setup: ["Η κονσόλα του κτήματός σας — TakeaSeat", "Καλώς ήρθατε στο TakeaSeat!\n\nΟρίστε τον κωδικό της κονσόλας για το «{name}» εδώ (ο σύνδεσμος ισχύει 7 ημέρες):\n\n{link}\n\nΟ κωδικός δεν εμφανίζεται πουθενά αλλού — ούτε στη διαχείριση της TakeaSeat. Αν τον ξεχάσετε, ζητήστε νέο με αυτό το email από την κονσόλα.\n\nTakeaSeat"],
     verify: ["Επιβεβαίωση email — TakeaSeat", "Γεια σας!\n\nΕπιβεβαιώστε ότι αυτό το email θα χρησιμοποιείται για την ανάκτηση του «{name}» (ο σύνδεσμος ισχύει 24 ώρες):\n\n{link}\n\nΑν δεν το ζητήσατε εσείς, αγνοήστε αυτό το μήνυμα.\n\nTakeaSeat"],
     changed: ["Το email ανάκτησης άλλαξε — TakeaSeat", "Γεια σας,\n\nΤο email ανάκτησης για το «{name}» άλλαξε σε {email} ({by}).\nΑν δεν το περιμένατε, γράψτε μας αμέσως στο info@takeaseat.gr.\n\nTakeaSeat"],
@@ -323,6 +338,7 @@ const MAILS = {
     itemCouple: "Seating plan “{name}”: {link}", itemClaim: "Seating plan “{name}” (first opening — valid until {until}): {link}", itemVenue: "Console “{name}” — set a new key: {link}",
     relink: ["Your link — TakeaSeat", "Hello!\n\nAs you asked, here is a link to open your seating plan “{name}” again on this or a new device:\n\n{link}\n\nIt is valid for 7 days and opens once. If this was not you, ignore this message.\n\nTakeaSeat"],
     venueReset: ["New console key — TakeaSeat", "Hello,\n\nSet a new key for the console “{name}” here (the link is valid for 7 days and opens once):\n\n{link}\n\nYour current key keeps working until you use the link. If this was not you, write to info@takeaseat.gr.\n\nTakeaSeat"],
+    setupCompany: ["Your company console — TakeaSeat", "Welcome to TakeaSeat!\n\nSet the key of the console for “{name}” here (the link is valid for 7 days):\n\n{link}\n\nIn the console you create your events, keep your rooms and start from old designs. The first time, you will be asked to accept the data processing agreement.\n\nThe key is not shown anywhere else — not even in TakeaSeat's own admin. If you forget it, ask for a new one with this email from the console.\n\nTakeaSeat"],
     setup: ["Your venue console — TakeaSeat", "Welcome to TakeaSeat!\n\nSet the key of the console for “{name}” here (the link is valid for 7 days):\n\n{link}\n\nThe key is not shown anywhere else — not even in TakeaSeat's own admin. If you forget it, ask for a new one with this email from the console.\n\nTakeaSeat"],
     verify: ["Confirm your email — TakeaSeat", "Hello!\n\nPlease confirm that this email will be used to recover “{name}” (the link is valid for 24 hours):\n\n{link}\n\nIf this was not you, ignore this message.\n\nTakeaSeat"],
     changed: ["Your recovery email changed — TakeaSeat", "Hello,\n\nThe recovery email for “{name}” was changed to {email} ({by}).\nIf you did not expect this, write to info@takeaseat.gr right away.\n\nTakeaSeat"],
@@ -359,6 +375,7 @@ const MAILS = {
     itemCouple: "Sitzplan „{name}“: {link}", itemClaim: "Sitzplan „{name}“ (erstes Öffnen — gültig bis {until}): {link}", itemVenue: "Konsole „{name}“ — neuen Schlüssel festlegen: {link}",
     relink: ["Ihr Link — TakeaSeat", "Hallo!\n\nWie gewünscht, hier ein Link, um Ihren Sitzplan „{name}“ auf diesem oder einem neuen Gerät wieder zu öffnen:\n\n{link}\n\nEr gilt 7 Tage und öffnet einmal. Wenn Sie das nicht waren, ignorieren Sie diese Nachricht.\n\nTakeaSeat"],
     venueReset: ["Neuer Konsolen-Schlüssel — TakeaSeat", "Hallo,\n\nLegen Sie hier einen neuen Schlüssel für die Konsole „{name}“ fest (der Link gilt 7 Tage und öffnet einmal):\n\n{link}\n\nIhr jetziger Schlüssel funktioniert, bis Sie den Link benutzen. Wenn Sie das nicht waren, schreiben Sie an info@takeaseat.gr.\n\nTakeaSeat"],
+    setupCompany: ["Ihre Firmen-Konsole — TakeaSeat", "Willkommen bei TakeaSeat!\n\nLegen Sie hier den Schlüssel der Konsole für „{name}“ fest (der Link gilt 7 Tage):\n\n{link}\n\nIn der Konsole erstellen Sie Ihre Veranstaltungen, speichern Ihre Räume und starten von alten Entwürfen. Beim ersten Mal werden Sie gebeten, den Auftragsverarbeitungsvertrag anzunehmen.\n\nDer Schlüssel wird nirgendwo sonst angezeigt — auch nicht in der Verwaltung von TakeaSeat. Wenn Sie ihn vergessen, fordern Sie in der Konsole mit dieser E-Mail einen neuen an.\n\nTakeaSeat"],
     setup: ["Ihre Location-Konsole — TakeaSeat", "Willkommen bei TakeaSeat!\n\nLegen Sie hier den Schlüssel der Konsole für „{name}“ fest (der Link gilt 7 Tage):\n\n{link}\n\nDer Schlüssel wird nirgendwo sonst angezeigt — auch nicht in der Verwaltung von TakeaSeat. Wenn Sie ihn vergessen, fordern Sie in der Konsole mit dieser E-Mail einen neuen an.\n\nTakeaSeat"],
     verify: ["E-Mail bestätigen — TakeaSeat", "Hallo!\n\nBitte bestätigen Sie, dass diese E-Mail zur Wiederherstellung von „{name}“ verwendet wird (der Link gilt 24 Stunden):\n\n{link}\n\nWenn Sie das nicht waren, ignorieren Sie diese Nachricht.\n\nTakeaSeat"],
     changed: ["Ihre Wiederherstellungs-E-Mail wurde geändert — TakeaSeat", "Hallo,\n\nDie Wiederherstellungs-E-Mail für „{name}“ wurde auf {email} geändert ({by}).\nWenn Sie das nicht erwartet haben, schreiben Sie sofort an info@takeaseat.gr.\n\nTakeaSeat"],
@@ -753,7 +770,7 @@ async function floodAlert(env, open) {
 // A mistyped address must never cost a business its free year, so the claim really does go back.
 async function dropSignupVenue(env, s) {
   const v = s.venueId ? safeParse(await env.PLANS.get("venue:" + s.venueId)) : null;
-  if (v && !(v.weddings || []).length && !v.templateId && !(v.trial && v.trial.verifiedAt)) {
+  if (v && !(v.weddings || []).length && !roomsOf(v).length && !(v.trial && v.trial.verifiedAt)) {
     await env.PLANS.delete("venue:" + v.id);
     await removeIndex(env, "venues:index", v.id);
     await indexEmail(env, v.email, "venue", v.id, false);
@@ -788,7 +805,7 @@ async function eraseVenue(env, id, why) {
   if (dv) {
     await keepBooks(env, "v:" + dv.id, venueBooks(dv), why || "request");
     for (const w of (dv.weddings || [])) if (w && w.planId) await purgeVenuePlan(env, dv.id, w.planId);
-    if (dv.templateId) await purgeVenuePlan(env, dv.id, dv.templateId);
+    for (const r of roomsOf(dv)) await purgeVenuePlan(env, dv.id, r.planId);
     for (const t of (dv.trash || [])) if (t && t.planId) await purgeVenuePlan(env, dv.id, t.planId);
     console.log("admin: erased venue " + dv.id);
     await indexEmail(env, dv.email, "venue", dv.id, false); await forgetEmail(env, dv.email);
@@ -1010,6 +1027,19 @@ function layoutOnly(src, fromWedding) {
   if (fromWedding) p.groups = JSON.parse(JSON.stringify(DEFAULT_GROUPS));   // a couple's own group names never travel to other couples
   p.features = (Array.isArray(src.features) ? src.features : []).filter(f => f && typeof f === "object" && !(fromWedding && f.by === "couple")).map(f => ({ ...JSON.parse(JSON.stringify(f)), by: "venue" }));
   p.tables = src.tables.filter(t => t && typeof t === "object").map(t => ({ ...JSON.parse(JSON.stringify(t)), seats: (Array.isArray(t.seats) ? t.seats : []).map(() => null) }));
+  return p;
+}
+
+// «Ξεκίνα από παλιό σχέδιο» (COMPANIES-PLAN.md phase 3). The room and tables always. A company is copying from itself, so
+// its groups and decor stay; a venue's copy drops its last client's, as between any two clients. Names and seats only when
+// asked for, and never the notes, whatever the age of the source.
+function designFrom(src, own, people) {
+  const p = layoutOnly(src, !own);
+  if (!p || !people) return p;
+  const from = withoutGuestNotes(src);
+  p.guests = JSON.parse(JSON.stringify(from.guests || {}));
+  p.parties = JSON.parse(JSON.stringify(Array.isArray(from.parties) ? from.parties : []));
+  p.tables = from.tables.filter(t => t && typeof t === "object").map(t => JSON.parse(JSON.stringify(t)));
   return p;
 }
 
@@ -1551,8 +1581,8 @@ async function coupleCard(env, c, focus) {
 async function venueCard(env, v, focus) {
   const weddings = [];
   for (const w of (v.weddings || [])) { const p = safeParse(await env.PLANS.get("plan:" + w.planId)); if (p) weddings.push(await planCard(env, p, w.planId, { venue: v })); }
-  let template = null;
-  if (v.templateId) { const t = safeParse(await env.PLANS.get("plan:" + v.templateId)); if (t) template = { planId: v.templateId, updated: t.updated || null, support: supportActive(t) ? { expires: t.support.expires } : null }; }
+  const rooms = [];
+  for (const r of roomsOf(v)) { const t = safeParse(await env.PLANS.get("plan:" + r.planId)); if (t) rooms.push({ updated: t.updated || null, support: supportActive(t) ? { expires: t.support.expires } : null }); }
   const lic = v.license || {};
   // «Πότε ανανεώνεται;» answered the way renewSweep really decides it, not from the dates alone: it renews only after
   // a renewal reminder has actually gone out, which needs an address, mail on and an active venue. When one of those
@@ -1570,7 +1600,7 @@ async function venueCard(env, v, focus) {
     setup: { mailed: !!v.keyPrivate, keySet: !!v.keyRotated, resetAt: v.keyResetAt || null, failedAt: v.mailFailedAt || null, error: v.mailError || null },
     licence: { active: canCreateWedding(v).ok, reason: canCreateWedding(v).reason || null, renewsAt, renewWhy,
       next: renewsAt ? nextSeason(lic) : null, invoiceDue: !!lic.invoiceDue, renewSkipped: lic.renewSkipped || null },
-    weddings, template,
+    weddings, rooms,
     trash: (v.trash || []).map(t => ({ planId: t.planId, label: t.label, kind: normKind(t.kind), deletedAt: t.deletedAt, purgeAt: t.purgeAt, date: t.date || null })) };
 }
 
@@ -1584,9 +1614,10 @@ async function venueCard(env, v, focus) {
 // · s:<signupId> · l:<leadId>.
 const CUST_LINK_DAYS = 3, CUST_FIRST_EVENT_DAYS = 14, CUST_ENDING_DAYS = 60;
 const CUST_TYPE = { wedding: "couple", baptism: "parents", party: "party", company: "company" };
-// COMPANIES-PLAN.md phase 1: until phase 3 a company is sold on a couple record and a γραφείο εκδηλώσεων as a venue, on those same
-// records, told apart by `custType` alone. The sheet, the payments and the ΑΦΜ read it; no plan, price or permission does.
-const venueType = v => (v && v.custType === "organiser") ? "organiser" : "venue";
+// COMPANIES-PLAN.md: a company and a γραφείο εκδηλώσεων are venue records told apart by `custType`. A γραφείο is a venue in all
+// but the word until phase 4. A company (phase 3) pays per event and has its own console screens. A couple record can
+// still say `custType: "company"` when its kind was corrected to one; no sale makes one any more.
+const venueType = v => (v && (v.custType === "organiser" || v.custType === "company")) ? v.custType : "venue";
 const coupleType = (c, kind) => (c && c.custType === "company") ? "company" : (CUST_TYPE[kind] || "couple");
 const ymdOfMs = t => t ? normYmd(new Date(t).toISOString()) : null;
 const daysTo = (from, to) => Math.round((Date.parse(to + "T00:00:00Z") - Date.parse(from + "T00:00:00Z")) / DAY);
@@ -1627,7 +1658,7 @@ async function venueCustomer(env, v, now, today) {
   const over = seasonal && now >= seasonOverAt(lic.seasonEnd), left = seasonal ? daysTo(today, lic.seasonEnd) : null;
   const on = v.active !== false, trial = onTrial(v);
   // "It opened the link and got going": its own key, a floor plan, an event, or a confirmed signup.
-  const started = !!(v.keyRotated || v.templateId || (v.weddings || []).length || (v.trash || []).length || v.used || (v.trial && v.trial.verifiedAt));
+  const started = !!(v.keyRotated || roomsOf(v).length || (v.weddings || []).length || (v.trash || []).length || v.used || (v.trial && v.trial.verifiedAt));
   const sentAt = Math.max(v.createdAt || 0, (s && s.resentAt) || 0, v.keyResetAt || 0);
   const flags = [];
   if (on && !over && !started && now - sentAt > CUST_LINK_DAYS * DAY) flags.push("setup_unopened");
@@ -1636,16 +1667,16 @@ async function venueCustomer(env, v, now, today) {
   if (lic.invoiceDue) flags.push("invoice_due");
   if (seasonal && lic.renewSkipped && lic.renewSkipped === lic.seasonEnd) flags.push("renew_skipped");
   if (on && trial && seasonal && !over && left <= CUST_ENDING_DAYS) flags.push("trial_ending");
-  if (vc.weddings.some(p => p.support) || (vc.template && vc.template.support)) flags.push("support_open");
+  if (vc.weddings.some(p => p.support) || vc.rooms.some(r => r.support)) flags.push("support_open");
   const stage = !on ? 7 : flags.includes("renew_skipped") ? 6 : over ? 7
     : (lic.invoiceDue || (seasonal && left <= CUST_ENDING_DAYS)) ? 6 : !started ? 4 : 5;
   const row = custRow({ key: "v:" + v.id, type: venueType(v), name: v.name || "", stage, flags, events,
     until: seasonal ? lic.seasonEnd : null, untilKind: seasonal ? (trial ? "trial" : "season") : null,
-    last: Math.max(v.createdAt || 0, (v.trial && v.trial.verifiedAt) || 0, (s && s.createdAt) || 0, (vc.template && vc.template.updated) || 0,
+    last: Math.max(v.createdAt || 0, (v.trial && v.trial.verifiedAt) || 0, (s && s.createdAt) || 0, ...vc.rooms.map(r => r.updated || 0),
       ...(v.weddings || []).map(w => w.createdAt || 0), ...events.map(custTouch)) || null,
     email: v.email || "", phone: phoneOf(v.phone, v.contact, v.notes), afm: v.afm || "", createdAt: v.createdAt || null, active: on, nextStep: v.nextStep, contactAt: v.contactAt });
   return { row, card: { venue: vc.venue, setup: vc.setup, licence: vc.licence, signup: s ? await signupCard(env, s) : null,
-    template: vc.template ? { updated: vc.template.updated, support: vc.template.support } : null, events } };
+    rooms: vc.rooms, events } };
 }
 async function coupleCustomer(env, c, now) {
   const cc = await coupleCard(env, c);
@@ -1859,6 +1890,9 @@ const ACT_KINDS = ["call", "viber", "email", "offer", "meeting", "other"];   // 
 // (2026-10-18; the plan's 2 years are for phase 4's contacts who never bought). The clock never runs while a plan is
 // still there, nor for a venue whose licence can still make one: only once nothing is left but the memory.
 const MEMORY_YEARS = 5, MEMORY_KEY = "meta:memory";
+// A season ends by itself. A company's unused event never would, so it does not hold the clock: its card and rooms still go
+// five years after the last contact.
+const licenceHolds = v => !isCompany(v) && canCreateWedding(v).ok;
 const CUST_REC = { v: "venue:", c: "couple:", s: "signup:", l: "lead:" }, NOTES_FIELD = { v: "notes", c: "contact", s: "notes", l: "notes" };
 const custKeyOf = key => { const mm = /^([vcsl]):([A-Za-z0-9_-]{1,64})$/.exec(key || ""); return mm ? { key: mm[0], t: mm[1], id: mm[2], rec: CUST_REC[mm[1]] + mm[2] } : null; };
 const stepOut = s => (s && typeof s.text === "string" && s.text) ? { text: s.text, due: ymdOk(s.due) ? s.due : null, at: s.at || null } : null;
@@ -1886,7 +1920,7 @@ function memoryOf(t, rec, x, acts, now, ledger) {   // ledger: a payment is a pu
     ...((ledger && ledger.pays) || []).map(p => p.at || 0)) || now;
   const lastTouch = ymdOfMs(Math.min(last, now));
   const held = (x.card.events.length || (t === "v" && ((rec.weddings || []).length || (rec.trash || []).length))) ? "plans"
-    : (t === "v" && canCreateWedding(rec).ok) ? "licence" : null;
+    : (t === "v" && licenceHolds(rec)) ? "licence" : null;
   return { lastTouch, forgetAt: addYears(lastTouch, MEMORY_YEARS), years: MEMORY_YEARS, held };
 }
 // The timeline, newest first: his entries and what the system already knows. Codes only (admin.html words them), a time,
@@ -2010,7 +2044,7 @@ async function memorySweep(env, now) {
   if (+ap.hour < FULL_PASS_HOUR || (safeParse(await env.PLANS.get(MEMORY_KEY)) || {}).day === day) return out;
   for (const vid of (safeParse(await env.PLANS.get("venues:index")) || [])) {
     const v = safeParse(await env.PLANS.get("venue:" + vid));
-    if (!v || isTest(v) || (v.weddings || []).length || (v.trash || []).length || canCreateWedding(v).ok) continue;
+    if (!v || isTest(v) || (v.weddings || []).length || (v.trash || []).length || licenceHolds(v)) continue;
     const x = await venueCustomer(env, v, now, day), mem = memoryOf("v", v, x, await actsOf(env, "v:" + v.id), now, await ledgerOf(env, "v:" + v.id));
     if (mem && !mem.held && mem.forgetAt <= day) { await eraseVenue(env, v.id, "clock"); out.forgotten++; console.log("memory: forgot a venue, " + MEMORY_YEARS + " years after its last contact"); }
   }
@@ -2061,6 +2095,7 @@ const PRICE_SEASON = 34900, PRICE_PLAN = 2500;   // a venue's season (+ ΦΠΑ) 
 const PAY_METHODS = ["bank", "iris", "card", "cash", "other"], PAY_WHAT = ["season", "plan", "extra", "other"];
 const PAY_MAX = 500, DUE_MAX = 100, PAY_NOTE_MAX = 300, PAY_REASON_MAX = 200, PAY_ABOUT_MAX = 80, PAY_RECEIPT_MAX = 40;
 const PAY_AMOUNT_MAX = 10000000, PAY_FIRST_DAY = "2020-01-01";   // €100,000 · nothing older is a TakeaSeat payment
+const companyEventDue = () => ({ id: rnd(10), what: "plan", kind: "company", amount: PRICE_PLAN, plusVat: false, due: addDays(todayAthens(), DUE_NEW_DAYS), src: "company" });
 const DUE_NEW_DAYS = 7, DUE_RENEW_DAYS = 30;   // a new customer: late a week after · a renewal: a month into the new season
 const ledgerOf = async (env, key) => { const l = safeParse(await env.PLANS.get("ledger:" + key));
   return { dues: [], pays: [], ...(l && typeof l === "object" ? l : {}) }; };
@@ -2242,7 +2277,7 @@ async function todayList(env, now = Date.now(), sweeping = false) {   // sweepin
     for (const f of ["setup_unopened", "claim_unused", "no_event"]) if (fl.includes(f))
       add("stuck", "stuck:" + key, { ...who, code: f, fp: f + "@" + (row.last || 0), text: name + " — " + STUCK_WORDS[f] });
     if (fl.includes("support_open")) {
-      const exp = Math.max(0, ...(x.card.events || []).map(e => (e.support && e.support.expires) || 0), (x.card.template && x.card.template.support && x.card.template.support.expires) || 0);
+      const exp = Math.max(0, ...(x.card.events || []).map(e => (e.support && e.support.expires) || 0), ...(x.card.rooms || []).map(r => (r.support && r.support.expires) || 0));
       add("support", "support:" + key, { ...who, code: "support_open", fp: String(exp), text: name + " — ζητά υποστήριξη" });
     }
     if (rec.mailFailedAt && (key[0] === "v" || key[0] === "c"))
@@ -2480,7 +2515,7 @@ export default {
           const out = { name: rec.name, plan: rec.plan, updated: rec.updated, role: a.role, perms: a.perms, owner: { type: a.owner.type }, template: !!rec.template, kind: kindOf(rec) };
           if (a.owner.type === "venue") {
             const v = safeParse(await env.PLANS.get("venue:" + a.owner.venueId));
-            if (v) { out.owner.venueName = v.name; if (a.role === "couple") out.owner.venueContact = v.contact || ""; }
+            if (v) { out.owner.venueName = v.name; if (a.role === "couple") out.owner.venueContact = v.contact || ""; if (a.role === "venue" && isCompany(v)) out.owner.company = true; }
           }
           if (a.role === "couple" && a.owner.type === "couple" && rec.coupleId) {   // the couple's own recovery email
             const c = safeParse(await env.PLANS.get("couple:" + rec.coupleId));
@@ -2816,7 +2851,7 @@ export default {
           for (const vid of (ix.venues || [])) {
             const v = safeParse(await env.PLANS.get("venue:" + vid)); if (!v || v.email !== email) continue;
             const t = await mintToken(env, { kind: "venue-recover", vid: v.id, lg: v.lgen || 0, email }, RECOVER_TTL);
-            items.push(fill(MAILS[lang].itemVenue, { name: v.name, link: baseUrl(env) + "/venue.html#recover=" + t }));
+            items.push(fill(MAILS[lang].itemVenue, { name: v.name, link: baseUrl(env) + consolePath(v) + "#recover=" + t }));
           }
           if (items.length) send(env, email, mailMsg(lang, "recover", { items: items.join("\n\n") }));
         }
@@ -3222,22 +3257,24 @@ export default {
             if (String(b.afm || "").trim() && !afm) return json({ error: "bad_afm" }, 400);
             const lead = await leadToAdopt(env, b);
             if (lead === false) return json({ error: "lead_gone" }, 409);
+            const company = b.custType === "company";   // sold with its first event: one more comes with each «+1 εκδήλωση»
             const v = { id, name: String(b.name || "Venue").slice(0, 120), contact: String(b.contact || "").slice(0, 200), notes: String(b.notes || "").slice(0, NOTES_MAX), email, lang,
-              key, keyRotated: false, license: normLicense(b.license), used: 0, weddings: [], active: true, createdAt: Date.now(), defaultPerms: { ...VENUE_DEFAULT },
-              ...(b.custType === "organiser" ? { custType: "organiser" } : {}),
+              key, keyRotated: false, license: normLicense(company ? { type: "per_wedding", quota: 1 } : b.license), used: 0, weddings: [], active: true, createdAt: Date.now(), defaultPerms: { ...VENUE_DEFAULT },
+              ...(b.custType === "organiser" || company ? { custType: b.custType } : {}),
               ...(afm ? { afm } : {}) };   // shown and matched («Γνωστός πελάτης»); the free-year fence is the signup's own `afm:` row, not this
             // With mail and an address, the venue sets its own key from the e-mailed link: the admin never sees one.
             let mailed = false;
             if (email && mailOn(env)) {
               v.keyPrivate = true;
               const t = await mintToken(env, { kind: "venue-setup", vid: id, lg: 0, email }, SETUP_TTL);
-              mailed = send(env, email, mailMsg(lang, "setup", { name: v.name, link: baseUrl(env) + "/venue.html#recover=" + t }), { k: "venue", id });
+              mailed = send(env, email, mailMsg(lang, company ? "setupCompany" : "setup", { name: v.name, link: baseUrl(env) + consolePath(v) + "#recover=" + t }), { k: "venue", id });
               if (!mailed) v.keyPrivate = false;
             }
             await env.PLANS.put("venue:" + id, JSON.stringify(v));
             await addIndex(env, "venues:index", id);
             await indexEmail(env, email, "venue", id, true);
             if (v.license.type === "seasonal" && ymdOk(v.license.seasonEnd)) await addDue(env, "v:" + id, v, seasonDue(v.license, "venue", addDays(todayAthens(), DUE_NEW_DAYS)));
+            if (company) await addDue(env, "v:" + id, v, companyEventDue());
             if (lead) await adoptLead(env, lead.id, "v:" + id, "venue:" + id);
             return json(mailed ? { id, venue: adminVenue(v), mailed: true } : { id, key, venue: adminVenue(v), mailed: false });
           }
@@ -3258,12 +3295,19 @@ export default {
             if (v.email && mailOn(env)) {   // the venue gets a link to set a new key; its current key keeps working until then
               const g = await kvUpdate(env, "venue:" + v.id, cur => { if (!cur) return null; return { __obj: cur, __res: nextGen(cur) }; });   // older mailed links retire
               const t = await mintToken(env, { kind: "venue-recover", vid: v.id, lg: g.res, email: v.email }, SETUP_TTL);
-              if (!send(env, v.email, mailMsg(v.lang, "venueReset", { name: v.name, link: baseUrl(env) + "/venue.html#recover=" + t }), { k: "venue", id: v.id })) return json({ error: "mail_failed" }, 503);
+              if (!send(env, v.email, mailMsg(v.lang, "venueReset", { name: v.name, link: baseUrl(env) + consolePath(v) + "#recover=" + t }), { k: "venue", id: v.id })) return json({ error: "mail_failed" }, 503);
               return json({ ok: true, mailed: true, to: maskEmail(v.email) });
             }
             const newKey = v.id + "." + rnd(28);
             await rotateVenueCredentials(env, v.id, newKey, false);
             return json({ ok: true, key: newKey, mailed: false });
+          }
+          if (parts.length === 4 && parts[3] === "events" && request.method === "POST") {   // a company bought one more event: it can make it at once, and the 25 € is expected
+            const v0 = safeParse(await env.PLANS.get("venue:" + parts[2])); if (!v0) return json({ error: "not found" }, 404);
+            if (!isCompany(v0)) return json({ error: "not_company" }, 409);
+            const r = await kvUpdate(env, "venue:" + parts[2], v => { if (!v) return null; v.license = { ...normLicense(v.license, v.license), quota: ((v.license || {}).quota || 0) + 1 }; return v; });
+            await addDue(env, "v:" + r.obj.id, r.obj, companyEventDue());
+            return json({ ok: true, venue: adminVenue(r.obj) });
           }
           if (parts.length === 4 && parts[3] === "invoiced" && request.method === "POST") {   // the renewal invoice was sent
             const r = await kvUpdate(env, "venue:" + parts[2], v => { if (!v) return null; v.license = { ...normLicense(v.license, v.license), invoiceDue: false }; return v; });
@@ -3310,14 +3354,14 @@ export default {
               if (b.name != null) v.name = String(b.name).slice(0, 120);
               if (b.contact != null) v.contact = String(b.contact).slice(0, 200);   // PUBLIC: shown to this venue's couples
               if (b.notes != null) v.notes = String(b.notes).slice(0, NOTES_MAX);   // private: admin only (the card's notes box)
-              // only a γραφείο's: a Κτήμα's ΑΦΜ may be its free-year claim (`afm:`), which this edit would leave behind
-              if (b.afm != null && v.custType === "organiser") { if (afm) v.afm = afm; else delete v.afm; }
+              // only a γραφείο's or a company's: a Κτήμα's ΑΦΜ may be its free-year claim (`afm:`), which this edit would leave behind
+              if (b.afm != null && v.custType) { if (afm) v.afm = afm; else delete v.afm; }
               if (b.retention !== undefined) { const ret = normRetention(b.retention); if (ret) v.retention = ret; else delete v.retention; }
               if (b.active != null) v.active = !!b.active;
               // Editing the dates of a venue that is on its free year MOVES the free year ("two more months"); it does
               // not quietly turn it into a paid season that renews itself. `trial:false` is how the owner says
               // "this is a subscription now" — the record keeps when it signed up, for the signups list.
-              if (b.license) { const was = onTrial(v); v.license = normLicense(b.license, v.license);
+              if (b.license && !isCompany(v)) { const was = onTrial(v); v.license = normLicense(b.license, v.license);   // a company's only moves by «+1 εκδήλωση»
                 if (was && v.trial) v.trial = { ...v.trial, seasonEnd: v.license.seasonEnd,
                   endsAt: ymdOk(v.license.seasonEnd) ? athensMidnight(addDays(v.license.seasonEnd, 1)) : v.trial.endsAt }; }
               if (b.trial === false && v.trial) { if (!v.trial.endedAt) trialEnd = freeTo || ymdOfMs(Date.now()); v.trial = { ...v.trial, seasonEnd: null, endedAt: Date.now() }; }
@@ -3360,7 +3404,7 @@ export default {
               const s0 = safeParse(await env.PLANS.get("signup:" + sid));
               if (!s0 || s0.status !== "pending" || now - (s0.createdAt || 0) < hours * 3600000) continue;
               const v0 = s0.venueId ? safeParse(await env.PLANS.get("venue:" + s0.venueId)) : null;
-              if (v0 && (v0.keyRotated || (v0.weddings || []).length || v0.templateId || (v0.trial && v0.trial.verifiedAt))) continue;   // somebody is using it: not ours to drop
+              if (v0 && (v0.keyRotated || (v0.weddings || []).length || roomsOf(v0).length || (v0.trial && v0.trial.verifiedAt))) continue;   // somebody is using it: not ours to drop
               await dropSignupVenue(env, s0);
               await kvUpdate(env, "signup:" + sid, cur => { if (!cur || cur.status !== "pending") return null; cur.status = "expired"; cur.expiredAt = now; cur.venueId = null; return cur; });
               dropped++;
@@ -3859,7 +3903,7 @@ export default {
           const v = safeParse(await env.PLANS.get("venue:" + TEST_VENUE_ID));
           if (v && !isTest(v)) return json({ error: "not_test" }, 409);
           const ids = new Set();
-          if (v) { for (const w of (v.weddings || [])) ids.add(w.planId); for (const t of (v.trash || [])) ids.add(t.planId); if (v.templateId) ids.add(v.templateId); }
+          if (v) { for (const w of (v.weddings || [])) ids.add(w.planId); for (const t of (v.trash || [])) ids.add(t.planId); for (const r of roomsOf(v)) ids.add(r.planId); }
           if (typeof env.PLANS.list === "function") for (const k of (await env.PLANS.list("plan:")) || []) { if (isTest(safeParse(await env.PLANS.get(k)))) ids.add(k.slice(5)); }
           let plans = 0; const keptIds = [], gone = new Set();
           for (const pid of ids) { const p = safeParse(await env.PLANS.get("plan:" + pid));
@@ -3874,7 +3918,7 @@ export default {
           else if (keepVenue) await kvUpdate(env, "venue:" + TEST_VENUE_ID, cur => { if (!isTest(cur)) return null;   // …but its rows for the plans that did go are cleared
             cur.weddings = (cur.weddings || []).filter(w => !gone.has(w.planId));
             cur.trash = (cur.trash || []).filter(t => !gone.has(t.planId));
-            if (cur.templateId && gone.has(cur.templateId)) cur.templateId = null;
+            setRooms(cur, roomsOf(cur).filter(r => !gone.has(r.planId)));
             return cur; });
           console.log("admin: test data erased (" + plans + " plans" + (v ? (keepVenue ? ", the test venue kept for " + keptIds.length + " record(s) that are not test data" : " + the test venue") : "") + ")");
           return json({ ok: true, plans, venue: !!v && !keepVenue, kept: keptIds.length, keptIds, venueKept: keepVenue });
@@ -3990,6 +4034,19 @@ export default {
         if (!v) return json({ error: "not found" }, 404);
         if (!eq(request.headers.get("X-Venue-Key") || "", v.key)) return json({ error: "unauthorized" }, 403);
         const ownPlan = async pid => { const r = safeParse(await env.PLANS.get("plan:" + pid)); const o = ownerOf(r); return (r && o.type === "venue" && o.venueId === v.id) ? r : null; };
+        // A company is the controller of its guest list and we store it for it, as for a venue (dpa.html). It is sold by hand,
+        // so it accepts here, at its first opening, and nothing works until it has: no event, so no link to any plan.
+        if (isCompany(v) && !v.dpaAt) {
+          if (parts.length === 3 && parts[2] === "agreement" && request.method === "POST") {
+            const b = await readBody(request);
+            if (b.accept !== true) return json({ error: "bad_request" }, 400);
+            await kvUpdate(env, vkey, cur => { if (!cur) return null; cur.dpaAt = cur.dpaAt || Date.now(); return cur; });
+            console.log("venue " + v.id + ": a company accepted the agreement");
+            return json({ ok: true });
+          }
+          if (parts.length === 2 && request.method === "GET") return json({ venue: { ...publicVenue(v), email: v.email || "" }, needsAgreement: true });
+          return json({ error: "agreement_required" }, 403);
+        }
         if (parts.length === 2 && request.method === "GET") {
           // Safety net for weddings the boot migration did not see: never overwrites perms or owner.
           let changed = false;
@@ -4006,9 +4063,9 @@ export default {
           }
           if (changed) await kvUpdate(env, vkey, cur => { if (!cur) return null; const byId = new Map((v.weddings || []).map(w => [w.planId, w]));
             (cur.weddings || []).forEach(w => { const m = byId.get(w.planId); if (m && m.venueKey) { w.venueKey = m.venueKey; w.perms = m.perms; w.layoutSet = m.layoutSet; } }); return cur; });
-          let template = null;
-          if (v.templateId) { const t = await ownPlan(v.templateId);
-            if (t) template = { planId: v.templateId, venueKey: t.venueKey, updated: t.updated, tables: planStats(t.plan).tables, supportExpires: supportActive(t) ? t.support.expires : null }; }
+          const rooms = [];
+          for (const r of roomsOf(v)) { const t = await ownPlan(r.planId);
+            if (t) rooms.push({ planId: r.planId, name: r.name || t.name || "", venueKey: t.venueKey, updated: t.updated, tables: planStats(t.plan).tables, supportExpires: supportActive(t) ? t.support.expires : null }); }
           const gate = canCreateWedding(v);
           const live = x => (x && x > Date.now()) ? x : null;
           const settings = await getSettings(env), since = await lifecycleSince(env), rows = [];
@@ -4016,7 +4073,7 @@ export default {
           for (const w of (v.weddings || [])) {   // date, progress and lifecycle of each wedding
             const p = await ownPlan(w.planId), c = w.clientId ? byId.get(w.clientId) : null;
             const L = p ? lifeOf(p, policyOf(settings, v.retention, p.retention), since) : null;
-            rows.push({ planId: w.planId, label: w.label, kind: p ? kindOf(p) : normKind(w.kind), createdAt: w.createdAt, editKey: w.editKey, venueKey: w.venueKey,
+            rows.push({ planId: w.planId, label: w.label, kind: p ? kindOf(p) : normKind(w.kind), createdAt: w.createdAt, editKey: w.editKey, venueKey: w.venueKey, room: w.room || null,
               perms: normPerms(w.perms, ALL_OPEN), layoutSet: w.layoutSet !== false, supportExpires: live(w.supportExpires),
               date: p ? (p.weddingDate || null) : (w.date || null), updated: p ? p.updated : null, stats: p ? planStats(p.plan) : null,
               life: L ? { lockAt: L.lockAt, deleteAt: L.deleteAt, over: L.over, locked: L.locked, keep: L.keep, fallback: L.fallback, phase: L.phase, fullAt: L.fullAt } : null,
@@ -4026,7 +4083,7 @@ export default {
           }
           // Cards whose events are all gone: the venue's memory of its clients, until the years it chose run out.
           const memory = clients.filter(c => !clientEvents(v, c.id).length).map(c => ({ ...clientRow(c), last: clientLast(v, c) || clientLast(v, c, true), forgetAt: clientMemory(v, c, [], today).forgetAt }));
-          return json({ venue: { ...publicVenue(v), email: v.email || "", emailVerified: !!v.emailVerified, mail: mailOn(env) }, template, defaultPerms: normPerms(v.defaultPerms, ALL_OPEN), canCreate: gate.ok, reason: gate.reason,
+          return json({ venue: { ...publicVenue(v), email: v.email || "", emailVerified: !!v.emailVerified, mail: mailOn(env) }, rooms, keepYears: keepYearsOf(settings, v), defaultPerms: normPerms(v.defaultPerms, ALL_OPEN), canCreate: gate.ok, reason: gate.reason,
             weddings: rows, trash: (v.trash || []).map(t => ({ label: t.label, kind: normKind(t.kind), deletedAt: t.deletedAt, purgeAt: t.purgeAt, date: t.date || null })),
             clients: memory, clientYears: clientYears(v), trackSince: await clientTrackSince(env) });
         }
@@ -4048,7 +4105,7 @@ export default {
           if (!(await mailAllowed(env, email, "verify"))) return json({ error: "rate_limited" }, 429);
           const t = await mintToken(env, { kind: "verify-venue", vid: v.id, email }, VERIFY_TTL);
           await kvUpdate(env, vkey, cur => { if (!cur) return null; cur.pendingVerify = t; return cur; });
-          if (!send(env, email, mailMsg(b.lang || v.lang, "verify", { name: v.name, link: baseUrl(env) + "/venue.html#verify=" + t }))) return json({ error: "mail_failed" }, 503);
+          if (!send(env, email, mailMsg(b.lang || v.lang, "verify", { name: v.name, link: baseUrl(env) + consolePath(v) + "#verify=" + t }))) return json({ error: "mail_failed" }, 503);
           return json({ ok: true, pending: maskEmail(email) });
         }
         if (parts.length === 3 && parts[2] === "renewal" && request.method === "POST") {   // the venue stops (or restarts) the automatic renewal
@@ -4071,22 +4128,37 @@ export default {
           await kvUpdate(env, vkey, cur => { if (!cur) return null; cur.defaultPerms = perms; if (b.applyToAll) (cur.weddings || []).forEach(w => { w.perms = perms; }); return cur; });
           return json({ ok: true, defaultPerms: perms, applied });
         }
-        // The venue's default space: one template plan (outside the weddings list: never counted, never a couple link).
-        if (parts.length === 3 && parts[2] === "template" && request.method === "POST") {
-          if (v.templateId) { const t = await ownPlan(v.templateId); if (t) return json({ planId: v.templateId, venueKey: t.venueKey, updated: t.updated }); }
+        // The saved rooms: a new one, empty or from one of its own events (only its space).
+        if (parts.length === 3 && parts[2] === "rooms" && request.method === "POST") {
+          if (roomsOf(v).length >= MAX_ROOMS) return json({ error: "too_many_rooms" }, 409);
           const b = await readBody(request);
           let plan = null;
-          if (b.fromPlanId) {   // "start from one of my weddings": only a wedding of this venue, and only its space
+          if (b.fromPlanId) {
             const src = (v.weddings || []).some(w => w.planId === b.fromPlanId) ? await ownPlan(b.fromPlanId) : null;
             if (!src) return json({ error: "not found" }, 404);
-            plan = layoutOnly(src.plan, true);
+            plan = layoutOnly(src.plan, !isCompany(v));
           }
-          const id = rnd(22);
-          const rec = { name: String(b.name || v.name).slice(0, 120), plan, editKey: rnd(28), venueKey: rnd(28), readKey: rnd(24),
+          const id = rnd(22), name = String(b.name || "").trim().slice(0, 120) || String(v.name || "").slice(0, 120);
+          const rec = { name, plan, editKey: rnd(28), venueKey: rnd(28), readKey: rnd(24),
             owner: { type: "venue", venueId: v.id }, venueId: v.id, ...(isTest(v) ? { test: true } : {}), template: true, perms: { ...ALL_OPEN }, keyGen: 0, venueGen: 0, createdAt: Date.now(), updated: Date.now() };
           await env.PLANS.put("plan:" + id, JSON.stringify(rec));
-          await kvUpdate(env, vkey, cur => { if (!cur) return null; cur.templateId = id; return cur; });
-          return json({ planId: id, venueKey: rec.venueKey, updated: rec.updated });
+          await kvUpdate(env, vkey, cur => { if (!cur) return null; setRooms(cur, [...roomsOf(cur), { planId: id, name }]); return cur; });
+          return json({ planId: id, name, venueKey: rec.venueKey, updated: rec.updated });
+        }
+        if (parts.length === 4 && parts[2] === "rooms" && (request.method === "PATCH" || request.method === "PUT")) {
+          if (!roomsOf(v).some(r => r.planId === parts[3])) return json({ error: "not found" }, 404);
+          const b = await readBody(request), name = String(b.name || "").trim().slice(0, 120);
+          if (!name) return json({ error: "missing_name" }, 400);
+          await kvUpdate(env, "plan:" + parts[3], rec => { if (!rec) return null; rec.name = name; return rec; });
+          await kvUpdate(env, vkey, cur => { if (!cur) return null; setRooms(cur, roomsOf(cur).map(r => r.planId === parts[3] ? { ...r, name } : r)); return cur; });
+          return json({ ok: true, name });
+        }
+        if (parts.length === 4 && parts[2] === "rooms" && request.method === "DELETE") {   // the events made from it keep their copy
+          if (!roomsOf(v).some(r => r.planId === parts[3])) return json({ ok: true });
+          await purgeVenuePlan(env, v.id, parts[3]);
+          await kvUpdate(env, vkey, cur => { if (!cur) return null; setRooms(cur, roomsOf(cur).filter(r => r.planId !== parts[3])); return cur; });
+          console.log("venue " + v.id + ": a saved room deleted");
+          return json({ ok: true });
         }
         if (parts.length === 3 && parts[2] === "weddings" && request.method === "POST") {
           const b = await readBody(request);
@@ -4096,10 +4168,20 @@ export default {
           // The date first, then the licence: a trial is gated on the wedding's date, so the gate has to know it.
           const gate = canCreateWedding(v, dated.weddingDate);
           if (!gate.ok) return json({ error: gate.reason, ...(gate.reason === "after_trial" ? { until: (v.license || {}).seasonEnd || null } : {}) }, 403);
-          const kind = normKind(b.kind);   // «νέα εκδήλωση»: the console sends the type, anything else is a wedding
-          let plan = null;
-          // the room is the venue's and is shared by both kinds; only the words the planner itself wrote follow this event
-          if (v.templateId) { const t = await ownPlan(v.templateId); if (t) plan = retypeStarter(layoutOnly(t.plan), kind); }
+          const co = isCompany(v), kind = co ? "company" : normKind(b.kind);   // «νέα εκδήλωση»: the console sends the type, anything else is a wedding
+          let plan = null, room = null;
+          // the room is the venue's and is shared by every kind; only the words the planner itself wrote follow this event
+          if (b.fromPlanId) {   // «Ξεκίνα από παλιό σχέδιο»: only an event of this console that still exists
+            const src = (v.weddings || []).some(w => w.planId === b.fromPlanId) ? await ownPlan(b.fromPlanId) : null;
+            if (!src) return json({ error: "source_gone" }, 404);
+            if (b.people && !co) return json({ error: "people_not_allowed" }, 403);   // a venue's old guests belong to its previous client
+            plan = retypeStarter(designFrom(src.plan, co, !!b.people), kind);
+          } else {   // no roomId: the first room, as when a venue had only one · "": none, the room is drawn in the event
+            const rooms = roomsOf(v), pick = b.roomId == null ? rooms[0] : rooms.find(r => r.planId === b.roomId);
+            if (b.roomId && !pick) return json({ error: "room_gone" }, 404);
+            const t = pick && await ownPlan(pick.planId);
+            if (t) { plan = retypeStarter(layoutOnly(t.plan), kind); if (plan) room = pick.name || t.name || null; }
+          }
           const id = rnd(22), editKey = rnd(28), venueKey = rnd(28);
           const perms = normPerms(b.perms || v.defaultPerms, ALL_OPEN);
           const now = Date.now();
@@ -4112,7 +4194,7 @@ export default {
             owner: { type: "venue", venueId: v.id }, venueId: v.id, ...(isTest(v) ? { test: true } : {}), kind, perms, layoutAt: plan ? now : null, keyGen: 0, venueGen: 0, weddingDate: dated.weddingDate || null, createdAt: now, updated: now };
           await env.PLANS.put("plan:" + id, JSON.stringify(rec));
           await kvUpdate(env, vkey, cur => { if (!cur) return null;
-            cur.weddings = cur.weddings || []; cur.weddings.push({ planId: id, label: rec.name, kind, createdAt: now, editKey, venueKey, perms, layoutSet: !!plan, date: rec.weddingDate, ...(isTest(cur) ? { test: true } : {}) });
+            cur.weddings = cur.weddings || []; cur.weddings.push({ planId: id, label: rec.name, kind, createdAt: now, editKey, venueKey, perms, layoutSet: !!plan, date: rec.weddingDate, ...(room ? { room } : {}), ...(isTest(cur) ? { test: true } : {}) });
             cur.used = (cur.used || 0) + 1; return cur; });
           return json({ planId: id, editKey, venueKey, kind, updated: now, fromTemplate: !!plan });
         }
@@ -4262,6 +4344,14 @@ export default {
           }
           return json({ error: "not found" }, 404);
         }
+        if (parts.length === 3 && parts[2] === "keep" && (request.method === "PUT" || request.method === "PATCH")) {   // how long its plans are kept after the event (dpa.html §4)
+          const b = await readBody(request), years = Number(b.years);
+          if (!VCLI_YEARS.includes(years)) return json({ error: "bad_years" }, 400);
+          await kvUpdate(env, vkey, cur => { if (!cur) return null; cur.retention = { ...(normRetention(cur.retention) || {}), keepDays: years * DAYS_PER_KEEP_YEAR }; return cur; });
+          await unarchive(env);   // its events' deletion dates have moved
+          console.log("venue " + v.id + ": plans kept " + years + " year(s)");
+          return json({ ok: true, keepYears: years });
+        }
         if (parts.length === 3 && parts[2] === "memory" && (request.method === "PUT" || request.method === "PATCH")) {   // how long its cards outlive their plans
           const b = await readBody(request), years = Number(b.years);
           if (!VCLI_YEARS.includes(years)) return json({ error: "bad_years" }, 400);
@@ -4350,7 +4440,7 @@ async function purgeVenuePlan(env, venueId, id) {   // only ever deletes a plan 
 async function rotateVenueCredentials(env, venueId, newKey, byVenue) {
   const v = safeParse(await env.PLANS.get("venue:" + venueId)); if (!v) return;
   const fresh = {};
-  for (const pid of (v.weddings || []).map(w => w.planId).concat(v.templateId ? [v.templateId] : [])) {
+  for (const pid of (v.weddings || []).map(w => w.planId).concat(roomsOf(v).map(r => r.planId))) {
     const r = await kvUpdate(env, "plan:" + pid, rec => { if (!rec) return null; const o = ownerOf(rec); if (o.type !== "venue" || o.venueId !== venueId) return null;
       rec.venueKey = rnd(28); rec.venueGen = (rec.venueGen || 0) + 1; return { __obj: rec, __res: rec.venueKey }; });
     if (r.res) fresh[pid] = r.res;
@@ -4407,7 +4497,7 @@ function canCreateWedding(v, date) {
   if (!v.active) return { ok: false, reason: "inactive" };
   const L = v.license || {};
   if (L.type === "per_wedding") {
-    if (L.quota && (v.used || 0) >= L.quota) return { ok: false, reason: "quota_reached" };
+    if (isCompany(v) ? (v.used || 0) >= (L.quota || 0) : (L.quota && (v.used || 0) >= L.quota)) return { ok: false, reason: "quota_reached" };   // a company has what it bought: for it 0 is none, never "no limit"
     return { ok: true };
   }
   const now = Date.now();
@@ -4426,12 +4516,12 @@ const publicTrial = v => v.trial ? { startedAt: v.trial.startedAt || null, endsA
   verifiedAt: v.trial.verifiedAt || null, seasonEnd: v.trial.seasonEnd || null, inForce: onTrial(v) } : null;
 function publicVenue(v) {   // returned to the venue itself (no key)
   return { id: v.id, name: v.name, contact: v.contact, license: publicLicense(v.license), used: v.used || 0,
-    active: v.active, createdAt: v.createdAt, weddingCount: (v.weddings || []).length, keyRotated: !!(v.keyRotated || v.keyPrivate), hasTemplate: !!v.templateId,
-    trial: publicTrial(v) };
+    active: v.active, createdAt: v.createdAt, weddingCount: (v.weddings || []).length, keyRotated: !!(v.keyRotated || v.keyPrivate), roomCount: roomsOf(v).length,
+    ...(isCompany(v) ? { custType: "company" } : {}), trial: publicTrial(v) };
 }
 function adminVenue(v) {     // returned to the owner — counts only: no plan ids, no keys, no wedding names
   return { ...publicVenue(v), email: v.email || "", emailVerified: !!v.emailVerified, lang: v.lang || "el", notes: v.notes || "", retention: v.retention || null,
-    afm: v.afm || "", custType: v.custType || "", phone: v.phone || "", selfSignup: !!v.selfSignup, signupId: v.signupId || null,
+    afm: v.afm || "", custType: v.custType || "", dpaAt: v.dpaAt || null, phone: v.phone || "", selfSignup: !!v.selfSignup, signupId: v.signupId || null,
     license: v.license ? { autoRenew: true, ...v.license } : v.license, trashCount: (v.trash || []).length, renewals: (v.renewals || []).slice(-5) };
 }
 async function adminCouple(env, c) {   // licence metadata only — never the plan id, a key, or anything inside the plan

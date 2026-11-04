@@ -186,7 +186,7 @@ r = await call('GET', '/plans/' + W0.planId, undefined, { 'X-Edit-Key': W0.editK
 ok(r.d.perms.layout === false, 'once the venue saves the layout, its locks apply');
 ok((await call('GET', '/venues/' + V.id, undefined, VH)).d.weddings.find(w => w.planId === W0.planId).layoutSet === true, 'the console knows the layout is set');
 // template
-r = await call('POST', '/venues/' + V.id + '/template', { fromPlanId: W0.planId }, VH);
+r = await call('POST', '/venues/' + V.id + '/rooms', { fromPlanId: W0.planId }, VH);
 const T = r.d;
 ok(r.status === 200 && T.venueKey, 'venue creates its template from one of its weddings');
 const tplan = raw('plan:' + T.planId).plan;
@@ -196,7 +196,7 @@ r = await call('PUT', '/plans/' + T.planId, { plan: layout({ guests: { x: { name
 ok(r.status === 200, 'venue edits the template in the planner');
 r = await call('GET', '/plans/' + T.planId, undefined, { 'X-Edit-Key': T.venueKey });
 ok(r.d.role === 'venue' && r.d.template === true && r.d.couplePerms === undefined, 'template opens as venue, marked as template');
-ok((await call('POST', '/venues/' + V.id + '/template', { fromPlanId: C.id }, VH)).d.planId === T.planId, 'a second template request returns the existing one (never copies someone else\'s plan)');
+ok((await call('POST', '/venues/' + V.id + '/rooms', { fromPlanId: C.id }, VH)).status === 404 && (await call('GET', '/venues/' + V.id, undefined, VH)).d.rooms.length === 1, 'a room is never copied from someone else\'s plan');
 r = await call('PUT', '/venues/' + V.id + '/defaults', { perms: { floor: false, decor: false, layout: false, tables: false, seats: true, labels: false, maxSeats: 10 } }, VH);
 ok(r.status === 200 && r.d.defaultPerms.labels === false && r.d.defaultPerms.maxSeats === 10, 'venue sets what couples may change, with a seat maximum');
 r = await call('POST', '/venues/' + V.id + '/weddings', { label: 'Άννα & Πέτρος' }, VH);
@@ -253,7 +253,7 @@ ok(r.d.applied === 2 && (await call('GET', '/plans/' + W.planId, undefined, { 'X
 r = await call('POST', '/plans/' + W.planId + '/support', { hours: 24, message: 'Βοήθεια' }, VH);
 ok(r.status === 200, 'the venue can invite support for one of its weddings');
 r = await call('GET', '/venues/' + V.id, undefined, VH);
-ok(r.d.weddings.find(w => w.planId === W.planId).supportExpires > Date.now() && r.d.template && r.d.template.planId === T.planId, 'the console shows the open access and the template');
+ok(r.d.weddings.find(w => w.planId === W.planId).supportExpires > Date.now() && r.d.rooms.length === 1 && r.d.rooms[0].planId === T.planId, 'the console shows the open access and the room');
 ok((await call('GET', '/admin/support', undefined, OWN)).d.requests.some(q => q.kind === 'venue' && q.venueName === 'Κτήμα Test'), 'admin sees the venue invitation');
 r = await call('GET', '/plans/' + W.planId, undefined, { 'X-Edit-Key': W.editKey });
 ok(r.d.support && r.d.support.by === 'venue', 'the couple sees that support was let in by the venue');
@@ -278,7 +278,7 @@ ok((await call('GET', '/plans/' + W.planId, undefined, { 'X-Venue-Key': V2.key }
 await call('DELETE', '/venues/' + V2.id + '/weddings/' + W.planId, undefined, { 'X-Venue-Key': V2.key });
 ok(m.has('plan:' + W.planId), 'another venue cannot delete it by id');
 ok((await call('PATCH', '/venues/' + V2.id + '/weddings/' + W.planId, { perms: { layout: true } }, { 'X-Venue-Key': V2.key })).status === 404, 'another venue cannot change its permissions');
-ok((await call('POST', '/venues/' + V2.id + '/template', { fromPlanId: W.planId }, { 'X-Venue-Key': V2.key })).status === 404, 'another venue cannot copy its layout');
+ok((await call('POST', '/venues/' + V2.id + '/rooms', { fromPlanId: W.planId }, { 'X-Venue-Key': V2.key })).status === 404, 'another venue cannot copy its layout');
 ok((await call('GET', '/plans/' + C.id, undefined, { 'X-Venue-Key': V2.key })).status === 403, 'a venue key never opens a couple-owned plan');
 
 // ---------- 6. sync-code roles ----------
@@ -349,7 +349,7 @@ ok(r.d.role === 'couple' && r.d.perms.labels === false, 'code auth keeps the cou
 }
 { // capacity coercion, poisoned counters, label normalisation, support acting for the venue, the venue's message
   const V3 = (await call('POST', '/admin/venues', { name: 'V3' }, OWN)).d, H3 = { 'X-Venue-Key': V3.key };
-  const T3 = (await call('POST', '/venues/' + V3.id + '/template', {}, H3)).d;
+  const T3 = (await call('POST', '/venues/' + V3.id + '/rooms', {}, H3)).d;
   const longName = 'Τραπέζι με ένα πολύ πολύ μακρύ όνομα που ξεπερνά τους εξήντα χαρακτήρες σίγουρα';
   const lay = layout(); lay.tables[0].label = longName;
   await call('PUT', '/plans/' + T3.planId, { plan: lay }, { 'X-Edit-Key': T3.venueKey });
@@ -399,7 +399,7 @@ ok(r.d.role === 'couple' && r.d.perms.labels === false, 'code auth keeps the cou
   const V4 = (await call('POST', '/admin/venues', { name: 'V4' }, OWN)).d, H4 = { 'X-Venue-Key': V4.key };
   const W4 = (await call('POST', '/venues/' + V4.id + '/weddings', { label: 'W4' }, H4)).d;
   patchRaw('plan:' + W4.planId, o => { o.plan = withCouple; });
-  const T4 = (await call('POST', '/venues/' + V4.id + '/template', { fromPlanId: W4.planId }, H4)).d;
+  const T4 = (await call('POST', '/venues/' + V4.id + '/rooms', { fromPlanId: W4.planId }, H4)).d;
   const tp = raw('plan:' + T4.planId).plan;
   ok(!tp.groups.some(x => /Μαρίας/.test(x.name)) && !tp.features.some(f => f.id === 'pb'), 'a template made from a wedding carries no couple group names and no couple decor');
 }
@@ -1237,7 +1237,7 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
   pastWindow(WV.planId);
   ok((await pull(WV.planId, HVC)).status === 409 && (await pull(WV.planId, { 'X-Edit-Key': WV.venueKey })).status === 409, 'amelie: a locked venue wedding → 409 for the venue as well');
   ok((await acall('DELETE', '/plans/' + WV.planId + '/amelie', undefined, HVC)).status === 200 && !raw('plan:' + WV.planId).amelie, 'amelie: but the venue can still disconnect it');
-  const TV = (await acall('POST', '/venues/' + VA.id + '/template', {}, HVC)).d;
+  const TV = (await acall('POST', '/venues/' + VA.id + '/rooms', {}, HVC)).d;
   ok((await connect(TV.planId, { 'X-Edit-Key': TV.venueKey }, 'https://amelie.gr/g/#' + K3)).status === 409 && !('amelie' in (await acall('GET', '/plans/' + TV.planId, undefined, { 'X-Edit-Key': TV.venueKey })).d), 'amelie: a venue template never gets a link (no guests there) — and GET offers none');
 
   // ---- keys Amelie never accepted are budgeted: 5 an hour per CUSTOMER (never per plan), 15 for the whole server, the last
@@ -2258,7 +2258,7 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
   {
     const TV = (await call('POST', '/admin/venues', { name: 'Κτήμα Με Πρότυπο', license: { type: 'seasonal', seasonStart: kday(-30), seasonEnd: kday(300) } }, OWN)).d;
     const HTV = { 'X-Venue-Key': TV.key };
-    const TPL = (await call('POST', '/venues/' + TV.id + '/template', {}, HTV)).d;
+    const TPL = (await call('POST', '/venues/' + TV.id + '/rooms', {}, HTV)).d;
     const room = layout({
       tables: [{ id: 1, shape: 'round', x: 300, y: 400, label: '1', capacity: 8, seats: Array(8).fill(null) },
         { id: 2000, shape: 'head', x: 600, y: 200, label: 'Νυφικό τραπέζι', capacity: 6, seats: Array(6).fill(null) },
@@ -4521,8 +4521,8 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     ok(!pc(r.d.couple.id).afm && !pc(r.d.couple.id).custType, 'a private buyer: an ΑΦΜ sent along is never kept');
     r = await call('POST', '/admin/couples', { name: 'Εταιρ. Λάθος λέξη', kind: 'party', custType: 'organiser', afm: AFM_X, weddingDate: when }, OWN);
     ok(!pc(r.d.couple.id).afm && !pc(r.d.couple.id).custType, 'a couple record takes no other word than «company»');
-    r = await call('POST', '/admin/venues', { name: 'Εταιρ. Λάθος λέξη 2', custType: 'company' }, OWN);
-    ok(!raw('venue:' + r.d.id).custType && (await cardOf('v:' + r.d.id)).customer.type === 'venue', 'a venue record takes no other word than «organiser»');
+    r = await call('POST', '/admin/venues', { name: 'Εταιρ. Λάθος λέξη 2', custType: 'couple' }, OWN);
+    ok(!raw('venue:' + r.d.id).custType && (await cardOf('v:' + r.d.id)).customer.type === 'venue', 'a venue record takes no other word than «organiser» or «company»');
 
     // -- «Επεξεργασία» --
     const setC = (id, b) => call('PATCH', '/admin/couples/' + id, b, OWN), setV = (id, b) => call('PATCH', '/admin/venues/' + id, b, OWN);
@@ -4719,7 +4719,7 @@ function leadStageOf(l) { return l.lost ? 8 : l.stage || 1; }
     // a venue makes one from its room: the starter words follow, what it typed stays, and the kind can be corrected both ways
     const V = (await call('POST', '/admin/venues', { name: 'Ξενοδοχείο Δοκιμή', license: { type: 'seasonal', seasonStart: day(-30), seasonEnd: day(300) } }, OWN)).d;
     const HV = { 'X-Venue-Key': V.key };
-    const TPL = (await call('POST', '/venues/' + V.id + '/template', {}, HV)).d;
+    const TPL = (await call('POST', '/venues/' + V.id + '/rooms', {}, HV)).d;
     const room = layout({
       tables: [{ id: 2000, shape: 'head', x: 600, y: 200, label: 'Νυφικό τραπέζι', capacity: 6, seats: Array(6).fill(null) },
         { id: 3, shape: 'round', x: 900, y: 400, label: 'Τραπέζι VIP', capacity: 8, seats: Array(8).fill(null) }],
@@ -4756,6 +4756,227 @@ function leadStageOf(l) { return l.lost ? 8 : l.stage || 1; }
     ok(['plano-trapezion-giortis.html', 'index.html'].every(f => !/εταιρικό δείπνο/.test(read(f))) && read('plano-trapezion-giortis.html').includes('plano-trapezion-etairikis-ekdilosis.html') && read('index.html').includes('plano-trapezion-etairikis-ekdilosis.html'), 'company: the γιορτή pages stop naming the company dinner, and link to its guide');
     ok(['terms.html', 'privacy.html'].every(f => /εταιρικό δείπνο/.test(read(f)) && /company dinner/.test(read(f))), 'company: terms and privacy define it, in both languages');
   } finally {
+    m.clear(); for (const [k, v] of saved) m.set(k, v);
+  }
+}
+
+// ---- COMPANIES-PLAN.md phase 3: one console, saved rooms, start from an old design ----
+{
+  const saved = new Map(m), day = n => athensDay(n), mail0 = env.MAIL, sent = [];
+  env.MAIL = { enabled: true, from: 'TakeaSeat <hello@takeaseat.gr>', send: msg => { sent.push(msg); return true; } };
+  const AFM = '999000006', card = key => call('GET', '/admin/customers/' + encodeURIComponent(key), undefined, OWN);
+  const sell = async (name, email) => { const r = await call('POST', '/admin/venues', { name, custType: 'company', afm: AFM, email, contact: '', license: { type: 'seasonal', seasonEnd: day(300) } }, OWN); const id = r.d.id; return { id, H: { 'X-Venue-Key': raw('venue:' + id).key } }; };
+  const accept = (co) => call('POST', '/venues/' + co.id + '/agreement', { accept: true }, co.H);
+  const made = (co, body) => call('POST', '/venues/' + co.id + '/weddings', { label: 'Εκδήλωση', date: day(60), ...body }, co.H);
+  const con = co => call('GET', '/venues/' + co.id, undefined, co.H);
+  const addEvent = id => call('POST', '/admin/venues/' + id + '/events', {}, OWN);
+  const peoplePlan = () => layout({
+    tables: [{ id: 1, shape: 'round', x: 300, y: 300, label: 'Τραπέζι Α', capacity: 2, seats: ['g1', 'g2'] }],
+    guests: { g1: { name: 'Νίκος Παπαδάκης', note: 'αλλεργία στα φιστίκια', groupId: 'grpA' }, g2: { name: 'Μαρία Οικονόμου', groupId: 'grpA' } },
+    groups: [{ id: 'grpA', name: 'Τμήμα πωλήσεων', color: '#e26d8a' }],
+    features: [{ id: 5, type: 'bar', x: 10, y: 10, by: 'couple' }] });
+  try {
+    // -- the sale --
+    const A = await sell('Alpha ΑΕ', 'office@alpha.example');
+    const va = raw('venue:' + A.id);
+    ok(va.custType === 'company' && va.afm === AFM && va.license.type === 'per_wedding' && va.license.quota === 1 && !m.has('afm:' + AFM), 'company sale: a console with one event and its ΑΦΜ, whatever licence was sent, and no free-year claim', va.license);
+    const due0 = raw('ledger:v:' + A.id).dues;
+    ok(due0.length === 1 && due0[0].amount === 2500 && !due0[0].plusVat && due0[0].kind === 'company', 'company sale: 25 € with ΦΠΑ is expected', due0);
+    const setupMail = sent[sent.length - 1];
+    ok(/company console|κονσόλα της εταιρείας/i.test(setupMail.subject) && setupMail.text.includes('/venue.html?co=1#recover=') && !/κτήμα/i.test(setupMail.text + setupMail.subject), 'company sale: its own setup mail, and the link speaks to a company', setupMail.subject);
+    const c0 = (await card('v:' + A.id)).d;
+    ok(c0.customer.type === 'company' && c0.customer.afm === AFM, 'company sale: «Πελάτες» calls it a company', c0.customer.type);
+
+    // -- the agreement --
+    let r = await con(A);
+    ok(r.status === 200 && r.d.needsAgreement === true && r.d.weddings === undefined && r.d.rooms === undefined && r.d.venue.custType === 'company', 'agreement: before it the console says so and shows nothing else', r.d);
+    ok((await made(A)).status === 403 && (await made(A)).d.error === 'agreement_required', 'agreement: no event before it');
+    ok((await call('POST', '/venues/' + A.id + '/rooms', {}, A.H)).d.error === 'agreement_required', 'agreement: no room before it');
+    ok((await call('PUT', '/venues/' + A.id + '/keep', { years: 2 }, A.H)).d.error === 'agreement_required', 'agreement: no setting before it');
+    ok((await call('POST', '/venues/' + A.id + '/agreement', {}, A.H)).status === 400 && !raw('venue:' + A.id).dpaAt, 'agreement: only a real tick counts');
+    ok((await call('POST', '/venues/' + A.id + '/agreement', { accept: true })).status === 403, 'agreement: a stranger cannot accept for it');
+    ok((await accept(A)).status === 200 && raw('venue:' + A.id).dpaAt > 0, 'agreement: accepted, with the date');
+    const cardV = (await card('v:' + A.id)).d;
+    ok(cardV.venue.dpaAt === raw('venue:' + A.id).dpaAt, 'agreement: the owner sees when', cardV.venue.dpaAt);
+    r = await con(A);
+    ok(r.status === 200 && !r.d.needsAgreement && Array.isArray(r.d.weddings) && r.d.canCreate === true && r.d.keepYears === 1, 'agreement: then the console opens, keeping plans 1 year by default', r.d.keepYears);
+    const K0 = await call('POST', '/admin/venues', { name: 'Κτήμα Κανένα', license: { type: 'seasonal', seasonStart: day(-1), seasonEnd: day(300) } }, OWN);
+    const KV = { id: K0.d.id, H: { 'X-Venue-Key': raw('venue:' + K0.d.id).key } };
+    ok(!(await con(KV)).d.needsAgreement && !('custType' in (await con(KV)).d.venue), 'agreement: a Κτήμα is not asked here, and is not told any customer word');
+
+    // -- per event --
+    r = await made(A, { kind: 'wedding' });
+    ok(r.status === 200 && r.d.kind === 'company' && raw('plan:' + r.d.planId).kind === 'company' && raw('venue:' + A.id).used === 1, 'per event: whatever is asked, a company makes a company event', r.d.kind);
+    const E1 = r.d;
+    r = await made(A);
+    ok(r.status === 403 && r.d.error === 'quota_reached', 'per event: the one it bought is used, no second', r.d);
+    ok((await con(A)).d.canCreate === false, 'per event: the console knows');
+    ok((await addEvent('nosuchvenue')).status === 404 && (await addEvent(KV.id)).status === 409, 'per event: «+1» is for a company only');
+    ok((await call('POST', '/admin/venues/' + A.id + '/events', {})).status === 403, 'per event: «+1» needs the owner key');
+    r = await addEvent(A.id);
+    ok(r.status === 200 && raw('venue:' + A.id).license.quota === 2 && raw('ledger:v:' + A.id).dues.length === 2 && raw('ledger:v:' + A.id).dues[1].amount === 2500 && (await con(A)).d.canCreate === true, '«+1 εκδήλωση»: one more event and 25 € more expected');
+    await call('PATCH', '/admin/venues/' + A.id, { license: { type: 'seasonal', seasonEnd: day(300) } }, OWN);
+    ok(raw('venue:' + A.id).license.type === 'per_wedding' && raw('venue:' + A.id).license.quota === 2, 'per event: the licence form cannot turn a company into a season');
+    await call('PATCH', '/admin/venues/' + A.id, { afm: '' }, OWN);
+    ok(!('afm' in raw('venue:' + A.id)), 'per event: a company ΑΦΜ can be edited, as a γραφείο\'s can');
+    await call('PATCH', '/admin/venues/' + A.id, { afm: AFM }, OWN);
+    patchRaw('venue:' + A.id, v => { v.license.quota = 0; v.used = 0; });
+    ok((await made(A)).d.error === 'quota_reached', 'per event: for a company 0 means none, never "no limit"');
+    patchRaw('venue:' + A.id, v => { v.license.quota = 99; v.used = 1; });
+
+    // -- the planner hears who opened it --
+    r = await call('GET', '/plans/' + E1.planId, undefined, { 'X-Edit-Key': E1.venueKey });
+    ok(r.d.role === 'venue' && r.d.owner.company === true, 'planner: told it is a company');
+    const KE = (await made(KV)).d;
+    ok((await call('GET', '/plans/' + KE.planId, undefined, { 'X-Edit-Key': KE.venueKey })).d.owner.company === undefined, 'planner: a Κτήμα stays a Κτήμα');
+    ok((await call('GET', '/plans/' + KE.planId, undefined, { 'X-Edit-Key': KE.editKey })).d.owner.company === undefined, 'planner: and its client hears nothing of it');
+
+    // -- saved rooms --
+    const room = async (co, body) => (await call('POST', '/venues/' + co.id + '/rooms', body, co.H));
+    const R1 = (await room(A, { name: 'Αίγλη' })).d, R2 = (await room(A, { name: '  Ξενοδοχείο Θάλασσα  ' })).d;
+    ok(R1.name === 'Αίγλη' && R2.name === 'Ξενοδοχείο Θάλασσα' && raw('plan:' + R1.planId).template === true, 'rooms: two named rooms, each a template plan', R2.name);
+    await call('PUT', '/plans/' + R1.planId, { plan: layout({ tables: [{ id: 1, shape: 'round', x: 111, y: 100, label: '1', capacity: 8, seats: Array(8).fill(null) }] }) }, { 'X-Edit-Key': R1.venueKey });
+    await call('PUT', '/plans/' + R2.planId, { plan: layout({ tables: [{ id: 1, shape: 'round', x: 222, y: 100, label: '1', capacity: 8, seats: Array(8).fill(null) }] }) }, { 'X-Edit-Key': R2.venueKey });
+    r = await con(A);
+    ok(r.d.rooms.map(x => x.name).join() === 'Αίγλη,Ξενοδοχείο Θάλασσα' && r.d.rooms[0].tables === 1 && r.d.rooms[1].venueKey === R2.venueKey, 'rooms: the console lists them', r.d.rooms);
+    ok(raw('venue:' + A.id).used === 1, 'rooms: a room costs no event');
+    const usedBefore = raw('venue:' + A.id).used;
+    let e = await made(A, { roomId: R2.planId });
+    ok(e.status === 200 && e.d.fromTemplate && raw('plan:' + e.d.planId).plan.tables[0].x === 222 && raw('plan:' + e.d.planId).layoutAt > 0 && raw('venue:' + A.id).weddings.find(w => w.planId === e.d.planId).room === 'Ξενοδοχείο Θάλασσα', 'rooms: an event starts from the room chosen');
+    ok((await con(A)).d.weddings.find(w => w.planId === e.d.planId).room === 'Ξενοδοχείο Θάλασσα', 'rooms: the event says which room');
+    e = await made(A);
+    ok(raw('plan:' + e.d.planId).plan.tables[0].x === 111, 'rooms: none named, the first one, as when a venue had one room');
+    e = await made(A, { roomId: '' });
+    ok(e.status === 200 && !e.d.fromTemplate && raw('plan:' + e.d.planId).plan === null, 'rooms: "" starts with no room');
+    ok(raw('venue:' + A.id).used === usedBefore + 3, 'rooms: each event counts once');
+    const B = await sell('Beta ΑΕ', 'office@beta.example'); await accept(B);
+    const RB = (await room(B, { name: 'Του Beta' })).d;
+    ok((await made(A, { roomId: RB.planId })).d.error === 'room_gone', 'rooms: another customer\'s room is refused');
+    ok(raw('venue:' + A.id).used === usedBefore + 3, 'rooms: a refused event costs nothing');
+    ok((await call('PATCH', '/venues/' + A.id + '/rooms/' + RB.planId, { name: 'Κλεμμένο' }, A.H)).status === 404 && raw('plan:' + RB.planId).name === 'Του Beta', 'rooms: another customer\'s room cannot be renamed');
+    await call('DELETE', '/venues/' + A.id + '/rooms/' + RB.planId, undefined, A.H);
+    ok(m.has('plan:' + RB.planId), 'rooms: another customer\'s room cannot be deleted');
+    ok((await call('GET', '/venues/' + A.id, undefined, B.H)).status === 403 && (await call('POST', '/venues/' + A.id + '/rooms', {}, B.H)).status === 403, 'rooms: another customer\'s key opens nothing here');
+    ok((await call('PATCH', '/venues/' + A.id + '/rooms/' + R2.planId, { name: '  ' }, A.H)).status === 400, 'rooms: a room keeps a name');
+    r = await call('PATCH', '/venues/' + A.id + '/rooms/' + R2.planId, { name: 'Θάλασσα' }, A.H);
+    ok(r.status === 200 && raw('plan:' + R2.planId).name === 'Θάλασσα' && (await con(A)).d.rooms[1].name === 'Θάλασσα', 'rooms: renamed');
+    const fromR2 = (await made(A, { roomId: R2.planId })).d;
+    r = await call('DELETE', '/venues/' + A.id + '/rooms/' + R2.planId, undefined, A.H);
+    ok(r.status === 200 && !m.has('plan:' + R2.planId) && raw('plan:' + fromR2.planId).plan.tables[0].x === 222 && (await con(A)).d.rooms.length === 1, 'rooms: deleted, and the events made from it keep their copy');
+    ok((await made(A, { roomId: R2.planId })).d.error === 'room_gone', 'rooms: a deleted room is refused');
+    // a venue from before the list
+    const LV = (await call('POST', '/admin/venues', { name: 'Κτήμα Παλιό', license: { type: 'seasonal', seasonStart: day(-1), seasonEnd: day(300) } }, OWN)).d;
+    const LH = { 'X-Venue-Key': raw('venue:' + LV.id).key }, LID = 'legacyroomplan00000001';
+    m.set('plan:' + LID, JSON.stringify({ name: 'Ο χώρος', plan: layout({ tables: [{ id: 1, shape: 'round', x: 333, y: 100, label: '1', capacity: 8, seats: Array(8).fill(null) }] }), editKey: 'e'.repeat(28), venueKey: 'v'.repeat(28), readKey: 'r'.repeat(24), owner: { type: 'venue', venueId: LV.id }, venueId: LV.id, template: true, perms: {}, createdAt: 1, updated: 1 }));
+    patchRaw('venue:' + LV.id, v => { v.templateId = LID; });
+    r = await call('GET', '/venues/' + LV.id, undefined, LH);
+    ok(r.d.rooms.length === 1 && r.d.rooms[0].planId === LID && r.d.rooms[0].name === 'Ο χώρος', 'rooms: an old venue\'s single room is its first entry');
+    ok(raw('plan:' + (await call('POST', '/venues/' + LV.id + '/weddings', { label: 'Γ' }, LH)).d.planId).plan.tables[0].x === 333, 'rooms: and its events still start from it');
+    await call('POST', '/venues/' + LV.id + '/rooms', { name: 'Δεύτερος' }, LH);
+    const lvr = raw('venue:' + LV.id);
+    ok(lvr.rooms.length === 2 && lvr.rooms[0].planId === LID && !('templateId' in lvr), 'rooms: the first write turns it into the list, old room first', lvr.rooms);
+    const kv0 = raw('plan:' + LID).venueKey, kv1 = raw('plan:' + lvr.rooms[1].planId).venueKey;
+    await call('POST', '/venues/' + LV.id + '/rotate', { secret: 'newsecretnewsecret' }, LH);
+    ok(raw('plan:' + LID).venueKey !== kv0 && raw('plan:' + lvr.rooms[1].planId).venueKey !== kv1, 'rooms: a new console key renews the links of every room');
+    for (let i = lvr.rooms.length; i < 20; i++) await call('POST', '/venues/' + LV.id + '/rooms', { name: 'Χ' + i }, { 'X-Venue-Key': raw('venue:' + LV.id).key });
+    r = await call('POST', '/venues/' + LV.id + '/rooms', { name: 'Ένας παραπάνω' }, { 'X-Venue-Key': raw('venue:' + LV.id).key });
+    ok(r.status === 409 && r.d.error === 'too_many_rooms' && raw('venue:' + LV.id).rooms.length === 20, 'rooms: twenty at most');
+
+    // -- start from an old design --
+    const OLD = (await made(A, { roomId: '' })).d;
+    await call('PUT', '/plans/' + OLD.planId, { plan: peoplePlan() }, { 'X-Edit-Key': OLD.venueKey });
+    const srcBefore = m.get('plan:' + OLD.planId);
+    r = await made(A, { fromPlanId: OLD.planId });
+    let cp = raw('plan:' + r.d.planId).plan;
+    ok(r.status === 200 && r.d.kind === 'company' && cp.tables[0].label === 'Τραπέζι Α' && cp.tables[0].seats.every(x => x === null) && !Object.keys(cp.guests).length, 'old design: room and tables, no people unless asked', cp.tables[0].seats);
+    ok(cp.groups[0].name === 'Τμήμα πωλήσεων' && cp.features.length === 1 && cp.features[0].by === 'venue', 'old design: a company keeps its own groups and decor');
+    r = await made(A, { fromPlanId: OLD.planId, people: true });
+    cp = raw('plan:' + r.d.planId).plan;
+    ok(r.status === 200 && cp.guests.g1.name === 'Νίκος Παπαδάκης' && cp.guests.g2.name === 'Μαρία Οικονόμου' && cp.tables[0].seats.join() === 'g1,g2' && cp.guests.g1.groupId === 'grpA', 'old design: with names and seats, asked for', cp.guests);
+    ok(!JSON.stringify(cp).includes('αλλεργία') && !('note' in cp.guests.g1) && !JSON.stringify(raw('plan:' + r.d.planId)).includes('φιστίκια'), 'old design: the notes never travel', cp.guests.g1);
+    ok(raw('plan:' + r.d.planId).layoutAt > 0 && raw('plan:' + r.d.planId).weddingDate === day(60), 'old design: its own date, with its room set');
+    ok(m.get('plan:' + OLD.planId) === srcBefore, 'old design: the source is left exactly as it was');
+    cp.guests.g1.name = 'x';
+    ok(raw('plan:' + OLD.planId).plan.guests.g1.name === 'Νίκος Παπαδάκης', 'old design: the copy is its own');
+    const BE = (await made(B, { roomId: '' })).d;
+    r = await made(A, { fromPlanId: BE.planId, people: true });
+    ok(r.status === 404 && r.d.error === 'source_gone', 'old design: another customer\'s plan is refused', r.d);
+    ok((await made(A, { fromPlanId: R1.planId })).d.error === 'source_gone', 'old design: a room is not an event');
+    const beforeRef = raw('venue:' + A.id).used;
+    ok((await made(A, { fromPlanId: 'nosuchplan' })).status === 404 && raw('venue:' + A.id).used === beforeRef, 'old design: a missing source costs nothing');
+    // a source in the trash
+    const TR = (await made(A, { roomId: '' })).d;
+    await call('DELETE', '/venues/' + A.id + '/weddings/' + TR.planId, undefined, A.H);
+    ok((await made(A, { fromPlanId: TR.planId })).d.error === 'source_gone', 'old design: a deleted source is refused');
+    // with the bought events used up
+    patchRaw('venue:' + A.id, v => { v.used = v.license.quota; });
+    ok((await made(A, { fromPlanId: OLD.planId })).d.error === 'quota_reached', 'old design: it is a new event, and needs one');
+    patchRaw('venue:' + A.id, v => { v.used = 1; });
+    // a never-saved source
+    const EMP = (await made(A, { roomId: '' })).d;
+    r = await made(A, { fromPlanId: EMP.planId, people: true });
+    ok(r.status === 200 && raw('plan:' + r.d.planId).plan === null && !raw('plan:' + r.d.planId).layoutAt, 'old design: an empty source gives an empty event');
+    // a venue: room only, its last client's words and decor stay behind
+    const KS = (await made(KV)).d;
+    await call('PUT', '/plans/' + KS.planId, { plan: peoplePlan() }, { 'X-Edit-Key': KS.venueKey });
+    patchRaw('plan:' + KS.planId, p => { p.plan.features = [{ id: 5, type: 'bar', x: 10, y: 10, by: 'couple' }]; });   // the client's own decor; a venue's save stamps its own
+    r = await made(KV, { fromPlanId: KS.planId, people: true });
+    ok(r.status === 403 && r.d.error === 'people_not_allowed', 'old design: a Κτήμα cannot copy its last client\'s guests', r.d);
+    r = await made(KV, { fromPlanId: KS.planId, kind: 'baptism' });
+    cp = raw('plan:' + r.d.planId).plan;
+    ok(r.status === 200 && !Object.keys(cp.guests).length && cp.tables[0].seats.every(x => x === null) && !cp.groups.some(g => g.name === 'Τμήμα πωλήσεων') && !cp.features.length && raw('plan:' + r.d.planId).kind === 'baptism', 'old design: a Κτήμα gets the room, not its last client\'s groups or decor', cp.groups);
+    r = await call('POST', '/venues/' + KV.id + '/rooms', { name: 'Από εκδήλωση', fromPlanId: KS.planId }, KV.H);
+    cp = raw('plan:' + r.d.planId).plan;
+    ok(!cp.groups.some(g => g.name === 'Τμήμα πωλήσεων') && !cp.features.length, 'rooms: a Κτήμα\'s room from an event drops the client\'s groups and decor');
+    r = await call('POST', '/venues/' + A.id + '/rooms', { name: 'Από εκδήλωση', fromPlanId: OLD.planId }, A.H);
+    cp = raw('plan:' + r.d.planId).plan;
+    ok(cp.groups[0].name === 'Τμήμα πωλήσεων' && !Object.keys(cp.guests).length && cp.tables[0].seats.every(x => x === null), 'rooms: a company\'s room from its own event keeps its groups, never the people');
+    await call('DELETE', '/venues/' + A.id + '/rooms/' + r.d.planId, undefined, A.H);
+
+    // -- how long plans are kept --
+    const KP = (await made(A, { roomId: '' })).d;
+    ok((await call('PUT', '/venues/' + A.id + '/keep', { years: 6 }, A.H)).status === 400 && (await call('PUT', '/venues/' + A.id + '/keep', { years: 0 }, A.H)).status === 400 && (await call('PUT', '/venues/' + A.id + '/keep', { years: 'forever' }, A.H)).status === 400, 'keep: 1 to 5 years, never "forever"');
+    const lifeOf = async () => (await con(A)).d.weddings.find(w => w.planId === KP.planId).life.deleteAt;
+    const d1 = await lifeOf();
+    r = await call('PUT', '/venues/' + A.id + '/keep', { years: 3 }, A.H);
+    ok(r.status === 200 && r.d.keepYears === 3 && (await con(A)).d.keepYears === 3 && Math.round(((await lifeOf()) - d1) / 86400000) === 730, 'keep: 3 years moves the deletion date two years on', { d1 });
+    patchRaw('plan:' + KP.planId, p => { p.weddingDate = day(-500); });
+    await mod.sweep(env);
+    ok(m.has('plan:' + KP.planId), 'keep: an event 500 days old stays on 3 years');
+    ok(raw('meta:archive').plans && KP.planId in raw('meta:archive').plans, 'keep: and is on the archive list');
+    r = await call('PUT', '/venues/' + A.id + '/keep', { years: 1 }, A.H);
+    ok(r.status === 200 && !m.has('meta:archive'), 'keep: shortening clears the archive list, or the hourly sweep would skip the plan');
+    await mod.sweep(env);
+    ok(!m.has('plan:' + KP.planId) && !raw('venue:' + A.id).weddings.some(w => w.planId === KP.planId), 'keep: a shortened period deletes what it no longer covers', raw('venue:' + A.id).weddings.length);
+    ok(m.has('plan:' + R1.planId), 'keep: a room has no event date and is not touched by it');
+    patchRaw('venue:' + A.id, v => { v.retention = { keep: true }; });
+    ok((await con(A)).d.keepYears === null, 'keep: arranged by the owner, the console offers no choice');
+    patchRaw('venue:' + A.id, v => { v.retention = { keepDays: 100 }; });
+    ok((await con(A)).d.keepYears === null, 'keep: nor when the period is not a whole year');
+    patchRaw('venue:' + A.id, v => { delete v.retention; });
+    const K3 = await call('PUT', '/venues/' + KV.id + '/keep', { years: 4 }, KV.H);
+    ok(K3.status === 200 && (await con(KV)).d.keepYears === 4, 'keep: a Κτήμα has the same choice');
+
+    // -- the memory clock and forgetting --
+    const CL = await sell('Gamma ΑΕ', 'office@gamma.example');
+    let cd = (await card('v:' + CL.id)).d;
+    ok(cd.memory && cd.memory.held === null, 'memory: an unused event does not hold a company\'s clock', cd.memory);
+    ok((await card('v:' + KV.id)).d.memory.held === 'plans', 'memory: (a venue with events still waits)');
+    await accept(CL);
+    const CR = (await room(CL, { name: 'Αίθουσα' })).d, CR2 = (await room(CL, { name: 'Αίθουσα 2' })).d, CE = (await made(CL, { roomId: '' })).d;
+    await call('PUT', '/plans/' + CE.planId, { plan: peoplePlan() }, { 'X-Edit-Key': CE.venueKey });
+    cd = (await card('v:' + CL.id)).d;
+    ok(cd.rooms.length === 2 && !JSON.stringify(cd.rooms).includes('Αίθουσα') && !JSON.stringify(cd.rooms).includes(CR.planId), 'the owner\'s card counts the rooms, without their names or ids', cd.rooms);
+    r = await call('POST', '/admin/customers/' + encodeURIComponent('v:' + CL.id) + '/forget', {}, OWN);
+    ok(r.status === 200 && !m.has('venue:' + CL.id) && !m.has('plan:' + CR.planId) && !m.has('plan:' + CR2.planId) && !m.has('plan:' + CE.planId), 'forgetting a company takes its rooms and its plans', r.d);
+    ok(raw('books:v:' + CL.id).custType === 'company' && !JSON.stringify(raw('books:v:' + CL.id)).includes('Αίθουσα'), 'forgetting a company: the books keep the word, no room');
+    // an old-style venue forgotten: its one room goes too
+    const LR = raw('venue:' + LV.id).rooms.map(x => x.planId);
+    patchRaw('venue:' + LV.id, v => { v.templateId = LID; delete v.rooms; });
+    await call('POST', '/admin/customers/' + encodeURIComponent('v:' + LV.id) + '/forget', {}, OWN);
+    ok(!m.has('plan:' + LID), 'forgetting an old venue takes its room');
+  } finally {
+    env.MAIL = mail0;
     m.clear(); for (const [k, v] of saved) m.set(k, v);
   }
 }
