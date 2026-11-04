@@ -61,6 +61,8 @@ build runs the full suite), restarts and health-checks; on failure it rolls back
 - **There is no admin "delete any plan".** A couple's plan goes by `DELETE /plans/:id` with its edit
   key; a venue's by `DELETE /venues/:id/weddings/:planId` then `DELETE /admin/venues/:id/trash/:planId`.
   `/admin/test/*` only touches rows flagged `test:true`.
+- **A test customer on live leaves a line in the books.** Forgetting a venue keeps `books:v:<id>`, and «Για τα λογιστικά» has no delete button, so a made-up customer stays there unless
+  that row and its `books:index` entry are deleted by hand. Ask Andreas first. A live test runs best inside the container (`docker exec -i takeaseat-api node --input-type=module -`), with `OWNER_KEY` from its environment.
 
 ## Decisions
 
