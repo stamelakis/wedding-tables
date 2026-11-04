@@ -1720,6 +1720,9 @@ el:{
   c_cUploadOver:"Η εκδήλωση έγινε — δεν μπαίνουν νέα σχέδια online.",
   c_cUploadWait:"Ένα ακόμη σχέδιο μπαίνει online όταν ο σχεδιαστής της εκδήλωσης είναι σε πλήρη επεξεργασία — από τις {d}.",
   c_cUploadWait0:"Ένα ακόμη σχέδιο μπαίνει online όταν ο σχεδιαστής της εκδήλωσης είναι σε πλήρη επεξεργασία.",
+  o_rbVenue:"🏢 Εταιρεία", o_rbVenueTip:"Ανοίξατε την εκδήλωση από την κονσόλα της εταιρείας σας: αλλάζετε τα πάντα.", o_rbTemplateTip:"Αυτός είναι ένας από τους χώρους σας: κάθε νέα εκδήλωση που ξεκινά από εδώ τον παίρνει, χωρίς καλεσμένους. Όσες υπάρχουν δεν αλλάζουν.",
+  o_openedAsVenue:"Ανοίξατε από την κονσόλα της εταιρείας σας (αυτή η συσκευή έχει τον σύνδεσμό της).", o_goneVenue:"Η εκδήλωση διαγράφηκε από την κονσόλα της εταιρείας σας — αν έγινε κατά λάθος, μπορείτε να ζητήσετε επαναφορά.",
+  o_cVenueLinks:"Είστε συνδεδεμένοι με την κονσόλα της εταιρείας σας.", o_awVenue:"Εταιρεία", o_rbTemplate:"🏛 Χώρος", o_rbSupportOnVenue:"Η εταιρεία σας έδωσε πρόσβαση στην υποστήριξη TakeaSeat έως {t}.", o_tPreviewOff:"Πλήρης προβολή.",
   c_cVenueLinks:"Είστε συνδεδεμένοι ως κτήμα. Τον σύνδεσμο της εταιρείας τον αντιγράφετε από την κονσόλα του κτήματος.",
   c_capLocal:"Ένα σχέδιο μόνο σε αυτή τη συσκευή έχει έως {n} τραπέζια. Για ολόκληρη την εκδήλωση:",
   c_capLocalOwn:"Ένα σχέδιο μόνο σε αυτή τη συσκευή έχει έως {n} τραπέζια — το online σχέδιο της εκδήλωσης δεν έχει αυτό το όριο.",
@@ -1997,6 +2000,9 @@ en:{
   c_cUploadOver:"The event is over — no new plans go online.",
   c_cUploadWait:"Another plan can go online once the event's planner is in full editing — from {d}.",
   c_cUploadWait0:"Another plan can go online once the event's planner is in full editing.",
+  o_rbVenue:"🏢 Company", o_rbVenueTip:"You opened this event from your company console: you can change everything.", o_rbTemplateTip:"This is one of your rooms: every new event started from here takes it, without guests. Existing events do not change.",
+  o_openedAsVenue:"Opened from your company console (this device has its link).", o_goneVenue:"This event was deleted from your company console — if that was a mistake, you can ask for it to be restored.",
+  o_cVenueLinks:"You are signed in with your company console.", o_awVenue:"Company", o_rbTemplate:"🏛 Room", o_rbSupportOnVenue:"Your company gave TakeaSeat support access until {t}.", o_tPreviewOff:"Full view.",
   c_cVenueLinks:"You are signed in as the venue. Copy the company's link from the venue console.",
   c_capLocal:"A plan that lives only on this device has up to {n} tables. For the whole event:",
   c_capLocalOwn:"A plan that lives only on this device has up to {n} tables — the event's online plan has no such limit.",
@@ -2274,6 +2280,9 @@ de:{
   c_awCouple:"Firma", c_cUploadOver:"Die Veranstaltung ist vorbei — neue Pläne gehen nicht mehr online.",
   c_cUploadWait:"Ein weiterer Plan kann online gehen, sobald der Planer Ihrer Veranstaltung voll bearbeitbar ist — ab {d}.",
   c_cUploadWait0:"Ein weiterer Plan kann online gehen, sobald der Planer Ihrer Veranstaltung voll bearbeitbar ist.",
+  o_rbVenue:"🏢 Firma", o_rbVenueTip:"Sie haben diese Veranstaltung über Ihre Firmen-Konsole geöffnet: Sie können alles ändern.", o_rbTemplateTip:"Das ist einer Ihrer Räume: Jede neue Veranstaltung, die hier beginnt, übernimmt ihn, ohne Gäste. Bestehende Veranstaltungen ändern sich nicht.",
+  o_openedAsVenue:"Über Ihre Firmen-Konsole geöffnet (dieses Gerät hat ihren Link).", o_goneVenue:"Diese Veranstaltung wurde über Ihre Firmen-Konsole gelöscht — falls das ein Versehen war, können Sie die Wiederherstellung anfordern.",
+  o_cVenueLinks:"Sie sind mit Ihrer Firmen-Konsole angemeldet.", o_awVenue:"Firma", o_rbTemplate:"🏛 Raum", o_rbSupportOnVenue:"Ihre Firma hat dem TakeaSeat-Support Zugriff bis {t} gegeben.", o_tPreviewOff:"Volle Ansicht.",
   c_cVenueLinks:"Sie sind als Location angemeldet. Den Link der Firma kopieren Sie in der Location-Konsole.",
   c_capLocal:"Ein Plan nur auf diesem Gerät hat bis zu {n} Tische. Für Ihre ganze Veranstaltung:",
   c_capLocalOwn:"Ein Plan nur auf diesem Gerät hat bis zu {n} Tische — der Online-Plan Ihrer Veranstaltung hat diese Grenze nicht.",
@@ -2305,12 +2314,15 @@ const T=T_ALL[LANG]||T_ALL.el;
 // from one place instead of a conditional at every call site. A plan that says nothing is a wedding, which is what
 // every plan made before this field existed is, and stays.
 let EVK="wedding";
+// A company's own console opens its plans in the venue role: same rights, its own words (o_, checked first).
+let CO_OWNER=false;
 // A kind reads its own dictionary through one prefix. The wedding is the unprefixed original, so a key with no twin
 // falls back to it — which is the neutral wording and the right answer for every line that does not name the event.
 // server/pdf.mjs, wedding-sync-worker.js and trapezi.html keep the same map; adding a kind is a row in each.
 const KIND_PFX={ wedding:"", baptism:"b_", party:"p_", company:"c_" };
 function tr(k,v){ let s; const p=KIND_PFX[EVK];
-  if(p){ s=T[p+k]; if(s==null) s=T_ALL.el[p+k]; }
+  if(CO_OWNER){ s=T["o_"+k]; if(s==null) s=T_ALL.el["o_"+k]; }
+  if(p && s==null){ s=T[p+k]; if(s==null) s=T_ALL.el[p+k]; }
   if(s==null) s=T[k]; if(s==null) s=T_ALL.el[k]; if(s==null) return k;
   if(typeof s!=="string") return s; if(v) for(const x in v) s=s.split("{"+x+"}").join(v[x]); return s; }
 // The ornament that stands for the honour table and the keepsake: the couple's ♥, the four-petal flower of a
@@ -6308,9 +6320,11 @@ function phaseClosed(prof, life){
 // What the server says about this device's rights on the plan → remembered on the profile.
 function adoptAccess(prof, d){
   if(!prof||!d||!d.role) return false;
-  const before=JSON.stringify([prof.role,prof.perms,prof.owner,prof.venueName,prof.template,prof.couplePerms,prof.supportInfo&&prof.supportInfo.expires,prof.life,prof.kind]);
+  const before=JSON.stringify([prof.role,prof.perms,prof.owner,prof.venueName,prof.template,prof.couplePerms,prof.supportInfo&&prof.supportInfo.expires,prof.life,prof.kind,prof.company]);
   prof.role=d.role; prof.perms=d.perms||null; prof.owner=(d.owner&&d.owner.type)||"couple"; prof.venueName=(d.owner&&d.owner.venueName)||"";
-  prof.template=!!d.template; prof.couplePerms=d.couplePerms||null; prof.venueContact=(d.owner&&d.owner.venueContact)||""; prof.legacyOpenUntil=d.legacyOpenUntil||0; prof.layoutSet=d.layoutSet!==false;
+  prof.company=d.role==="venue" && !!(d.owner&&d.owner.company);   // a company has no client: nothing here asks what one may change
+  if(prof.id===profiles.activeId) CO_OWNER=prof.company;
+  prof.template=!!d.template; prof.couplePerms=prof.company?null:(d.couplePerms||null); prof.venueContact=(d.owner&&d.owner.venueContact)||""; prof.legacyOpenUntil=d.legacyOpenUntil||0; prof.layoutSet=d.layoutSet!==false;
   if(d.readKey) prof.viewKey=d.readKey;
   if(d.role==="viewer") prof.readonly=true; else if(!prof._lostShown && !prof.support) prof.readonly=false;
   if("support" in d) prof.supportInfo=d.support||null;
@@ -6335,7 +6349,7 @@ function adoptAccess(prof, d){
   let back=false; if(prof.gone){ prof.gone=false; prof._goneAt=0; back=true;   // restored from the venue's trash
     if(prof.id===profiles.activeId){ toast(tr("goneBack"),4000); if(prof.goneDirty){ prof.goneDirty=false; setTimeout(scheduleCloudPush,0); } } }   // after the caller's applyAccess: the refused change goes up
   if(prof.phaseDirty && !phaseRo(prof) && prof.id===profiles.activeId){ prof.phaseDirty=false; back=true; if(!(prof.life&&prof.life.locked)){ waitPushFor=prof.id; setTimeout(scheduleCloudPush,0); } }   // the planner opened: the change that waited goes up (on its old base — never over a newer copy)
-  return back || before!==JSON.stringify([prof.role,prof.perms,prof.owner,prof.venueName,prof.template,prof.couplePerms,prof.supportInfo&&prof.supportInfo.expires,prof.life,prof.kind]);
+  return back || before!==JSON.stringify([prof.role,prof.perms,prof.owner,prof.venueName,prof.template,prof.couplePerms,prof.supportInfo&&prof.supportInfo.expires,prof.life,prof.kind,prof.company]);
 }
 async function cloudFetch(id, prof){ if(!PLAN_ID_RE.test(String(id))) throw new Error("bad id");
   const r=await fetch(planPath(id),{headers:authHeaders(prof), cache:"no-store"}); const d=await r.json().catch(()=>({}));   // a 410 is cacheable: a restored wedding must not stay "gone" from the browser cache
@@ -6737,6 +6751,7 @@ function applyAccess(){
   const gone=!IS_LAB && !!(cur && cur.cloudId && cur.gone);   // in the venue's trash (410) until the admin restores it
   const phase=role==="couple"?phaseOf(cur):"", waitRo=phase==="waiting"||phase==="frozen";   // only couples live by phases
   const wasRo=!!ACCESS.ro;
+  CO_OWNER=!!(cur && cur.company && role==="venue");
   ACCESS={role, restricted, venueCouple, preview, perms:perms?{...perms}:null, venueName:(cur&&cur.venueName)||"", template:!!(cur&&cur.template), owner:(cur&&cur.owner)||"couple", locked, gone, phase, waitRo, ro:locked||gone||waitRo||role==="viewer"};
   document.body.classList.toggle("ro", ACCESS.ro);
   PERM_KEYS.forEach(k=>document.body.classList.toggle("lock-"+k, !can(k)));

@@ -283,7 +283,7 @@ function fmtDateTime(t){ if(!t) return "—"; try{ return new Date(t).toLocaleSt
 function relTime(t){ const d=t-Date.now(); if(d<=0) return "expired";
   const m=Math.round(d/60000); if(m<60) return `in ${Math.max(1,m)} min`;
   const h=Math.round(d/3600000); if(h<48) return `in ${h} h`; return `in ${Math.round(h/24)} days`; }
-function venueConsoleLink(){ return new URL("venue.html", location.href).href; }
+function venueConsoleLink(co){ return new URL("venue.html"+(co?"?co=1":""), location.href).href; }
 function plannerUrl(lang){ return new URL(PLANNER_FILE[lang]||PLANNER_FILE.el, location.href).href; }
 // Keys and tokens only ever go in the fragment (never the query string), so they stay out of server logs.
 function claimLink(token, lang){ return plannerUrl(lang)+"#claim="+encodeURIComponent(token); }
@@ -374,7 +374,7 @@ const EVW={ wedding:{ date:"Ημερομηνία γάμου",    name:"Όνομ�
 // A company may still hold a γιορτή (every company dinner sold before the fourth kind is one), and its own words stay on it.
 const CO_WORDS=EVW.company;
 const isCo=(custType, kind)=>kind==="company" || (custType==="company" && kind==="party");   // a γάμος or βάπτιση is never a company's: the server drops the word and the ΑΦΜ
-const kindOptions=sel=>[["wedding","Γάμος"],["baptism","Βάπτιση"],["party","Γιορτή"],["company","Εταιρική εκδήλωση"]]
+const kindOptions=(sel,noCompany)=>[["wedding","Γάμος"],["baptism","Βάπτιση"],["party","Γιορτή"],["company","Εταιρική εκδήλωση"]].filter(o=>!noCompany||o[0]!=="company")
   .map(([k,l])=>`<option value="${k}"${k===sel?" selected":""}>${l}</option>`).join("");
 const evKind=x=>(x && EVW[x.kind]) ? x.kind : "wedding";   // anything we do not know is a wedding
 const EV=x=>EVW[evKind(x)];
@@ -752,6 +752,7 @@ function renderDashboard(venues){
       <div class="sechead"><h2>Πελάτες <span class="muted" id="custCount"></span></h2>
         <div class="row acts"><button class="btn sm primary" id="newLead" title="Κάποιος τηλεφώνησε, έγραψε ή ήρθε από σύσταση">+ Νέα επαφή</button>
           <button class="btn sm primary" id="newVenue" title="Νέο κτήμα, με την άδειά του">+ Κτήμα</button>
+          <button class="btn sm primary" id="newCompany" title="Εταιρεία που αγόρασε μία εκδήλωση: κονσόλα και 25 € στις «Πληρωμές»">+ Εταιρεία</button>
           <button class="btn sm primary" id="newCouple" title="Ζευγάρι ή γονείς που αγόρασαν">+ Ιδιώτης</button>
           <button class="btn sm" id="custCsv" title="Ό,τι βλέπεις, σε αρχείο για το Excel">Excel</button>
           <button class="btn sm" id="custRefresh">Ανανέωση</button></div></div>
@@ -879,6 +880,7 @@ function renderDashboard(venues){
   document.getElementById("logout").onclick=()=>{ setKey(""); renderLogin(); };
   document.getElementById("newLead").onclick=()=>openNewLead();
   document.getElementById("newVenue").onclick=()=>openNewVenue();
+  document.getElementById("newCompany").onclick=()=>openNewVenue({ custType:"company" });
   document.getElementById("newCouple").onclick=()=>openNewCouple();
   document.getElementById("supRefresh").onclick=async e=>{ const b=e.currentTarget; b.disabled=true;
     await Promise.all([refreshSupport(), refreshCouples()]); b.disabled=false; };
@@ -1063,7 +1065,7 @@ function openNewCouple(pre){
   const d=openDialog(`${dlgHead(co ? "Νέα εταιρεία" : "Νέος ιδιώτης πελάτης")}
     <div class="dbody">${fromLeadHtml(pre)}
       <div class="grid">
-        <div><label for="ckind">Εκδήλωση</label><select id="ckind">${kindOptions("wedding")}</select></div>
+        <div><label for="ckind">Εκδήλωση</label><select id="ckind">${kindOptions("wedding", !co)}</select></div>
         <div><label for="cname" id="cnamelbl">${EVW.wedding.name}</label><input id="cname" maxlength="120" placeholder="${EVW.wedding.ph}"></div>
         <div><label for="cemail">Email <span class="hint">— προαιρετικό</span></label><input id="cemail" type="email" placeholder="για τον σύνδεσμό του και την ανάκτηση" autocomplete="off"></div>
         <div><label for="cdate" id="cdatelbl">${EVW.wedding.date}</label><input id="cdate" type="date" required min="${esc(todayYmd())}"></div>
@@ -1269,13 +1271,13 @@ async function refreshVenues(){
   venuesCache=(res.d.venues||[]).sort(byNewest);
 }
 // The console link + key box (after creating a venue, «Κλειδί κονσόλας», or «Νέο κλειδί…»). `title` is trusted HTML (names escaped).
-function venueKeyBoxHtml(title, key, note, withReset){
-  const link=venueConsoleLink();
+function venueKeyBoxHtml(title, key, note, withReset, co){
+  const link=venueConsoleLink(co);
   return `<div class="keybox">
     <div class="row between" style="align-items:flex-start"><div style="font-weight:700;margin-bottom:6px">${title}</div>
       <button class="btn sm ghost" data-close title="Κλείσιμο">✕</button></div>
     <div class="muted">Σύνδεσμος κονσόλας</div><div class="k">${esc(link)}</div>
-    <div class="muted" style="margin-top:8px">Κλειδί κονσόλας · στη σελίδα του κτήματος λέγεται «Κωδικός κτήματος»</div><div class="k">${esc(key)}</div>
+    <div class="muted" style="margin-top:8px">Κλειδί κονσόλας · στη σελίδα ${co?"της εταιρείας λέγεται «Κωδικός εταιρείας»":"του κτήματος λέγεται «Κωδικός κτήματος»"}</div><div class="k">${esc(key)}</div>
     <div class="row fw" style="margin-top:10px">
       <button class="btn sm" data-c="key">Αντιγραφή κλειδιού</button>
       <button class="btn sm" data-c="both">Αντιγραφή συνδέσμου + κλειδιού</button>
@@ -1284,11 +1286,11 @@ function venueKeyBoxHtml(title, key, note, withReset){
     ${note?`<div class="muted" style="margin-top:8px">${note}</div>`:""}
   </div>`;
 }
-function wireKeyBox(box, key, v){
-  const link=venueConsoleLink();
+function wireKeyBox(box, key, v, company){
+  const co=company || (v && v.custType==="company"), link=venueConsoleLink(co);
   const q=s=>box.querySelector(s);
   if(q('[data-c="key"]')) q('[data-c="key"]').onclick=()=>copy(key);
-  if(q('[data-c="both"]')) q('[data-c="both"]').onclick=()=>copy("Κονσόλα: "+link+"\nΚωδικός κτήματος: "+key);   // the venue's own word: venue.html's sign-in field
+  if(q('[data-c="both"]')) q('[data-c="both"]').onclick=()=>copy("Κονσόλα: "+link+(co?"\nΚωδικός εταιρείας: ":"\nΚωδικός κτήματος: ")+key);   // the venue's own word: venue.html's sign-in field
   if(q('[data-c="reset"]') && v) q('[data-c="reset"]').onclick=()=>resetVenueKey(v);
   if(q("[data-close]")) q("[data-close]").onclick=()=>{ box.innerHTML=""; delete box.dataset.vid; };
 }
@@ -1299,17 +1301,18 @@ function showVenuePanel(v, html, key){
 }
 // On a card the box carries no «Reset key…» of its own: the card has «Νέο κλειδί…», whose answer lands on the card.
 function showVenueKey(v, key, kind){
+  const co=v.custType==="company";
   const html = kind==="reset"
-    ? venueKeyBoxHtml(`✅ Νέο κλειδί για «${esc(v.name)}», για να το δώσεις στο κτήμα:`, key,
-        "Το παλιό κλειδί και οι δικοί του σύνδεσμοι στα σχέδια σταμάτησαν να δουλεύουν. Οι σύνδεσμοι που έχει δώσει στους πελάτες του δεν επηρεάζονται.", false)
-    : venueKeyBoxHtml(`Κλειδί του «${esc(v.name)}»`, key, "", !fromCard());
+    ? venueKeyBoxHtml(`✅ Νέο κλειδί για «${esc(v.name)}», για να το δώσεις ${co?"στην εταιρεία":"στο κτήμα"}:`, key,
+        co?"Το παλιό κλειδί και οι σύνδεσμοί του στα σχέδια σταμάτησαν να δουλεύουν.":"Το παλιό κλειδί και οι δικοί του σύνδεσμοι στα σχέδια σταμάτησαν να δουλεύουν. Οι σύνδεσμοι που έχει δώσει στους πελάτες του δεν επηρεάζονται.", false, co)
+    : venueKeyBoxHtml(`Κλειδί του «${esc(v.name)}»`, key, "", !fromCard(), co);
   showVenuePanel(v, html, key);
 }
 function showVenueOwnKey(v){
   showVenuePanel(v, `<div class="keybox note">
     <div class="row between" style="align-items:flex-start"><div style="font-weight:700">🔒 ${esc(v.name)}</div>
       <button class="btn sm ghost" data-close title="Κλείσιμο">✕</button></div>
-    <div style="margin:2px 0 10px">Μόνο το κτήμα ξέρει το κλειδί του — το όρισε στην κονσόλα ή από σύνδεσμο που του ήρθε με email.</div>
+    <div style="margin:2px 0 10px">${v.custType==="company"?"Μόνο η εταιρεία ξέρει το κλειδί της — το όρισε στην κονσόλα ή από σύνδεσμο που της ήρθε με email.":"Μόνο το κτήμα ξέρει το κλειδί του — το όρισε στην κονσόλα ή από σύνδεσμο που του ήρθε με email."}</div>
     <div class="row fw">${fromCard()?"":`<button class="btn sm danger" data-c="reset">Νέο κλειδί…</button>`}
       <span class="muted">${fromCard()?"«Νέο κλειδί…» μόνο αν το κτήμα το έχασε.":"Μόνο αν το κτήμα το έχασε."}${mailOn()&&v.email?` Ο σύνδεσμος για νέο κλειδί πάει στο ${esc(v.email)}.`:""}</span></div>
   </div>`, "");
@@ -1331,41 +1334,43 @@ async function resetVenueKey(v){
 }
 // «+ Κτήμα» on «Πελάτες»: the old list's form, in a dialog. It stays open after a sale, with the key or the sent link.
 // A γραφείο εκδηλώσεων goes through it until phase 4 of COMPANIES-PLAN.md, on the same record, with its own word on these screens.
-const vWord=office=>office ? { of:"γραφείου", is:"γραφείο" } : { of:"κτήματος", is:"κτήμα" };
+const vWord=t=>t==="company" ? { of:"εταιρείας", is:"εταιρεία", the:"η εταιρεία", The:"Η εταιρεία", ofThe:"της εταιρείας", alone:"μόνη της", its:"της" }
+  : t==="organiser" ? { of:"γραφείου", is:"γραφείο", the:"το γραφείο", The:"Το γραφείο", ofThe:"του γραφείου", alone:"μόνο του", its:"του" }
+  : { of:"κτήματος", is:"κτήμα", the:"το κτήμα", The:"Το κτήμα", ofThe:"του κτήματος", alone:"μόνο του", its:"του" };
 function openNewVenue(pre){
   convertFrom=pre ? { lead:pre.lead, name:pre.name } : null;
-  const office=!!(pre && pre.custType==="organiser"), W=vWord(office);   // the field #ncust is how createVenue knows
-  const d=openDialog(`${dlgHead(office ? "Νέο γραφείο εκδηλώσεων" : "Νέο κτήμα")}
+  const cust=pre && pre.custType || "", office=cust==="organiser", co=cust==="company", W=vWord(cust);   // the field #ncust is how createVenue knows
+  const d=openDialog(`${dlgHead(co ? "Νέα εταιρεία" : office ? "Νέο γραφείο εκδηλώσεων" : "Νέο κτήμα")}
     <div class="dbody">${fromLeadHtml(pre)}
       <div class="grid">
-        ${office ? `<input type="hidden" id="ncust" value="organiser">` : ""}
-        <div><label for="nname">Όνομα ${W.of}</label><input id="nname" maxlength="120" placeholder="${office ? "π.χ. Ορίζων Events" : "π.χ. Κτήμα Ηλιοβασίλεμα"}" value="${esc(pre&&pre.name||"")}"></div>
+        ${cust ? `<input type="hidden" id="ncust" value="${cust}">` : ""}
+        <div><label for="nname">Όνομα ${W.of}</label><input id="nname" maxlength="120" placeholder="${co ? "π.χ. Alpha ΑΕ" : office ? "π.χ. Ορίζων Events" : "π.χ. Κτήμα Ηλιοβασίλεμα"}" value="${esc(pre&&pre.name||"")}"></div>
         <div><label for="nemail">Email <span class="hint">— προαιρετικό</span></label><input id="nemail" type="email" placeholder="για τον σύνδεσμο ρύθμισης και την ανάκτηση" autocomplete="off" value="${esc(pre&&pre.email||"")}"></div>
-        <div><label for="ncontact">Δημόσια επικοινωνία <span class="hint">— τη βλέπουν οι πελάτες του ${W.of}</span></label><input id="ncontact" maxlength="200" placeholder="π.χ. 210 123 4567 · info@venue.gr"></div>
+        ${co ? "" : `<div><label for="ncontact">Δημόσια επικοινωνία <span class="hint">— τη βλέπουν οι πελάτες του ${W.of}</span></label><input id="ncontact" maxlength="200" placeholder="π.χ. 210 123 4567 · info@venue.gr"></div>`}
         <div><label for="nafm">ΑΦΜ <span class="hint">— προαιρετικό</span></label><input id="nafm" inputmode="numeric" maxlength="9" autocomplete="off" value="${esc(pre&&pre.afm||"")}"></div>
         <div><label for="nlang">Γλώσσα</label><select id="nlang">${langOptions("el")}</select></div>
         <div class="full"><label for="nnotes">Σημειώσεις <span class="hint">— μόνο εσύ τις βλέπεις · χωρίς πληροφορίες υγείας</span></label><textarea id="nnotes" maxlength="${NOTES_MAX}" rows="2" placeholder="υπεύθυνος, τηλέφωνο, τιμή που συμφωνήσατε, στοιχεία τιμολόγησης…">${esc(pre&&pre.notes||"")}</textarea></div>
       </div>
-      <div style="margin-top:12px" id="licwrap">${licenseFields("n")}</div>
+      ${co ? `<div class="muted" style="margin-top:12px">Παίρνει κονσόλα με μία εκδήλωση, και γράφονται 25 € με ΦΠΑ στις «Πληρωμές». Κάθε επόμενη την προσθέτεις με το «+1 εκδήλωση» στην καρτέλα της.</div>` : `<div style="margin-top:12px" id="licwrap">${licenseFields("n")}</div>`}
       <div class="row fw" style="margin-top:14px"><button class="btn primary" id="createV">Δημιουργία ${W.of}</button>
-        ${mailOn()?`<span class="muted">Αν έχει email, το ${W.is} παίρνει σύνδεσμο ρύθμισης και ορίζει μόνο του το κλειδί — εσύ δεν το βλέπεις.</span>`:""}</div>
+        ${mailOn()?`<span class="muted">Αν έχει email, ${W.the} παίρνει σύνδεσμο ρύθμισης και ορίζει ${W.alone} το κλειδί — εσύ δεν το βλέπεις.</span>`:""}</div>
       <div id="newkey"></div>
     </div>`);
-  wireLicenseToggle("n", d.querySelector("#licwrap"));
+  if(!co) wireLicenseToggle("n", d.querySelector("#licwrap"));
   d.querySelector("#createV").onclick=createVenue;
   d.querySelector("#nname").focus();
 }
 async function createVenue(){
-  const office=!!document.getElementById("ncust"), W=vWord(office);
-  const nameEl=document.getElementById("nname"), name=nameEl.value.trim(); if(!name){ invalid(nameEl, `Γράψε το όνομα του ${W.of}`); return; }
-  const contact=document.getElementById("ncontact").value.trim(), notes=document.getElementById("nnotes").value.trim();
+  const ncust=document.getElementById("ncust"), cust=ncust ? ncust.value : "", co=cust==="company", W=vWord(cust), contactEl=document.getElementById("ncontact");
+  const nameEl=document.getElementById("nname"), name=nameEl.value.trim(); if(!name){ invalid(nameEl, `Γράψε το όνομα ${W.ofThe}`); return; }
+  const contact=contactEl ? contactEl.value.trim() : "", notes=document.getElementById("nnotes").value.trim();
   const email=document.getElementById("nemail").value.trim(), lang=document.getElementById("nlang").value;
   const afmEl=document.getElementById("nafm"), afm=afmEl.value.replace(/\s/g,"");
   if(afm && !/^\d{9}$/.test(afm)){ invalid(afmEl, "Το ΑΦΜ έχει 9 ψηφία"); return; }
-  const lic=readLicense("n", document.getElementById("licwrap")); if(lic.error){ invalid(lic.el, lic.error); return; }
-  const license=lic.license;
+  const lic=co ? {} : readLicense("n", document.getElementById("licwrap")); if(lic.error){ invalid(lic.el, lic.error); return; }
+  const license=lic.license;   // a company's is the server's: one event
   const btn=document.getElementById("createV"); if(btn.disabled) return; btn.disabled=true;
-  const res=await req("/admin/venues",{method:"POST",body:JSON.stringify({name,contact,notes,email,lang,license,afm,...(office?{ custType:"organiser" }:{}),...(convertFrom?{ fromLead:convertFrom.lead }:{})})});
+  const res=await req("/admin/venues",{method:"POST",body:JSON.stringify({name,contact,notes,email,lang,license,afm,...(cust?{ custType:cust }:{}),...(convertFrom?{ fromLead:convertFrom.lead }:{})})});
   if(!document.getElementById("createV")) return;
   btn.disabled=false;
   const vid=res.d && (res.d.id || (res.d.venue && res.d.venue.id));
@@ -1375,14 +1380,14 @@ async function createVenue(){
   const box=document.getElementById("newkey");
   if(res.d.mailed){
     const to=(res.d.venue && res.d.venue.email) || email;
-    showSent(box, `✅ Το ${W.is} δημιουργήθηκε — ο σύνδεσμος ρύθμισης στάλθηκε στο ${esc(to)}`, `Με αυτόν το ${W.is} ορίζει το δικό του κλειδί (ο σύνδεσμος ισχύει 7 μέρες). Εσύ δεν βλέπεις το κλειδί.`);
+    showSent(box, `✅ ${W.The} δημιουργήθηκε — ο σύνδεσμος ρύθμισης στάλθηκε στο ${esc(to)}`, `Με αυτόν ${W.the} ορίζει το δικό ${W.its} κλειδί (ο σύνδεσμος ισχύει 7 μέρες). Εσύ δεν βλέπεις το κλειδί.`);
   } else {
-    box.innerHTML=venueKeyBoxHtml(`✅ Το ${W.is} δημιουργήθηκε — δώσε του αυτά τα δύο:`, res.d.key, "", false);
-    wireKeyBox(box, res.d.key, null);
+    box.innerHTML=venueKeyBoxHtml(`✅ ${W.The} δημιουργήθηκε — δώσε ${W.its} αυτά τα δύο:`, res.d.key, "", false, co);
+    wireKeyBox(box, res.d.key, null, co);
   }
-  ["nname","ncontact","nemail","nnotes","nafm"].forEach(id=>{ document.getElementById(id).value=""; });
-  const lw=document.getElementById("licwrap"); lw.innerHTML=licenseFields("n"); wireLicenseToggle("n", lw);   // the next venue starts clean
-  toast(res.d.mailed?"Ο σύνδεσμος ρύθμισης στάλθηκε":`Το ${W.is} δημιουργήθηκε`); refreshVenues(); refreshCustomers();
+  ["nname","ncontact","nemail","nnotes","nafm"].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=""; });
+  const lw=document.getElementById("licwrap"); if(lw){ lw.innerHTML=licenseFields("n"); wireLicenseToggle("n", lw); }   // the next venue starts clean
+  toast(res.d.mailed?"Ο σύνδεσμος ρύθμισης στάλθηκε":`${W.The} δημιουργήθηκε`); refreshVenues(); refreshCustomers();
 }
 // «Επεξεργασία…» on a venue: everything the admin sets but the notes, which are the card's own box (the email change keeps its confirmation).
 function renewalsHtml(v){
@@ -1395,39 +1400,40 @@ function formState(box){ return box ? JSON.stringify([...box.querySelectorAll("i
 // The dialog is filled from a fresh GET, not the cached list: the venue may have changed things since (e.g. cancelled its renewal).
 async function openVenueEdit(v){
   const ctx="venue:"+v.id;
-  let d=openDialog(`${dlgHead(`Επεξεργασία ${vWord(v.custType==="organiser").of} — ${esc(v.name)}`)}<div class="dbody"><div class="empty">Φορτώνει…</div></div>
+  let d=openDialog(`${dlgHead(`Επεξεργασία ${vWord(v.custType).of} — ${esc(v.name)}`)}<div class="dbody"><div class="empty">Φορτώνει…</div></div>
     <div class="dfoot"><button class="btn" data-dclose>Άκυρο</button></div>`);
   d.dataset.ctx=ctx;
   const res=await req("/admin/venues/"+encodeURIComponent(v.id));
   if(!d.open || d.dataset.ctx!==ctx) return;
   const fv=res.ok && res.d && res.d.venue;
   if(!fv){ if(res.status!==403){ closeDialog(); failToast(res, res.status===404?"Αυτό το κτήμα δεν υπάρχει πια — ανανεώνω":"Δεν φορτώθηκε το κτήμα — δοκίμασε ξανά"); if(res.status===404) refreshVenues(); } return; }
-  const office=fv.custType==="organiser", W=vWord(office);
+  const co=fv.custType==="company", W=vWord(fv.custType);
   d=openDialog(`${dlgHead(`Επεξεργασία ${W.of} — ${esc(fv.name)}`)}
     <div class="dbody">
       <div class="grid">
         <div class="full"><label for="ve_name">Όνομα ${W.of}</label><input id="ve_name" maxlength="120" value="${esc(fv.name)}"></div>
-        ${office ? `<div class="full"><label for="ve_afm">ΑΦΜ</label><input id="ve_afm" inputmode="numeric" maxlength="9" autocomplete="off" style="max-width:220px" value="${esc(fv.afm||"")}"></div>` : ""}
+        ${fv.custType ? `<div class="full"><label for="ve_afm">ΑΦΜ</label><input id="ve_afm" inputmode="numeric" maxlength="9" autocomplete="off" style="max-width:220px" value="${esc(fv.afm||"")}"></div>` : ""}
         <div><label for="ve_email">Email <span class="hint">— σύνδεσμοι ρύθμισης και ανάκτησης</span></label><input id="ve_email" type="email" autocomplete="off" value="${esc(fv.email||"")}"></div>
         <div><label for="ve_lang">Γλώσσα</label><select id="ve_lang">${langOptions(PLANNER_FILE[fv.lang]?fv.lang:"el")}</select></div>
-        <div class="full"><label for="ve_contact">Δημόσια επικοινωνία <span class="hint">— τη βλέπουν οι πελάτες του ${W.of}</span></label><input id="ve_contact" maxlength="200" value="${esc(fv.contact||"")}" placeholder="π.χ. 210 123 4567 · info@venue.gr"></div>
-        <div class="full"><label class="chk"><input type="checkbox" id="ve_active"${fv.active?" checked":""}> <span>Ενεργό <span class="muted">— όταν δεν είναι, το ${W.is} δεν μπορεί να φτιάξει νέες εκδηλώσεις</span></span></label></div>
+        ${co ? "" : `<div class="full"><label for="ve_contact">Δημόσια επικοινωνία <span class="hint">— τη βλέπουν οι πελάτες του ${W.of}</span></label><input id="ve_contact" maxlength="200" value="${esc(fv.contact||"")}" placeholder="π.χ. 210 123 4567 · info@venue.gr"></div>`}
+        <div class="full"><label class="chk"><input type="checkbox" id="ve_active"${fv.active?" checked":""}> <span>${co?"Ενεργή":"Ενεργό"} <span class="muted">— όταν δεν είναι, ${W.the} δεν μπορεί να φτιάξει νέες εκδηλώσεις</span></span></label></div>
       </div>
-      <div class="subh">Άδεια</div>
+      ${co ? "" : `<div class="subh">Άδεια</div>`}
       ${(fv.trial&&fv.trial.inForce)?`<div class="keybox note" style="margin:0 0 10px">
         <div style="font-weight:700">★ Στον δωρεάν πρώτο χρόνο${isYmd(fv.license&&fv.license.seasonEnd)?` — ως ${esc(gYmd(fv.license.seasonEnd))}`:""}</div>
         <div class="muted" style="margin-top:4px">Αν αλλάξεις τις ημερομηνίες της σεζόν πιο κάτω, μετακινείται ο δωρεάν χρόνος· δεν ανανεώνεται μόνος του και καλύπτει μόνο εκδηλώσεις με ημερομηνία μέσα σε αυτόν. Σημείωσέ το μόλις αρχίσει να πληρώνει:</div>
         <label class="chk" style="margin-top:6px"><input type="checkbox" id="ve_endtrial"> <span>Πληρώνει πια συνδρομή — να φύγει η ένδειξη του δωρεάν χρόνου (οι ημερομηνίες πιο κάτω λειτουργούν μετά όπως σε κάθε σεζόν)</span></label>
       </div>`:""}
-      ${renewalHtml(fv)}
+      ${co ? "" : `${renewalHtml(fv)}
       <div id="ve_lic" style="margin-top:8px">${licenseFields("ve_", fv.license||{ type:"seasonal", autoRenew:true })}</div>
-      ${renewalsHtml(fv)}
-      <div class="subh">Μετά την εκδήλωση <span class="muted">— οι εκδηλώσεις αυτού του κτήματος</span></div>
+      ${renewalsHtml(fv)}`}
+      <div class="subh">Μετά την εκδήλωση <span class="muted">— οι εκδηλώσεις ${co?"αυτής της εταιρείας":"αυτού του κτήματος"}</span></div>
       <div id="vr_box">${retentionFields("vr_", fv.retention)}</div>
     </div>
     <div class="dfoot"><button class="btn" data-dclose>Άκυρο</button><button class="btn primary" id="ve_save">Αποθήκευση</button></div>`);
   d.dataset.ctx=ctx;
-  wireLicenseToggle("ve_", d); wireRetention("vr_", d);
+  if(!co) wireLicenseToggle("ve_", d);
+  wireRetention("vr_", d);
   const initial={ lic:formState(d.querySelector("#ve_lic")), ret:formState(d.querySelector("#vr_box")) };
   d.querySelector("#ve_save").onclick=()=>saveVenueEdit(fv, d, initial);
 }
@@ -1435,12 +1441,12 @@ async function openVenueEdit(v){
 async function saveVenueEdit(v, d, initial){
   const q=s=>d.querySelector(s), btn=q("#ve_save"); if(btn.disabled) return;
   const body={};
-  const name=q("#ve_name").value.trim(); if(!name){ invalid(q("#ve_name"), `Γράψε το όνομα του ${vWord(v.custType==="organiser").of}`); return; }
+  const name=q("#ve_name").value.trim(); if(!name){ invalid(q("#ve_name"), `Γράψε το όνομα ${vWord(v.custType).ofThe}`); return; }
   if(name!==(v.name||"")) body.name=name;
   const afmEl=q("#ve_afm"), afm=afmEl ? afmEl.value.replace(/\s/g,"") : "";
   if(afm && !/^\d{9}$/.test(afm)){ invalid(afmEl, "Το ΑΦΜ έχει 9 ψηφία"); return; }
   if(afmEl && afm!==(v.afm||"")) body.afm=afm;
-  const contact=q("#ve_contact").value.trim(); if(contact!==(v.contact||"")) body.contact=contact;
+  if(q("#ve_contact")){ const contact=q("#ve_contact").value.trim(); if(contact!==(v.contact||"")) body.contact=contact; }
   const sel=q("#ve_lang").value, lang=PLANNER_FILE[sel]?sel:"el"; if(lang!==(PLANNER_FILE[v.lang]?v.lang:"el")) body.lang=lang;
   const active=q("#ve_active").checked; if(active!==!!v.active) body.active=active;
   if(formState(q("#ve_lic"))!==initial.lic){ const lic=readLicense("ve_", d); if(lic.error){ invalid(lic.el, lic.error); return; } body.license=lic.license; }
@@ -1548,6 +1554,10 @@ async function venueAction(v, a, btn){
     btn.disabled=true; const res=await req(path+"/invoiced",{method:"POST",body:"{}"}); btn.disabled=false;
     if(res.ok){ toast("Σημειώθηκε ως τιμολογημένο"); refreshVenues(); }
     else failToast(res, "Δεν έγινε"); }
+  else if(a==="addevent"){
+    if(!confirm(`Μία εκδήλωση ακόμη για «${v.name}»;\n\nΗ κονσόλα της μπορεί να φτιάξει μία ακόμη, και γράφονται 25 € με ΦΠΑ στις «Πληρωμές».`)) return;
+    btn.disabled=true; const res=await req(path+"/events",{method:"POST",body:"{}"}); btn.disabled=false;
+    if(res.ok){ toast("Προστέθηκε μία εκδήλωση"); refreshVenues(); } else failToast(res, "Δεν έγινε"); }
   else if(a==="toggle"){
     // Deactivating stops the venue creating events the moment it is pressed; activating only gives that back.
     if(v.active && !confirm(`Απενεργοποίηση του «${v.name}»;
@@ -2214,7 +2224,7 @@ async function cardForget(key, x, btn){
     : t==="l"
     ? `Να σβηστεί η επαφή «${name}»;\n\nΣβήνονται για πάντα τα στοιχεία της, οι σημειώσεις και το ιστορικό. Δεν κρατιέται τίποτα — δεν αγόρασε κάτι.\n\nΔεν αναιρείται.`
     : t==="v"
-    ? `Να ξεχαστεί το ${vWord(c.type==="organiser").is} «${name}»;\n\nΣβήνονται για πάντα όλες οι εκδηλώσεις του (${(x.venue && x.venue.weddingCount)||0}) με τους καλεσμένους τους, ο κάδος, το πρότυπο αίθουσας, η καρτέλα, οι σημειώσεις και το ιστορικό.${c.afm ? " Το ΑΦΜ του μπορεί να ξαναπάρει δωρεάν χρόνο." : ""} Για τα λογιστικά μένουν μόνο η επωνυμία και οι ημερομηνίες όσων αγόρασε.\n\nΔεν αναιρείται.`
+    ? `Να ξεχαστεί ${vWord(c.type).the} «${name}»;\n\nΣβήνονται για πάντα όλες οι εκδηλώσεις του (${(x.venue && x.venue.weddingCount)||0}) με τους καλεσμένους τους, ο κάδος, το πρότυπο αίθουσας, η καρτέλα, οι σημειώσεις και το ιστορικό.${c.afm ? " Το ΑΦΜ του μπορεί να ξαναπάρει δωρεάν χρόνο." : ""} Για τα λογιστικά μένουν μόνο η επωνυμία και οι ημερομηνίες όσων αγόρασε.\n\nΔεν αναιρείται.`
     : `Να διαγραφεί η εγγραφή «${name}»${c.afm ? ` (ΑΦΜ ${c.afm})` : ""};\n\nΤο ΑΦΜ μπορεί να εγγραφεί ξανά. Δεν αναιρείται.`;
   if(!confirm(msg)) return;
   if(cardNotes && cardNotes.key===key) clearTimeout(cardNotes.timer);
@@ -2281,7 +2291,9 @@ function cardActsHtml(x){
     }
   } else if(t==="v"){
     const v=x.venue||{}, L=x.licence||{};
-    out.push(b("key", "Κλειδί κονσόλας"), b("resetkey", "Νέο κλειδί…", "", "Μόνο αν το κτήμα έχασε το κλειδί του"), b("edit", "Επεξεργασία…", "", "Όνομα, email, γλώσσα, άδεια, διατήρηση"));
+    const co=v.custType==="company";
+    if(co) out.push(b("addevent", "+1 εκδήλωση (25 €)", "primary", "Η κονσόλα της μπορεί να φτιάξει μία ακόμη, και γράφονται 25 € με ΦΠΑ στις «Πληρωμές»"));
+    out.push(b("key", "Κλειδί κονσόλας"), b("resetkey", "Νέο κλειδί…", "", co ? "Μόνο αν η εταιρεία έχασε το κλειδί της" : "Μόνο αν το κτήμα έχασε το κλειδί του"), b("edit", "Επεξεργασία…", "", co ? "Όνομα, ΑΦΜ, email, γλώσσα, διατήρηση" : "Όνομα, email, γλώσσα, άδεια, διατήρηση"));
     if(v.trashCount) out.push(b("trash", `Κάδος (${esc(v.trashCount)})`));
     if(L.invoiceDue) out.push(b("invoiced", "Τιμολογήθηκε"));
     out.push(b("toggle", v.active ? "Απενεργοποίηση…" : "Ενεργοποίηση"));
@@ -2289,7 +2301,7 @@ function cardActsHtml(x){
     const st=x.customer.stage;
     if(st===8) out.push(b("st2", "Ξανά σε συζήτηση"));
     else { if(st!==2) out.push(b("st2", "Σε συζήτηση")); if(st!==3) out.push(b("st3", "Αναμένεται πληρωμή")); }
-    out.push(b("convert", "Έγινε πελάτης…", "primary", cOwner((x.lead||{}).type) ? "Ανοίγει το «+ Κτήμα» συμπληρωμένο" : "Ανοίγει το «+ Ιδιώτης» συμπληρωμένο"));
+    out.push(b("convert", "Έγινε πελάτης…", "primary", (x.lead||{}).type==="company" ? "Ανοίγει το «+ Εταιρεία» συμπληρωμένο" : cOwner((x.lead||{}).type) ? "Ανοίγει το «+ Κτήμα» συμπληρωμένο" : "Ανοίγει το «+ Ιδιώτης» συμπληρωμένο"));
     if(st!==8) out.push(b("lost", "Δεν προχώρησε…"));
     out.push(b("ledit", "Επεξεργασία…", "", "Πώς ήρθε, τι είναι, στοιχεία, ημερομηνία"));
   }
@@ -2388,7 +2400,7 @@ function customerCardHtml(x){
   if(v){
     const L=v.license||{}, lic=x.licence||{}, st=x.setup||{}, trial=v.trial && v.trial.inForce;
     out.push(`<div class="subh">Άδεια</div>`+fieldsHtml([
-      ["Είδος", L.type==="per_wedding" ? `ανά εκδήλωση · ${esc(v.used||0)} από ${esc(L.quota||"∞")}` : "σεζόν"],
+      ["Είδος", L.type==="per_wedding" ? `ανά εκδήλωση · ${esc(v.used||0)} από ${esc(L.quota||(v.custType==="company"?0:"∞"))}` : "σεζόν"],
       L.type!=="per_wedding" ? ["Σεζόν", (L.seasonStart||L.seasonEnd) ? `${esc(gYmd(L.seasonStart))} → ${esc(gYmd(L.seasonEnd))}` : "χωρίς ημερομηνίες"] : null,
       trial ? ["Δωρεάν χρόνος", `σε ισχύ ως ${esc(gYmd(v.trial.seasonEnd))} (${esc(cInDays(v.trial.seasonEnd))})`] : null,
       L.type==="per_wedding" ? null : ["Ανανέωση", lic.renewsAt ? `στις ${esc(gYmd(lic.renewsAt))}` : trial ? "ο δωρεάν χρόνος δεν ανανεώνεται μόνος του"
@@ -2398,10 +2410,11 @@ function customerCardHtml(x){
       v.active===false ? ["Κατάσταση", `<span class="badge off">ανενεργό</span>`] : null,
     ]));
     out.push(`<div class="subh">Ρύθμιση</div>`+fieldsHtml([
-      ["Κλειδί", st.keySet ? "το κτήμα έχει ορίσει δικό του κλειδί" : st.mailed ? "ο σύνδεσμος στάλθηκε — δεν έχει ανοίξει" : "το έδωσες εσύ, χωρίς email"],
+      v.custType==="company" ? ["Σύμβαση (DPA)", v.dpaAt ? "την αποδέχτηκε "+esc(gDT(v.dpaAt)) : "δεν έχει ανοίξει ακόμη την κονσόλα"] : null,
+      ["Κλειδί", st.keySet ? `${vWord(v.custType).the} έχει ορίσει δικό ${vWord(v.custType).its} κλειδί` : st.mailed ? "ο σύνδεσμος στάλθηκε — δεν έχει ανοίξει" : "το έδωσες εσύ, χωρίς email"],
       st.resetAt ? ["Νέος σύνδεσμος", esc(gWhen(st.resetAt))] : null,
       st.failedAt ? ["Email", cFailed(st.failedAt, st.error)] : null,
-      ["Πρότυπο αίθουσας", x.template ? `ναι · τελευταία αλλαγή ${esc(gWhen(x.template.updated))}${x.template.support ? ` <span class="badge sup">ζητά υποστήριξη</span>` : ""}` : "όχι ακόμη"],
+      ["Χώροι", (x.rooms||[]).length ? `${x.rooms.length} · τελευταία αλλαγή ${esc(gWhen(Math.max(...x.rooms.map(r=>r.updated||0))))}${x.rooms.some(r=>r.support) ? ` <span class="badge sup">ζητά υποστήριξη</span>` : ""}` : "κανένας ακόμη"],
     ]));
   }
   if(cp){
@@ -2910,9 +2923,11 @@ async function leadAction(key, x, a, btn){
     const pre={ lead:l.id, name:l.name, email:l.email, notes };
     dlgBack=key;   // cancelled: back to the contact; created: convertDone points it at the new customer
     if(cOwner(l.type)) return openNewVenue({ ...pre, afm:l.afm, custType:l.type==="organiser" ? "organiser" : "" });
+    if(l.type==="company") return openNewVenue({ ...pre, afm:l.afm, custType:"company",   // a console has no event until the company makes one: its date stays in the notes
+      notes:[l.date ? "Εκδήλωση στις "+gYmd(l.date) : "", notes].filter(Boolean).join("\n").slice(0, NOTES_MAX) });
     // a βάπτιση's plan is named after the child and a γιορτή's after the event: the person who called goes in the notes. A company's is its own name.
-    const own=l.type==="couple" || l.type==="company";
-    return openNewCouple({ ...pre, kind:LEAD_KINDS[l.type]||"wedding", date:l.date, plan:own ? l.name : "", ...(l.type==="company" ? { custType:"company", afm:l.afm } : {}),
+    const own=l.type==="couple";
+    return openNewCouple({ ...pre, kind:LEAD_KINDS[l.type]||"wedding", date:l.date, plan:own ? l.name : "",
       notes:(own || !l.name ? notes : ["Επαφή: "+l.name, notes].filter(Boolean).join("\n")).slice(0, NOTES_MAX) });
   }
   if(a==="lost"){
