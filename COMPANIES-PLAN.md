@@ -131,5 +131,5 @@ three languages) is accepted knowingly.
 |---|---|
 | 1. A company as a customer | Live 2026-11-03 (`924490c`, `deploy-2026-11-03-1`) |
 | 2. The fourth kind | Live 2026-11-03 (`deploy-2026-11-03-4`) |
-| 3. One console, saved rooms, old designs | Not started |
+| 3. One console, saved rooms, old designs | Built 2026-11-04, on the local copy only; live after Andreas reads the Greek and says deploy |
 | 4. The organiser in public | Not started |

@@ -33,6 +33,7 @@ is on — §1c; otherwise send the **claim link** yourself, §1b). Never again a
 |---|---|---|
 | **Admin** (Andreas) | `OWNER_KEY` in `admin.html` | venues + licences, sell plans to couples (claim links), see **support invitations**. **Cannot open any couple plan** — no API route returns a couple plan, id or key to the owner key. Two admin powers over a couple plan, both visible to the couple: **reset the access link** (lost link) and **erasure**. |
 | **Venue** | console key in `venue.html`; per-wedding venue link `#vkey=` | builds its **space once (template)**, decides **what couples may change** (default + per wedding), creates weddings (copied from the template, no guests), full rights on its weddings, can invite support for a wedding. |
+| **Company** (phase 3, 2026-11-04) | console key in `venue.html?co=1` | a `venue:` row with `custType:"company"` and a `per_wedding` licence: the console's rooms, events and old designs, with no client screens and its own words. Ticks `dpa.html` first. One event per «+1 εκδήλωση (25 €)». See section 1j. |
 | **Couple** | edit link `#key=` (from the venue, or claimed from TakeaSeat) | couple-owned plan: everything, incl. inviting support and making new links. Venue plan: guests, seating, groups, invitations, print — plus whatever the venue allows. |
 | **Support** | `#support=` link from the admin's support list, only while the owner's invitation lasts (24 h / 3 d / 7 d) | opens **view-only**, "Ενεργοποίηση επεξεργασίας" to fix things; nothing is stored in the helper's browser; cannot delete, rename, copy, extend, or keep access via sync codes. Every open/save is in the owner's access log. |
 | **Viewer** | view link `#view=` | read only. |
@@ -403,13 +404,35 @@ and that is the whole of the change: **there is no second lifecycle, no second p
   word for word what it always was. The same rule runs in the planner (`retypeStarterWords()`) when the type is
   corrected after the fact.
 - **Tests.** `node tools/test-api.mjs` — section 20 (`kind: …` / `planner: …` / `print: …` / `venue: …`), 823 checks in all.
-- **Still a wedding on purpose:** the planner's own title for a venue's **template** («Οργάνωση Τραπεζιών Γάμου», with
+- **Still a wedding on purpose (a Κτήμα's only; a company's room has its own kind, section 1j):** the planner's own title for a venue's **template** («Οργάνωση Τραπεζιών Γάμου», with
   a «Νυφικό τραπέζι» starter). A template has no kind, `tr()` is binary, and a third "template" flavour would buy a
   word only the venue ever sees at the price of the whole dictionary rule. What mattered — that those words reached
   every baptism copied from it — is fixed at the copy instead.
 - **Not done on purpose:** Hermes still creates weddings only (`takeaseat_control.py` sends no kind, so its events are
   weddings — voice baptisms would be a separate pass); `lab.html` is still a wedding demo; the local, never-synced
   plans in the planner («Ο γάμος μας», «Γάμος {n}») are weddings, because a plan that is not online is not a sale.
+
+## 1j. A company's console (phase 3 of `COMPANIES-PLAN.md`, 2026-11-04)
+
+A company buys events, not a season. It is sold with «+ Εταιρεία» on «Πελάτες», which makes a `venue:` row with
+`custType:"company"` and a `per_wedding` licence holding its first event, and hands over the console link (`?co=1`) and key.
+
+- **Paying for one more event.** «+1 εκδήλωση (25 €)» on its card raises the allowance by one and writes the 25 € due, in one
+  press. Nothing else moves the allowance. A deleted event still counts; if it was a mistake, press +1 and cancel the due.
+- **The agreement.** `POST /venues/:id/agreement` records the tick and its date in `dpaAt`. Until then every other console call
+  answers 403 `agreement_required`. The card's «Σύμβαση (DPA)» line shows the date. A Κτήμα still signs on paper.
+- **Rooms.** `v.rooms` holds up to 20 (`MAX_ROOMS`); `roomsOf` still reads an old `templateId`, and `setRooms` converts at the
+  first write. An event copies a room, so editing a room never changes an event. A company's room has `kind:"company"`, a Κτήμα's
+  has no kind. Forgetting a customer removes its rooms.
+- **Old designs.** `designFrom` copies a past event's tables. A company may tick names and seats too; a Κτήμα gets
+  `people_not_allowed`. Notes never travel (`withoutGuestNotes`). Another customer's plan is refused; a deleted source says so.
+- **How long plans are kept.** `PUT /venues/:id/keep`, 1 to 5 years, default 1, for a Κτήμα and a company alike. A shorter choice
+  deletes what is already past it within 24 hours, after a warning. Guest notes still go the day after the event.
+- **The words.** In the planner `CO_OWNER` makes `tr` look up `o_<key>` before `c_`. A new venue-role string a company can see
+  needs an `o_` twin in el, en and de, and a test refuses venue or couple words in them. The console's own words are `isCo()`
+  in `venue.html`. A company gets no keepsake mail.
+- **Not moved:** live had no `custType` rows when this was built, so there is no tool to move a `couple:` company to a console.
+  Admin's dialogs no longer sell one as a `couple:` row, though the API still accepts it and a kind correction can still make one.
 
 ## 2. Architecture
 
