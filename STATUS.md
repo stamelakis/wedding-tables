@@ -1,10 +1,10 @@
 # TakeaSeat — STATUS
 
-Updated: 2026-11-03
+Updated: 2026-11-04
 
 **Status:** Live runs `be68c33` (deployed 2026-11-03, tag `deploy-2026-11-03-8`, pre-deploy backup
 `/opt/backups/takeaseat-20261103-211634.db.gz.age`), healthy. The fourth kind, «Εταιρική εκδήλωση» (phase 2 of `COMPANIES-PLAN.md`), is live after Andreas
-read the Greek and said yes; phases 3–4 are not built. 1630 checks pass, on the local copy and in the server's build. Operations phases 1–6 are live.
+read the Greek and said yes. **Phase 3 (a company's console, saved rooms, old designs, the 1–5 year choice) is built on the local copy and committed but NOT pushed or live;** it waits for Andreas to read its Greek and say deploy. Phase 4 is not built. 1736 checks pass locally (live's build ran 1630). Operations phases 1–6 are live.
 
 **Live smoke test of phase 2, read-only, passed:** the company demo at desktop, 1000px and 375px, the γιορτή demo, the new guide, the home page's four cards,
 the γιορτή guide, terms, privacy, dpa, and six more pages load with no console errors, the sitemap lists the guide, `/health` ok, `/admin/customers` refuses
@@ -14,6 +14,7 @@ yet seen live: a real form sent as a company, a real new due on «Πληρωμέ
 
 ## In progress / unfinished
 
+- **Phase 3, before deploying:** Andreas reads the Greek, then `/ship` (backup, push, deploy, health check), then a real run-through on the live site: «+ Εταιρεία» on a test company, the agreement, a room, an event, «+1 εκδήλωση», then remove the test row. Checked on the local copy: login and agreement, rooms (create, rename, delete), event from a room and from an old design, keep choice, delete dialog, admin card, planner words in el, en and de, guide and legal pages at 375px, the Κτήμα console unchanged. `/security-review` found no vulnerability; one payment making several events through parallel requests was found alongside it and fixed with a test. The keep choice's warning was seen only on made-up data in the page, because a past event cannot be created through the screen.
 - Party plans created before 2026-10-17 keep the label «Τραπέζι της γιορτής» until the customer renames it
   (deliberately not rewritten on load). Converting such a plan to another kind still works (LEGACY_HEADS).
 
@@ -21,8 +22,7 @@ yet seen live: a real form sent as a company, a real new due on «Πληρωμέ
 
 1. **What Google and link previews show still names three kinds** (index.html:7, 8, 14, 15, 25, epikoinonia.html:8). Left on purpose by Andreas: those words affect the ranking, so change them
    deliberately, once companies start looking. Every other line found by a search for a baptism and a party named close together now includes company events.
-2. **Phases 3–4 of `COMPANIES-PLAN.md`**, each in its own session: one console with saved rooms and
-   old designs, then the organiser in public. Each has its own "done when" there.
+2. **Phase 4 of `COMPANIES-PLAN.md`**, in its own session, after phase 3 is live: the organiser in public. It has its own "done when" there, and decides whether a γραφείο may copy names and seats.
 3. **Phase 7 (online payment)** waits on the company, accountant and lawyer. The page's remaining English sections move
    to Greek as each is touched.
 4. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today (checked
@@ -30,6 +30,7 @@ yet seen live: a real form sent as a company, a real new due on «Πληρωμέ
 
 ## Waiting on Andreas
 
+- **Phase 3: read the Greek and say deploy.** Nothing is live until then.
 - **When something comes up in «Σήμερα»:** try «αύριο» on a line and «Επαναφορά» under «Κρυμμένα». The 08:00 mail comes
   only on days the list is not empty. When one does come, say if the wording reads right in your mail app.
 - **When the next real payment comes in:** record it in «Πληρωμές» («+ Πληρωμή», only the amount is needed) and say if
@@ -64,7 +65,7 @@ yet seen live: a real form sent as a company, a real new due on «Πληρωμέ
   withdrawal (ν. 2251/1994), with the planner opening only after it, a business included. And: terms §8's
   «άμεση έναρξη» names only a γάμος under 21 days away, while the payment reply says «εκδήλωση»; confirm it may
   cover a βάπτιση or γιορτή and widen §8's wording. The terms' opening now says «ιδιώτες και εταιρείες» while §8 still gives every direct buyer the 14-day withdrawal, and phase 2 is live, so this matters more now. And the four points for companies in `COMPANIES-PLAN.md` §4: the
-  1–5 year choice, a company accepting `dpa.html`, no consumer withdrawal for a company, table labels in saved rooms.
+  1–5 year choice, a company accepting `dpa.html`, no consumer withdrawal for a company, table labels in saved rooms. Terms 8Α, dpa.html and privacy.html state these from phase 3's deploy, so the review reads them as written.
 
 ## Known problems
 
@@ -77,7 +78,7 @@ yet seen live: a real form sent as a company, a real new due on «Πληρωμέ
 - **This PC's C: drive is 98 % full** (9.7 GB free on 2026-10-23). Not the server's; the server is at 24 %.
 - The 🛟 on the «Υποστήριξη έως …» badge shows as an empty box on Windows 10 browsers (no such emoji there).
 - **The tour once threw a `TypeError … 'prep'`** when «Επόμενο» was pressed past its last step (planner around line 5502, seen 2026-11-03 in a screen check, not
-  company-specific). Probably a stale double click; not reproduced by hand and not fixed.
+  company-specific). Seen again 2026-11-04 from scripted clicks on «Επόμενο» past the last step; not reproduced by a person, not company-specific, not fixed.
 
 ## History
 
