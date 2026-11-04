@@ -5024,4 +5024,185 @@ function leadStageOf(l) { return l.lost ? 8 : l.stage || 1; }
   }
 }
 
+// ---- COMPANIES-PLAN.md phase 4: a γραφείο εκδηλώσεων in public ----
+{
+  const saved = new Map(m), day = n => athensDay(n), mail0 = env.MAIL, sent = [];
+  env.MAIL = { enabled: true, from: 'TakeaSeat <hello@takeaseat.gr>', send: msg => { sent.push(msg); return true; } };
+  m.set('meta:owner', JSON.stringify({ email: 'andreas@example.gr', emailVerified: true, lang: 'el' }));
+  // A valid ΑΦΜ for any eight digits, so these never meet a claim an earlier section left behind.
+  const afmOf = s => s + ([...s].reduce((a, x, i) => a + Number(x) * 2 ** (8 - i), 0) % 11 % 10);
+  let ipN = 0;
+  const su = body => call('POST', '/signup/venue', { phone: '2101112233', terms: true, lang: 'el', ...body }, { 'X-Real-IP': '198.18.40.' + (++ipN) });
+  const lastTo = to => sent.filter(x => x.to === to).pop();
+  const noLink = t => t.replace(/https?:\/\/\S+/g, '');   // the address itself says venue.html, and nobody reads that as a word
+  const rowsOf = afm => [...m.keys()].filter(k => k.startsWith('venue:') && raw(k).afm === afm);
+  const open = async (to, secret) => {
+    const t = (lastTo(to).text.match(/#recover=([^\s]+)/) || [])[1];
+    const r = await call('POST', '/recover/venue', { token: t, secret });
+    return { id: r.d.venueId, status: r.status, H: { 'X-Venue-Key': r.d.key } };
+  };
+  try {
+    // -- the sign-up --
+    const A1 = afmOf('77400101'), MAIL1 = 'hello@orizon.example';
+    let r = await su({ name: 'Ορίζων Events', afm: A1, email: MAIL1, custType: 'organiser' });
+    ok(r.status === 200 && JSON.stringify(r.d) === '{"ok":true}', 'γραφείο sign-up: the same one-word answer', r.d);
+    const claim = raw('afm:' + A1), v0 = raw('venue:' + claim.venueId);
+    ok(v0.custType === 'organiser' && raw('signup:' + claim.signupId).custType === 'organiser', 'γραφείο sign-up: the word is on the venue and on the signup row', v0.custType);
+    ok(claim.status === 'pending' && v0.license.autoRenew === false && v0.license.seasonEnd && v0.selfSignup === true, 'γραφείο sign-up: the same free year as a Κτήμα, claimed through the same ΑΦΜ row', claim);
+    const m1 = lastTo(MAIL1);
+    ok(/γραφείου/.test(m1.subject) && m1.text.includes('/venue.html?of=1#recover=') && !/κτήμα|κτήματ/i.test(m1.subject + m1.text), 'γραφείο sign-up: its setup mail says γραφείο, links ?of=1 and never says κτήμα', m1.subject);
+    ok(!/διοργανωτ/i.test(m1.subject + m1.text), 'γραφείο sign-up: and it is never «διοργανωτής»');
+    const own = lastTo('andreas@example.gr');
+    ok(/γραφείου εκδηλώσεων/.test(own.subject) && own.text.includes('Ορίζων Events') && own.text.includes(A1), 'γραφείο sign-up: Andreas hears it is a γραφείο', own.subject);
+    r = await call('GET', '/admin/customers', undefined, OWN);
+    ok(r.d.customers.filter(c => c.name === 'Ορίζων Events').length === 1 && r.d.customers.find(c => c.name === 'Ορίζων Events').type === 'organiser', '«Πελάτες»: a γραφείο that signed up is one row, under its own type', r.d.customers.filter(c => c.name === 'Ορίζων Events'));
+    for (const [lang, word, wrong] of [['en', /agency/i, /\bvenue\b/i], ['de', /Agentur/, /Location/]]) {
+      const to = 'hello-' + lang + '@orizon.example';
+      await su({ name: 'Horizon ' + lang, afm: afmOf(lang === 'en' ? '77400102' : '77400103'), email: to, lang, custType: 'organiser' });
+      const x = lastTo(to);
+      ok(word.test(x.subject) && word.test(x.text) && x.text.includes('?of=1#recover=') && !wrong.test(noLink(x.subject + ' ' + x.text)), 'γραφείο sign-up: the ' + lang + ' setup mail speaks its word', x.subject);
+    }
+
+    // -- only that one word comes through this door --
+    for (const [word, afm] of [['company', '77400104'], ['nonsense', '77400105'], ['ORGANISER', '77400106']]) {
+      const to = word.toLowerCase() + '@door.example', a = afmOf(afm);
+      await su({ name: 'Πόρτα ' + word, afm: a, email: to, custType: word });
+      const row = raw('venue:' + raw('afm:' + a).venueId);
+      ok(!('custType' in row) && row.license.type !== 'per_wedding' && !lastTo(to).text.includes('of=1') && !lastTo(to).text.includes('co=1'), 'public sign-up: custType «' + word + '» makes a plain Κτήμα, never a company', row.custType);
+    }
+    const KT = afmOf('77400107');
+    await su({ name: 'Κτήμα Βουνό', afm: KT, email: 'vouno@ktima.example' });
+    const mK = lastTo('vouno@ktima.example');
+    ok(!('custType' in raw('venue:' + raw('afm:' + KT).venueId)) && /κτήματός/.test(mK.subject) && !mK.text.includes('of=1'), 'public sign-up: a Κτήμα signs up exactly as before', mK.subject);
+
+    // -- one free year per ΑΦΜ, whichever word it comes under --
+    await su({ name: 'Ορίζων ξανά', afm: A1, email: 'again@orizon.example' });
+    ok(rowsOf(A1).length === 1 && raw('venue:' + claim.venueId).name === 'Ορίζων Events', 'one ΑΦΜ: a γραφείο already waiting is not joined by a Κτήμα with the same number');
+    await su({ name: 'Βουνό ως γραφείο', afm: KT, email: 'other@office.example', custType: 'organiser' });
+    ok(rowsOf(KT).length === 1 && !('custType' in raw('venue:' + raw('afm:' + KT).venueId)), 'one ΑΦΜ: a waiting Κτήμα cannot be turned into a γραφείο by someone typing its ΑΦΜ');
+
+    // -- open it: the agreement comes first --
+    const O = await open(MAIL1, 'orizon-console-2026');
+    ok(O.status === 200 && raw('afm:' + A1).status === 'trial' && !!raw('venue:' + O.id).trial.verifiedAt, 'γραφείο: the setup link opens its free year');
+    await su({ name: 'Ορίζων τρίτο', afm: afmOf('77400108'), email: MAIL1, custType: 'organiser' });
+    ok(lastTo(MAIL1).text.includes('/venue.html?of=1#recover') && !/κτήμα|κτήματ/i.test(lastTo(MAIL1).text + lastTo(MAIL1).subject), 'γραφείο: asked again from an address with a console, it is sent to its own login, in neutral words', lastTo(MAIL1).subject);
+    await su({ name: 'Ορίζων τέταρτο', afm: A1, email: 'nosy@elsewhere.example', custType: 'organiser' });
+    ok(!/κτήμα|κτήματ/i.test(lastTo(MAIL1).text + lastTo(MAIL1).subject) && !/κτήμα|κτήματ/i.test(lastTo('nosy@elsewhere.example').text + lastTo('nosy@elsewhere.example').subject), 'γραφείο: «that ΑΦΜ has had its free year» and the plain acknowledgement both say no κτήμα', [lastTo(MAIL1).subject, lastTo('nosy@elsewhere.example').subject]);
+    const made = (body, H = O.H, id = O.id) => call('POST', '/venues/' + id + '/weddings', { label: 'Εκδήλωση', date: day(60), ...body }, H);
+    let con = await call('GET', '/venues/' + O.id, undefined, O.H);
+    ok(con.status === 200 && con.d.needsAgreement === true && con.d.venue.custType === 'organiser' && !JSON.stringify(con.d).includes(A1), 'agreement: a γραφείο is asked at the first opening, and its console carries no ΑΦΜ', con.d);
+    ok((await made({})).d.error === 'agreement_required' && (await call('POST', '/venues/' + O.id + '/rooms', {}, O.H)).d.error === 'agreement_required', 'agreement: no event and no room before the tick');
+    ok((await call('POST', '/venues/' + O.id + '/agreement', {}, O.H)).status === 400 && !raw('venue:' + O.id).dpaAt, 'agreement: only a real tick counts');
+    ok((await call('POST', '/venues/' + O.id + '/agreement', { accept: true })).status === 403 && !raw('venue:' + O.id).dpaAt, 'agreement: a stranger cannot accept for it');
+    r = await call('POST', '/venues/' + O.id + '/agreement', { accept: true }, O.H);
+    ok(r.status === 200 && raw('venue:' + O.id).dpaAt > 0, 'agreement: the tick is saved with its date', r.d);
+    con = await call('GET', '/venues/' + O.id, undefined, O.H);
+    ok(!con.d.needsAgreement && con.d.weddings !== undefined, 'agreement: then the console opens');
+
+    // -- a Κτήμα is asked nothing and told nothing --
+    const K = await open('vouno@ktima.example', 'vouno-console-2026');
+    const kc = await call('GET', '/venues/' + K.id, undefined, K.H);
+    ok(kc.status === 200 && !kc.d.needsAgreement && !JSON.stringify(kc.d.venue).includes('custType'), 'a Κτήμα: no tick (it signs the paper one) and no word', kc.d.venue);
+
+    // -- two rooms, two events, in two kinds --
+    const R1 = (await call('POST', '/venues/' + O.id + '/rooms', { name: 'Ξενοδοχείο Αίγλη' }, O.H)).d;
+    const R2 = (await call('POST', '/venues/' + O.id + '/rooms', { name: 'Κήπος Ανατολή' }, O.H)).d;
+    const roomsNow = (await call('GET', '/venues/' + O.id, undefined, O.H)).d.rooms;
+    ok(roomsNow.length === 2, 'γραφείο: keeps two rooms', [R1, R2, roomsNow]);
+    const E1 = await made({ roomId: roomsNow[0].id, kind: 'wedding', label: 'Γάμος Α' });
+    const E2 = await made({ roomId: roomsNow[1].id, kind: 'company', label: 'Δείπνο Β' });
+    ok(E1.status === 200 && E2.status === 200 && E2.d.kind === 'company', 'γραφείο: two events from two rooms', [E1.d, E2.d]);
+    ok(raw('venue:' + O.id).custType === 'organiser' && raw('venue:' + O.id).license.type !== 'per_wedding', 'γραφείο: a company event for a client does not make the γραφείο a company');
+
+    // -- everyone on the plan hears the word, and nothing more --
+    const rec = raw('plan:' + E1.d.planId);
+    for (const [who, H] of [['γραφείο', { 'X-Edit-Key': rec.venueKey }], ['client', { 'X-Edit-Key': rec.editKey }], ['viewer', { 'X-View-Key': rec.readKey }]]) {
+      const p = await call('GET', '/plans/' + E1.d.planId, undefined, H);
+      const said = JSON.stringify(p.d);
+      ok(p.status === 200 && p.d.owner && p.d.owner.office === true && !said.includes(A1) && !said.includes('custType') && !said.includes('organiser'), 'the plan tells the ' + who + ' «office» and no more', p.d.owner);
+    }
+    const KE = await made({ label: 'Γάμος Κτήματος' }, K.H, K.id);
+    const kp = await call('GET', '/plans/' + KE.d.planId, undefined, { 'X-Edit-Key': raw('plan:' + KE.d.planId).editKey });
+    ok(kp.status === 200 && !(kp.d.owner && kp.d.owner.office), 'a Κτήμα\'s client is told no such thing', kp.d.owner);
+
+    // -- old designs --
+    const people = layout({
+      tables: [{ id: 1, shape: 'round', x: 300, y: 300, label: 'Τραπέζι Α', capacity: 2, seats: ['g1', 'g2'] }],
+      guests: { g1: { name: 'Νίκος Παπαδάκης', note: 'αλλεργία στα φιστίκια', groupId: 'grpA' }, g2: { name: 'Μαρία Οικονόμου', groupId: 'grpA' } },
+      groups: [{ id: 'grpA', name: 'Φίλοι Νίκου', color: '#e26d8a' }] });
+    await call('PUT', '/plans/' + E1.d.planId, { plan: people }, { 'X-Edit-Key': rec.venueKey });
+    const before = m.get('plan:' + E1.d.planId);
+    r = await made({ fromPlanId: E1.d.planId });
+    let cp = raw('plan:' + r.d.planId).plan;
+    ok(r.status === 200 && !Object.keys(cp.guests).length && cp.tables[0].seats.every(x => x === null) && !JSON.stringify(cp).includes('Φίλοι Νίκου'), 'old design: unasked, a γραφείο copies the room only, as for a new client: no names, seats or groups', cp.groups);
+    r = await made({ fromPlanId: E1.d.planId, people: true });
+    cp = raw('plan:' + r.d.planId).plan;
+    ok(r.status === 200 && cp.guests.g1.name === 'Νίκος Παπαδάκης' && cp.tables[0].seats.join() === 'g1,g2' && cp.guests.g1.groupId === 'grpA' && cp.groups[0].name === 'Φίλοι Νίκου', 'old design: asked, a γραφείο brings names, seats and their groups (Andreas, 2026-11-04)', cp.guests);
+    ok(!JSON.stringify(raw('plan:' + r.d.planId)).includes('φιστίκια') && !('note' in cp.guests.g1), 'old design: the notes never travel, for a γραφείο either', cp.guests.g1);
+    ok(m.get('plan:' + E1.d.planId) === before, 'old design: the source is left as it was');
+    await call('PUT', '/plans/' + KE.d.planId, { plan: people }, { 'X-Edit-Key': raw('plan:' + KE.d.planId).venueKey });
+    r = await made({ fromPlanId: KE.d.planId, people: true }, K.H, K.id);
+    ok(r.status === 403 && r.d.error === 'people_not_allowed', 'old design: a Κτήμα still copies only the room', r.d);
+    r = await made({ fromPlanId: KE.d.planId, people: true });
+    ok(r.status === 404 && r.d.error === 'source_gone', 'old design: a γραφείο cannot reach another customer\'s plan', r.d);
+
+    // -- the ΑΦΜ that holds a free year cannot be edited away --
+    r = await call('PATCH', '/admin/venues/' + O.id, { afm: afmOf('77400109') }, OWN);
+    ok(raw('venue:' + O.id).afm === A1 && raw('afm:' + A1).status === 'trial', 'a γραφείο that signed up: its ΑΦΜ is its free-year claim, and the card cannot move it', raw('venue:' + O.id).afm);
+    const SOLD_AFM = afmOf('77400110'), SOLD_NEW = afmOf('77400111');
+    const SOLD = (await call('POST', '/admin/venues', { name: 'Γραφείο Πώληση', custType: 'organiser', afm: SOLD_AFM, license: { type: 'seasonal', seasonEnd: day(300) } }, OWN)).d;
+    await call('PATCH', '/admin/venues/' + SOLD.id, { afm: SOLD_NEW }, OWN);
+    ok(raw('venue:' + SOLD.id).afm === SOLD_NEW, 'a γραφείο sold by hand: its ΑΦΜ can still be corrected');
+
+
+    // -- forgotten: the books keep the word, never the ΑΦΜ --
+    r = await call('POST', '/admin/customers/' + encodeURIComponent('v:' + SOLD.id) + '/forget', {}, OWN);
+    const bk = raw('books:v:' + SOLD.id);
+    ok(r.status === 200 && bk.custType === 'organiser' && !JSON.stringify(bk).includes(SOLD_NEW), 'forgetting a γραφείο: the books keep the word, never the ΑΦΜ', bk);
+
+    // -- the pages --
+    const fs = await import('node:fs');
+    const rd = f => fs.readFileSync(path.join(root, f), 'utf8');
+    const pl = rd('planner.src.html'), vh = rd('venue.html'), ad = rd('admin.html'), wk = rd('wedding-sync-worker.js');
+    const a = pl.indexOf('const T_ALL='), b = pl.indexOf('const T=T_ALL[LANG]');
+    const TA = new Function('return (' + pl.slice(a + 'const T_ALL='.length, b).trim().replace(/;$/, '') + ')')();
+    const gKeys = Object.keys(TA.el).filter(k => k.startsWith('g_'));
+    ok(gKeys.length >= 37 && ['en', 'de'].every(l => gKeys.every(k => TA[l][k] != null)) && ['en', 'de'].every(l => Object.keys(TA[l]).filter(k => k.startsWith('g_')).every(k => TA.el[k] != null)), 'planner: every γραφείο line exists in all three languages', gKeys.length);
+    // «διοργανωτής» may stay: on γιορτή screens it is the client, with the γραφείο as its own word beside it.
+    const WRONG = { el: /κτήμα|κτήματ/i, en: /\bvenue\b|\bvenue's\b/i, de: /Location/ };
+    for (const l of ['el', 'en', 'de']) {
+      const bad = gKeys.filter(k => WRONG[l].test(JSON.stringify(TA[l][k])));
+      ok(bad.length === 0, 'planner: no ' + l + ' γραφείο line says the word it replaces', bad);
+    }
+    // A plain line with the word, and no γραφείο twin, would still reach its screens. cUploadNone shows only on a device-only plan, which has no owner, and names both.
+    const leak = Object.keys(TA.el).filter(k => !/^(g_|o_|c_)/.test(k) && k !== 'tour' && k !== 'cUploadNone' && /κτήμα|κτήματ/i.test(JSON.stringify(TA.el[k]))).filter(k => {
+      const m0 = k.match(/^(b_|p_)(.*)$/), base = m0 ? m0[2] : k, p = m0 ? m0[1] : '';
+      return TA.el['g_' + p + base] == null && TA.el['g_' + base] == null;
+    });
+    ok(leak.length === 0, 'planner: no line that says κτήμα reaches a γραφείο without its own twin', leak);
+    ok(/if\(OFFICE && p\)\{ s=T\["g_"\+p\+k\]/.test(pl) && /OFFICE=!!\(cur && cur\.office\)/.test(pl), 'planner: the overlay looks up the kind first, then the plain γραφείο line');
+    ok(/isOf=\(\)/.test(vh) && /of=1/.test(vh) && /custType:"organiser"|custType="organiser"/.test(vh) && /Μόνο αν η νέα εκδήλωση είναι του ίδιου πελάτη/.test(vh), 'console: its own word and the hint beside copying guests');
+    ok(/custType/.test(vh) && /Είμαι γραφείο εκδηλώσεων/.test(vh) && /Γραφείο εκδηλώσεων/.test(vh), 'console: the sign-up asks, and a bare link can switch');
+    const consolePathUses = wk.split('consolePath(v)').length - 1;
+    ok(consolePathUses >= 3 && /trialEnds/.test(wk), 'mails: the yearly reminders link through the customer\'s own console path', consolePathUses);
+    ok(/id:"oprice", office:true/.test(ad) && /id:"oremind", office:true/.test(ad) && ad.split('venue.html?of=1#signup').length === 3, 'admin: a γραφείο contact has its own ready replies, linking its own sign-up');
+
+    // -- the public pages --
+    const gd = rd('grafeio-ekdiloseon.html'), ix = rd('index.html'), dock = rd('server/Dockerfile');
+    ok(dock.split('grafeio-ekdiloseon.html').length === 3 && rd('sitemap.xml').includes('grafeio-ekdiloseon.html'), 'guide: in both Dockerfile lists and the sitemap');
+    ok(!/noindex/.test(gd) && gd.includes('<link rel="canonical" href="https://takeaseat.gr/grafeio-ekdiloseon.html">') && JSON.parse(gd.match(/<script type="application\/ld\+json">\s*([\s\S]*?)<\/script>/)[1])['@graph'].length === 2, 'guide: indexable, with one address and readable structured data');
+    ok(gd.includes('href="/venue.html?of=1#signup"') && gd.includes('/epikoinonia.html?kind=organiser&amp;q=demo') && /349 € \+ ΦΠΑ/.test(gd), 'guide: signs up as a γραφείο, asks a demo as a γραφείο, and names the price');
+    ok(!/διοργανωτ/i.test(gd) && !/σβήνουμε ποτέ/.test(gd) && /Έναν χρόνο μετά/.test(gd) && /σημειώσεις των καλεσμένων σας σβήνονται/.test(gd) && /από έναν έως πέντε/.test(gd), 'guide: never «διοργανωτής», and it states the year, the notes and the 1 to 5 years');
+    ok(ix.includes('id="grafeia"') && ix.includes('href="/venue.html?of=1#signup"') && ix.includes('href="/grafeio-ekdiloseon.html"') && !/διοργανωτ/i.test(ix), 'home: a γραφείο section, with its own sign-up and guide');
+    const tm = rd('terms.html'), dp = rd('dpa.html'), pv = rd('privacy.html');
+    ok(/κτήματα, χώρους δεξιώσεων και γραφεία εκδηλώσεων/.test(tm) && /<b>Γραφείο εκδηλώσεων:<\/b>/.test(tm) && /event agencies/.test(tm) && /<b>Event agency:<\/b>/.test(tm), 'terms: «Κτήμα» includes a γραφείο, in both languages');
+    ok(/<b>Γραφεία εκδηλώσεων\.<\/b>/.test(dp) && /<b>Event agencies\.<\/b>/.test(dp) && /του ίδιου πελάτη/.test(dp) && /same client/.test(dp), 'dpa: the γραφείο as controller, its tick and the rule on copying guests, in both languages');
+    ok(/<b>Γραφεία εκδηλώσεων:<\/b>/.test(pv) && /<b>Event agencies:<\/b>/.test(pv), 'privacy: the γραφείο as controller, in both languages');
+    ok(!/διοργανωτ/i.test(vh.slice(vh.indexOf('const ownerW'), vh.indexOf('const ownerW') + 200)), 'console: the word is never «διοργανωτής»');
+  } finally {
+    env.MAIL = mail0;
+    m.clear(); for (const [k, v] of saved) m.set(k, v);
+  }
+}
+
 console.log(`\nall ${n} checks passed`);
