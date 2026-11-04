@@ -4975,6 +4975,39 @@ function leadStageOf(l) { return l.lost ? 8 : l.stage || 1; }
     patchRaw('venue:' + LV.id, v => { v.templateId = LID; delete v.rooms; });
     await call('POST', '/admin/customers/' + encodeURIComponent('v:' + LV.id) + '/forget', {}, OWN);
     ok(!m.has('plan:' + LID), 'forgetting an old venue takes its room');
+
+    // -- what the screen check found: the suite never runs the planner, so these hold the pieces it reads --
+    const WC = await sell('Delta ΑΕ', 'office@delta.example');
+    await accept(WC);
+    patchRaw('venue:' + WC.id, v => { v.license.quota = 9; });
+    const WR = (await room(WC, { name: 'Αίθουσα' })).d;
+    r = await call('GET', '/plans/' + WR.planId, undefined, { 'X-Edit-Key': WR.venueKey });
+    ok(r.d.template === true && r.d.kind === 'company', 'a company\'s room opens as a company event, never with a bride', r.d.kind);
+    const KR = (await room(KV, { name: 'Αίθουσα' })).d;
+    ok(!('kind' in raw('plan:' + KR.planId)), 'a Κτήμα\'s room stays shared by every kind');
+    const WE = (await call('POST', '/venues/' + WC.id + '/weddings', { date: day(60), roomId: '' }, WC.H)).d;
+    ok(raw('plan:' + WE.planId).name === 'Εκδήλωση', 'a company event with no name is never called a wedding', raw('plan:' + WE.planId).name);
+    await call('PATCH', '/venues/' + WC.id + '/weddings/' + WE.planId, { kind: 'wedding' }, WC.H);
+    ok(raw('plan:' + WE.planId).kind === 'company', 'a company cannot turn its event into a wedding', raw('plan:' + WE.planId).kind);
+
+    const fs = await import('node:fs');
+    const rd = f => fs.readFileSync(path.join(root, f), 'utf8'), pl = rd('planner.src.html'), vh = rd('venue.html'), ad = rd('admin.html');
+    const OW = ['rbVenue', 'rbVenueTip', 'rbTemplate', 'rbTemplateTip', 'openedAsVenue', 'goneVenue', 'cVenueLinks', 'awVenue', 'rbSupportOnVenue', 'tPreviewOff'];
+    for (const k of OW) {
+      const said = [...pl.matchAll(new RegExp('\\bo_' + k + ':"([^"]*)"', 'g'))].map(x => x[1]);
+      ok(said.length === 3 && said.every(t => !/κτήμα|κτήματ|venue|location|ζευγάρ|couple|Paar|πελάτ/i.test(t)), 'planner: a company hears «' + k + '» in its own words, in three languages', said);
+    }
+    ok(/if\(CO_OWNER\)\{ s=T\["o_"\+k\]/.test(pl) && /couplePerms=prof\.company\?null:/.test(pl) && pl.indexOf('let CO_OWNER=false') < pl.indexOf('function tr(k,v)'), 'planner: a company\'s words come first, and nothing asks what a client may change');
+    ok(/needsAgreement/.test(vh) && /Κονσόλα εταιρείας/.test(vh) && /Μαζί με τα ονόματα και τις θέσεις/.test(vh) && /keepYears/.test(vh), 'console: the agreement, the company words, the names tick and the keep choice are there');
+    ok(/\+1 εκδήλωση \(25 €\)/.test(ad) && /newCompany/.test(ad) && /convertFrom=pre && pre\.lead/.test(ad), 'admin: «+ Εταιρεία» and «+1 εκδήλωση», and a company is not said to come from a contact');
+    const reply = ad.slice(ad.indexOf('{ id:"pay"'), ad.indexOf('{ id:"remind"'));
+    ok(/k==="company"/.test(reply) && /αμέσως και ολόκληρο/.test(reply) && /14 μέρες/.test(reply), 'admin: the payment reply promises a company the console at once, and everyone else the 14 days');
+    const gd = rd('plano-trapezion-etairikis-ekdilosis.html');
+    ok(!/14 ημερών|21 ημέρες|υπαναχώρησ|30 ημέρες πριν<\/b>/.test(gd) && /αμέσως και ολόκληρο/.test(gd) && /από έναν έως πέντε/.test(gd), 'the company guide promises what phase 3 does, not the old waits');
+    const tm = rd('terms.html'), dp = rd('dpa.html'), pv = rd('privacy.html');
+    ok(/8Α\. Εταιρείες με δική τους κονσόλα/.test(tm) && /8A\. Companies with their own console/.test(tm) && /από 1 έως 5 χρόνια/.test(tm) && /from 1 to 5 years/.test(tm), 'terms: article 8A and the 1–5 year choice, in both languages');
+    ok(/από 1 έως 5 έτη/.test(dp) && /from 1 to 5 years/.test(dp) && /Εταιρείες\.<\/b>/.test(dp) && /Companies\.<\/b>/.test(dp), 'dpa: §4 states the choice and the agreement covers a company, in both languages');
+    ok(/από 1 έως 5 χρόνια/.test(pv) && /from 1 to 5 years/.test(pv) && /Εταιρείες με δική τους κονσόλα/.test(pv) && /Companies with their own console/.test(pv), 'privacy: the company as controller and the choice, in both languages');
   } finally {
     env.MAIL = mail0;
     m.clear(); for (const [k, v] of saved) m.set(k, v);

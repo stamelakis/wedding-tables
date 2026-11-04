@@ -4207,7 +4207,7 @@ export default {
           if ((b.label != null || b.perms || b.kind !== undefined) && (await planLife(env, wp, parts[3], { venue: v })).locked) return json({ error: "locked" }, 403);
           const label = b.label != null ? String(b.label).trim().slice(0, 120) : null;
           if (b.label != null && !label) return json({ error: "missing label" }, 400);
-          const kind = isCompany(v) ? null : kindIn(b);   // a company has only company events · a wedding entered as a baptism (or the other way round) is corrected here
+          const kind = isCompany(v) ? undefined : kindIn(b);   // a company has only company events · a wedding entered as a baptism (or the other way round) is corrected here
           const perms = b.perms ? normPerms(b.perms, normPerms(w.perms, ALL_OPEN)) : null;
           let date = null;
           if (b.date !== undefined) {   // same limits as everywhere: a wedding date is not a way to reuse a paid wedding
