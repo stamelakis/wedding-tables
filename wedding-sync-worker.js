@@ -125,7 +125,9 @@ const setRooms = (v, rooms) => { v.rooms = rooms; delete v.templateId; };
 // A company has this console too, paying per event instead of per year. Every link it is sent carries ?co=1, so that the
 // login screen, which cannot know whose key will be typed, already speaks to a company.
 const isCompany = v => !!(v && v.custType === "company");
-const consolePath = v => "/venue.html" + (isCompany(v) ? "?co=1" : "");
+// A γραφείο εκδηλώσεων (phase 4) has a Κτήμα's console, rights and price, in its own word; ?of=1 does for its links what ?co=1 does for a company's.
+const isOffice = v => !!(v && v.custType === "organiser");
+const consolePath = v => "/venue.html" + (isCompany(v) ? "?co=1" : isOffice(v) ? "?of=1" : "");
 // The caller's address, as the ONE hop in front of us states it. server.mjs overwrites X-Real-IP with the address it
 // measured and drops any CF-Connecting-IP the client invented, so neither header can be forged from outside; without a
 // hop (tests, a direct call) everyone shares the bucket named "unknown", which is the strict side to fail on.
@@ -294,6 +296,7 @@ const MAILS = {
     relink: ["Ο σύνδεσμός σας — TakeaSeat", "Γεια σας!\n\nΚατόπιν αιτήματός σας, ορίστε σύνδεσμος για να ανοίξετε ξανά το τραπεζολόγιο «{name}» σε αυτή ή σε νέα συσκευή:\n\n{link}\n\nΙσχύει 7 ημέρες και ανοίγει μία φορά. Αν δεν το ζητήσατε εσείς, αγνοήστε αυτό το μήνυμα.\n\nTakeaSeat"],
     venueReset: ["Νέος κωδικός κονσόλας — TakeaSeat", "Γεια σας,\n\nΟρίστε νέο κωδικό για την κονσόλα «{name}» εδώ (ο σύνδεσμος ισχύει 7 ημέρες και ανοίγει μία φορά):\n\n{link}\n\nΟ τωρινός κωδικός λειτουργεί μέχρι να χρησιμοποιήσετε τον σύνδεσμο. Αν δεν το ζητήσατε εσείς, γράψτε μας στο info@takeaseat.gr.\n\nTakeaSeat"],
     setupCompany: ["Η κονσόλα της εταιρείας σας — TakeaSeat", "Καλώς ήρθατε στο TakeaSeat!\n\nΟρίστε τον κωδικό της κονσόλας για την εταιρεία «{name}» εδώ (ο σύνδεσμος ισχύει 7 ημέρες):\n\n{link}\n\nΑπό την κονσόλα φτιάχνετε τις εκδηλώσεις σας, κρατάτε τους χώρους σας και ξεκινάτε από παλιά σχέδια. Την πρώτη φορά θα σας ζητηθεί να αποδεχτείτε τη σύμβαση επεξεργασίας δεδομένων.\n\nΟ κωδικός δεν εμφανίζεται πουθενά αλλού — ούτε στη διαχείριση της TakeaSeat. Αν τον ξεχάσετε, ζητήστε νέο με αυτό το email από την κονσόλα.\n\nTakeaSeat"],
+    setupOffice: ["Η κονσόλα του γραφείου σας — TakeaSeat", "Καλώς ήρθατε στο TakeaSeat!\n\nΟρίστε τον κωδικό της κονσόλας για το γραφείο «{name}» εδώ (ο σύνδεσμος ισχύει 7 ημέρες):\n\n{link}\n\nΑπό την κονσόλα φτιάχνετε μία εκδήλωση για κάθε πελάτη σας, κρατάτε τους χώρους όπου δουλεύετε και ξεκινάτε από παλιά σχέδια. Την πρώτη φορά θα σας ζητηθεί να αποδεχτείτε τη σύμβαση επεξεργασίας δεδομένων.\n\nΟ κωδικός δεν εμφανίζεται πουθενά αλλού — ούτε στη διαχείριση της TakeaSeat. Αν τον ξεχάσετε, ζητήστε νέο με αυτό το email από την κονσόλα.\n\nTakeaSeat"],
     setup: ["Η κονσόλα του κτήματός σας — TakeaSeat", "Καλώς ήρθατε στο TakeaSeat!\n\nΟρίστε τον κωδικό της κονσόλας για το «{name}» εδώ (ο σύνδεσμος ισχύει 7 ημέρες):\n\n{link}\n\nΟ κωδικός δεν εμφανίζεται πουθενά αλλού — ούτε στη διαχείριση της TakeaSeat. Αν τον ξεχάσετε, ζητήστε νέο με αυτό το email από την κονσόλα.\n\nTakeaSeat"],
     verify: ["Επιβεβαίωση email — TakeaSeat", "Γεια σας!\n\nΕπιβεβαιώστε ότι αυτό το email θα χρησιμοποιείται για την ανάκτηση του «{name}» (ο σύνδεσμος ισχύει 24 ώρες):\n\n{link}\n\nΑν δεν το ζητήσατε εσείς, αγνοήστε αυτό το μήνυμα.\n\nTakeaSeat"],
     changed: ["Το email ανάκτησης άλλαξε — TakeaSeat", "Γεια σας,\n\nΤο email ανάκτησης για το «{name}» άλλαξε σε {email} ({by}).\nΑν δεν το περιμένατε, γράψτε μας αμέσως στο info@takeaseat.gr.\n\nTakeaSeat"],
@@ -318,12 +321,13 @@ const MAILS = {
     // ---- self-signup. The API answers every signup the same way; what really happened is said HERE, to the address
     // that the business already registered — so a stranger who probes an ΑΦΜ or an email learns nothing.
     afmUsed: ["Ο δωρεάν χρόνος αυτής της επιχείρησης — TakeaSeat", "Γεια σας,\n\nΛάβαμε εγγραφή για δωρεάν πρώτο χρόνο με το ΑΦΜ {afm}. Η επιχείρηση αυτή έχει ήδη πάρει τον δωρεάν της χρόνο — δίνεται μία φορά ανά ΑΦΜ.\n\nΔεν δημιουργήθηκε δεύτερος λογαριασμός και δεν χρεωθήκατε τίποτα. Για να συνεχίσετε με συνδρομή, ή αν νομίζετε ότι έγινε λάθος, γράψτε μας στο info@takeaseat.gr ή τηλεφωνήστε στο 697 735 5378 (10:00–14:00 και 17:00–21:00).\n\nTakeaSeat"],
-    haveConsole: ["Έχετε ήδη κονσόλα — TakeaSeat", "Γεια σας,\n\nΛάβαμε εγγραφή κτήματος με αυτό το email. Υπάρχει ήδη κονσόλα σε αυτή τη διεύθυνση, οπότε δεν φτιάξαμε δεύτερη.\n\nΑν ξεχάσατε τον κωδικό, ζητήστε νέο εδώ: {link}\n\nΑν η εγγραφή αφορούσε άλλη επιχείρηση, γράψτε μας στο info@takeaseat.gr.\n\nTakeaSeat"],
+    haveConsole: ["Έχετε ήδη κονσόλα — TakeaSeat", "Γεια σας,\n\nΛάβαμε εγγραφή με αυτό το email. Υπάρχει ήδη κονσόλα σε αυτή τη διεύθυνση, οπότε δεν φτιάξαμε δεύτερη.\n\nΑν ξεχάσατε τον κωδικό, ζητήστε νέο εδώ: {link}\n\nΑν η εγγραφή αφορούσε άλλη επιχείρηση, γράψτε μας στο info@takeaseat.gr.\n\nTakeaSeat"],
     trialEnds: ["Ο δωρεάν χρόνος σας λήγει στις {date} — TakeaSeat", "Γεια σας,\n\nΟ δωρεάν πρώτος χρόνος του «{name}» λήγει στις {date} — σε {days} ημέρες.\n\nΤι γίνεται τότε: δεν διαγράφεται τίποτα. Η κονσόλα ανοίγει κανονικά και οι εκδηλώσεις που έχετε ήδη δημιουργήσει (γάμοι και βαπτίσεις) συνεχίζουν ως την ημερομηνία τους. Για να δημιουργείτε νέες εκδηλώσεις χρειάζεται συνδρομή.\n\nΓια να συνεχίσετε: info@takeaseat.gr · 697 735 5378 (10:00–14:00 και 17:00–21:00). Η κονσόλα σας: {link}\n\nTakeaSeat"],
+    ownerSignupOffice: ["Νέα εγγραφή γραφείου εκδηλώσεων: {name}", "Νέα εγγραφή από τη σελίδα, ως γραφείο εκδηλώσεων.\n\nΌνομα: {name}\nΑΦΜ: {afm}\nEmail: {email}\nΤηλέφωνο: {phone}\n\nΟ σύνδεσμος ρύθμισης στάλθηκε· ο δωρεάν χρόνος μετράει από τη στιγμή που θα τον ανοίξουν, για 365 ημέρες. Στη διαχείριση: {link}\n\nTakeaSeat"],
     ownerSignup: ["Νέα εγγραφή κτήματος: {name}", "Νέα εγγραφή από τη σελίδα.\n\nΌνομα: {name}\nΑΦΜ: {afm}\nEmail: {email}\nΤηλέφωνο: {phone}\n\nΟ σύνδεσμος ρύθμισης στάλθηκε· ο δωρεάν χρόνος μετράει από τη στιγμή που θα τον ανοίξουν, για 365 ημέρες. Στη διαχείριση: {link}\n\nTakeaSeat"],
     // Sent to whoever just filled the form, in the branches where the real answer goes to someone else's mailbox: a
     // business must never be left in silence because another address registered its ΑΦΜ first.
-    signupAck: ["Λάβαμε την εγγραφή σας — TakeaSeat", "Γεια σας,\n\nΛάβαμε εγγραφή κτήματος από αυτή τη διεύθυνση.\n\nΑν η επιχείρηση ή η διεύθυνση είναι ήδη καταχωρημένη, η απάντηση πηγαίνει στη διεύθυνση που την καταχώρησε — όχι απαραίτητα σε αυτή. Δεύτερος λογαριασμός δεν δημιουργείται και δεν χρεωθήκατε τίποτα.\n\nΑν περιμένετε σύνδεσμο ρύθμισης και δεν ήρθε, ή αν νομίζετε ότι το ΑΦΜ σας το δήλωσε κάποιος άλλος, γράψτε μας στο info@takeaseat.gr ή τηλεφωνήστε στο 697 735 5378 (10:00–14:00 και 17:00–21:00).\n\nTakeaSeat"],
+    signupAck: ["Λάβαμε την εγγραφή σας — TakeaSeat", "Γεια σας,\n\nΛάβαμε εγγραφή από αυτή τη διεύθυνση.\n\nΑν η επιχείρηση ή η διεύθυνση είναι ήδη καταχωρημένη, η απάντηση πηγαίνει στη διεύθυνση που την καταχώρησε — όχι απαραίτητα σε αυτή. Δεύτερος λογαριασμός δεν δημιουργείται και δεν χρεωθήκατε τίποτα.\n\nΑν περιμένετε σύνδεσμο ρύθμισης και δεν ήρθε, ή αν νομίζετε ότι το ΑΦΜ σας το δήλωσε κάποιος άλλος, γράψτε μας στο info@takeaseat.gr ή τηλεφωνήστε στο 697 735 5378 (10:00–14:00 και 17:00–21:00).\n\nTakeaSeat"],
     ownerFlood: ["Η ουρά εγγραφών γεμίζει — TakeaSeat", "Εκκρεμείς εγγραφές το τελευταίο 24ωρο: {open} από {max}.\n\nΌταν γεμίσει, η φόρμα απαντά «δεν είναι διαθέσιμη» σε όλους μέχρι να αδειάσει. Στη διαχείριση, στις εγγραφές (Signups), το «Clear old pending» σβήνει μαζικά όσες εκκρεμούν και δεν τις άνοιξε ποτέ κανείς.\n\n{link}\n\nTakeaSeat"],
     // ---- the site's contact form. The reply to the stranger is one fixed text: no name, no message, nothing typed, so
     // the form can never be used to deliver someone else's words to an address they do not own.
@@ -339,6 +343,7 @@ const MAILS = {
     relink: ["Your link — TakeaSeat", "Hello!\n\nAs you asked, here is a link to open your seating plan “{name}” again on this or a new device:\n\n{link}\n\nIt is valid for 7 days and opens once. If this was not you, ignore this message.\n\nTakeaSeat"],
     venueReset: ["New console key — TakeaSeat", "Hello,\n\nSet a new key for the console “{name}” here (the link is valid for 7 days and opens once):\n\n{link}\n\nYour current key keeps working until you use the link. If this was not you, write to info@takeaseat.gr.\n\nTakeaSeat"],
     setupCompany: ["Your company console — TakeaSeat", "Welcome to TakeaSeat!\n\nSet the key of the console for “{name}” here (the link is valid for 7 days):\n\n{link}\n\nIn the console you create your events, keep your rooms and start from old designs. The first time, you will be asked to accept the data processing agreement.\n\nThe key is not shown anywhere else — not even in TakeaSeat's own admin. If you forget it, ask for a new one with this email from the console.\n\nTakeaSeat"],
+    setupOffice: ["Your agency console — TakeaSeat", "Welcome to TakeaSeat!\n\nSet the key of the console for the agency “{name}” here (the link is valid for 7 days):\n\n{link}\n\nIn the console you create one event for each client, keep the rooms you work in and start from old designs. The first time, you will be asked to accept the data processing agreement.\n\nThe key is not shown anywhere else — not even in TakeaSeat's own admin. If you forget it, ask for a new one with this email from the console.\n\nTakeaSeat"],
     setup: ["Your venue console — TakeaSeat", "Welcome to TakeaSeat!\n\nSet the key of the console for “{name}” here (the link is valid for 7 days):\n\n{link}\n\nThe key is not shown anywhere else — not even in TakeaSeat's own admin. If you forget it, ask for a new one with this email from the console.\n\nTakeaSeat"],
     verify: ["Confirm your email — TakeaSeat", "Hello!\n\nPlease confirm that this email will be used to recover “{name}” (the link is valid for 24 hours):\n\n{link}\n\nIf this was not you, ignore this message.\n\nTakeaSeat"],
     changed: ["Your recovery email changed — TakeaSeat", "Hello,\n\nThe recovery email for “{name}” was changed to {email} ({by}).\nIf you did not expect this, write to info@takeaseat.gr right away.\n\nTakeaSeat"],
@@ -359,10 +364,11 @@ const MAILS = {
     p_keepsake: ["A keepsake of the celebration — TakeaSeat", "Hello,\n\nAs a small keepsake, here is the seating plan of “{name}” ({date}): everyone who celebrated with you and where they sat. You will find it attached as a PDF.\n\nThe plan is now view-only and will be deleted for good on {until}. If you want to keep it, save the attached file.\n\nWith our best wishes,\nTakeaSeat"],
     p_keepsakeKeep: ["A keepsake of the celebration — TakeaSeat", "Hello,\n\nAs a small keepsake, here is the seating plan of “{name}” ({date}): everyone who celebrated with you and where they sat. You will find it attached as a PDF.\n\nWith our best wishes,\nTakeaSeat"],
     afmUsed: ["This business has already had its free year — TakeaSeat", "Hello,\n\nWe received a signup for a free first year with the tax number (ΑΦΜ) {afm}. This business has already had its free year — it is given once per ΑΦΜ.\n\nNo second account was created and you were not charged. To continue with a subscription, or if you think this is a mistake, write to info@takeaseat.gr or call +30 697 735 5378 (10:00–14:00 and 17:00–21:00, Greek time).\n\nTakeaSeat"],
-    haveConsole: ["You already have a console — TakeaSeat", "Hello,\n\nWe received a venue signup with this email. There is already a console on this address, so we did not make a second one.\n\nIf you forgot the key, ask for a new one here: {link}\n\nIf the signup was for a different business, write to info@takeaseat.gr.\n\nTakeaSeat"],
+    haveConsole: ["You already have a console — TakeaSeat", "Hello,\n\nWe received a signup with this email. There is already a console on this address, so we did not make a second one.\n\nIf you forgot the key, ask for a new one here: {link}\n\nIf the signup was for a different business, write to info@takeaseat.gr.\n\nTakeaSeat"],
     trialEnds: ["Your free year ends on {date} — TakeaSeat", "Hello,\n\nThe free first year of “{name}” ends on {date} — in {days} days.\n\nWhat happens then: nothing is deleted. The console still opens and the events you have already created — weddings and christenings alike — run to their date. Creating new events needs a subscription.\n\nTo continue: info@takeaseat.gr · +30 697 735 5378 (10:00–14:00 and 17:00–21:00, Greek time). Your console: {link}\n\nTakeaSeat"],
+    ownerSignupOffice: ["New event agency signup: {name}", "A new signup from the site, as an event agency.\n\nName: {name}\nΑΦΜ: {afm}\nEmail: {email}\nPhone: {phone}\n\nThe setup link has been sent; the free year starts when they open it and runs 365 days. In the admin console: {link}\n\nTakeaSeat"],
     ownerSignup: ["New venue signup: {name}", "A new signup from the site.\n\nName: {name}\nΑΦΜ: {afm}\nEmail: {email}\nPhone: {phone}\n\nThe setup link has been sent; the free year starts when they open it and runs 365 days. In the admin console: {link}\n\nTakeaSeat"],
-    signupAck: ["We received your signup — TakeaSeat", "Hello,\n\nWe received a venue signup from this address.\n\nIf the business or the address is already registered, the answer goes to the address that registered it — not necessarily to this one. No second account is created and you were not charged.\n\nIf you are waiting for a setup link and it has not arrived, or you think someone else registered your ΑΦΜ, write to info@takeaseat.gr or call +30 697 735 5378 (10:00–14:00 and 17:00–21:00, Greek time).\n\nTakeaSeat"],
+    signupAck: ["We received your signup — TakeaSeat", "Hello,\n\nWe received a signup from this address.\n\nIf the business or the address is already registered, the answer goes to the address that registered it — not necessarily to this one. No second account is created and you were not charged.\n\nIf you are waiting for a setup link and it has not arrived, or you think someone else registered your ΑΦΜ, write to info@takeaseat.gr or call +30 697 735 5378 (10:00–14:00 and 17:00–21:00, Greek time).\n\nTakeaSeat"],
     ownerFlood: ["The signup queue is filling up — TakeaSeat", "Pending signups in the last 24 hours: {open} of {max}.\n\nWhen it is full the form answers “not available” to everyone until it drains. In the admin console, under Signups, “Clear old pending” removes in one go the pending rows nobody ever opened.\n\n{link}\n\nTakeaSeat"],
     contactAck: ["We received your message — TakeaSeat", "Hello,\n\nWe received your message from the TakeaSeat contact form. We will answer soon, usually the same day or the next.\n\nIf it is urgent, call us on +30 697 735 5378 (10:00–14:00 and 17:00–21:00, Greek time) or message us on Viber or WhatsApp at the same number.\n\nIf you did not write to us, please ignore this email; there is nothing you need to do.\n\nTakeaSeat"],
     ownerContact: ["New message from the site: {name}", "A new message from the contact form.\n\n{topic}\n\nName: {name}\nEvent: {kind}\nDate: {date}\nWhere: {place}\nEmail: {email}\nPhone: {phone}{nomail}{known}{again}\n\nMessage:\n{message}\n\nReplying to this email goes straight to the sender. The contact is already in «Πελάτες»: {link}\n\nTakeaSeat"],
@@ -376,6 +382,7 @@ const MAILS = {
     relink: ["Ihr Link — TakeaSeat", "Hallo!\n\nWie gewünscht, hier ein Link, um Ihren Sitzplan „{name}“ auf diesem oder einem neuen Gerät wieder zu öffnen:\n\n{link}\n\nEr gilt 7 Tage und öffnet einmal. Wenn Sie das nicht waren, ignorieren Sie diese Nachricht.\n\nTakeaSeat"],
     venueReset: ["Neuer Konsolen-Schlüssel — TakeaSeat", "Hallo,\n\nLegen Sie hier einen neuen Schlüssel für die Konsole „{name}“ fest (der Link gilt 7 Tage und öffnet einmal):\n\n{link}\n\nIhr jetziger Schlüssel funktioniert, bis Sie den Link benutzen. Wenn Sie das nicht waren, schreiben Sie an info@takeaseat.gr.\n\nTakeaSeat"],
     setupCompany: ["Ihre Firmen-Konsole — TakeaSeat", "Willkommen bei TakeaSeat!\n\nLegen Sie hier den Schlüssel der Konsole für „{name}“ fest (der Link gilt 7 Tage):\n\n{link}\n\nIn der Konsole erstellen Sie Ihre Veranstaltungen, speichern Ihre Räume und starten von alten Entwürfen. Beim ersten Mal werden Sie gebeten, den Auftragsverarbeitungsvertrag anzunehmen.\n\nDer Schlüssel wird nirgendwo sonst angezeigt — auch nicht in der Verwaltung von TakeaSeat. Wenn Sie ihn vergessen, fordern Sie in der Konsole mit dieser E-Mail einen neuen an.\n\nTakeaSeat"],
+    setupOffice: ["Ihre Agentur-Konsole — TakeaSeat", "Willkommen bei TakeaSeat!\n\nLegen Sie hier den Schlüssel der Konsole für die Agentur „{name}“ fest (der Link gilt 7 Tage):\n\n{link}\n\nIn der Konsole erstellen Sie für jeden Kunden eine Veranstaltung, speichern die Räume, in denen Sie arbeiten, und starten von alten Entwürfen. Beim ersten Mal werden Sie gebeten, den Auftragsverarbeitungsvertrag anzunehmen.\n\nDer Schlüssel wird nirgendwo sonst angezeigt — auch nicht in der Verwaltung von TakeaSeat. Wenn Sie ihn vergessen, fordern Sie in der Konsole mit dieser E-Mail einen neuen an.\n\nTakeaSeat"],
     setup: ["Ihre Location-Konsole — TakeaSeat", "Willkommen bei TakeaSeat!\n\nLegen Sie hier den Schlüssel der Konsole für „{name}“ fest (der Link gilt 7 Tage):\n\n{link}\n\nDer Schlüssel wird nirgendwo sonst angezeigt — auch nicht in der Verwaltung von TakeaSeat. Wenn Sie ihn vergessen, fordern Sie in der Konsole mit dieser E-Mail einen neuen an.\n\nTakeaSeat"],
     verify: ["E-Mail bestätigen — TakeaSeat", "Hallo!\n\nBitte bestätigen Sie, dass diese E-Mail zur Wiederherstellung von „{name}“ verwendet wird (der Link gilt 24 Stunden):\n\n{link}\n\nWenn Sie das nicht waren, ignorieren Sie diese Nachricht.\n\nTakeaSeat"],
     changed: ["Ihre Wiederherstellungs-E-Mail wurde geändert — TakeaSeat", "Hallo,\n\nDie Wiederherstellungs-E-Mail für „{name}“ wurde auf {email} geändert ({by}).\nWenn Sie das nicht erwartet haben, schreiben Sie sofort an info@takeaseat.gr.\n\nTakeaSeat"],
@@ -396,10 +403,11 @@ const MAILS = {
     p_keepsake: ["Eine Erinnerung an die Feier — TakeaSeat", "Hallo,\n\nAls kleine Erinnerung senden wir Ihnen den Sitzplan von „{name}“ ({date}): alle, die mit Ihnen gefeiert haben, und wo sie saßen. Sie finden ihn als PDF im Anhang.\n\nDer Plan ist jetzt nur noch lesbar und wird am {until} endgültig gelöscht. Wenn Sie ihn behalten möchten, speichern Sie die angehängte Datei.\n\nMit den besten Wünschen,\nTakeaSeat"],
     p_keepsakeKeep: ["Eine Erinnerung an die Feier — TakeaSeat", "Hallo,\n\nAls kleine Erinnerung senden wir Ihnen den Sitzplan von „{name}“ ({date}): alle, die mit Ihnen gefeiert haben, und wo sie saßen. Sie finden ihn als PDF im Anhang.\n\nMit den besten Wünschen,\nTakeaSeat"],
     afmUsed: ["Dieses Unternehmen hatte sein Gratisjahr bereits — TakeaSeat", "Hallo,\n\nwir haben eine Anmeldung für ein kostenloses erstes Jahr mit der Steuernummer (ΑΦΜ) {afm} erhalten. Dieses Unternehmen hat sein Gratisjahr bereits erhalten — es wird einmal pro ΑΦΜ vergeben.\n\nEs wurde kein zweites Konto angelegt und Ihnen nichts berechnet. Für ein Abonnement, oder wenn Sie das für einen Fehler halten, schreiben Sie an info@takeaseat.gr oder rufen Sie +30 697 735 5378 an (10:00–14:00 und 17:00–21:00, griechische Zeit).\n\nTakeaSeat"],
-    haveConsole: ["Sie haben bereits eine Konsole — TakeaSeat", "Hallo,\n\nwir haben eine Location-Anmeldung mit dieser E-Mail erhalten. Unter dieser Adresse gibt es bereits eine Konsole, deshalb haben wir keine zweite angelegt.\n\nWenn Sie den Schlüssel vergessen haben, fordern Sie hier einen neuen an: {link}\n\nWenn die Anmeldung ein anderes Unternehmen betraf, schreiben Sie an info@takeaseat.gr.\n\nTakeaSeat"],
+    haveConsole: ["Sie haben bereits eine Konsole — TakeaSeat", "Hallo,\n\nwir haben eine Anmeldung mit dieser E-Mail erhalten. Unter dieser Adresse gibt es bereits eine Konsole, deshalb haben wir keine zweite angelegt.\n\nWenn Sie den Schlüssel vergessen haben, fordern Sie hier einen neuen an: {link}\n\nWenn die Anmeldung ein anderes Unternehmen betraf, schreiben Sie an info@takeaseat.gr.\n\nTakeaSeat"],
     trialEnds: ["Ihr Gratisjahr endet am {date} — TakeaSeat", "Hallo,\n\ndas kostenlose erste Jahr von „{name}“ endet am {date} — in {days} Tagen.\n\nWas dann passiert: nichts wird gelöscht. Die Konsole öffnet weiterhin und die bereits angelegten Veranstaltungen — Hochzeiten wie Taufen — laufen bis zu ihrem Datum. Für neue Veranstaltungen brauchen Sie ein Abonnement.\n\nZum Weitermachen: info@takeaseat.gr · +30 697 735 5378 (10:00–14:00 und 17:00–21:00, griechische Zeit). Ihre Konsole: {link}\n\nTakeaSeat"],
+    ownerSignupOffice: ["Neue Anmeldung einer Eventagentur: {name}", "Eine neue Anmeldung über die Website, als Eventagentur.\n\nName: {name}\nΑΦΜ: {afm}\nE-Mail: {email}\nTelefon: {phone}\n\nDer Einrichtungslink wurde gesendet; das Gratisjahr beginnt, sobald er geöffnet wird, und läuft 365 Tage. In der Verwaltung: {link}\n\nTakeaSeat"],
     ownerSignup: ["Neue Location-Anmeldung: {name}", "Eine neue Anmeldung über die Website.\n\nName: {name}\nΑΦΜ: {afm}\nE-Mail: {email}\nTelefon: {phone}\n\nDer Einrichtungslink wurde gesendet; das Gratisjahr beginnt, sobald er geöffnet wird, und läuft 365 Tage. In der Verwaltung: {link}\n\nTakeaSeat"],
-    signupAck: ["Wir haben Ihre Anmeldung erhalten — TakeaSeat", "Hallo,\n\nwir haben von dieser Adresse eine Location-Anmeldung erhalten.\n\nWenn das Unternehmen oder die Adresse bereits registriert ist, geht die Antwort an die Adresse, die sie registriert hat — nicht unbedingt an diese. Es wird kein zweites Konto angelegt und Ihnen nichts berechnet.\n\nWenn Sie auf einen Einrichtungslink warten und keiner angekommen ist, oder wenn Sie glauben, dass jemand anderes Ihre ΑΦΜ angemeldet hat, schreiben Sie an info@takeaseat.gr oder rufen Sie +30 697 735 5378 an (10:00–14:00 und 17:00–21:00, griechische Zeit).\n\nTakeaSeat"],
+    signupAck: ["Wir haben Ihre Anmeldung erhalten — TakeaSeat", "Hallo,\n\nwir haben von dieser Adresse eine Anmeldung erhalten.\n\nWenn das Unternehmen oder die Adresse bereits registriert ist, geht die Antwort an die Adresse, die sie registriert hat — nicht unbedingt an diese. Es wird kein zweites Konto angelegt und Ihnen nichts berechnet.\n\nWenn Sie auf einen Einrichtungslink warten und keiner angekommen ist, oder wenn Sie glauben, dass jemand anderes Ihre ΑΦΜ angemeldet hat, schreiben Sie an info@takeaseat.gr oder rufen Sie +30 697 735 5378 an (10:00–14:00 und 17:00–21:00, griechische Zeit).\n\nTakeaSeat"],
     ownerFlood: ["Die Anmelde-Warteschlange füllt sich — TakeaSeat", "Offene Anmeldungen in den letzten 24 Stunden: {open} von {max}.\n\nIst sie voll, antwortet das Formular allen „nicht verfügbar“, bis sie sich leert. In der Verwaltung, unter Signups, entfernt „Clear old pending“ in einem Schritt die offenen Zeilen, die nie jemand geöffnet hat.\n\n{link}\n\nTakeaSeat"],
     contactAck: ["Wir haben Ihre Nachricht erhalten — TakeaSeat", "Hallo,\n\nwir haben Ihre Nachricht über das Kontaktformular von TakeaSeat erhalten. Wir antworten bald, meist am selben oder am nächsten Tag.\n\nWenn es eilt, rufen Sie uns an unter +30 697 735 5378 (10:00–14:00 und 17:00–21:00, griechische Zeit) oder schreiben Sie uns über Viber oder WhatsApp an dieselbe Nummer.\n\nWenn Sie uns nicht geschrieben haben, ignorieren Sie diese E-Mail bitte; Sie müssen nichts tun.\n\nTakeaSeat"],
     ownerContact: ["Neue Nachricht von der Seite: {name}", "Eine neue Nachricht über das Kontaktformular.\n\n{topic}\n\nName: {name}\nAnlass: {kind}\nDatum: {date}\nWo: {place}\nE-Mail: {email}\nTelefon: {phone}{nomail}{known}{again}\n\nNachricht:\n{message}\n\nEine Antwort auf diese E-Mail geht direkt an den Absender. Der Kontakt ist bereits in «Πελάτες»: {link}\n\nTakeaSeat"],
@@ -675,7 +683,7 @@ async function renewSweep(env, now) {
         if (left > 0 && left <= d && !(v.trialReminders || {})[L.seasonEnd + ":" + d]) {
           const lang = langOf(v.lang);
           const sent = send(env, v.email, mailMsg(lang, "trialEnds", { name: v.name, date: fmtDay(Date.parse(L.seasonEnd + "T12:00:00Z"), lang),
-            days: Math.max(1, Math.ceil(left)), link: baseUrl(env) + "/venue.html" }));
+            days: Math.max(1, Math.ceil(left)), link: baseUrl(env) + consolePath(v) }));
           if (sent) {   // a venue that signed up late gets one mail, not three: every farther mark counts as done too
             await kvUpdate(env, k, cur => { if (!cur) return null; const m = { ...(cur.trialReminders || {}) };
               for (const dd of TRIAL_REMIND) if (dd >= d) m[L.seasonEnd + ":" + dd] = m[L.seasonEnd + ":" + dd] || now;
@@ -692,7 +700,7 @@ async function renewSweep(env, now) {
         const tag = L.seasonEnd + ":" + d;
         if (left > 0 && left <= d && !(v.renewReminders || {})[tag]) {
           const ns = nextSeason(L), lang = langOf(v.lang);
-          const ok = send(env, v.email, mailMsg(lang, "renewSoon", { name: v.name, date: fmtDay(renewAt, lang), from: fmtDay(Date.parse(ns.start + "T12:00:00Z"), lang), to: fmtDay(Date.parse(ns.end + "T12:00:00Z"), lang), link: baseUrl(env) + "/venue.html" }));
+          const ok = send(env, v.email, mailMsg(lang, "renewSoon", { name: v.name, date: fmtDay(renewAt, lang), from: fmtDay(Date.parse(ns.start + "T12:00:00Z"), lang), to: fmtDay(Date.parse(ns.end + "T12:00:00Z"), lang), link: baseUrl(env) + consolePath(v) }));
           if (ok) { await kvUpdate(env, k, cur => { if (!cur) return null; cur.renewReminders = { ...(cur.renewReminders || {}), [L.seasonEnd + ":7"]: d === 7 ? now : (cur.renewReminders || {})[L.seasonEnd + ":7"], [L.seasonEnd + ":30"]: now }; return cur; }); out.reminded++; }
           break;
         }
@@ -726,7 +734,7 @@ async function forgetEmail(env, email) { if (email) { await env.PLANS.delete("rl
 // once in the normal shape so nothing else in the system needs to know a signup happened. Nobody can open that venue:
 // its key is random and is shown to no one, so the e-mailed setup link is the only way in — opening it IS the email
 // verification. The IP is never stored; it is only ever a rate-limit bucket.
-const signupOut = s => ({ id: s.id, name: s.name, afm: s.afm, email: s.email, phone: s.phone, lang: langOf(s.lang),
+const signupOut = s => ({ id: s.id, name: s.name, afm: s.afm, email: s.email, phone: s.phone, lang: langOf(s.lang), custType: s.custType || "",
   status: s.status, createdAt: s.createdAt, expiresAt: s.expiresAt || null, expiredAt: s.expiredAt || null,
   verifiedAt: s.verifiedAt || null, trialEndsAt: s.trialEndsAt || null, venueId: s.venueId || null,
   resent: s.resent || 0, resentAt: s.resentAt || null });
@@ -745,7 +753,7 @@ async function mailSetupLink(env, v, email) {
   const g = await kvUpdate(env, "venue:" + v.id, cur => { if (!cur) return null; return { __obj: cur, __res: nextGen(cur) }; });
   if (!g.obj) return false;
   const t = await mintToken(env, { kind: "venue-setup", vid: v.id, lg: g.res, email }, SETUP_TTL);
-  return send(env, email, mailMsg(v.lang, "setup", { name: v.name, link: baseUrl(env) + "/venue.html#recover=" + t }), { k: "venue", id: v.id });
+  return send(env, email, mailMsg(v.lang, isOffice(v) ? "setupOffice" : "setup", { name: v.name, link: baseUrl(env) + consolePath(v) + "#recover=" + t }), { k: "venue", id: v.id });
 }
 // How full the signup queue is right now: pending rows from the last 24 hours only. Both the public route's ceiling
 // and «Διαγνωστικά» read this one number.
@@ -1614,8 +1622,8 @@ async function venueCard(env, v, focus) {
 // · s:<signupId> · l:<leadId>.
 const CUST_LINK_DAYS = 3, CUST_FIRST_EVENT_DAYS = 14, CUST_ENDING_DAYS = 60;
 const CUST_TYPE = { wedding: "couple", baptism: "parents", party: "party", company: "company" };
-// COMPANIES-PLAN.md: a company and a γραφείο εκδηλώσεων are venue records told apart by `custType`. A γραφείο is a venue in all
-// but the word until phase 4. A company (phase 3) pays per event and has its own console screens. A couple record can
+// COMPANIES-PLAN.md: a company and a γραφείο εκδηλώσεων are venue records told apart by `custType`. A γραφείο (phase 4) pays and works as a
+// Κτήμα does, in its own word. A company (phase 3) pays per event and has its own console screens. A couple record can
 // still say `custType: "company"` when its kind was corrected to one; no sale makes one any more.
 const venueType = v => (v && (v.custType === "organiser" || v.custType === "company")) ? v.custType : "venue";
 const coupleType = (c, kind) => (c && c.custType === "company") ? "company" : (CUST_TYPE[kind] || "couple");
@@ -1696,7 +1704,7 @@ async function coupleCustomer(env, c, now) {
 }
 async function signupCustomer(env, s, now) {   // only a pending signup whose venue is gone: every other one IS its venue's row
   const flags = now - (s.resentAt || s.createdAt || now) > CUST_LINK_DAYS * DAY ? ["setup_unopened"] : [];
-  const row = custRow({ key: "s:" + s.id, type: "venue", name: s.name || "", stage: 4, flags, events: [], until: null, untilKind: null,
+  const row = custRow({ key: "s:" + s.id, type: s.custType === "organiser" ? "organiser" : "venue", name: s.name || "", stage: 4, flags, events: [], until: null, untilKind: null,
     last: Math.max(s.createdAt || 0, s.resentAt || 0) || null, email: s.email || "", phone: phoneOf(s.phone, s.notes), afm: s.afm || "", createdAt: s.createdAt || null, active: true, nextStep: s.nextStep, contactAt: s.contactAt });
   return { row, card: { signup: await signupCard(env, s), events: [] } };
 }
@@ -2515,7 +2523,7 @@ export default {
           const out = { name: rec.name, plan: rec.plan, updated: rec.updated, role: a.role, perms: a.perms, owner: { type: a.owner.type }, template: !!rec.template, kind: kindOf(rec) };
           if (a.owner.type === "venue") {
             const v = safeParse(await env.PLANS.get("venue:" + a.owner.venueId));
-            if (v) { out.owner.venueName = v.name; if (a.role === "couple") out.owner.venueContact = v.contact || ""; if (a.role === "venue" && isCompany(v)) out.owner.company = true; }
+            if (v) { out.owner.venueName = v.name; if (a.role === "couple") out.owner.venueContact = v.contact || ""; if (a.role === "venue" && isCompany(v)) out.owner.company = true; if (isOffice(v)) out.owner.office = true; }
           }
           if (a.role === "couple" && a.owner.type === "couple" && rec.coupleId) {   // the couple's own recovery email
             const c = safeParse(await env.PLANS.get("couple:" + rec.coupleId));
@@ -2926,6 +2934,7 @@ export default {
         if (!email) return json({ error: "bad_email" }, 400);
         if (!phone) return json({ error: "bad_phone" }, 400);
         if (b.terms !== true) return json({ error: "terms_required" }, 400);
+        const office = b.custType === "organiser";   // the only other word this route takes: a company buys through Andreas, per event
         if (!(await rateTake(env, "signup", clientIp(request), SIGNUPS_PER_IP_DAY, 86400000))) return json({ error: "rate_limited" }, 429, { "Retry-After": "3600" });
         const now = Date.now();
         const claim = safeParse(await env.PLANS.get("afm:" + afm));
@@ -2967,7 +2976,7 @@ export default {
           return json({ ok: true });
         }
         if (mine.length) {
-          if (await mailAllowed(env, email, "signup")) send(env, email, mailMsg(lang, "haveConsole", { link: baseUrl(env) + "/venue.html#recover" }));
+          if (await mailAllowed(env, email, "signup")) send(env, email, mailMsg(lang, "haveConsole", { link: baseUrl(env) + "/venue.html" + (office ? "?of=1" : "") + "#recover" }));
           console.log("signup: refused — that address already runs a console");
           return json({ ok: true });
         }
@@ -2984,12 +2993,12 @@ export default {
           key: id + "." + rnd(28), keyRotated: false, keyPrivate: true,   // random and shown to nobody: the mailed link is the only door
           license: normLicense({ type: "seasonal", seasonStart: startYmd, seasonEnd: endYmd, autoRenew: false }),
           used: 0, weddings: [], active: true, createdAt: now, defaultPerms: { ...VENUE_DEFAULT },
-          afm, phone, selfSignup: true, signupId: sid, termsAt: now,
+          afm, phone, selfSignup: true, signupId: sid, termsAt: now, ...(office ? { custType: "organiser" } : {}),
           trial: { startedAt: now, endsAt: trialEndsAt, seasonEnd: endYmd, verifiedAt: null, signupId: sid } };
         await env.PLANS.put("venue:" + id, JSON.stringify(v));
         await addIndex(env, "venues:index", id);
         await indexEmail(env, email, "venue", id, true);
-        const s = { id: sid, venueId: id, name, afm, email, phone, lang, status: "pending", termsAt: now,
+        const s = { id: sid, venueId: id, name, afm, email, phone, lang, status: "pending", termsAt: now, ...(office ? { custType: "organiser" } : {}),
           createdAt: now, expiresAt: now + SIGNUP_TTL, verifiedAt: null, trialEndsAt };
         await env.PLANS.put("signup:" + sid, JSON.stringify(s));
         await addIndex(env, "signups:index", sid);
@@ -2999,7 +3008,7 @@ export default {
         if (await mailAllowed(env, email, "signup")) await mailSetupLink(env, v, email);
         const o = await ownerRec(env);   // Andreas is the only person who runs this: one short line, not a database row
         if (o.email && o.emailVerified && await mailAllowed(env, o.email, "ownersignup", OWNER_MAILS_PER_DAY))
-          send(env, o.email, mailMsg(o.lang, "ownerSignup", { name, afm, email, phone, until: fmtDay(trialEndsAt - 1, o.lang), link: baseUrl(env) + "/admin.html" }));
+          send(env, o.email, mailMsg(o.lang, office ? "ownerSignupOffice" : "ownerSignup", { name, afm, email, phone, until: fmtDay(trialEndsAt - 1, o.lang), link: baseUrl(env) + "/admin.html" }));
         console.log("signup: a new venue signed itself up (free year to " + endYmd + ")");
         return json({ ok: true });
       }
@@ -3267,7 +3276,7 @@ export default {
             if (email && mailOn(env)) {
               v.keyPrivate = true;
               const t = await mintToken(env, { kind: "venue-setup", vid: id, lg: 0, email }, SETUP_TTL);
-              mailed = send(env, email, mailMsg(lang, company ? "setupCompany" : "setup", { name: v.name, link: baseUrl(env) + consolePath(v) + "#recover=" + t }), { k: "venue", id });
+              mailed = send(env, email, mailMsg(lang, company ? "setupCompany" : isOffice(v) ? "setupOffice" : "setup", { name: v.name, link: baseUrl(env) + consolePath(v) + "#recover=" + t }), { k: "venue", id });
               if (!mailed) v.keyPrivate = false;
             }
             await env.PLANS.put("venue:" + id, JSON.stringify(v));
@@ -3355,7 +3364,7 @@ export default {
               if (b.contact != null) v.contact = String(b.contact).slice(0, 200);   // PUBLIC: shown to this venue's couples
               if (b.notes != null) v.notes = String(b.notes).slice(0, NOTES_MAX);   // private: admin only (the card's notes box)
               // only a γραφείο's or a company's: a Κτήμα's ΑΦΜ may be its free-year claim (`afm:`), which this edit would leave behind
-              if (b.afm != null && v.custType) { if (afm) v.afm = afm; else delete v.afm; }
+              if (b.afm != null && v.custType && !v.signupId) { if (afm) v.afm = afm; else delete v.afm; }
               if (b.retention !== undefined) { const ret = normRetention(b.retention); if (ret) v.retention = ret; else delete v.retention; }
               if (b.active != null) v.active = !!b.active;
               // Editing the dates of a venue that is on its free year MOVES the free year ("two more months"); it does
@@ -4034,14 +4043,14 @@ export default {
         if (!v) return json({ error: "not found" }, 404);
         if (!eq(request.headers.get("X-Venue-Key") || "", v.key)) return json({ error: "unauthorized" }, 403);
         const ownPlan = async pid => { const r = safeParse(await env.PLANS.get("plan:" + pid)); const o = ownerOf(r); return (r && o.type === "venue" && o.venueId === v.id) ? r : null; };
-        // A company is the controller of its guest list and we store it for it, as for a venue (dpa.html). It is sold by hand,
-        // so it accepts here, at its first opening, and nothing works until it has: no event, so no link to any plan.
-        if (isCompany(v) && !v.dpaAt) {
+        // A company or a γραφείο answers for its guest lists and we store them for it, as for a venue (dpa.html). One is sold by hand,
+        // the other signs itself up, so it accepts here, at its first opening, and nothing works until it has: no event, so no link to any plan.
+        if ((isCompany(v) || isOffice(v)) && !v.dpaAt) {
           if (parts.length === 3 && parts[2] === "agreement" && request.method === "POST") {
             const b = await readBody(request);
             if (b.accept !== true) return json({ error: "bad_request" }, 400);
             await kvUpdate(env, vkey, cur => { if (!cur) return null; cur.dpaAt = cur.dpaAt || Date.now(); return cur; });
-            console.log("venue " + v.id + ": a company accepted the agreement");
+            console.log("venue " + v.id + ": accepted the agreement at its first opening");
             return json({ ok: true });
           }
           if (parts.length === 2 && request.method === "GET") return json({ venue: { ...publicVenue(v), email: v.email || "" }, needsAgreement: true });
@@ -4174,8 +4183,10 @@ export default {
           if (b.fromPlanId) {   // «Ξεκίνα από παλιό σχέδιο»: only an event of this console that still exists
             const src = (v.weddings || []).some(w => w.planId === b.fromPlanId) ? await ownPlan(b.fromPlanId) : null;
             if (!src) return json({ error: "source_gone" }, 404);
-            if (b.people && !co) return json({ error: "people_not_allowed" }, 403);   // a venue's old guests belong to its previous client
-            plan = retypeStarter(designFrom(src.plan, co, !!b.people), kind);
+            const office = isOffice(v);
+            if (b.people && !co && !office) return json({ error: "people_not_allowed" }, 403);   // a Κτήμα's old guests belong to its previous client
+            // A γραφείο may bring them for a client who repeats an event (Andreas, 2026-11-04). Without them its copy is between two clients, as a Κτήμα's is.
+            plan = retypeStarter(designFrom(src.plan, co || (office && !!b.people), !!b.people), kind);
           } else {   // no roomId: the first room, as when a venue had only one · "": none, the room is drawn in the event
             const rooms = roomsOf(v), pick = b.roomId == null ? rooms[0] : rooms.find(r => r.planId === b.roomId);
             if (b.roomId && !pick) return json({ error: "room_gone" }, 404);
@@ -4520,7 +4531,7 @@ const publicTrial = v => v.trial ? { startedAt: v.trial.startedAt || null, endsA
 function publicVenue(v) {   // returned to the venue itself (no key)
   return { id: v.id, name: v.name, contact: v.contact, license: publicLicense(v.license), used: v.used || 0,
     active: v.active, createdAt: v.createdAt, weddingCount: (v.weddings || []).length, keyRotated: !!(v.keyRotated || v.keyPrivate), roomCount: roomsOf(v).length,
-    ...(isCompany(v) ? { custType: "company" } : {}), trial: publicTrial(v) };
+    ...(isCompany(v) || isOffice(v) ? { custType: v.custType } : {}), trial: publicTrial(v) };
 }
 function adminVenue(v) {     // returned to the owner — counts only: no plan ids, no keys, no wedding names
   return { ...publicVenue(v), email: v.email || "", emailVerified: !!v.emailVerified, lang: v.lang || "el", notes: v.notes || "", retention: v.retention || null,

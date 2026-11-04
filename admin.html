@@ -283,7 +283,7 @@ function fmtDateTime(t){ if(!t) return "—"; try{ return new Date(t).toLocaleSt
 function relTime(t){ const d=t-Date.now(); if(d<=0) return "expired";
   const m=Math.round(d/60000); if(m<60) return `in ${Math.max(1,m)} min`;
   const h=Math.round(d/3600000); if(h<48) return `in ${h} h`; return `in ${Math.round(h/24)} days`; }
-function venueConsoleLink(co){ return new URL("venue.html"+(co?"?co=1":""), location.href).href; }
+function venueConsoleLink(co, of){ return new URL("venue.html"+(co?"?co=1":of?"?of=1":""), location.href).href; }
 function plannerUrl(lang){ return new URL(PLANNER_FILE[lang]||PLANNER_FILE.el, location.href).href; }
 // Keys and tokens only ever go in the fragment (never the query string), so they stay out of server logs.
 function claimLink(token, lang){ return plannerUrl(lang)+"#claim="+encodeURIComponent(token); }
@@ -1271,13 +1271,13 @@ async function refreshVenues(){
   venuesCache=(res.d.venues||[]).sort(byNewest);
 }
 // The console link + key box (after creating a venue, «Κλειδί κονσόλας», or «Νέο κλειδί…»). `title` is trusted HTML (names escaped).
-function venueKeyBoxHtml(title, key, note, withReset, co){
-  const link=venueConsoleLink(co);
+function venueKeyBoxHtml(title, key, note, withReset, co, of){
+  const link=venueConsoleLink(co, of);
   return `<div class="keybox">
     <div class="row between" style="align-items:flex-start"><div style="font-weight:700;margin-bottom:6px">${title}</div>
       <button class="btn sm ghost" data-close title="Κλείσιμο">✕</button></div>
     <div class="muted">Σύνδεσμος κονσόλας</div><div class="k">${esc(link)}</div>
-    <div class="muted" style="margin-top:8px">Κλειδί κονσόλας · στη σελίδα ${co?"της εταιρείας λέγεται «Κωδικός εταιρείας»":"του κτήματος λέγεται «Κωδικός κτήματος»"}</div><div class="k">${esc(key)}</div>
+    <div class="muted" style="margin-top:8px">Κλειδί κονσόλας · στη σελίδα ${co?"της εταιρείας λέγεται «Κωδικός εταιρείας»":of?"του γραφείου λέγεται «Κωδικός γραφείου»":"του κτήματος λέγεται «Κωδικός κτήματος»"}</div><div class="k">${esc(key)}</div>
     <div class="row fw" style="margin-top:10px">
       <button class="btn sm" data-c="key">Αντιγραφή κλειδιού</button>
       <button class="btn sm" data-c="both">Αντιγραφή συνδέσμου + κλειδιού</button>
@@ -1286,11 +1286,11 @@ function venueKeyBoxHtml(title, key, note, withReset, co){
     ${note?`<div class="muted" style="margin-top:8px">${note}</div>`:""}
   </div>`;
 }
-function wireKeyBox(box, key, v, company){
-  const co=company || (v && v.custType==="company"), link=venueConsoleLink(co);
+function wireKeyBox(box, key, v, company, office){
+  const co=company || (v && v.custType==="company"), of=office || (v && v.custType==="organiser"), link=venueConsoleLink(co, of);
   const q=s=>box.querySelector(s);
   if(q('[data-c="key"]')) q('[data-c="key"]').onclick=()=>copy(key);
-  if(q('[data-c="both"]')) q('[data-c="both"]').onclick=()=>copy("Κονσόλα: "+link+(co?"\nΚωδικός εταιρείας: ":"\nΚωδικός κτήματος: ")+key);   // the venue's own word: venue.html's sign-in field
+  if(q('[data-c="both"]')) q('[data-c="both"]').onclick=()=>copy("Κονσόλα: "+link+(co?"\nΚωδικός εταιρείας: ":of?"\nΚωδικός γραφείου: ":"\nΚωδικός κτήματος: ")+key);   // the venue's own word: venue.html's sign-in field
   if(q('[data-c="reset"]') && v) q('[data-c="reset"]').onclick=()=>resetVenueKey(v);
   if(q("[data-close]")) q("[data-close]").onclick=()=>{ box.innerHTML=""; delete box.dataset.vid; };
 }
@@ -1303,37 +1303,37 @@ function showVenuePanel(v, html, key){
 function showVenueKey(v, key, kind){
   const co=v.custType==="company";
   const html = kind==="reset"
-    ? venueKeyBoxHtml(`✅ Νέο κλειδί για «${esc(v.name)}», για να το δώσεις ${co?"στην εταιρεία":"στο κτήμα"}:`, key,
-        co?"Το παλιό κλειδί και οι σύνδεσμοί του στα σχέδια σταμάτησαν να δουλεύουν.":"Το παλιό κλειδί και οι δικοί του σύνδεσμοι στα σχέδια σταμάτησαν να δουλεύουν. Οι σύνδεσμοι που έχει δώσει στους πελάτες του δεν επηρεάζονται.", false, co)
-    : venueKeyBoxHtml(`Κλειδί του «${esc(v.name)}»`, key, "", !fromCard(), co);
+    ? venueKeyBoxHtml(`✅ Νέο κλειδί για «${esc(v.name)}», για να το δώσεις ${co?"στην εταιρεία":v.custType==="organiser"?"στο γραφείο":"στο κτήμα"}:`, key,
+        co?"Το παλιό κλειδί και οι σύνδεσμοί του στα σχέδια σταμάτησαν να δουλεύουν.":"Το παλιό κλειδί και οι δικοί του σύνδεσμοι στα σχέδια σταμάτησαν να δουλεύουν. Οι σύνδεσμοι που έχει δώσει στους πελάτες του δεν επηρεάζονται.", false, co, v.custType==="organiser")
+    : venueKeyBoxHtml(`Κλειδί του «${esc(v.name)}»`, key, "", !fromCard(), co, v.custType==="organiser");
   showVenuePanel(v, html, key);
 }
 function showVenueOwnKey(v){
   showVenuePanel(v, `<div class="keybox note">
     <div class="row between" style="align-items:flex-start"><div style="font-weight:700">🔒 ${esc(v.name)}</div>
       <button class="btn sm ghost" data-close title="Κλείσιμο">✕</button></div>
-    <div style="margin:2px 0 10px">${v.custType==="company"?"Μόνο η εταιρεία ξέρει το κλειδί της — το όρισε στην κονσόλα ή από σύνδεσμο που της ήρθε με email.":"Μόνο το κτήμα ξέρει το κλειδί του — το όρισε στην κονσόλα ή από σύνδεσμο που του ήρθε με email."}</div>
+    <div style="margin:2px 0 10px">${v.custType==="company"?"Μόνο η εταιρεία ξέρει το κλειδί της — το όρισε στην κονσόλα ή από σύνδεσμο που της ήρθε με email.":`Μόνο ${vWord(v.custType).the} ξέρει το κλειδί του — το όρισε στην κονσόλα ή από σύνδεσμο που του ήρθε με email.`}</div>
     <div class="row fw">${fromCard()?"":`<button class="btn sm danger" data-c="reset">Νέο κλειδί…</button>`}
-      <span class="muted">${fromCard()?"«Νέο κλειδί…» μόνο αν το κτήμα το έχασε.":"Μόνο αν το κτήμα το έχασε."}${mailOn()&&v.email?` Ο σύνδεσμος για νέο κλειδί πάει στο ${esc(v.email)}.`:""}</span></div>
+      <span class="muted">${fromCard()?`«Νέο κλειδί…» μόνο αν ${vWord(v.custType).the} το έχασε.`:`Μόνο αν ${vWord(v.custType).the} το έχασε.`}${mailOn()&&v.email?` Ο σύνδεσμος για νέο κλειδί πάει στο ${esc(v.email)}.`:""}</span></div>
   </div>`, "");
 }
 async function resetVenueKey(v){
   const byMail=mailOn() && v.email;
   if(!confirm(byMail
-    ? `Να σταλεί στο «${v.name}» σύνδεσμος για νέο κλειδί;\n\nΠάει στο ${v.email}. Το τωρινό κλειδί του κτήματος δουλεύει μέχρι να χρησιμοποιήσει τον σύνδεσμο.`
-    : `Νέο κλειδί για το «${v.name}»;\n\nΤο τωρινό κλειδί του κτήματος σταματά να δουλεύει· δώσε του το καινούργιο.`)) return;
+    ? `Να σταλεί στο «${v.name}» σύνδεσμος για νέο κλειδί;\n\nΠάει στο ${v.email}. Το τωρινό κλειδί ${vWord(v.custType).ofThe} δουλεύει μέχρι να χρησιμοποιήσει τον σύνδεσμο.`
+    : `Νέο κλειδί για το «${v.name}»;\n\nΤο τωρινό κλειδί ${vWord(v.custType).ofThe} σταματά να δουλεύει· δώσε του το καινούργιο.`)) return;
   const res=await req("/admin/venues/"+encodeURIComponent(v.id)+"/reset-key",{ method:"POST", body:"{}" });
   if(!res.ok || !res.d || !(res.d.mailed || res.d.key)){ failToast(res, res.status===404?"Αυτό το κτήμα δεν υπάρχει πια":res.status===503?"Το email δεν στάλθηκε και δεν άλλαξε τίποτα — δες την κατάσταση του email στην κορυφή της σελίδας":"Δεν έγινε"); return; }
   if(res.d.mailed){
     const box=panelTarget||document.getElementById("vpanel"); if(box) box.dataset.vid=v.id;
-    showSent(box, `✉ Ο σύνδεσμος στάλθηκε στο ${esc(res.d.to)} — το τωρινό κλειδί δουλεύει μέχρι να τον χρησιμοποιήσει.`, "Ο σύνδεσμος ισχύει 7 μέρες· με αυτόν το κτήμα ορίζει το νέο του κλειδί.");
+    showSent(box, `✉ Ο σύνδεσμος στάλθηκε στο ${esc(res.d.to)} — το τωρινό κλειδί δουλεύει μέχρι να τον χρησιμοποιήσει.`, `Ο σύνδεσμος ισχύει 7 μέρες· με αυτόν ${vWord(v.custType).the} ορίζει το νέο ${vWord(v.custType).its} κλειδί.`);
     toast("Ο σύνδεσμος στάλθηκε"); refreshVenues(); return;
   }
   showVenueKey(v, res.d.key, "reset");
   toast("Το νέο κλειδί είναι έτοιμο"); refreshVenues();
 }
 // «+ Κτήμα» on «Πελάτες»: the old list's form, in a dialog. It stays open after a sale, with the key or the sent link.
-// A γραφείο εκδηλώσεων goes through it until phase 4 of COMPANIES-PLAN.md, on the same record, with its own word on these screens.
+// A γραφείο εκδηλώσεων goes through it, on the same record, with its own word on these screens (COMPANIES-PLAN.md phase 4).
 const vWord=t=>t==="company" ? { of:"εταιρείας", is:"εταιρεία", the:"η εταιρεία", The:"Η εταιρεία", ofThe:"της εταιρείας", alone:"μόνη της", its:"της" }
   : t==="organiser" ? { of:"γραφείου", is:"γραφείο", the:"το γραφείο", The:"Το γραφείο", ofThe:"του γραφείου", alone:"μόνο του", its:"του" }
   : { of:"κτήματος", is:"κτήμα", the:"το κτήμα", The:"Το κτήμα", ofThe:"του κτήματος", alone:"μόνο του", its:"του" };
@@ -1361,7 +1361,7 @@ function openNewVenue(pre){
   d.querySelector("#nname").focus();
 }
 async function createVenue(){
-  const ncust=document.getElementById("ncust"), cust=ncust ? ncust.value : "", co=cust==="company", W=vWord(cust), contactEl=document.getElementById("ncontact");
+  const ncust=document.getElementById("ncust"), cust=ncust ? ncust.value : "", co=cust==="company", office=cust==="organiser", W=vWord(cust), contactEl=document.getElementById("ncontact");
   const nameEl=document.getElementById("nname"), name=nameEl.value.trim(); if(!name){ invalid(nameEl, `Γράψε το όνομα ${W.ofThe}`); return; }
   const contact=contactEl ? contactEl.value.trim() : "", notes=document.getElementById("nnotes").value.trim();
   const email=document.getElementById("nemail").value.trim(), lang=document.getElementById("nlang").value;
@@ -1382,8 +1382,8 @@ async function createVenue(){
     const to=(res.d.venue && res.d.venue.email) || email;
     showSent(box, `✅ ${W.The} δημιουργήθηκε — ο σύνδεσμος ρύθμισης στάλθηκε στο ${esc(to)}`, `Με αυτόν ${W.the} ορίζει το δικό ${W.its} κλειδί (ο σύνδεσμος ισχύει 7 μέρες). Εσύ δεν βλέπεις το κλειδί.`);
   } else {
-    box.innerHTML=venueKeyBoxHtml(`✅ ${W.The} δημιουργήθηκε — δώσε ${W.its} αυτά τα δύο:`, res.d.key, "", false, co);
-    wireKeyBox(box, res.d.key, null, co);
+    box.innerHTML=venueKeyBoxHtml(`✅ ${W.The} δημιουργήθηκε — δώσε ${W.its} αυτά τα δύο:`, res.d.key, "", false, co, office);
+    wireKeyBox(box, res.d.key, null, co, office);
   }
   ["nname","ncontact","nemail","nnotes","nafm"].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=""; });
   const lw=document.getElementById("licwrap"); if(lw){ lw.innerHTML=licenseFields("n"); wireLicenseToggle("n", lw); }   // the next venue starts clean
@@ -2293,7 +2293,7 @@ function cardActsHtml(x){
     const v=x.venue||{}, L=x.licence||{};
     const co=v.custType==="company";
     if(co) out.push(b("addevent", "+1 εκδήλωση (25 €)", "primary", "Η κονσόλα της μπορεί να φτιάξει μία ακόμη, και γράφονται 25 € με ΦΠΑ στις «Πληρωμές»"));
-    out.push(b("key", "Κλειδί κονσόλας"), b("resetkey", "Νέο κλειδί…", "", co ? "Μόνο αν η εταιρεία έχασε το κλειδί της" : "Μόνο αν το κτήμα έχασε το κλειδί του"), b("edit", "Επεξεργασία…", "", co ? "Όνομα, ΑΦΜ, email, γλώσσα, διατήρηση" : "Όνομα, email, γλώσσα, άδεια, διατήρηση"));
+    out.push(b("key", "Κλειδί κονσόλας"), b("resetkey", "Νέο κλειδί…", "", co ? "Μόνο αν η εταιρεία έχασε το κλειδί της" : `Μόνο αν ${vWord(v.custType).the} έχασε το κλειδί του`), b("edit", "Επεξεργασία…", "", co ? "Όνομα, ΑΦΜ, email, γλώσσα, διατήρηση" : "Όνομα, email, γλώσσα, άδεια, διατήρηση"));
     if(v.trashCount) out.push(b("trash", `Κάδος (${esc(v.trashCount)})`));
     if(L.invoiceDue) out.push(b("invoiced", "Τιμολογήθηκε"));
     out.push(b("toggle", v.active ? "Απενεργοποίηση…" : "Ενεργοποίηση"));
@@ -2307,8 +2307,8 @@ function cardActsHtml(x){
   }
   out.push(b("forget", t==="s" ? "Διαγραφή εγγραφής…" : t==="l" ? "Σβήσε την επαφή…" : "Ξέχασε τον πελάτη…", "danger",
     t==="l" ? "Σβήνει την επαφή, τις σημειώσεις και το ιστορικό" : "Σβήνει τα πάντα· για τα λογιστικά μένουν μόνο το όνομα και οι ημερομηνίες αγορών"));
-  // the ready replies, for someone still deciding. None for a γραφείο until phase 4 of COMPANIES-PLAN.md: the κτήμα's say «κτήμα» and link its sign-up.
-  const lt=(x.lead||{}).type, tpls=(t==="l" && lt!=="organiser") ? REPLIES.filter(r=>r.venue===(lt==="venue")) : [];
+  // the ready replies, for someone still deciding: each business has its own, because each links its own sign-up
+  const lt=(x.lead||{}).type, tpls=t==="l" ? REPLIES.filter(r=>lt==="organiser" ? r.office : lt==="venue" ? r.venue : !r.venue && !r.office) : [];
   return `<div class="cacts">${out.join("")}</div>`
     +(tpls.length ? `<div class="tlbtns"><span class="muted" style="align-self:center">Έτοιμο μήνυμα:</span>${tpls.map(r=>`<button class="btn sm" data-a="tpl" data-tpl="${r.id}" title="Το κείμενο, για να το διορθώσεις και να το αντιγράψεις">${esc(r.title)}</button>`).join("")}</div>` : "")
     +`<div class="cardpanel"></div>`;
@@ -2410,7 +2410,7 @@ function customerCardHtml(x){
       v.active===false ? ["Κατάσταση", `<span class="badge off">ανενεργό</span>`] : null,
     ]));
     out.push(`<div class="subh">Ρύθμιση</div>`+fieldsHtml([
-      v.custType==="company" ? ["Σύμβαση (DPA)", v.dpaAt ? "την αποδέχτηκε "+esc(gDT(v.dpaAt)) : "δεν έχει ανοίξει ακόμη την κονσόλα"] : null,
+      v.custType==="company" || v.custType==="organiser" ? ["Σύμβαση (DPA)", v.dpaAt ? "την αποδέχτηκε "+esc(gDT(v.dpaAt)) : "δεν έχει ανοίξει ακόμη την κονσόλα"] : null,
       ["Κλειδί", st.keySet ? `${vWord(v.custType).the} έχει ορίσει δικό ${vWord(v.custType).its} κλειδί` : v.custType==="company" && v.dpaAt ? "μπαίνει με το κλειδί που της δόθηκε" : st.mailed ? "ο σύνδεσμος στάλθηκε — δεν έχει ανοίξει" : "το έδωσες εσύ, χωρίς email"],
       st.resetAt ? ["Νέος σύνδεσμος", esc(gWhen(st.resetAt))] : null,
       st.failedAt ? ["Email", cFailed(st.failedAt, st.error)] : null,
@@ -3012,6 +3012,28 @@ https://takeaseat.gr/venue.html#signup
 Αν θέλετε να το δούμε μαζί, πείτε μου πότε σας βολεύει.
 
 ${REPLY_SIGN}` },
+  { id:"oprice", office:true, title:"Τιμή γραφείου", subject:"TakeaSeat για το γραφείο σας", text:()=>`Καλησπέρα σας,
+
+ευχαριστώ για το ενδιαφέρον σας για το TakeaSeat.
+
+Με τη συνδρομή του γραφείου στήνετε μία φορά κάθε αίθουσα όπου δουλεύετε και φτιάχνετε από εκεί κάθε εκδήλωση: γάμους, βαπτίσεις, γιορτές και εταιρικές εκδηλώσεις, χωρίς όριο. Κάθε πελάτης σας παίρνει δικό του σύνδεσμο και βάζει τους καλεσμένους του στις θέσεις τους, κι εσείς βλέπετε το πλάνο του.
+
+Ο πρώτος χρόνος είναι δωρεάν· μετά 349 € + ΦΠΑ τον χρόνο, με τιμολόγιο. Δεν υπάρχει αυτόματη χρέωση: συνεχίζετε μόνο αν το θέλετε.
+
+Η εγγραφή του γραφείου γίνεται εδώ:
+https://takeaseat.gr/venue.html?of=1#signup
+
+Αν θέλετε, το βλέπουμε και μαζί, όποτε σας βολεύει.
+
+${REPLY_SIGN}` },
+  { id:"oremind", office:true, title:"Υπενθύμιση γραφείου", subject:"TakeaSeat για το γραφείο σας", text:()=>`Καλησπέρα σας,
+
+σας είχα γράψει για το TakeaSeat και ήθελα να δω αν έχετε κάποια ερώτηση. Ο πρώτος χρόνος είναι δωρεάν, χωρίς δέσμευση, και η εγγραφή γίνεται εδώ:
+https://takeaseat.gr/venue.html?of=1#signup
+
+Αν θέλετε να το δούμε μαζί, πείτε μου πότε σας βολεύει.
+
+${REPLY_SIGN}` },
 ];
 function showReply(btn, x){
   const r=REPLIES.find(t=>t.id===btn.dataset.tpl), p=btn.closest(".dbody").querySelector(".cardpanel"); if(!r || !p) return;
@@ -3097,7 +3119,7 @@ function venueCardHtml(r){
       L.invoiceDue?["Τιμολόγιο", `<strong style="color:var(--amber)">εκκρεμεί</strong>`]:null,
       ["Γάμοι", `${v.weddingCount||0}${(v.license&&v.license.cap)?` / ${v.license.cap}`:""}${v.trashCount?` · ${v.trashCount} στον κάδο`:""}`],
       ["Κλειδί κονσόλας", s.failedAt?`<strong style="color:var(--danger)">ο σύνδεσμος δεν στάλθηκε</strong> — ο διακομιστής email τον αρνήθηκε ${esc(gDT(s.failedAt))}${s.error?` (${esc(s.error)})`:""}`
-        :s.keySet?"το όρισε το κτήμα — δεν το βλέπουμε":s.mailed?"στάλθηκε σύνδεσμος, δεν χρησιμοποιήθηκε":"το βλέπεις από «Key»"],
+        :s.keySet?`το όρισε ${vWord(v.custType).the} — δεν το βλέπουμε`:s.mailed?"στάλθηκε σύνδεσμος, δεν χρησιμοποιήθηκε":"το βλέπεις από «Key»"],
       ["Σημειώσεις", v.notes?esc(v.notes):"—"],
     ])}
     <div class="row fw acts" style="margin-top:10px">

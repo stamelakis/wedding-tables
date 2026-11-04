@@ -2677,12 +2677,12 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     // ---- no reachable baptism screen calls the customer a couple (b_cVenueLinks was the last one that did) ----
     // The lab and the local, never-synced plans are weddings on purpose (HANDOFF §1i), so they are named here.
     const COUPLE_OK = new Set(['labBride', 'labGroom', 'labCap', 'labPlan', 'labNames', 'ourWedding', 'weddingN', 'newPlan', 'switchPlan', 'promptNewProfile']);
-    const saysCouple = Object.keys(T_ALL.el).filter(k => !k.startsWith('b_') && !COUPLE_OK.has(k))
+    const saysCouple = Object.keys(T_ALL.el).filter(k => !k.startsWith('b_') && !k.startsWith('g_') && !COUPLE_OK.has(k))
       .filter(k => typeof trr('el', 'baptism', k) === 'string' && /ζευγάρ|ζευγαρ/i.test(trr('el', 'baptism', k)));
     ok(saysCouple.length === 0, 'planner: no Greek string a baptism can reach calls its customer «το ζευγάρι»', saysCouple);
-    const saysCoupleEn = Object.keys(T_ALL.en).filter(k => !k.startsWith('b_') && !COUPLE_OK.has(k))
+    const saysCoupleEn = Object.keys(T_ALL.en).filter(k => !k.startsWith('b_') && !k.startsWith('g_') && !COUPLE_OK.has(k))
       .filter(k => typeof trr('en', 'baptism', k) === 'string' && /couple'?s?/i.test(trr('en', 'baptism', k)));
-    const saysCoupleDe = Object.keys(T_ALL.de).filter(k => !k.startsWith('b_') && !COUPLE_OK.has(k))
+    const saysCoupleDe = Object.keys(T_ALL.de).filter(k => !k.startsWith('b_') && !k.startsWith('g_') && !COUPLE_OK.has(k))
       .filter(k => typeof trr('de', 'baptism', k) === 'string' && /Paares?/.test(trr('de', 'baptism', k)));
     ok(saysCoupleEn.length === 0 && saysCoupleDe.length === 0, 'planner: nor does the English or the German', [saysCoupleEn, saysCoupleDe]);
     // ---- the ornament: the PDFs draw a flower for a baptism, so the screen must not keep the couple's heart ----
@@ -2765,7 +2765,7 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     L = await langPicks(['en', '|', 'en'], ['en']);
     ok(L.sent && L.sent.join() === 'en,en' && L.cached === 'el', 'admin: a language save that failed is sent again on the next pick', JSON.stringify(L));
     const vsrc = fs.readFileSync(path.join(root, 'venue.html'), 'utf8');
-    ok(/placeholder="Κωδικός κτήματος"/.test(vsrc) && asrc.includes('"\\nΚωδικός κτήματος: "'),
+    ok(vsrc.includes('placeholder="Κωδικός ${ownerW()}"') && vsrc.includes('const ownerW=()=>isOf()?"γραφείου":"κτήματος"') && asrc.includes('"\\nΚωδικός κτήματος: "'),
       "admin: the venue's copied link + key says «Κωδικός κτήματος», the word on venue.html's sign-in field");
   }
 
@@ -4558,11 +4558,13 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     const K = await call('POST', '/claim', { token: coToken, nonce: 'co-28' });
     const P = await call('GET', '/plans/' + K.d.id, undefined, { 'X-Edit-Key': K.d.editKey });
     ok(K.status === 200 && P.status === 200 && clean(K.d, AFM_CO) && clean(P.d, AFM_CO), "a company's plan link carries no ΑΦΜ and no customer type");
+    // Phase 4: a γραφείο's console and its client's plan know the word, to speak it; the ΑΦΜ stays out, and so does the type on the plan.
     const con = await call('GET', '/venues/' + OF.id, undefined, VH);
-    ok(con.status === 200 && clean(con.d, AFM_OF), "a γραφείο's console carries no ΑΦΜ and no customer type");
+    ok(con.status === 200 && !JSON.stringify(con.d).includes(AFM_OF) && con.d.venue.custType === 'organiser', "a γραφείο's console knows its word, and carries no ΑΦΜ", con.d);
+    await call('POST', '/venues/' + OF.id + '/agreement', { accept: true }, VH);
     const W = (await call('POST', '/venues/' + OF.id + '/weddings', { label: 'Εταιρ. Εκδήλωση', date: when }, VH)).d;
     const CP = await call('GET', '/plans/' + W.planId, undefined, { 'X-Edit-Key': raw('plan:' + W.planId).editKey });
-    ok(CP.status === 200 && clean(CP.d, AFM_OF), "the plan a γραφείο's client opens carries neither");
+    ok(CP.status === 200 && clean(CP.d, AFM_OF) && CP.d.owner.office === true, "the plan a γραφείο's client opens says «office» and no more: no ΑΦΜ, no type", CP.d.owner);
 
     // -- forgotten: only the books remain, and no ΑΦΜ anywhere --
     r = await on('POST', KC, 'forget', {});
@@ -4647,7 +4649,7 @@ function leadStageOf(l) { return l.lost ? 8 : l.stage || 1; }
   }
   // A word with no twin is shown as it is: anything on the list above needs a company twin, or the company reads about somebody's partner.
   // The three left out are never shown to a company as its own: the party's bar, the kids' corner in the decor menu, and the venue's list of what it may lock.
-  const untwinned = Object.keys(T_ALL.el).filter(k => !/^(b_|p_|c_)/.test(k) && !['tour', 'featFloor', 'featKids', 'permDecor'].includes(k) && (WRONG.el.test(JSON.stringify(T_ALL.el[k])) || /ζευγαρ|σύντροφ|Οικ\./.test(JSON.stringify(T_ALL.el[k]))) && T_ALL.el['c_' + k] == null);
+  const untwinned = Object.keys(T_ALL.el).filter(k => !/^(b_|p_|c_|g_)/.test(k) && !['tour', 'featFloor', 'featKids', 'permDecor'].includes(k) && (WRONG.el.test(JSON.stringify(T_ALL.el[k])) || /ζευγαρ|σύντροφ|Οικ\./.test(JSON.stringify(T_ALL.el[k]))) && T_ALL.el['c_' + k] == null);
   ok(untwinned.length === 0, 'company: no plain string that names another event or a family reaches a company screen without its own twin', untwinned);
   // -- the starter --
   const groups = l => T_ALL[l].c_groupsDefault;
