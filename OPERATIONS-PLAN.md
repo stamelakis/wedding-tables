@@ -423,3 +423,83 @@ options (HANDOFF §8.6).
 | 5 Payments | built 2026-10-22 (`db46296` server, `5a182f7` screens), security review passed, checked on screen at desktop and phone width; live 2026-10-23 (`3e2888e`, tag `deploy-2026-10-23-1`) after Andreas read the Greek |
 | 6 «Σήμερα» | built 2026-10-23 (`122e233` server, `d81e3ff` screen, `dc987a2` Hermes), checked on screen at desktop and phone width; live 2026-10-23 (`01eb974`, tag `deploy-2026-10-23-2`) after Andreas read the Greek |
 | 7 Online payment | not scheduled |
+
+## 9. Decisions recorded while building
+
+Moved word for word from `CLAUDE.md` on 2026-11-05; `CLAUDE.md` keeps one line per decision so a session still sees the rule.
+
+- **Back office follows `OPERATIONS-PLAN.md`** (approved 2026-10-18). Customer data stays in our SQLite only;
+  rejected: syncing to Google Sheets or a CRM (two copies drift, data handed to another company). TakeaSeat
+  records payments, Λογιστής issues every receipt. Admin endpoints never return a venue's client cards.
+- **Customer memory, not "forever"** (Andreas, 2026-10-18): a memory card kept 5 years after the last contact
+  for buyers, 2 for non-buyers, the clock restarting on each new contact; plans are still deleted a year after.
+  Andreas wanted "as long as possible"; a restarting fixed period is the longest GDPR allows.
+- **A venue on its free year counts as a buyer: 5 years, not 2** (Andreas, 2026-10-18, overriding the suggested 2).
+  Today `MEMORY_YEARS = 5` applies to every card; the 2 years is for phase 4's leads, who never bought anything.
+  The clock waits while a plan exists or a licence can still make events.
+- **Forgetting keeps only what the books need** (Andreas, 2026-10-18): `books:<key>` holds the name and the dates
+  of what was bought (seasons, renewals, a couple's purchase), never an email, phone, note, event or timeline.
+  Rejected: keeping the card or the address "in case". Every erasure (request, clock, old deletes) goes this one way.
+- **A deleted plan keeps the couple's card and email, but takes the address out of the recovery index**
+  (`email:`), so the kept address can reopen nothing. Do not put it back in the index "to help recovery".
+- **The «Πελάτες» sheet never shows what a venue named its events** (2026-10-18). «Οικογένεια Ζαφειρίου» is the
+  venue's client data, which the admin never sees (DPA); the card shows date, kind, phase and seating % only,
+  and events pass through the whitelist `custEvent`. Rejected: showing the label "to recognise the wedding".
+- **In «Πελάτες», «Όλοι» leaves out the archive, but a search on «Όλοι» looks there too**, and a pending
+  signup is its venue's row, not a second one (only a signup whose venue is gone gets its own `s:` row).
+  Rejected: an archive in «Όλοι» (the finished ones bury the live ones), and a row per signup (counted twice).
+- **admin.html's dialogs are Greek only** (2026-10-21). The bilingual `T(en, el)` helper is gone: every dialog and
+  card action runs from a Greek screen, so its English half was never shown. Rejected: keeping both languages
+  "in case". The page's remaining English sections move to Greek as each is touched — never back.
+- **Text Andreas copies to a customer speaks the customer's words, not admin.html's** (2026-10-21). The copied
+  link message follows the link's language and the kind (`CLAIM_MSG`); the venue's copied key says «Κωδικός
+  κτήματος», venue.html's own field, though the admin box calls it «Κλειδί κονσόλας». Rejected: copying the box's word.
+- **A venue's client card lives in its own `vcli:` row, never in the plan** (phase 3, 2026-10-21): the client opens the plan
+  and must never read the venue's notes, and the card must outlive the plan (1–5 years, the venue's choice in `dpa.html` §4).
+  A link counts as sent at the venue's first copy (the console cannot see Viber or mail), and events made before
+  `meta:clienttrack` never claim «δεν στάλθηκε» / «δεν έχει ανοίξει». Rejected: client fields on the plan or the wedding row.
+- **Phase 4's ready replies are copied, or opened in Andreas's own mail app; the server never mails them** (2026-10-21).
+  His mail app keeps the thread and the customer's answer lands in his inbox; a server mail would leave no sent copy
+  and add one more route that mails strangers. Opening one writes «✉ Email» to the timeline. Rejected: the plan's
+  "send by mail from the card". The payment text keeps «[ΣΥΜΠΛΗΡΩΣΕ…]» gaps (`REPLY_PAY`) until Andreas gives the details.
+- **Payments live in one `ledger:<customerKey>` row per customer, not `pay:` rows** (phase 5, 2026-10-22). «Already paid»,
+  a refund's ceiling and «no cancelling a refunded payment» must be checked in the same atomic write. A payment is never
+  deleted or re-priced (only its receipt number and note change); it is cancelled with a reason, and refunds are their own
+  entries. Rejected: separate rows plus an index (the checks could race), and an edit button for amounts.
+- **A refund closes its due («έκλεισε με επιστροφή»), it never reopens it** (2026-10-22). Nobody refunds a discount or a
+  cancelled event and then waits to be paid again; reopened, it turned into «καθυστερεί πληρωμή» a week later. On a «+ΦΠΑ»
+  due a payment counts net of the VAT Andreas typed; VAT is never computed until the accountant says so. The only warning
+  is «ήδη πληρωμένο» (409 `already_paid`, then a confirm and `force`); there is no «more than due» check.
+- **The «Για τον Λογιστή» file leaves refunds out and lists only payments with no receipt** (2026-10-22). Λογιστής issues
+  a refund as a credit note against the receipt, not as a negative import; RID is `TAS-<payment id>` so a second import
+  adds nothing. Do not add refunds as negative rows, and do not edit Λογιστής's files from here (another project).
+- **The prices are written twice, and a test keeps the two equal** (Andreas confirmed 25 € with ΦΠΑ and 349 € + ΦΠΑ, 2026-11-03):
+  `PRICE_PLAN` / `PRICE_SEASON` for «Πληρωμές», and index.html, terms.html, the guides and the ready replies for the customer.
+  The ledger was once written with numbers the site had left a month before. A due already written keeps its amount, so a new
+  price reaches new dues only. Do not re-price a recorded due or payment.
+- **The site has one contact page, `epikoinonia.html`, not a form on each page** (phase 4 part B, 2026-10-22). Every
+  «γράψτε μας» / «ζητήστε demo» link opens it with `?kind=…&q=…` preselected; venues use it too (Andreas). Rejected: a form
+  pasted into index.html and the three guides (four copies of one form to keep in step).
+- **The form's "no related mails" is an opt-out tick, stored as `noMail`, that sticks** (decision 6, 2026-10-22). ν. 3471/2006
+  άρθρο 11 §3 lets us write to *buyers* about similar things only if they could say no when we took the address; a form
+  sender is not a buyer yet, so the no is asked at the form, kept on the lead, never undone by a later form, and carried to
+  the customer by `adoptLead`. Do not drop the tick or default it to "no mails" silently.
+- **A form from a known email joins that contact; the mail to Andreas has Reply-To the sender and no hourly cap** (2026-10-22).
+  Rejected: a new row per message (the same person twice in the sheet), and the per-address hourly mail cap on the owner
+  mail (it would drop a real customer's second message). Only the 50-a-day ceiling bounds it. The "we got it" mail echoes
+  nothing the sender typed, so the form cannot be used to send our mail with someone else's words.
+- **«Σήμερα» is worded on the server, in Greek** (phase 6, 2026-10-23), unlike the rest of admin.html, which words codes
+  itself: the screen, the 08:00 mail and Hermes must say the same line. Rejected: codes worded three times in three places.
+- **«έγινε» on «Σήμερα» does the real thing where there is one** (Andreas, 2026-10-23): a new contact moves to «Σε
+  συζήτηση», a next step is done on the card. Elsewhere it only hides the line until its situation changes, and money
+  (a late payment, a missing receipt) comes back after 7 days if still true. Rejected: a plain "hide" everywhere (the
+  thing would stay undone while the list looked clear), and money hidden for good.
+- **The weekend count never sends the morning mail by itself** (Andreas, 2026-10-23). A mail that only says "2 weddings
+  this weekend" every Friday trains him to ignore it. The mail goes only when something waits on him.
+- **The backup age comes from a stamp file** (2026-10-23): `backup.sh` writes `backup-ok` beside the database after
+  «backup ok», and the app reads it as `/data/backup-ok`. Rejected: the app reading `/opt/backups` (it would need a
+  second mount of a folder the education app's backups share). After changing `backup.sh`, install it on the host:
+  deploy.sh only reports the drift.
+- **A contact that becomes a customer ends** (`adoptLead`): its timeline, source and next step move to the new card and
+  the `lead:` row is erased, so no one is in the sheet twice. Do not keep converted leads "for statistics". A couple's
+  or venue's phone stays in their notes, where `phonesOf` finds it for «Γνωστός πελάτης»; rejected: a new phone field.

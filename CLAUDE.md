@@ -67,150 +67,62 @@ build runs the full suite), restarts and health-checks; on failure it rolls back
 
 ## Decisions
 
-- **Companies and organisers follow `COMPANIES-PLAN.md`** (Andreas, 2026-11-03; phases 1–4 live; its §2 has the decisions). A
-  fourth kind, chosen after hearing the cheaper option, and a «Γραφείο εκδηλώσεων», never «διοργανωτής», which already means
-  the venue's client on γιορτή screens. Rejected: a small separate charge for saving designs (payments are by hand for now), and a company choosing to keep guest
-  notes (health data; it keeps its own CSV instead).
-- **A company is a `venue:` row with `custType:"company"`, a `per_wedding` licence and its own console** (phase 3, 2026-11-04). `publicVenue` tells only a company or a γραφείο its `custType`, so a Κτήμα's console never hears a customer word. Rejected: a new record type (the console, keys, rooms and
-  memory would all be written twice), and a move tool for old rows (live had zero `custType` rows when this was built). The ΑΦΜ can be edited only on a `custType` row, because on a Κτήμα the `afm:` row is the
-  free-year fence. The form asks no ΑΦΜ or company name (Andreas adds them at the sale). `books:` keeps the word, never the ΑΦΜ.
-- **For a company, a `per_wedding` quota of 0 means none, never "no limit"** (2026-11-04), and an unused event does not hold its memory clock (`licenceHolds`): it could stay paid for and unused forever.
-  «+1 εκδήλωση (25 €)» on its card is the only way the quota moves; the licence form cannot touch it. A deleted event still counts (the delete dialog says so). If it was a mistake, Andreas presses +1 and cancels the due.
-- **A company ticks `dpa.html` at the first opening of its console; nothing else answers until then** (`agreement_required`, 2026-11-04). The date is saved. A Κτήμα still signs the paper one. Rejected: asking at the sale (Andreas cannot tick for it).
-- **Only a company can copy names and seats from an old event; a Κτήμα copies the room** (Andreas, 2026-11-04). A venue's old guests belong to its previous client (`people_not_allowed`). A γραφείο may too, see below.
-  Guest notes never travel, whoever copies (`designFrom` goes through `withoutGuestNotes`). The planner's field is `note`.
-- **A venue has a list of rooms (`v.rooms`), not one `templateId`** (2026-11-04, up to 20). `roomsOf` still reads the old field and `setRooms` converts at the first write, so no migration ran. A company's room has `kind:"company"`, or it opens with a bride;
-  a Κτήμα's has no kind, because it is shared by all four. Events copy a room, so changing it never changes them.
-- **The console cannot know its owner before login, so a company's links carry `?co=1`** and the device remembers (`weddingVenue.company`). It only chooses the words on the login screen; it grants nothing.
-- **A company opens its plans in the venue role, with its own words** (2026-11-04): `CO_OWNER` makes `tr` look up `o_<key>` first, ahead of `c_`. Any new venue-role string a company can see needs an `o_` twin, in three languages. `prof.couplePerms` stays null, which hides
-  «Τι μπορεί να αλλάξει» and the preview. The kind cannot be changed through PATCH on a company.
-- **A plan is kept 1 to 5 years, the customer's choice in the console, 1 by default** (`PUT /venues/:id/keep`, 2026-11-04), for a Κτήμα and a company alike. A shorter choice deletes what is already past it within 24 hours, after a warning. `dpa.html` §4 states it. The default is still the year in the decision below.
-- **A γραφείο εκδηλώσεων is a `venue:` row with `custType:"organiser"`, the same as a Κτήμα in everything but its word** (phase 4, 2026-11-04): console, rights, phases, 349 € + ΦΠΑ, one free year per ΑΦΜ through the same `afm:` row, so a Κτήμα cannot take a second free year as a γραφείο. `POST /signup/venue` accepts only that word; anything else makes a plain Κτήμα, and a company can never sign itself up. Rejected: a new record type, and a per-event price (it would be a company by another name).
-- **A γραφείο's word reaches everyone on its plan, its client too** (phase 4): the plan's `owner.office` makes the planner's `tr` look up `g_<kind prefix>key`, then `g_key`, ahead of the kind's. A new string that says «κτήμα» on a venue plan needs a `g_` twin, in three languages. A test scans for it. `cUploadNone` is exempt: it is a device-only plan, with no owner yet, and it names both. In the `g_p_*` strings «διοργανωτής» stays, because on γιορτή screens it means the client; it never names the γραφείο.
-- **`?of=1` and `weddingVenue.office` do for a γραφείο what `?co=1` does for a company** (phase 4): they choose the words before login and grant nothing. A bare `venue.html` link stays Κτήμα, with a small «Είμαι γραφείο εκδηλώσεων» switch. Rejected: changing the words on every venue's login screen to something neutral.
-- **A γραφείο ticks `dpa.html` at the first opening and may copy names and seats from an old event** (Andreas, 2026-11-04). Both as a company does, with a line on screen that the guests belong to the client, so copying is only for the same client; `terms.html` and `dpa.html` say so. Notes never travel. Rejected: a Κτήμα's paper agreement (a γραφείο signs up alone, so nobody would ask for it) and refusing the copy as a Κτήμα's is refused (a γραφείο often has the same client twice).
-- **«Κτήμα» stays where it describes a κτήμα** (phase 4): the legal pages define «το Κτήμα» to include a γραφείο rather than being rewritten, and the Google titles listed in `STATUS.md` are held back on purpose. The screens a γραφείο or its client see are what must not say it.
-- **On a company event's screens the customer is «η εταιρεία» and the event «η εκδήλωση»** (phase 2, 2026-11-03), never «διοργανωτής»
-  or «γιορτή». A test refuses another event's words in any `c_` string. Its starter room is the wedding's round tables with a
-  «Σκηνή» in the dance floor's place and no DJ (filter: speeches and awards decide who sits near the front). Rejected: the γιορτή's long tables and bar.
-- **The kind makes the customer a company, but only one way** (phase 2, 2026-11-03). Sold or corrected to `company`, the row gets
-  `custType`; moved to a γιορτή it stays a company (a company dinner sold before phase 2); corrected to a γάμος or βάπτιση, `custType`
-  and the ΑΦΜ go, because a private buyer's ΑΦΜ is never kept. Existing company dinners stay γιορτές until someone changes them.
-- **A company buying directly opens at once and in full, with no 14-day withdrawal** (phase 3, decision 5, 2026-11-04): it buys for its business, not as a consumer (terms 8Α; on the lawyer's list). The guide and the payment reply say so. The guide still says «παραστατικό»
-  until the accountant has answered on invoices. A company gets no keepsake mail, so the guide does not promise one.
-- **A γιορτή starts with NO honour table** (decided 2026-10-10, built 2026-10-17). A γάμος and a
-  βάπτιση each have exactly one table the evening is about; a γιορτή may have none, one or several, so
-  it becomes an opt-in table from the toolbar. Rejected: copying the wedding's pattern — Andreas's
-  point was that the pattern is not universal, and the language agrees: Greek has no attested phrase
-  for such a table at a party.
-- **If one is added it is «Κεντρικό τραπέζι».** Rejected: «Τραπέζι της γιορτής» (in real Greek that is
-  the Christmas table/menu), «Τιμητικό τραπέζι» (the honorific *banquet*, i.e. the whole event),
-  «Τραπέζι των οικοδεσποτών» (zero attestation), «Τραπέζι τιμής» (reserved by the suite, above).
-- **The baptism starter adds exactly one thing, the children's corner.** The filter is "does it change
-  a seating decision", not "is it common at a baptism" — τούρτα, candy bar and μπομπονιέρες are all
-  common and all two taps away in the decor menu, so putting them in the starter only gives the
-  customer something to delete.
-- **The lab keeps one demo per kind** (2026-10-17). A link naming a kind (`?ev=party`) opens the visitor's
-  demo of that kind or adds one beside the old (`labDoor`); a bare `lab.html` reopens what they had. Rejected:
-  rebuilding the open demo from the link — it silently threw away what a returning visitor had built.
-- **No server-side 8-table cap** (checked 2026-10-18). Every way onto the server needs a purchase, a venue
-  licence/free year or the admin, so nothing free reaches it; the cap is for device-only plans and the planner
-  enforces it. Build a server check only together with a free online plan, if one is ever offered.
-- **`lab.html` is the one indexed planner build**; the three app builds carry `noindex` instead,
-  because their URLs carry `?plan=` invite tokens and a plan link must never be indexable. If the lab
-  ever goes back to noindex, remove it from `sitemap.xml` in the same commit.
-- **«Δεν σβήνουμε ποτέ» must never be written anywhere.** Storage is irrelevant (a 300-guest plan is
-  6.9 KB gzipped; keeping everything for a decade costs cents), but GDPR storage limitation does not
-  allow "we keep it until you ask us to delete it", and for a venue's weddings TakeaSeat is the
-  *processor* — the 7-day deletion is the venue's documented instruction in `dpa.html` §4 and cannot
-  be changed unilaterally. The honest promises are a fixed period («ένας χρόνος μετά την εκδήλωση»)
-  and an opt-in with the free-text note field stripped, because that field holds allergies.
-- **Every plan is kept one year after the event, automatically** — a couple's own and a venue's wedding,
-  past events included (Andreas, 2026-10-16). Rejected: an opt-in box, a 7-day exception for venues ("why
-  make an exception?"), and "forever" (GDPR, above). For venues the year is their instruction in `dpa.html`
-  §4: change the default and the agreement together, never one. Read-only from the day after the event.
-  The hourly sweep skips finished plans via `meta:archive` (full pass nightly after 04:00) — keep that, or
-  a year of plans is read every hour.
-- **Guest notes are erased the day after the event**, from the plan and every `hist:` version; names and
-  seats stay. The note field is where allergies (health data) end up, and it serves the evening, not the
-  year. The pages say so; do not drop the erasure without changing privacy, terms and dpa. The planner
-  says it only in the Excel import (the one way a customer brings notes in) and only on an online plan:
-  the erasure is the server's, so a device-only plan keeps its notes and must not be told otherwise.
-- **Back office follows `OPERATIONS-PLAN.md`** (approved 2026-10-18). Customer data stays in our SQLite only;
-  rejected: syncing to Google Sheets or a CRM (two copies drift, data handed to another company). TakeaSeat
-  records payments, Λογιστής issues every receipt. Admin endpoints never return a venue's client cards.
-- **Customer memory, not "forever"** (Andreas, 2026-10-18): a memory card kept 5 years after the last contact
-  for buyers, 2 for non-buyers, the clock restarting on each new contact; plans are still deleted a year after.
-  Andreas wanted "as long as possible"; a restarting fixed period is the longest GDPR allows.
-- **A venue on its free year counts as a buyer: 5 years, not 2** (Andreas, 2026-10-18, overriding the suggested 2).
-  Today `MEMORY_YEARS = 5` applies to every card; the 2 years is for phase 4's leads, who never bought anything.
-  The clock waits while a plan exists or a licence can still make events.
-- **Forgetting keeps only what the books need** (Andreas, 2026-10-18): `books:<key>` holds the name and the dates
-  of what was bought (seasons, renewals, a couple's purchase), never an email, phone, note, event or timeline.
-  Rejected: keeping the card or the address "in case". Every erasure (request, clock, old deletes) goes this one way.
-- **A deleted plan keeps the couple's card and email, but takes the address out of the recovery index**
-  (`email:`), so the kept address can reopen nothing. Do not put it back in the index "to help recovery".
-- **The «Πελάτες» sheet never shows what a venue named its events** (2026-10-18). «Οικογένεια Ζαφειρίου» is the
-  venue's client data, which the admin never sees (DPA); the card shows date, kind, phase and seating % only,
-  and events pass through the whitelist `custEvent`. Rejected: showing the label "to recognise the wedding".
-- **In «Πελάτες», «Όλοι» leaves out the archive, but a search on «Όλοι» looks there too**, and a pending
-  signup is its venue's row, not a second one (only a signup whose venue is gone gets its own `s:` row).
-  Rejected: an archive in «Όλοι» (the finished ones bury the live ones), and a row per signup (counted twice).
-- **admin.html's dialogs are Greek only** (2026-10-21). The bilingual `T(en, el)` helper is gone: every dialog and
-  card action runs from a Greek screen, so its English half was never shown. Rejected: keeping both languages
-  "in case". The page's remaining English sections move to Greek as each is touched — never back.
-- **Text Andreas copies to a customer speaks the customer's words, not admin.html's** (2026-10-21). The copied
-  link message follows the link's language and the kind (`CLAIM_MSG`); the venue's copied key says «Κωδικός
-  κτήματος», venue.html's own field, though the admin box calls it «Κλειδί κονσόλας». Rejected: copying the box's word.
-- **A venue's client card lives in its own `vcli:` row, never in the plan** (phase 3, 2026-10-21): the client opens the plan
-  and must never read the venue's notes, and the card must outlive the plan (1–5 years, the venue's choice in `dpa.html` §4).
-  A link counts as sent at the venue's first copy (the console cannot see Viber or mail), and events made before
-  `meta:clienttrack` never claim «δεν στάλθηκε» / «δεν έχει ανοίξει». Rejected: client fields on the plan or the wedding row.
-- **Greek is reviewed by Andreas himself.** Strings a customer reads are written per language and
-  cross-checked, never find-replaced: 36 `p_*` strings contain «γιορτ» and name the *event*, while
-  only five name the *table*.
-- **Phase 4's ready replies are copied, or opened in Andreas's own mail app; the server never mails them** (2026-10-21).
-  His mail app keeps the thread and the customer's answer lands in his inbox; a server mail would leave no sent copy
-  and add one more route that mails strangers. Opening one writes «✉ Email» to the timeline. Rejected: the plan's
-  "send by mail from the card". The payment text keeps «[ΣΥΜΠΛΗΡΩΣΕ…]» gaps (`REPLY_PAY`) until Andreas gives the details.
-- **Payments live in one `ledger:<customerKey>` row per customer, not `pay:` rows** (phase 5, 2026-10-22). «Already paid»,
-  a refund's ceiling and «no cancelling a refunded payment» must be checked in the same atomic write. A payment is never
-  deleted or re-priced (only its receipt number and note change); it is cancelled with a reason, and refunds are their own
-  entries. Rejected: separate rows plus an index (the checks could race), and an edit button for amounts.
-- **A refund closes its due («έκλεισε με επιστροφή»), it never reopens it** (2026-10-22). Nobody refunds a discount or a
-  cancelled event and then waits to be paid again; reopened, it turned into «καθυστερεί πληρωμή» a week later. On a «+ΦΠΑ»
-  due a payment counts net of the VAT Andreas typed; VAT is never computed until the accountant says so. The only warning
-  is «ήδη πληρωμένο» (409 `already_paid`, then a confirm and `force`); there is no «more than due» check.
-- **The «Για τον Λογιστή» file leaves refunds out and lists only payments with no receipt** (2026-10-22). Λογιστής issues
-  a refund as a credit note against the receipt, not as a negative import; RID is `TAS-<payment id>` so a second import
-  adds nothing. Do not add refunds as negative rows, and do not edit Λογιστής's files from here (another project).
-- **The prices are written twice, and a test keeps the two equal** (Andreas confirmed 25 € with ΦΠΑ and 349 € + ΦΠΑ, 2026-11-03):
-  `PRICE_PLAN` / `PRICE_SEASON` for «Πληρωμές», and index.html, terms.html, the guides and the ready replies for the customer.
-  The ledger was once written with numbers the site had left a month before. A due already written keeps its amount, so a new
-  price reaches new dues only. Do not re-price a recorded due or payment.
-- **The site has one contact page, `epikoinonia.html`, not a form on each page** (phase 4 part B, 2026-10-22). Every
-  «γράψτε μας» / «ζητήστε demo» link opens it with `?kind=…&q=…` preselected; venues use it too (Andreas). Rejected: a form
-  pasted into index.html and the three guides (four copies of one form to keep in step).
-- **The form's "no related mails" is an opt-out tick, stored as `noMail`, that sticks** (decision 6, 2026-10-22). ν. 3471/2006
-  άρθρο 11 §3 lets us write to *buyers* about similar things only if they could say no when we took the address; a form
-  sender is not a buyer yet, so the no is asked at the form, kept on the lead, never undone by a later form, and carried to
-  the customer by `adoptLead`. Do not drop the tick or default it to "no mails" silently.
-- **A form from a known email joins that contact; the mail to Andreas has Reply-To the sender and no hourly cap** (2026-10-22).
-  Rejected: a new row per message (the same person twice in the sheet), and the per-address hourly mail cap on the owner
-  mail (it would drop a real customer's second message). Only the 50-a-day ceiling bounds it. The "we got it" mail echoes
-  nothing the sender typed, so the form cannot be used to send our mail with someone else's words.
-- **«Σήμερα» is worded on the server, in Greek** (phase 6, 2026-10-23), unlike the rest of admin.html, which words codes
-  itself: the screen, the 08:00 mail and Hermes must say the same line. Rejected: codes worded three times in three places.
-- **«έγινε» on «Σήμερα» does the real thing where there is one** (Andreas, 2026-10-23): a new contact moves to «Σε
-  συζήτηση», a next step is done on the card. Elsewhere it only hides the line until its situation changes, and money
-  (a late payment, a missing receipt) comes back after 7 days if still true. Rejected: a plain "hide" everywhere (the
-  thing would stay undone while the list looked clear), and money hidden for good.
-- **The weekend count never sends the morning mail by itself** (Andreas, 2026-10-23). A mail that only says "2 weddings
-  this weekend" every Friday trains him to ignore it. The mail goes only when something waits on him.
-- **The backup age comes from a stamp file** (2026-10-23): `backup.sh` writes `backup-ok` beside the database after
-  «backup ok», and the app reads it as `/data/backup-ok`. Rejected: the app reading `/opt/backups` (it would need a
-  second mount of a folder the education app's backups share). After changing `backup.sh`, install it on the host:
-  deploy.sh only reports the drift.
-- **A contact that becomes a customer ends** (`adoptLead`): its timeline, source and next step move to the new card and
-  the `lead:` row is erased, so no one is in the sheet twice. Do not keep converted leads "for statistics". A couple's
-  or venue's phone stays in their notes, where `phonesOf` finds it for «Γνωστός πελάτης»; rejected: a new phone field.
+One line each, so a session sees the rule. Before changing one, read its full record, with the reasons and what was rejected:
+`COMPANIES-PLAN.md` §7, `HANDOFF.md` §10, `OPERATIONS-PLAN.md` §9. New decisions go here in 2–3 lines; move them out when this file nears 150 lines.
+
+### Companies and γραφεία (`COMPANIES-PLAN.md` §7, and §2)
+
+- **Companies and organisers follow `COMPANIES-PLAN.md`.** The word is «Γραφείο εκδηλώσεων», never «διοργανωτής», which means the venue's client on γιορτή screens. A company never keeps guest notes.
+- **A company is a `venue:` row with `custType:"company"` and a `per_wedding` licence**, not a new record type. `publicVenue` tells only a company or a γραφείο its `custType`. The ΑΦΜ is editable only on a `custType` row; `books:` keeps the word, never the ΑΦΜ.
+- **A company's `per_wedding` quota of 0 means none, never "no limit".** Only «+1 εκδήλωση (25 €)» moves it, a deleted event still counts, and an unused event does not hold the memory clock (`licenceHolds`).
+- **A company and a γραφείο tick `dpa.html` at the first opening; nothing answers until then** (`agreement_required`). A Κτήμα signs the paper one.
+- **A company and a γραφείο may copy names and seats from an old event; a Κτήμα copies only the room** (`people_not_allowed`). Guest notes never travel (`withoutGuestNotes`).
+- **A venue has a list of rooms (`v.rooms`), not one `templateId`** (`roomsOf`, `setRooms`). A company's room has `kind:"company"`; a Κτήμα's has no kind. Events copy a room, so changing it never changes them.
+- **`?co=1` / `weddingVenue.company` and `?of=1` / `weddingVenue.office` only choose the login words; they grant nothing.** A bare `venue.html` stays Κτήμα.
+- **A company opens its plans in the venue role:** `CO_OWNER` makes `tr` look up `o_<key>` first. A new venue-role string it can see needs an `o_` twin, in three languages. `prof.couplePerms` stays null; PATCH cannot change its kind.
+- **A plan is kept 1 to 5 years, the customer's choice, 1 by default** (`PUT /venues/:id/keep`), as `dpa.html` §4 states. A shorter choice deletes what is past it within 24 hours, after a warning.
+- **A γραφείο is a `venue:` row with `custType:"organiser"`, a Κτήμα in everything but its word**, sharing the `afm:` free-year fence. `POST /signup/venue` accepts only that word; a company can never sign itself up.
+- **`owner.office` makes `tr` look up `g_<kind prefix>key`, then `g_key`, for everyone on a γραφείο's plan.** A new string saying «κτήμα» on a venue plan needs a `g_` twin, in three languages (a test scans; `cUploadNone` is exempt).
+- **«Κτήμα» stays where it describes a κτήμα:** the legal pages define it to include a γραφείο, and the Google titles in `STATUS.md` are held back on purpose. Only a γραφείο's and its client's screens must not say it.
+- **On a company event's screens: «η εταιρεία» and «η εκδήλωση»,** never «διοργανωτής» or «γιορτή» (a test refuses them in `c_`). Its starter has round tables, a «Σκηνή» and no DJ.
+- **The kind makes the customer a company one way only:** to `company` adds `custType`; to a γιορτή it stays a company; to a γάμος or βάπτιση drops `custType` and the ΑΦΜ.
+- **A company buying directly opens at once, with no 14-day withdrawal** (terms 8Α). The guide says «παραστατικό» until the accountant answers and promises no keepsake mail.
+
+### The planner, the kinds, keeping data (`HANDOFF.md` §10)
+
+- **A γιορτή starts with NO honour table;** it is an opt-in from the toolbar. Do not copy the wedding's pattern.
+- **If one is added it is «Κεντρικό τραπέζι»,** never «Τραπέζι της γιορτής», «Τιμητικό τραπέζι» or «Τραπέζι των οικοδεσποτών».
+- **The baptism starter adds exactly one thing, the children's corner.** The filter is "does it change a seating decision", not "is it common".
+- **The lab keeps one demo per kind** (`labDoor`). A link naming a kind never rebuilds the open demo.
+- **No server-side 8-table cap:** nothing free reaches the server. Build one only together with a free online plan.
+- **`lab.html` is the one indexed planner build;** the app builds carry `noindex` because their URLs carry `?plan=` tokens. If the lab goes noindex, remove it from `sitemap.xml` in the same commit.
+- **«Δεν σβήνουμε ποτέ» must never be written anywhere** (GDPR storage limitation; for a venue's events TakeaSeat is the processor).
+- **Every plan is kept one year after the event, automatically,** read-only from the next day. Change the default and `dpa.html` §4 together, never one. The hourly sweep must keep skipping finished plans via `meta:archive`.
+- **Guest notes are erased the day after the event,** from the plan and every `hist:` version (allergies are health data). Do not drop this without changing privacy, terms and dpa. A device-only plan must not be told it happens.
+- **Greek is reviewed by Andreas himself.** Customer strings are written per language and cross-checked, never find-replaced.
+
+### The back office (`OPERATIONS-PLAN.md` §9, and §6)
+
+- **Back office follows `OPERATIONS-PLAN.md`.** Customer data stays in our SQLite only, with no Sheets or CRM sync. TakeaSeat records payments, Λογιστής issues every receipt. Admin endpoints never return a venue's client cards.
+- **Customer memory is a restarting fixed period, not "forever":** 5 years after the last contact for buyers, 2 for non-buyers; plans still go after their keep period.
+- **A venue on its free year counts as a buyer: 5 years** (`MEMORY_YEARS`). The clock waits while a plan exists or a licence can still make events.
+- **Forgetting keeps only what the books need:** `books:<key>` holds the name and purchase dates, never an email, phone, note, event or timeline. Every erasure goes this one way.
+- **A deleted plan keeps the couple's card and email but leaves the `email:` recovery index.** Do not put it back "to help recovery".
+- **«Πελάτες» never shows what a venue named its events** (DPA); events pass through the whitelist `custEvent`.
+- **In «Πελάτες», «Όλοι» leaves out the archive, but a search there includes it.** A pending signup is its venue's row, not a second one.
+- **admin.html's dialogs are Greek only.** Its remaining English sections move to Greek as each is touched, never back.
+- **Text Andreas copies to a customer speaks the customer's words** (`CLAIM_MSG`; «Κωδικός κτήματος», not the admin box's «Κλειδί κονσόλας»).
+- **A venue's client card lives in its own `vcli:` row, never in the plan:** the client opens the plan and must not read it, and the card outlives the plan. Events made before `meta:clienttrack` never claim «δεν στάλθηκε».
+- **Ready replies are copied or opened in Andreas's own mail app; the server never mails them.** `REPLY_PAY` keeps its «[ΣΥΜΠΛΗΡΩΣΕ…]» gaps until he gives the details.
+- **Payments live in one `ledger:<customerKey>` row per customer,** so the checks share one atomic write. A payment is never deleted or re-priced, only cancelled with a reason; refunds are their own entries.
+- **A refund closes its due, it never reopens it.** VAT is only what Andreas types until the accountant says otherwise. The only warning is `already_paid`; there is no «more than due» check.
+- **The «Για τον Λογιστή» file leaves refunds out and lists only payments with no receipt;** RID is `TAS-<payment id>`. No negative rows, and do not edit Λογιστής's files from here.
+- **The prices are written twice, and a test keeps them equal** (`PRICE_PLAN`, `PRICE_SEASON`; the pages and replies). A new price reaches new dues only; never re-price a recorded due or payment.
+- **The site has one contact page, `epikoinonia.html`,** opened with `?kind=…&q=…`. No form on each page.
+- **The form's "no related mails" tick is stored as `noMail` and sticks** (ν. 3471/2006 άρθρο 11 §3), carried by `adoptLead`. Do not drop it or default it silently.
+- **A form from a known email joins that contact.** The mail to Andreas has Reply-To the sender and no hourly cap; the "we got it" mail echoes nothing the sender typed.
+- **«Σήμερα» is worded on the server, in Greek,** so the screen, the 08:00 mail and Hermes say the same line.
+- **«έγινε» on «Σήμερα» does the real thing where there is one;** elsewhere it hides the line until its situation changes, and money comes back after 7 days if still true.
+- **The weekend count never sends the morning mail by itself.** The mail goes only when something waits on Andreas.
+- **The backup age comes from the stamp file `/data/backup-ok`,** which `backup.sh` writes. After changing `backup.sh`, install it on the host: deploy.sh only reports the drift.
+- **A contact that becomes a customer ends** (`adoptLead`): the `lead:` row is erased, with no "for statistics" copy. A phone stays in the notes, where `phonesOf` finds it; no new phone field.

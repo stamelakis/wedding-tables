@@ -134,3 +134,39 @@ three languages) is accepted knowingly.
 | 2. The fourth kind | Live 2026-11-03 (`deploy-2026-11-03-4`) |
 | 3. One console, saved rooms, old designs | Live 2026-11-04 (`deploy-2026-11-04-1`) |
 | 4. The organiser in public | Live 2026-11-04 (`deploy-2026-11-04-2`); Andreas read the Greek; run on live 2026-11-04 and the test customers removed (the second room's event made through the API) |
+
+## 7. Decisions recorded while building
+
+Moved word for word from `CLAUDE.md` on 2026-11-05; `CLAUDE.md` keeps one line per decision so a session still sees the rule.
+
+- **Companies and organisers follow `COMPANIES-PLAN.md`** (Andreas, 2026-11-03; phases 1–4 live; its §2 has the decisions). A
+  fourth kind, chosen after hearing the cheaper option, and a «Γραφείο εκδηλώσεων», never «διοργανωτής», which already means
+  the venue's client on γιορτή screens. Rejected: a small separate charge for saving designs (payments are by hand for now), and a company choosing to keep guest
+  notes (health data; it keeps its own CSV instead).
+- **A company is a `venue:` row with `custType:"company"`, a `per_wedding` licence and its own console** (phase 3, 2026-11-04). `publicVenue` tells only a company or a γραφείο its `custType`, so a Κτήμα's console never hears a customer word. Rejected: a new record type (the console, keys, rooms and
+  memory would all be written twice), and a move tool for old rows (live had zero `custType` rows when this was built). The ΑΦΜ can be edited only on a `custType` row, because on a Κτήμα the `afm:` row is the
+  free-year fence. The form asks no ΑΦΜ or company name (Andreas adds them at the sale). `books:` keeps the word, never the ΑΦΜ.
+- **For a company, a `per_wedding` quota of 0 means none, never "no limit"** (2026-11-04), and an unused event does not hold its memory clock (`licenceHolds`): it could stay paid for and unused forever.
+  «+1 εκδήλωση (25 €)» on its card is the only way the quota moves; the licence form cannot touch it. A deleted event still counts (the delete dialog says so). If it was a mistake, Andreas presses +1 and cancels the due.
+- **A company ticks `dpa.html` at the first opening of its console; nothing else answers until then** (`agreement_required`, 2026-11-04). The date is saved. A Κτήμα still signs the paper one. Rejected: asking at the sale (Andreas cannot tick for it).
+- **Only a company can copy names and seats from an old event; a Κτήμα copies the room** (Andreas, 2026-11-04). A venue's old guests belong to its previous client (`people_not_allowed`). A γραφείο may too, see below.
+  Guest notes never travel, whoever copies (`designFrom` goes through `withoutGuestNotes`). The planner's field is `note`.
+- **A venue has a list of rooms (`v.rooms`), not one `templateId`** (2026-11-04, up to 20). `roomsOf` still reads the old field and `setRooms` converts at the first write, so no migration ran. A company's room has `kind:"company"`, or it opens with a bride;
+  a Κτήμα's has no kind, because it is shared by all four. Events copy a room, so changing it never changes them.
+- **The console cannot know its owner before login, so a company's links carry `?co=1`** and the device remembers (`weddingVenue.company`). It only chooses the words on the login screen; it grants nothing.
+- **A company opens its plans in the venue role, with its own words** (2026-11-04): `CO_OWNER` makes `tr` look up `o_<key>` first, ahead of `c_`. Any new venue-role string a company can see needs an `o_` twin, in three languages. `prof.couplePerms` stays null, which hides
+  «Τι μπορεί να αλλάξει» and the preview. The kind cannot be changed through PATCH on a company.
+- **A plan is kept 1 to 5 years, the customer's choice in the console, 1 by default** (`PUT /venues/:id/keep`, 2026-11-04), for a Κτήμα and a company alike. A shorter choice deletes what is already past it within 24 hours, after a warning. `dpa.html` §4 states it. The default is still the year in `HANDOFF.md` §10.
+- **A γραφείο εκδηλώσεων is a `venue:` row with `custType:"organiser"`, the same as a Κτήμα in everything but its word** (phase 4, 2026-11-04): console, rights, phases, 349 € + ΦΠΑ, one free year per ΑΦΜ through the same `afm:` row, so a Κτήμα cannot take a second free year as a γραφείο. `POST /signup/venue` accepts only that word; anything else makes a plain Κτήμα, and a company can never sign itself up. Rejected: a new record type, and a per-event price (it would be a company by another name).
+- **A γραφείο's word reaches everyone on its plan, its client too** (phase 4): the plan's `owner.office` makes the planner's `tr` look up `g_<kind prefix>key`, then `g_key`, ahead of the kind's. A new string that says «κτήμα» on a venue plan needs a `g_` twin, in three languages. A test scans for it. `cUploadNone` is exempt: it is a device-only plan, with no owner yet, and it names both. In the `g_p_*` strings «διοργανωτής» stays, because on γιορτή screens it means the client; it never names the γραφείο.
+- **`?of=1` and `weddingVenue.office` do for a γραφείο what `?co=1` does for a company** (phase 4): they choose the words before login and grant nothing. A bare `venue.html` link stays Κτήμα, with a small «Είμαι γραφείο εκδηλώσεων» switch. Rejected: changing the words on every venue's login screen to something neutral.
+- **A γραφείο ticks `dpa.html` at the first opening and may copy names and seats from an old event** (Andreas, 2026-11-04). Both as a company does, with a line on screen that the guests belong to the client, so copying is only for the same client; `terms.html` and `dpa.html` say so. Notes never travel. Rejected: a Κτήμα's paper agreement (a γραφείο signs up alone, so nobody would ask for it) and refusing the copy as a Κτήμα's is refused (a γραφείο often has the same client twice).
+- **«Κτήμα» stays where it describes a κτήμα** (phase 4): the legal pages define «το Κτήμα» to include a γραφείο rather than being rewritten, and the Google titles listed in `STATUS.md` are held back on purpose. The screens a γραφείο or its client see are what must not say it.
+- **On a company event's screens the customer is «η εταιρεία» and the event «η εκδήλωση»** (phase 2, 2026-11-03), never «διοργανωτής»
+  or «γιορτή». A test refuses another event's words in any `c_` string. Its starter room is the wedding's round tables with a
+  «Σκηνή» in the dance floor's place and no DJ (filter: speeches and awards decide who sits near the front). Rejected: the γιορτή's long tables and bar.
+- **The kind makes the customer a company, but only one way** (phase 2, 2026-11-03). Sold or corrected to `company`, the row gets
+  `custType`; moved to a γιορτή it stays a company (a company dinner sold before phase 2); corrected to a γάμος or βάπτιση, `custType`
+  and the ΑΦΜ go, because a private buyer's ΑΦΜ is never kept. Existing company dinners stay γιορτές until someone changes them.
+- **A company buying directly opens at once and in full, with no 14-day withdrawal** (phase 3, decision 5, 2026-11-04): it buys for its business, not as a consumer (terms 8Α; on the lawyer's list). The guide and the payment reply say so. The guide still says «παραστατικό»
+  until the accountant has answered on invoices. A company gets no keepsake mail, so the guide does not promise one.

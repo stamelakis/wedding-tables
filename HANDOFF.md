@@ -893,3 +893,49 @@ cascade-purges its plans; venues can rotate their own key; backups encrypted at 
   plan) and couple links can be generated in ΕΛ/EN/DE (language select next to "Νέος γάμος").
 - **Memory**: if the next agent is Claude Code on Andreas's PC, the memory files (`wedding-tables-app.md`,
   `takeaseat-owner-access.md`) already carry this state and the access links.
+
+## 10. Decisions on the planner, the kinds and keeping data
+
+Moved word for word from `CLAUDE.md` on 2026-11-05; `CLAUDE.md` keeps one line per decision so a session still sees the rule.
+
+- **A γιορτή starts with NO honour table** (decided 2026-10-10, built 2026-10-17). A γάμος and a
+  βάπτιση each have exactly one table the evening is about; a γιορτή may have none, one or several, so
+  it becomes an opt-in table from the toolbar. Rejected: copying the wedding's pattern — Andreas's
+  point was that the pattern is not universal, and the language agrees: Greek has no attested phrase
+  for such a table at a party.
+- **If one is added it is «Κεντρικό τραπέζι».** Rejected: «Τραπέζι της γιορτής» (in real Greek that is
+  the Christmas table/menu), «Τιμητικό τραπέζι» (the honorific *banquet*, i.e. the whole event),
+  «Τραπέζι των οικοδεσποτών» (zero attestation), «Τραπέζι τιμής» (reserved by the suite, see the Gotchas in `CLAUDE.md`).
+- **The baptism starter adds exactly one thing, the children's corner.** The filter is "does it change
+  a seating decision", not "is it common at a baptism" — τούρτα, candy bar and μπομπονιέρες are all
+  common and all two taps away in the decor menu, so putting them in the starter only gives the
+  customer something to delete.
+- **The lab keeps one demo per kind** (2026-10-17). A link naming a kind (`?ev=party`) opens the visitor's
+  demo of that kind or adds one beside the old (`labDoor`); a bare `lab.html` reopens what they had. Rejected:
+  rebuilding the open demo from the link — it silently threw away what a returning visitor had built.
+- **No server-side 8-table cap** (checked 2026-10-18). Every way onto the server needs a purchase, a venue
+  licence/free year or the admin, so nothing free reaches it; the cap is for device-only plans and the planner
+  enforces it. Build a server check only together with a free online plan, if one is ever offered.
+- **`lab.html` is the one indexed planner build**; the three app builds carry `noindex` instead,
+  because their URLs carry `?plan=` invite tokens and a plan link must never be indexable. If the lab
+  ever goes back to noindex, remove it from `sitemap.xml` in the same commit.
+- **«Δεν σβήνουμε ποτέ» must never be written anywhere.** Storage is irrelevant (a 300-guest plan is
+  6.9 KB gzipped; keeping everything for a decade costs cents), but GDPR storage limitation does not
+  allow "we keep it until you ask us to delete it", and for a venue's weddings TakeaSeat is the
+  *processor* — the 7-day deletion is the venue's documented instruction in `dpa.html` §4 and cannot
+  be changed unilaterally. The honest promises are a fixed period («ένας χρόνος μετά την εκδήλωση»)
+  and an opt-in with the free-text note field stripped, because that field holds allergies.
+- **Every plan is kept one year after the event, automatically** — a couple's own and a venue's wedding,
+  past events included (Andreas, 2026-10-16). Rejected: an opt-in box, a 7-day exception for venues ("why
+  make an exception?"), and "forever" (GDPR, above). For venues the year is their instruction in `dpa.html`
+  §4: change the default and the agreement together, never one. Read-only from the day after the event.
+  The hourly sweep skips finished plans via `meta:archive` (full pass nightly after 04:00) — keep that, or
+  a year of plans is read every hour.
+- **Guest notes are erased the day after the event**, from the plan and every `hist:` version; names and
+  seats stay. The note field is where allergies (health data) end up, and it serves the evening, not the
+  year. The pages say so; do not drop the erasure without changing privacy, terms and dpa. The planner
+  says it only in the Excel import (the one way a customer brings notes in) and only on an online plan:
+  the erasure is the server's, so a device-only plan keeps its notes and must not be told otherwise.
+- **Greek is reviewed by Andreas himself.** Strings a customer reads are written per language and
+  cross-checked, never find-replaced: 36 `p_*` strings contain «γιορτ» and name the *event*, while
+  only five name the *table*.
