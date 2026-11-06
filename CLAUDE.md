@@ -9,7 +9,7 @@ decisions a future session might undo by mistake. `STATUS.md` says where we are.
 ```bash
 node tools/build-planner.mjs            # regenerate the planner outputs
 node tools/build-planner.mjs --check    # must print "all planner outputs up to date"
-node tools/test-api.mjs                 # the whole suite (1799 checks today)
+node tools/test-api.mjs                 # the whole suite (1862 checks today)
 node tools/dev.mjs                      # local stack on :8080 — never `node server/server.mjs`
 node tools/dev-customers.mjs            # the same, seeded with one customer per «Θέλουν εμένα» flag and stage
 ```
@@ -94,7 +94,8 @@ One line each, so a session sees the rule. Before changing one, read its full re
 - **If one is added it is «Κεντρικό τραπέζι»,** never «Τραπέζι της γιορτής», «Τιμητικό τραπέζι» or «Τραπέζι των οικοδεσποτών».
 - **The baptism starter adds exactly one thing, the children's corner.** The filter is "does it change a seating decision", not "is it common".
 - **The lab keeps one demo per kind** (`labDoor`). A link naming a kind never rebuilds the open demo.
-- **No server-side 8-table cap:** nothing free reaches the server. Build one only together with a free online plan.
+- **A free online plan holds 8 guest tables, and the server refuses the 9th** (`FREE_TABLES`, `freeCapped`): a `couple:` row with `free:true` from `POST /signup/free`, one per email. A save that adds no table always passes. Only «Ξεκλείδωμα (25 €)» in admin lifts it.
+- **A free plan never opened in 30 days goes; one unopened for 180 days is warned once, then erased 14 days later** (`freeSweep`). No mail could leave: no warning, so no erasure. Terms 8Β and privacy §7 say so; change them together.
 - **`lab.html` is the one indexed planner build;** the app builds carry `noindex` because their URLs carry `?plan=` tokens. If the lab goes noindex, remove it from `sitemap.xml` in the same commit.
 - **«Δεν σβήνουμε ποτέ» must never be written anywhere** (GDPR storage limitation; for a venue's events TakeaSeat is the processor).
 - **Every plan is kept one year after the event, automatically,** read-only from the next day. Change the default and `dpa.html` §4 together, never one. The hourly sweep must keep skipping finished plans via `meta:archive`.

@@ -3599,9 +3599,9 @@ export default {
                 if (b.unfreeze === true && rec.frozenUntil) { rec.frozenUntil = null; addAudit(rec, "admin", "unfreeze"); dirty = true; }
                 return dirty ? rec : null; });
             }
-            const unlockAt = Date.now();
+            const unlockAt = Date.now(); let unlockedNow = false;   // set only by the call that really unlocked: a second press, even in the same millisecond, adds no second due
             const r = await kvUpdate(env, "couple:" + parts[2], c => { if (!c) return null; const old = c.email || "";
-              if (b.unlock === true && c.free && !c.unlockedAt) { c.unlockedAt = unlockAt; delete c.idleWarnedAt; }   // they paid: no table limit, an ordinary bought plan from here
+              if (b.unlock === true && c.free && !c.unlockedAt) { c.unlockedAt = unlockAt; delete c.idleWarnedAt; unlockedNow = true; }   // they paid: no table limit, an ordinary bought plan from here
               if (b.name != null) c.name = String(b.name).slice(0, 120);
               if (newKind !== undefined) { c.kind = newKind;
                 // the company kind makes the customer a company; a correction to a γάμος or βάπτιση undoes it, ΑΦΜ included (a private buyer's is never kept)
@@ -3616,7 +3616,7 @@ export default {
             if (!r.obj) return json({ error: "not found" }, 404);
             if (b.weddingDate !== undefined || b.retention !== undefined) await unarchive(env);   // a deletion date may have moved
             let c = r.obj, mailed = null;
-            if (b.unlock === true && c.unlockedAt === unlockAt) {   // the 25 € goes on «Πληρωμές» as a new customer's does, and the customer is told
+            if (unlockedNow) {   // the 25 € goes on «Πληρωμές» as a new customer's does, and the customer is told
               await addDue(env, "c:" + c.id, c, { id: rnd(10), what: "plan", kind: normKind(c.kind), amount: PRICE_PLAN, plusVat: false, due: addDays(todayAthens(), DUE_NEW_DAYS), src: "unlock" });
               if (c.email && mailOn(env)) mailed = !!send(env, c.email, mailMsg(c.lang, "freeUnlocked", { name: c.name }));
               console.log("admin: a free plan was unlocked");

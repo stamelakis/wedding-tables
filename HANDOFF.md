@@ -447,6 +447,23 @@ It signs up itself at `venue.html?of=1#signup`, or picks «Γραφείο εκδ
   the `g_` overlay, on for the γραφείο and for its client through `owner.office` in the plan GET.
 - **Public pages.** `grafeio-ekdiloseon.html`, `#grafeia` on the home page, and paragraphs in `terms.html`, `dpa.html` and `privacy.html`.
 
+## 1l. The free online plan (2026-11-06)
+
+Anyone signs up alone at `epikoinonia.html?q=free` (any kind, companies too) with name, email, event date and the
+terms tick. `POST /signup/free` makes a `couple:` row with `free:true`, `termsAt`, and a `plan:` with the date; the
+claim link is mailed, never answered. An address that already has a plan or console gets its links again
+(`recoverMail`), never a second plan. Limits: 3 per IP a day, 100 a day in all (`rl:freesignup:*`), the bot trap,
+server.mjs's burst limit and own-Origin check.
+
+- **The cap.** 8 guest tables, on screen (`tableCapFor`, `prof.free` from the plan GET's `free`) and on the server
+  (`free_limit` on PUT and on extra plans). The planner's note links `epikoinonia.html?q=unlock`, a contact topic.
+- **Unlocking.** Andreas presses «Ξεκλείδωμα (25 €)…» on the card when they paid: `unlockedAt`, a 25 € due on
+  «Πληρωμές» (`src:"unlock"`), a mail. From then it is a bought plan: no cap, no idle rule, 5 years' memory, books.
+- **Until then.** Phases and retention as a bought direct plan (opensAt null, no withdrawal wait). Memory 2 years
+  like a non-buyer; the books keep nothing. Never in «Θέλουν εμένα» for an unopened link.
+- **Cleanup** (`freeSweep`): unopened link after 30 days erases the plan; 180 days without an opening sends
+  `freeIdle` once, and 14 days later it is erased unless opened (`seenAt`, updated at most daily on open).
+
 ## 2. Architecture
 
 ```
@@ -913,9 +930,11 @@ Moved word for word from `CLAUDE.md` on 2026-11-05; `CLAUDE.md` keeps one line p
 - **The lab keeps one demo per kind** (2026-10-17). A link naming a kind (`?ev=party`) opens the visitor's
   demo of that kind or adds one beside the old (`labDoor`); a bare `lab.html` reopens what they had. Rejected:
   rebuilding the open demo from the link — it silently threw away what a returning visitor had built.
-- **No server-side 8-table cap** (checked 2026-10-18). Every way onto the server needs a purchase, a venue
-  licence/free year or the admin, so nothing free reaches it; the cap is for device-only plans and the planner
-  enforces it. Build a server check only together with a free online plan, if one is ever offered.
+- **A server-side 8-table cap, for free online plans only** (2026-11-06, replacing the 2026-10-18 "no cap").
+  Andreas decided to offer a free online plan of 8 guest tables, so the server now refuses a 9th on any plan whose
+  couple is `free` and not `unlockedAt`. Counted as the planner counts (`guestTables`: the first head table is free).
+  A save that adds no table always passes, so an old plan is never stuck. Rejected: a free tier with no account
+  (nothing to unlock, nobody to warn) and a server cap for every plan (bought plans have no limit).
 - **`lab.html` is the one indexed planner build**; the three app builds carry `noindex` instead,
   because their URLs carry `?plan=` invite tokens and a plan link must never be indexable. If the lab
   ever goes back to noindex, remove it from `sitemap.xml` in the same commit.

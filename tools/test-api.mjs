@@ -5318,8 +5318,9 @@ function leadStageOf(l) { return l.lost ? 8 : l.stage || 1; }
     const L = raw('ledger:c:' + F.id);
     ok(L.dues.length === 1 && L.dues[0].src === 'unlock', 'free: … 25 € is expected on «Πληρωμές», like a new customer', L.dues);
     ok(sent.length === before + 1 && sent[before].to === 'free1@example.gr', 'free: … and the customer is told by mail', sent[before] && sent[before].subject);
-    await call('PATCH', '/admin/couples/' + F.id, { unlock: true }, OWN);
-    ok(raw('ledger:c:' + F.id).dues.length === 1 && sent.length === before + 1, 'free: pressing it twice adds no second due and no second mail');
+    { const realNow = Date.now, at = raw('couple:' + F.id).unlockedAt; Date.now = () => at;   // the second press in the very same millisecond (it once added a second due)
+      try { await call('PATCH', '/admin/couples/' + F.id, { unlock: true }, OWN); } finally { Date.now = realNow; } }
+    ok(raw('ledger:c:' + F.id).dues.length === 1 && sent.length === before + 1, 'free: pressing it twice, even in the same millisecond, adds no second due and no second mail');
     p = await call('PUT', '/plans/' + F.planId, { plan: layout({ tables: [head, ...tablesN(12)] }), baseUpdated: up }, H);
     ok(p.status === 200, 'free: unlocked, the 9th table and beyond are saved', p.d);
     ok((await call('GET', '/plans/' + F.planId, undefined, H)).d.free === undefined, 'free: … and the planner is no longer told a limit');
