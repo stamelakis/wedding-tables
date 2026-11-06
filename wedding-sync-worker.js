@@ -164,6 +164,16 @@ const COUPLE_RETENTION = { keepDays: 365 };   // couples have their own setting 
 const OPEN_DELAY_DAYS = 15, FULL_WINDOW_DAYS = 30, START_NOW_MAX_DAYS = 21, COUPLE_DATE_CHANGES = 1, FREEZE_BEFORE_DAYS = 14;
 const NAMES_PERMS = { floor: false, decor: true, layout: false, tables: false, seats: true, labels: true, maxSeats: 0 };   // decor: the couple's own items (venue items follow the venue's permission)
 const STARTER_GUEST_TABLES = 8;   // a new plan starts with 8 guest tables + the head table
+// ---- the free online plan (2026-11-06) ----
+// Anyone signs up alone, by email (POST /signup/free), for one event of any kind: a couple record with `free:true`, up to
+// FREE_TABLES guest tables, counted as the planner counts them (the first honour table is free). Andreas unlocks it when
+// they pay 25 € (PATCH /admin/couples/:id {unlock}); after that it is an ordinary bought plan. It opens at once (nothing was
+// bought, so no withdrawal period) and follows a bought plan's phases, date rules and keeping. Two more rules, because
+// nothing was bought: a first-opening link never opened is erased when it expires, and a plan nobody opens for
+// FREE_IDLE_DAYS is erased FREE_IDLE_WARN_DAYS after a warning mail. The books keep nothing of a free customer.
+const FREE_TABLES = STARTER_GUEST_TABLES, FREE_PER_IP_DAY = 3, FREE_DAY_MAX = 100, FREE_IDLE_DAYS = 180, FREE_IDLE_WARN_DAYS = 14;
+const freeCapped = c => !!(c && c.free && !c.unlockedAt);
+const guestTables = p => { const t = (p && Array.isArray(p.tables)) ? p.tables : []; return t.length - Math.min(1, t.filter(x => x && x.shape === "head").length); };   // = the planner's guestTableCount
 const andPerms = (p, q) => { const o = {}; for (const k of PERM_KEYS) o[k] = !!(p[k] && q[k]); o.maxSeats = p.maxSeats || 0; return o; };
 const ymdOk = s => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && (d => !isNaN(d) && d.toISOString().slice(0, 10) === s)(new Date(s + "T00:00:00Z"));
 const addDays = (ymd, n) => new Date(Date.parse(ymd + "T00:00:00Z") + n * DAY).toISOString().slice(0, 10);
@@ -291,6 +301,9 @@ export async function mailOutcome(env, tag, ok, code) {
 const MAILS = {
   el: {
     claim: ["Το τραπεζολόγιό σας — TakeaSeat", "Γεια σας!\n\nΤο τραπεζολόγιο «{name}» σας περιμένει. Ανοίξτε τον σύνδεσμο στο Chrome ή στο Safari και πατήστε «Άνοιγμα του σχεδίου μου»:\n\n{link}\n\nΟ σύνδεσμος ανοίγει μία φορά και ισχύει 30 ημέρες. Η TakeaSeat δεν ανοίγει το σχέδιό σας χωρίς πρόσκλησή σας — κάθε πρόσβαση καταγράφεται.\nΑν χάσετε τον σύνδεσμο, ζητήστε νέο με αυτό το email: {recover}\n\nTakeaSeat"],
+    freeClaim: ["Το δωρεάν σχέδιό σας — TakeaSeat", "Γεια σας!\n\nΤο δωρεάν σχέδιο «{name}» είναι έτοιμο. Ανοίξτε τον σύνδεσμο στο Chrome ή στο Safari και πατήστε «Άνοιγμα του σχεδίου μου»:\n\n{link}\n\nΟ σύνδεσμος ανοίγει μία φορά και ισχύει 30 ημέρες· αν δεν τον ανοίξετε ως τότε, το σχέδιο διαγράφεται.\n\nΤο δωρεάν σχέδιο χωράει έως {n} τραπέζια καλεσμένων και μένει online, ώστε να το ανοίγετε από κινητό και υπολογιστή. Αν χρειαστείτε περισσότερα, το ξεκλειδώνετε με 25 € (εφάπαξ, με ΦΠΑ) και κρατάτε ό,τι έχετε ήδη φτιάξει. Αν δεν το ανοίξετε για 6 μήνες, θα σας στείλουμε email και θα διαγραφεί 14 ημέρες μετά.\n\nΗ TakeaSeat δεν ανοίγει το σχέδιό σας χωρίς πρόσκλησή σας — κάθε πρόσβαση καταγράφεται.\nΑν χάσετε τον σύνδεσμο, ζητήστε νέο με αυτό το email: {recover}\n\nΑν δεν κάνατε εσείς την εγγραφή, αγνοήστε αυτό το μήνυμα· το σχέδιο διαγράφεται μόνο του.\n\nTakeaSeat"],
+    freeIdle: ["Το σχέδιό σας θα διαγραφεί — TakeaSeat", "Γεια σας!\n\nΤο δωρεάν σχέδιο «{name}» δεν έχει ανοίξει εδώ και 6 μήνες. Αν δεν το ανοίξετε ως τις {until}, θα διαγραφεί οριστικά, μαζί με τους καλεσμένους του.\n\nΓια να το κρατήσετε, αρκεί να το ανοίξετε από τη συσκευή σας. Αν δεν έχετε πια τον σύνδεσμο, ζητήστε νέο με αυτό το email: {recover}\n\nΑν δεν το χρειάζεστε, δεν χρειάζεται να κάνετε τίποτα.\n\nTakeaSeat"],
+    freeUnlocked: ["Το σχέδιό σας ξεκλειδώθηκε — TakeaSeat", "Γεια σας!\n\nΤο σχέδιο «{name}» δεν έχει πια όριο τραπεζιών. Ό,τι έχετε ήδη φτιάξει μένει όπως ήταν· ανοίξτε το όπως πάντα.\n\nΕυχαριστούμε!\n\nTakeaSeat"],
     recover: ["Οι σύνδεσμοί σας — TakeaSeat", "Γεια σας!\n\nΖητήσατε πρόσβαση στο TakeaSeat με αυτό το email:\n\n{items}\n\nΚάθε σύνδεσμος ανοίγει μία φορά. Οι σύνδεσμοι ανάκτησης ισχύουν μία ώρα. Αν δεν το ζητήσατε εσείς, αγνοήστε αυτό το μήνυμα — τίποτα δεν αλλάζει.\n\nTakeaSeat"],
     itemCouple: "Τραπεζολόγιο «{name}»: {link}", itemClaim: "Τραπεζολόγιο «{name}» (πρώτο άνοιγμα — ισχύει έως {until}): {link}", itemVenue: "Κονσόλα «{name}» — ορίστε νέο κωδικό: {link}",
     relink: ["Ο σύνδεσμός σας — TakeaSeat", "Γεια σας!\n\nΚατόπιν αιτήματός σας, ορίστε σύνδεσμος για να ανοίξετε ξανά το τραπεζολόγιο «{name}» σε αυτή ή σε νέα συσκευή:\n\n{link}\n\nΙσχύει 7 ημέρες και ανοίγει μία φορά. Αν δεν το ζητήσατε εσείς, αγνοήστε αυτό το μήνυμα.\n\nTakeaSeat"],
@@ -338,6 +351,9 @@ const MAILS = {
   },
   en: {
     claim: ["Your seating plan — TakeaSeat", "Hello!\n\nYour seating plan “{name}” is ready. Open the link in Chrome or Safari and press “Open my plan”:\n\n{link}\n\nThe link opens once and is valid for 30 days. TakeaSeat never opens your plan without your invitation — every access is logged.\nIf you lose the link, ask for a new one with this email: {recover}\n\nTakeaSeat"],
+    freeClaim: ["Your free plan — TakeaSeat", "Hello!\n\nYour free plan “{name}” is ready. Open the link in Chrome or Safari and press “Open my plan”:\n\n{link}\n\nThe link opens once and is valid for 30 days; if it is not opened by then, the plan is deleted.\n\nThe free plan holds up to {n} guest tables and stays online, so you can open it on your phone and your computer. If you need more, you unlock it for 25 € (one-off, VAT included) and keep everything you have already made. If you do not open it for 6 months, we will email you and it will be deleted 14 days later.\n\nTakeaSeat never opens your plan without your invitation — every access is logged.\nIf you lose the link, ask for a new one with this email: {recover}\n\nIf you did not sign up, ignore this message; the plan deletes itself.\n\nTakeaSeat"],
+    freeIdle: ["Your plan will be deleted — TakeaSeat", "Hello!\n\nYour free plan “{name}” has not been opened for 6 months. If it is not opened by {until}, it will be deleted for good, together with its guests.\n\nTo keep it, just open it on your device. If you no longer have the link, ask for a new one with this email: {recover}\n\nIf you do not need it, there is nothing to do.\n\nTakeaSeat"],
+    freeUnlocked: ["Your plan is unlocked — TakeaSeat", "Hello!\n\nYour plan “{name}” no longer has a table limit. Everything you have made stays as it was; open it as always.\n\nThank you!\n\nTakeaSeat"],
     recover: ["Your links — TakeaSeat", "Hello!\n\nYou asked for access to TakeaSeat with this email:\n\n{items}\n\nEach link opens once. Recovery links are valid for one hour. If this was not you, ignore this message — nothing changes.\n\nTakeaSeat"],
     itemCouple: "Seating plan “{name}”: {link}", itemClaim: "Seating plan “{name}” (first opening — valid until {until}): {link}", itemVenue: "Console “{name}” — set a new key: {link}",
     relink: ["Your link — TakeaSeat", "Hello!\n\nAs you asked, here is a link to open your seating plan “{name}” again on this or a new device:\n\n{link}\n\nIt is valid for 7 days and opens once. If this was not you, ignore this message.\n\nTakeaSeat"],
@@ -377,6 +393,9 @@ const MAILS = {
   },
   de: {
     claim: ["Ihr Sitzplan — TakeaSeat", "Hallo!\n\nIhr Sitzplan „{name}“ ist bereit. Öffnen Sie den Link in Chrome oder Safari und tippen Sie auf „Meinen Plan öffnen“:\n\n{link}\n\nDer Link öffnet einmal und gilt 30 Tage. TakeaSeat öffnet Ihren Plan nie ohne Ihre Einladung — jeder Zugriff wird protokolliert.\nWenn Sie den Link verlieren, fordern Sie mit dieser E-Mail einen neuen an: {recover}\n\nTakeaSeat"],
+    freeClaim: ["Ihr kostenloser Plan — TakeaSeat", "Hallo!\n\nIhr kostenloser Plan „{name}“ ist bereit. Öffnen Sie den Link in Chrome oder Safari und tippen Sie auf „Meinen Plan öffnen“:\n\n{link}\n\nDer Link öffnet einmal und gilt 30 Tage; wird er bis dahin nicht geöffnet, wird der Plan gelöscht.\n\nDer kostenlose Plan fasst bis zu {n} Gästetische und bleibt online, sodass Sie ihn auf Handy und Computer öffnen können. Brauchen Sie mehr, schalten Sie ihn für 25 € frei (einmalig, inkl. MwSt.) und behalten alles, was Sie schon erstellt haben. Öffnen Sie ihn 6 Monate lang nicht, schreiben wir Ihnen eine E-Mail, und 14 Tage später wird er gelöscht.\n\nTakeaSeat öffnet Ihren Plan nie ohne Ihre Einladung — jeder Zugriff wird protokolliert.\nWenn Sie den Link verlieren, fordern Sie mit dieser E-Mail einen neuen an: {recover}\n\nWenn Sie sich nicht angemeldet haben, ignorieren Sie diese Nachricht; der Plan löscht sich von selbst.\n\nTakeaSeat"],
+    freeIdle: ["Ihr Plan wird gelöscht — TakeaSeat", "Hallo!\n\nIhr kostenloser Plan „{name}“ wurde seit 6 Monaten nicht geöffnet. Wird er bis zum {until} nicht geöffnet, wird er endgültig gelöscht, mit allen Gästen.\n\nUm ihn zu behalten, öffnen Sie ihn einfach auf Ihrem Gerät. Wenn Sie den Link nicht mehr haben, fordern Sie mit dieser E-Mail einen neuen an: {recover}\n\nWenn Sie ihn nicht brauchen, müssen Sie nichts tun.\n\nTakeaSeat"],
+    freeUnlocked: ["Ihr Plan ist freigeschaltet — TakeaSeat", "Hallo!\n\nIhr Plan „{name}“ hat keine Tischgrenze mehr. Alles, was Sie erstellt haben, bleibt wie es war; öffnen Sie ihn wie immer.\n\nVielen Dank!\n\nTakeaSeat"],
     recover: ["Ihre Links — TakeaSeat", "Hallo!\n\nSie haben mit dieser E-Mail Zugang zu TakeaSeat angefordert:\n\n{items}\n\nJeder Link öffnet einmal. Wiederherstellungslinks gelten eine Stunde. Wenn Sie das nicht waren, ignorieren Sie diese Nachricht — nichts ändert sich.\n\nTakeaSeat"],
     itemCouple: "Sitzplan „{name}“: {link}", itemClaim: "Sitzplan „{name}“ (erstes Öffnen — gültig bis {until}): {link}", itemVenue: "Konsole „{name}“ — neuen Schlüssel festlegen: {link}",
     relink: ["Ihr Link — TakeaSeat", "Hallo!\n\nWie gewünscht, hier ein Link, um Ihren Sitzplan „{name}“ auf diesem oder einem neuen Gerät wieder zu öffnen:\n\n{link}\n\nEr gilt 7 Tage und öffnet einmal. Wenn Sie das nicht waren, ignorieren Sie diese Nachricht.\n\nTakeaSeat"],
@@ -426,6 +445,27 @@ async function indexEmail(env, email, kind, id, add) {
     const has = (ix[k] || []).includes(id); if (add === has) return null;
     ix[k] = add ? [...(ix[k] || []), id] : (ix[k] || []).filter(x => x !== id);
     return (ix.couples.length || ix.venues.length) ? ix : { __del: true }; });
+}
+// Every way in this address has, in one mail: /recover, and a free sign-up from an address that already has a plan.
+async function recoverMail(env, email, lang, ix) {
+  const items = [];
+  for (const cid of (ix.couples || [])) {
+    const c = safeParse(await env.PLANS.get("couple:" + cid)); if (!c || c.email !== email) continue;
+    const main = safeParse(await env.PLANS.get("plan:" + c.planId)); if (!main || main.coupleId !== c.id) continue;
+    const cl = c.lang || lang;
+    const ct = c.claimToken ? await freshClaim(env, c, main) : null;
+    if (ct) { items.push(fill(MAILS[lang].itemClaim, { name: c.name, until: fmtDay((c.claimAt || c.resetAt || c.createdAt) + CLAIM_TTL, lang), link: plannerUrl(env, cl) + "#claim=" + ct }));
+      await markMailed(env, c.id, email); }
+    else { const t = await mintToken(env, { kind: "couple-recover", cid: c.id, gen: main.keyGen || 0, lg: c.lgen || 0, email }, RECOVER_TTL);
+      items.push(fill(MAILS[lang].itemCouple, { name: c.name, link: plannerUrl(env, cl) + "#recover=" + t })); }
+  }
+  for (const vid of (ix.venues || [])) {
+    const v = safeParse(await env.PLANS.get("venue:" + vid)); if (!v || v.email !== email) continue;
+    const t = await mintToken(env, { kind: "venue-recover", vid: v.id, lg: v.lgen || 0, email }, RECOVER_TTL);
+    items.push(fill(MAILS[lang].itemVenue, { name: v.name, link: baseUrl(env) + consolePath(v) + "#recover=" + t }));
+  }
+  if (items.length) send(env, email, mailMsg(lang, "recover", { items: items.join("\n\n") }));
+  return items.length;
 }
 async function freshClaim(env, c, main, force) {
   const gen = (main && main.keyGen) || 0;
@@ -516,7 +556,7 @@ export async function sweep(env) {
     const c = safeParse(await env.PLANS.get(k));
     if (!c || now - (c.createdAt || 0) > CLAIM_TTL + 86400000) { await env.PLANS.delete(k); out.claim++; }
   }
-  Object.assign(out, await lifecycleSweep(env, now), await renewSweep(env, now), await signupSweep(env, now), await memorySweep(env, now));
+  Object.assign(out, await lifecycleSweep(env, now), await renewSweep(env, now), await signupSweep(env, now), await freeSweep(env, now), await memorySweep(env, now));
   try { Object.assign(out, await morningMail(env, now)); } catch (e) { console.error("morning mail failed", e); }   // phase 6: «Σήμερα» by mail
   await record({ out });
   return out;
@@ -803,6 +843,32 @@ async function signupSweep(env, now) {
     if ((s.status === "expired" || s.status === "deleted") && now - (s.expiredAt || s.createdAt || 0) > SIGNUP_KEEP_DAYS * DAY) {
       await env.PLANS.delete("signup:" + sid); await env.PLANS.delete("act:s:" + sid); await removeIndex(env, "signups:index", sid); out.signupsDropped++;
     }
+  }
+  return out;
+}
+// The free plans' two extra rules (see FREE_TABLES). Only a plan that is still free: unlocked, it is a bought one.
+//  1. Its first-opening link expired unopened: nobody ever used it, so it goes with no word (the sign-up mail said so).
+//  2. Nobody opened it for FREE_IDLE_DAYS: one warning mail, then erased FREE_IDLE_WARN_DAYS later unless it is opened
+//     (an opening clears the warning, see GET /plans/:id). No mail could leave: no warning, so nothing is erased.
+async function freeSweep(env, now) {
+  const out = { freeUnopened: 0, freeWarned: 0, freeIdle: 0 };
+  for (const cid of (safeParse(await env.PLANS.get("couples:index")) || [])) {
+    const c = safeParse(await env.PLANS.get("couple:" + cid));
+    if (!freeCapped(c)) continue;
+    if (!c.claimedAt && !c.resetAt && now - (c.claimAt || c.createdAt || now) > CLAIM_TTL) {
+      await eraseCouple(env, c.id, "free_unopened"); out.freeUnopened++; console.log("free: a free plan whose link was never opened was erased"); continue;
+    }
+    if (!(await env.PLANS.get("plan:" + c.planId))) continue;   // its plan already went the ordinary way: the memory clock has the card
+    const seen = Math.max(c.createdAt || 0, c.claimedAt || 0, c.resetAt || 0, c.seenAt || 0);
+    if (c.idleWarnedAt) {
+      if (now - c.idleWarnedAt > FREE_IDLE_WARN_DAYS * DAY) { await eraseCouple(env, c.id, "free_idle"); out.freeIdle++; console.log("free: an unused free plan was erased after its warning"); }
+      continue;
+    }
+    if (now - seen <= FREE_IDLE_DAYS * DAY || !c.email || !mailOn(env)) continue;
+    const until = fmtDay(now + FREE_IDLE_WARN_DAYS * DAY, c.lang);
+    if (!send(env, c.email, mailMsg(c.lang, "freeIdle", { name: c.name, until, recover: plannerUrl(env, c.lang) + "#recover" }), { k: "couple", id: c.id })) continue;
+    await kvUpdate(env, "couple:" + c.id, cp => { if (!cp || cp.idleWarnedAt) return null; cp.idleWarnedAt = now; return cp; });
+    out.freeWarned++;
   }
   return out;
 }
@@ -1693,13 +1759,14 @@ async function coupleCustomer(env, c, now) {
   const events = [...(main ? [main] : []), ...cc.extraPlans.map(p => custEvent(p, true))];
   const done = !main || main.over;
   const flags = [];
-  if (couple.pendingClaim && !done && now - (couple.claimIssuedAt || couple.createdAt || now) > CUST_LINK_DAYS * DAY) flags.push("claim_unused");
+  if (couple.pendingClaim && !done && !freeCapped(c) && now - (couple.claimIssuedAt || couple.createdAt || now) > CUST_LINK_DAYS * DAY) flags.push("claim_unused");   // a free sign-up never opened is no work of his: it goes by itself
   if (events.some(e => e.support)) flags.push("support_open");
   const stage = done ? 7 : (couple.pendingClaim || main.phase === "waiting") ? 4 : 5;
   const row = custRow({ key: "c:" + c.id, type: coupleType(c, couple.kind), name: c.name || "", stage, flags, events,
     until: (main && !main.keep && main.deleteAt) ? ymdOfMs(main.deleteAt - 1) : null, untilKind: main ? (main.keep ? "keep" : "plan") : null,
     last: Math.max(c.createdAt || 0, c.claimedAt || 0, ...events.map(custTouch)) || null,
-    email: c.email || "", phone: phoneOf(c.contact), afm: c.afm || "", createdAt: c.createdAt || null, active: true, nextStep: c.nextStep, contactAt: c.contactAt });
+    email: c.email || "", phone: phoneOf(c.contact), afm: c.afm || "", createdAt: c.createdAt || null, active: true, nextStep: c.nextStep, contactAt: c.contactAt,
+    ...(freeCapped(c) ? { free: true } : {}) });
   return { row, card: { couple, events } };
 }
 async function signupCustomer(env, s, now) {   // only a pending signup whose venue is gone: every other one IS its venue's row
@@ -1746,9 +1813,9 @@ const leadOut = l => ({ id: l.id, name: l.name || "", source: l.source || "other
 // one-line field loses its control characters (a line break in a name would otherwise reach a mail subject).
 const CONTACT_KINDS = { wedding: "couple", baptism: "parents", party: "party", company: "company", venue: "venue", organiser: "organiser" };
 const CONTACT_NO_DATE = ["venue", "organiser"];   // they write about their business, not about one evening
-const CONTACT_TOPICS = ["start", "ask", "demo", "other"];
+const CONTACT_TOPICS = ["start", "ask", "demo", "unlock", "other"];   // unlock: the free plan's «more tables» link
 // how the timeline and his mail say what they asked for; he reads Greek, whatever language the form was in
-const CONTACT_TOPIC_EL = { start: "Θέλει το TakeaSeat", ask: "Ρωτά αν το κτήμα του δουλεύει με το TakeaSeat", demo: "Ζητά demo για το κτήμα", other: "Ερώτηση" };
+const CONTACT_TOPIC_EL = { start: "Θέλει το TakeaSeat", ask: "Ρωτά αν το κτήμα του δουλεύει με το TakeaSeat", demo: "Ζητά demo για το κτήμα", unlock: "Θέλει να ξεκλειδώσει το δωρεάν σχέδιο (25 €)", other: "Ερώτηση" };
 const contactTopicEl = f => (f.kind === "organiser" && f.topic === "demo") ? "Ζητά demo για το γραφείο" : CONTACT_TOPIC_EL[f.topic];   // a γραφείο has no κτήμα
 const CONTACT_WORDS = {
   el: { wedding: "γάμος", baptism: "βάπτιση", party: "γιορτή", company: "εταιρεία", venue: "κτήμα ή χώρος εκδηλώσεων", organiser: "γραφείο εκδηλώσεων", none: "—" },
@@ -1929,7 +1996,8 @@ function memoryOf(t, rec, x, acts, now, ledger) {   // ledger: a payment is a pu
   const lastTouch = ymdOfMs(Math.min(last, now));
   const held = (x.card.events.length || (t === "v" && ((rec.weddings || []).length || (rec.trash || []).length))) ? "plans"
     : (t === "v" && licenceHolds(rec)) ? "licence" : null;
-  return { lastTouch, forgetAt: addYears(lastTouch, MEMORY_YEARS), years: MEMORY_YEARS, held };
+  const years = (t === "c" && freeCapped(rec)) ? LEAD_YEARS : MEMORY_YEARS;   // a free plan never bought: a non-buyer's 2 years
+  return { lastTouch, forgetAt: addYears(lastTouch, years), years, held };
 }
 // The timeline, newest first: his entries and what the system already knows. Codes only (admin.html words them), a time,
 // sometimes a kind of event or a date — never a label, a name from a plan, a key or a device.
@@ -1957,7 +2025,8 @@ function timelineOf(t, rec, x, acts, ledger) {
     for (const r of (rec.renewals || [])) if (r) add(r.at, "renewed", { d: r.to || null });
     mails(rec.trialReminders, "trial_mail"); mails(rec.renewReminders, "renew_mail");
   } else if (t === "c") {
-    add(rec.paidAt || rec.createdAt, "bought", { kind: normKind(rec.kind) });
+    if (rec.free) { add(rec.createdAt, "free_signup", { kind: normKind(rec.kind) }); add(rec.unlockedAt, "unlocked"); add(rec.idleWarnedAt, "free_idle_mail"); }
+    else add(rec.paidAt || rec.createdAt, "bought", { kind: normKind(rec.kind) });
     add(rec.claimedAt, "claimed");
     add(rec.resetAt, "key_reset");
     add(x.card.couple && x.card.couple.keepsakeSentAt, "keepsake");
@@ -2008,7 +2077,7 @@ function venueBooks(v) {   // a venue that only ever had its free year bought no
     paidFrom: (v.trial && v.trial.endedAt) ? ymdOfMs(v.trial.endedAt) : null, season: { from: lic.seasonStart || null, to: lic.seasonEnd || null },
     renewals: (v.renewals || []).filter(Boolean).map(r => ({ at: ymdOfMs(r.at), from: r.from || null, to: r.to || null })) };
 }
-const coupleBooks = c => ({ type: "couple", ...(c.custType ? { custType: c.custType } : {}), name: c.name || "", kind: normKind(c.kind), paidAt: ymdOfMs(c.paidAt || c.createdAt) });
+const coupleBooks = c => ({ type: "couple", ...(c.custType ? { custType: c.custType } : {}), name: c.name || "", kind: normKind(c.kind), paidAt: ymdOfMs(c.paidAt || c.unlockedAt || c.createdAt) });
 async function keepBooks(env, key, o, why) {
   if (!o) return false;
   await env.PLANS.put("books:" + key, JSON.stringify({ key, ...o, erasedAt: Date.now(), why }));
@@ -2022,7 +2091,7 @@ async function eraseCouple(env, id, why) {   // «Ξέχασέ τον», the old
     for (const pid of [c.planId, ...(c.plans || [])]) { const pr = safeParse(await env.PLANS.get("plan:" + pid)); if (pr && pr.coupleId === c.id) await purgePlan(env, pid); }
     if (c.claimToken) await env.PLANS.delete("claim:" + c.claimToken);
     await indexEmail(env, c.email, "couple", c.id, false); await forgetEmail(env, c.email);
-    await keepBooks(env, "c:" + c.id, coupleBooks(c), why);
+    await keepBooks(env, "c:" + c.id, freeCapped(c) ? null : coupleBooks(c), why);   // a free plan bought nothing: the books keep nothing
   }
   await env.PLANS.delete("couple:" + id);
   await env.PLANS.delete("act:c:" + id);
@@ -2063,7 +2132,7 @@ async function memorySweep(env, now) {
     for (const pid of [c.planId, ...(c.plans || [])]) if (pid && await env.PLANS.get("plan:" + pid)) { live = true; break; }
     if (live) continue;
     const x = await coupleCustomer(env, c, now), mem = memoryOf("c", c, x, await actsOf(env, "c:" + c.id), now, await ledgerOf(env, "c:" + c.id));
-    if (mem && !mem.held && mem.forgetAt <= day) { await eraseCouple(env, c.id, "clock"); out.forgotten++; console.log("memory: forgot a direct customer, " + MEMORY_YEARS + " years after the last contact"); }
+    if (mem && !mem.held && mem.forgetAt <= day) { await eraseCouple(env, c.id, "clock"); out.forgotten++; console.log("memory: forgot a direct customer, " + mem.years + " years after the last contact"); }
   }
   for (const lid of (safeParse(await env.PLANS.get("leads:index")) || [])) {
     const l = safeParse(await env.PLANS.get("lead:" + lid));
@@ -2493,6 +2562,7 @@ export default {
             }
           }
           if (!ok) return json({ error: "not_allowed" }, 403);
+          if (coupleId && guestTables(body.plan) > FREE_TABLES && freeCapped(safeParse(await env.PLANS.get("couple:" + coupleId)))) return json({ error: "free_limit", max: FREE_TABLES }, 403);   // a free plan's extra plans hold no more than it does
           const id = rnd(22), editKey = rnd(28), readKey = rnd(24);
           const rec = { name: String(body.name || "Untitled").slice(0, 120), plan: body.plan ?? null, editKey, readKey, owner: { type: "couple" }, coupleId, ...(rootId ? { rootId } : {}), kind: parentKind || normKind(body.kind), keyGen: 0, createdAt: Date.now(), updated: Date.now() };
           if (coupleId) {   // an extra plan of a couple who bought TakeaSeat: recorded on the licence (erased with it)
@@ -2528,7 +2598,11 @@ export default {
           if (a.role === "couple" && a.owner.type === "couple" && rec.coupleId) {   // the couple's own recovery email
             const c = safeParse(await env.PLANS.get("couple:" + rec.coupleId));
             if (c && c.planId === id) { out.email = c.email || null; out.mail = mailOn(env); }
+            // A free plan counts as opened at most once a day: that is what keeps it from the idle cleanup (freeSweep).
+            if (c && c.free && (!c.seenAt || Date.now() - c.seenAt > DAY || c.idleWarnedAt))
+              await kvUpdate(env, "couple:" + c.id, cp => { if (!cp) return null; cp.seenAt = Date.now(); delete cp.idleWarnedAt; return cp; });
           }
+          if (rec.coupleId && a.role !== "viewer" && freeCapped(safeParse(await env.PLANS.get("couple:" + rec.coupleId)))) out.free = { max: FREE_TABLES };   // the planner stops at this many
           if (a.role === "couple" || a.role === "venue") { out.readKey = readKey || null; if (rec.legacyOpenUntil > Date.now()) out.legacyOpenUntil = rec.legacyOpenUntil; }
           if (a.role === "venue" && !rec.template) { out.couplePerms = normPerms(rec.perms, ALL_OPEN); out.layoutSet = a.layoutSet; }
           if (a.role === "support") {
@@ -2586,6 +2660,10 @@ export default {
             if (before.guests >= 5 && after.guests === 0 && body.allowWipe !== true) {
               return json({ error: "wipe_refused", guests: before.guests, updated: rec.updated }, 422);
             }
+            // A free plan: never more than FREE_TABLES guest tables, whoever saves. A save that adds none is let through,
+            // so a plan can never be stuck unable to save its names.
+            if (rec.coupleId && guestTables(plan) > FREE_TABLES && guestTables(plan) > guestTables(rec.plan)
+              && freeCapped(safeParse(await env.PLANS.get("couple:" + rec.coupleId)))) return json({ error: "free_limit", max: FREE_TABLES, updated: rec.updated }, 403);
           }
           const newName = (body.name && !a.restricted && a.role !== "support") ? String(body.name).slice(0, 120) : null;   // support never renames
           // The type is corrected by exactly whoever may rename the event: the same mistake, the same hand.
@@ -2844,25 +2922,7 @@ export default {
         const email = normEmail(b.email); if (!email) return json({ error: "bad_email" }, 400);
         const lang = langOf(b.lang);
         const ix = safeParse(await env.PLANS.get("email:" + email));
-        if (ix && await mailAllowed(env, email, "recover")) {   // the answer is the same whether or not the address is ours
-          const items = [];
-          for (const cid of (ix.couples || [])) {
-            const c = safeParse(await env.PLANS.get("couple:" + cid)); if (!c || c.email !== email) continue;
-            const main = safeParse(await env.PLANS.get("plan:" + c.planId)); if (!main || main.coupleId !== c.id) continue;
-            const cl = c.lang || lang;
-            const ct = c.claimToken ? await freshClaim(env, c, main) : null;
-            if (ct) { items.push(fill(MAILS[lang].itemClaim, { name: c.name, until: fmtDay((c.claimAt || c.resetAt || c.createdAt) + CLAIM_TTL, lang), link: plannerUrl(env, cl) + "#claim=" + ct }));
-              await markMailed(env, c.id, email); }
-            else { const t = await mintToken(env, { kind: "couple-recover", cid: c.id, gen: main.keyGen || 0, lg: c.lgen || 0, email }, RECOVER_TTL);
-              items.push(fill(MAILS[lang].itemCouple, { name: c.name, link: plannerUrl(env, cl) + "#recover=" + t })); }
-          }
-          for (const vid of (ix.venues || [])) {
-            const v = safeParse(await env.PLANS.get("venue:" + vid)); if (!v || v.email !== email) continue;
-            const t = await mintToken(env, { kind: "venue-recover", vid: v.id, lg: v.lgen || 0, email }, RECOVER_TTL);
-            items.push(fill(MAILS[lang].itemVenue, { name: v.name, link: baseUrl(env) + consolePath(v) + "#recover=" + t }));
-          }
-          if (items.length) send(env, email, mailMsg(lang, "recover", { items: items.join("\n\n") }));
-        }
+        if (ix && await mailAllowed(env, email, "recover")) await recoverMail(env, email, lang, ix);   // the answer is the same whether or not the address is ours
         return json({ ok: true });
       }
       if (parts[0] === "recover" && parts[1] === "couple" && parts.length === 2 && request.method === "POST") {
@@ -3010,6 +3070,47 @@ export default {
         if (o.email && o.emailVerified && await mailAllowed(env, o.email, "ownersignup", OWNER_MAILS_PER_DAY))
           send(env, o.email, mailMsg(o.lang, office ? "ownerSignupOffice" : "ownerSignup", { name, afm, email, phone, until: fmtDay(trialEndsAt - 1, o.lang), link: baseUrl(env) + "/admin.html" }));
         console.log("signup: a new venue signed itself up (free year to " + endYmd + ")");
+        return json({ ok: true });
+      }
+      // ---------------- the free online plan: anyone gives themselves one, by email ----------------
+      // Like the venue signup, every outcome answers {ok:true} and only mail says what happened, so the form tells a
+      // stranger nothing about an address. An address that already has anything with us gets its own links again
+      // (exactly /recover's mail), never a second plan. The plan exists from here, but nobody can open it until the mailed
+      // link is opened, and a link never opened takes the plan with it when it expires (freeSweep).
+      if (parts[0] === "signup" && parts[1] === "free" && parts.length === 2 && request.method === "POST") {
+        if (!mailOn(env)) return json({ error: "mail_off" }, 503);   // the mailed link IS the way in
+        const b = await readBody(request);
+        const name = oneLine(b.name, 120), email = normEmail(b.email), lang = langOf(b.lang), kind = normKind(b.kind), date = String(b.date || "");
+        if (!name) return json({ error: "bad_name" }, 400);
+        if (!email) return json({ error: "bad_email" }, 400);
+        const today = todayAthens();
+        if (!ymdOk(date) || date < today || date > addDays(today, DATE_AHEAD_DAYS)) return json({ error: "bad_date" }, 400);
+        if (b.terms !== true) return json({ error: "terms_required" }, 400);
+        if (!(await rateTake(env, "freesignup", clientIp(request), FREE_PER_IP_DAY, DAY))) return json({ error: "rate_limited" }, 429, { "Retry-After": "3600" });
+        if (typeof b.website === "string" && b.website.trim()) { console.log("free: the bot trap caught one"); return json({ ok: true }); }
+        const ix = safeParse(await env.PLANS.get("email:" + email));
+        if (ix && ((ix.couples || []).length || (ix.venues || []).length)) {
+          if (await mailAllowed(env, email, "signup")) await recoverMail(env, email, lang, ix);
+          console.log("free: that address already has a plan or a console — its links went to it again");
+          return json({ ok: true });
+        }
+        if (!(await rateTake(env, "freesignup", "all", FREE_DAY_MAX, DAY))) {   // a flood can never fill the database: the door opens again by itself tomorrow
+          console.log("free: the sign-up is at its daily ceiling — refused");
+          return json({ error: "busy" }, 503, { "Retry-After": "3600" });
+        }
+        const now = Date.now(), cid = rnd(10), planId = rnd(22), token = rnd(32);
+        await env.PLANS.put("plan:" + planId, JSON.stringify({ name, plan: null, editKey: rnd(28), readKey: rnd(24), owner: { type: "couple" }, coupleId: cid, kind, keyGen: 0,
+          weddingDate: date, opensAt: null, createdAt: now, updated: now, audit: [] }));
+        const c = { id: cid, name, kind, contact: "", email, lang, createdAt: now, free: true, termsAt: now, claimAt: now, planId, claimToken: token, claimedAt: null,
+          ...(kind === "company" ? { custType: "company" } : {}) };
+        const mailed = !!(await mailAllowed(env, email, "signup")) && send(env, email, mailMsg(lang, "freeClaim",
+          { name, n: String(FREE_TABLES), link: plannerUrl(env, lang) + "#claim=" + token, recover: plannerUrl(env, lang) + "#recover" }), { k: "couple", id: cid });
+        c.mailed = !!mailed; if (mailed) c.mailedTo = email;
+        await env.PLANS.put("couple:" + cid, JSON.stringify(c));
+        await env.PLANS.put("claim:" + token, JSON.stringify({ cid, planId, createdAt: now, gen: 0 }));
+        await addIndex(env, "couples:index", cid);
+        await indexEmail(env, email, "couple", cid, true);
+        console.log("free: a new free plan (" + kind + ")");
         return json({ ok: true });
       }
       // ---------------- the site's contact form: a stranger's message becomes a «Νέα επαφή» ----------------
@@ -3498,7 +3599,9 @@ export default {
                 if (b.unfreeze === true && rec.frozenUntil) { rec.frozenUntil = null; addAudit(rec, "admin", "unfreeze"); dirty = true; }
                 return dirty ? rec : null; });
             }
+            const unlockAt = Date.now();
             const r = await kvUpdate(env, "couple:" + parts[2], c => { if (!c) return null; const old = c.email || "";
+              if (b.unlock === true && c.free && !c.unlockedAt) { c.unlockedAt = unlockAt; delete c.idleWarnedAt; }   // they paid: no table limit, an ordinary bought plan from here
               if (b.name != null) c.name = String(b.name).slice(0, 120);
               if (newKind !== undefined) { c.kind = newKind;
                 // the company kind makes the customer a company; a correction to a γάμος or βάπτιση undoes it, ΑΦΜ included (a private buyer's is never kept)
@@ -3513,6 +3616,11 @@ export default {
             if (!r.obj) return json({ error: "not found" }, 404);
             if (b.weddingDate !== undefined || b.retention !== undefined) await unarchive(env);   // a deletion date may have moved
             let c = r.obj, mailed = null;
+            if (b.unlock === true && c.unlockedAt === unlockAt) {   // the 25 € goes on «Πληρωμές» as a new customer's does, and the customer is told
+              await addDue(env, "c:" + c.id, c, { id: rnd(10), what: "plan", kind: normKind(c.kind), amount: PRICE_PLAN, plusVat: false, due: addDays(todayAthens(), DUE_NEW_DAYS), src: "unlock" });
+              if (c.email && mailOn(env)) mailed = !!send(env, c.email, mailMsg(c.lang, "freeUnlocked", { name: c.name }));
+              console.log("admin: a free plan was unlocked");
+            }
             if (email != null && email !== r.res) {   // changing a couple's address is visible to them: old address told, access log entry
               await indexEmail(env, r.res, "couple", c.id, false); await indexEmail(env, email, "couple", c.id, true);
               if (r.res) send(env, r.res, mailMsg(c.lang, "changed", { name: c.name, email: maskEmail(email) || "—", by: MAILS[langOf(c.lang)].byAdmin }));
@@ -4551,7 +4659,8 @@ async function adminCouple(env, c) {   // licence metadata only — never the pl
     weddingDate: rec ? (rec.weddingDate || null) : null, retention: c.retention || null, keepsakeSentAt: rec ? (rec.keepsakeSentAt || null) : null, purgedAt: c.purgedAt || null,
     life: rec ? (L => ({ lockAt: L.lockAt, deleteAt: L.deleteAt, over: L.over, locked: L.locked, keep: L.keep, fallback: L.fallback,
       phase: L.phase, opensAt: L.opensAt, fullAt: L.fullAt, frozenUntil: L.frozenUntil }))(await planLife(env, rec, c.planId, { couple: c })) : null,
-    startNow: !!c.startNow, paidAt: c.paidAt || c.createdAt };
+    startNow: !!c.startNow, paidAt: c.free ? (c.unlockedAt || null) : (c.paidAt || c.createdAt),
+    ...(c.free ? { free: true, freeMax: FREE_TABLES, unlockedAt: c.unlockedAt || null, seenAt: c.seenAt || null, idleWarnedAt: c.idleWarnedAt || null } : {}) };
 }
 async function addIndex(env, key, id) { await kvUpdate(env, key, ids => { ids = Array.isArray(ids) ? ids : []; if (ids.includes(id)) return null; ids.push(id); return ids; }); }
 async function removeIndex(env, key, id) { await kvUpdate(env, key, ids => Array.isArray(ids) && ids.includes(id) ? ids.filter(x => x !== id) : null); }

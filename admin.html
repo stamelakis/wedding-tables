@@ -1147,6 +1147,13 @@ async function coupleAction(c, a, btn){
     copy(claimLink(c.claimToken, coupleLang(c.id)));
   } else if(a==="edit"){
     openCoupleEdit(c);
+  } else if(a==="unlock"){
+    if(!confirm(`Ξεκλείδωμα του «${c.name}»;\n\nΤο σχέδιο χάνει το όριο των 8 τραπεζιών και μένει όπως είναι. Γράφονται 25 € στις «Πληρωμές» του${c.email && mailOn() ? " και του πάει email ότι ξεκλειδώθηκε" : ""}. Δεν αναιρείται.`)) return;
+    btn.disabled=true;
+    const res=await req(path,{ method:"PATCH", body:JSON.stringify({ unlock:true }) });
+    btn.disabled=false;
+    if(!res.ok){ failToast(res, res.status===404?"Αυτός ο πελάτης δεν υπάρχει πια — ανανεώνω":"Δεν ξεκλειδώθηκε"); if(res.status===404) refreshCouples(); return; }
+    toast("Ξεκλειδώθηκε — 25 € στις «Πληρωμές»"); refreshCouples();
   } else if(a==="unfreeze"){
     const until=c.life&&c.life.frozenUntil?` (παγωμένο ως ${fmtDay(c.life.frozenUntil)})`:"";
     if(!confirm(`Ξεπάγωμα του «${c.name}»${until};\n\nΟ πελάτης μπορεί να αλλάζει ξανά αμέσως· τι μπορεί να αλλάξει εξαρτάται από την ημερομηνία της εκδήλωσης. Το ξεπάγωμα καταγράφεται.`)) return;
@@ -1971,7 +1978,7 @@ function cRowHtml(c){
   const st=c.step, step=st ? `<div class="muted cstep${st.due && st.due<=(custData.today||todayYmd()) ? " due" : ""}">→ ${esc(st.text)}${st.due ? ` · ${esc(gYmd(st.due))}` : ""}</div>` : "";
   return `<tr class="crow" data-key="${esc(c.key)}" tabindex="0">
     <td><div class="cname">${esc(c.name||"—")}</div>${flags ? `<div class="cflags">${flags}</div>` : ""}${step}</td>
-    <td data-l="Τύπος">${esc(C_TYPE[c.type]||c.type)}</td>
+    <td data-l="Τύπος">${esc(C_TYPE[c.type]||c.type)}${c.free ? ` <span class="badge per" title="Δωρεάν σχέδιο, έως 8 τραπέζια">δωρεάν</span>` : ""}</td>
     <td data-l="Στάδιο"><span class="badge st${esc(c.stage)}">${esc(C_STAGE[c.stage]||c.stage)}</span></td>
     <td data-l="Πληρωμή"${c.pay && c.pay.state ? "" : ` class="ce"`}>${cPayBadge(c.pay)}</td>
     <td data-l="Επόμενη"${c.next ? "" : ` class="ce"`}>${next}</td>
@@ -2257,6 +2264,9 @@ function cTlWords(e, t){
     case "trial_mail": return "Email: υπενθύμιση ότι λήγει ο δωρεάν χρόνος"+before;
     case "renew_mail": return "Email: υπενθύμιση ανανέωσης"+before;
     case "bought": return "Αγόρασε"+(K ? " — "+K : "");
+    case "free_signup": return "Γράφτηκε μόνος του για δωρεάν σχέδιο"+(K ? " — "+K : "");
+    case "unlocked": return "Το δωρεάν σχέδιο ξεκλειδώθηκε (25 €)";
+    case "free_idle_mail": return "Email: το δωρεάν σχέδιο δεν άνοιξε 6 μήνες και θα σβηστεί";
     case "claimed": return "Άνοιξε τον σύνδεσμο του σχεδίου";
     case "keepsake": return "Στάλθηκε το αναμνηστικό";
     case "mail_failed": return "Ένα email προς τον πελάτη δεν έφυγε";
@@ -2285,6 +2295,7 @@ function cardActsHtml(x){
     if(!coupleGone(c)){
       if(c.email && mailOn()) out.push(b("send", c.pendingClaim ? "Στείλε τον σύνδεσμο" : "Στείλε σύνδεσμο εισόδου", "", "Φεύγει αληθινό email στον πελάτη"));
       if(c.pendingClaim) out.push(b("copy", "Αντιγραφή συνδέσμου", "", "Ο σύνδεσμος που δεν έχει ανοίξει ακόμη, για να τον στείλεις εσύ"));
+      if(c.free && !c.unlockedAt) out.push(b("unlock", "Ξεκλείδωμα (25 €)…", "primary", "Πλήρωσε: το σχέδιο χάνει το όριο των 8 τραπεζιών, γράφονται 25 € στις «Πληρωμές» και του πάει email"));
       if(c.life && c.life.phase==="frozen") out.push(b("unfreeze", "Ξεπάγωμα…", "", "Ο πελάτης μπορεί να αλλάζει ξανά αμέσως"));
       out.push(b("edit", "Επεξεργασία…", "", "Είδος, όνομα, ημερομηνία, διατήρηση"), b("email", "Αλλαγή email…"),
         b("reset", "Νέος σύνδεσμος…", "", "Οι παλιοί σύνδεσμοι και οι συσκευές του σταματούν"));
@@ -2374,7 +2385,7 @@ function cFlagText(f, c){
 }
 function customerCardHtml(x){
   const c=x.customer, v=x.venue, cp=x.couple, s=x.signup, out=[];
-  out.push(`<div class="row fw" style="gap:6px;margin-bottom:12px"><span class="badge tpl">${esc(C_TYPE[c.type]||c.type)}</span><span class="badge st${esc(c.stage)}">${esc(C_STAGE[c.stage]||c.stage)}</span>${cp && coupleGone(cp) ? `<span class="badge off">χωρίς σχέδιο</span>` : ""}</div>`);
+  out.push(`<div class="row fw" style="gap:6px;margin-bottom:12px"><span class="badge tpl">${esc(C_TYPE[c.type]||c.type)}</span>${cp && cp.free ? `<span class="badge per">${cp.unlockedAt ? "δωρεάν, ξεκλειδωμένο" : "δωρεάν · έως "+esc(cp.freeMax||8)+" τραπέζια"}</span>` : ""}<span class="badge st${esc(c.stage)}">${esc(C_STAGE[c.stage]||c.stage)}</span>${cp && coupleGone(cp) ? `<span class="badge off">χωρίς σχέδιο</span>` : ""}</div>`);
   if((c.flags||[]).length) out.push(`<div class="keybox note" style="margin:0 0 14px"><div style="font-weight:700;margin-bottom:2px">⚑ Θέλουν εμένα</div><ul class="flaglist">${c.flags.map(f=>
     `<li>${esc(cFlagText(f, c))}</li>`).join("")}</ul></div>`);
   const verified=!!((v && v.emailVerified) || (cp && cp.emailVerified)), l=x.lead;
@@ -2418,8 +2429,11 @@ function customerCardHtml(x){
     ]));
   }
   if(cp){
-    out.push(`<div class="subh">Αγορά και σύνδεσμος</div>`+fieldsHtml([
-      ["Αγορά", esc(gDT(cp.paidAt))],
+    out.push(`<div class="subh">${cp.free && !cp.unlockedAt ? "Δωρεάν σχέδιο και σύνδεσμος" : "Αγορά και σύνδεσμος"}</div>`+fieldsHtml([
+      cp.free ? ["Δωρεάν", `γράφτηκε μόνος του ${esc(gWhen(cp.createdAt))}${cp.unlockedAt ? ` · ξεκλείδωσε ${esc(gWhen(cp.unlockedAt))}` : ` · έως ${esc(cp.freeMax||8)} τραπέζια`}`] : null,
+      cp.free && !cp.unlockedAt ? ["Τελευταίο άνοιγμα", cp.seenAt ? esc(gWhen(cp.seenAt)) : "ακόμη κανένα"] : null,
+      cp.idleWarnedAt ? ["Προειδοποίηση", `email στις ${esc(gDT(cp.idleWarnedAt))}: σβήνεται σε 14 μέρες αν δεν ανοίξει`] : null,
+      cp.paidAt ? ["Αγορά", esc(gDT(cp.paidAt))] : null,
       ["Σύνδεσμος", cp.pendingClaim ? `δεν έχει ανοίξει — δόθηκε ${esc(gWhen(cp.claimIssuedAt))}${cp.mailed ? " με email" : ""}` : cp.claimedAt ? `άνοιξε ${esc(gWhen(cp.claimedAt))}` : "—"],
       cp.mailFailedAt ? ["Email", cFailed(cp.mailFailedAt, cp.mailError)] : null,
       cp.resetAt ? ["Νέος σύνδεσμος", esc(gWhen(cp.resetAt))] : null,
@@ -2457,7 +2471,7 @@ const P_STATE={ late:"καθυστερεί", due:"αναμένεται", trial:"
 const P_ORDER={ late:0, due:1, trial:2, paid:3 };
 const P_SRC={ couple:"Μπήκε μόνη της με την αγορά.", venue:"Μπήκε μόνη της με τη νέα συνδρομή.", renew:"Μπήκε μόνη της με την αυτόματη ανανέωση.",
   convert:"Μπήκε μόνη της όταν ο δωρεάν χρόνος έγινε σεζόν.", trial:"Ο δωρεάν χρόνος λήγει: αν συνεχίσει, αυτή είναι η πρώτη σεζόν που πληρώνει.",
-  invoice:"Η σεζόν ανανεώθηκε με εκκρεμές τιμολόγιο.", manual:"Την πρόσθεσες εσύ." };
+  invoice:"Η σεζόν ανανεώθηκε με εκκρεμές τιμολόγιο.", manual:"Την πρόσθεσες εσύ.", unlock:"Μπήκε μόνη της όταν ξεκλείδωσες το δωρεάν σχέδιο." };
 const P_ERR={ bad_amount:"Το ποσό δεν είναι σωστό", bad_vat:"Ο ΦΠΑ δεν είναι σωστός — ως το ποσό", bad_date:"Η ημερομηνία δεν είναι σωστή",
   bad_method:"Διάλεξε τρόπο πληρωμής", bad_what:"Διάλεξε για τι είναι", bad_about:"Γράψε μια περιγραφή", bad_reason:"Γράψε τον λόγο",
   bad_season:"Η σεζόν θέλει «Από» και «Έως», με τη σειρά", no_due:"Αυτή η αναμενόμενη πληρωμή δεν υπάρχει πια — πάτα «Ανανέωση»",
@@ -3081,7 +3095,7 @@ function coupleCardHtml(r){
       <span class="muted mono">${esc(c.id)}</span>
     </div>
     ${fieldsHtml([
-      ["Αγορά", esc(gDT(c.paidAt))+(c.startNow?" · «ξεκίνα τώρα»":"")],
+      ["Αγορά", c.paidAt ? esc(gDT(c.paidAt))+(c.startNow?" · «ξεκίνα τώρα»":"")+(c.free?" · ήταν δωρεάν":"") : "δωρεάν σχέδιο, έως "+esc(c.freeMax||8)+" τραπέζια"],
       ["Σύνδεσμος", link],   // already HTML, with every value esc()'d where it is built
       ["Σημειώσεις", c.contact?esc(c.contact):"—"],
       ["Αναμνηστικό", c.keepsakeSentAt?esc(gDT(c.keepsakeSentAt)):"δεν έχει σταλεί"],

@@ -9,7 +9,9 @@
 <link rel="canonical" href="https://takeaseat.gr/epikoinonia.html">
 <!-- OPERATIONS-PLAN.md phase 4: this form replaced every prefilled mailto on the site. A message becomes a «Νέα επαφή» in
      admin.html (POST /contact); the sender gets a fixed «we got it», Andreas gets the message with Reply-To set to them.
-     The links into it say what was asked: ?kind=wedding|baptism|party|company|venue|organiser &q=start|ask|demo|other (&lang=en). -->
+     The links into it say what was asked: ?kind=wedding|baptism|party|company|venue|organiser &q=free|start|ask|demo|unlock|other (&lang=en).
+     q=free is not a message: it is the free online plan's sign-up (POST /signup/free), with fewer fields and a terms tick.
+     q=unlock is offered only when a link asks for it (the planner's «more tables» note). -->
 <style>
   :root{
     --paper:#f7f4f1; --paper-2:#efe9e2; --card:#fffdfb;
@@ -127,18 +129,22 @@
         <div class="grid">
           <div class="field"><label for="f_name" data-t="name">Το όνομά σας</label><input type="text" id="f_name" maxlength="120" autocomplete="name" required></div>
           <div class="field"><label for="f_email">Email</label><input type="email" id="f_email" maxlength="200" autocomplete="email" inputmode="email" required></div>
-          <div class="field"><label for="f_phone"><span data-t="phone">Τηλέφωνο</span> <span class="opt" data-t="optional">(προαιρετικό)</span></label><input type="tel" id="f_phone" maxlength="40" autocomplete="tel" inputmode="tel" placeholder="69…"></div>
-          <div class="field" id="w_date"><label for="f_date"><span id="l_date">Ημερομηνία</span> <span class="opt" data-t="optional">(προαιρετικό)</span></label><input type="date" id="f_date"></div>
-          <div class="field full"><label for="f_place"><span id="l_place">Πού γίνεται</span> <span class="opt" id="o_place" data-t="optional">(προαιρετικό)</span></label><input type="text" id="f_place" maxlength="120" autocomplete="off"></div>
-          <div class="field full"><label for="f_message"><span data-t="message">Μήνυμα</span> <span class="opt" data-t="optional">(προαιρετικό)</span></label><textarea id="f_message" maxlength="1000"></textarea></div>
+          <div class="field" id="w_phone"><label for="f_phone"><span data-t="phone">Τηλέφωνο</span> <span class="opt" data-t="optional">(προαιρετικό)</span></label><input type="tel" id="f_phone" maxlength="40" autocomplete="tel" inputmode="tel" placeholder="69…"></div>
+          <div class="field" id="w_date"><label for="f_date"><span id="l_date">Ημερομηνία</span> <span class="opt" id="o_date" data-t="optional">(προαιρετικό)</span></label><input type="date" id="f_date"></div>
+          <div class="field full" id="w_place"><label for="f_place"><span id="l_place">Πού γίνεται</span> <span class="opt" id="o_place" data-t="optional">(προαιρετικό)</span></label><input type="text" id="f_place" maxlength="120" autocomplete="off"></div>
+          <div class="field full" id="w_message"><label for="f_message"><span data-t="message">Μήνυμα</span> <span class="opt" data-t="optional">(προαιρετικό)</span></label><textarea id="f_message" maxlength="1000"></textarea></div>
         </div>
         <div class="hp" aria-hidden="true"><label for="f_website">Website</label><input type="text" id="f_website" name="website" tabindex="-1" autocomplete="off"></div>
 
-        <div class="tick">
+        <div class="tick" id="w_nomail">
           <input type="checkbox" id="f_nomail">
           <label for="f_nomail" data-t="nomail" data-html>Αν γίνετε πελάτες μας, μπορεί κάποτε να σας γράψουμε για μια σχετική εκδήλωση, π.χ. μετά τον γάμο για τη βάπτιση. <b>Αν δεν το θέλετε, τσεκάρετε εδώ.</b> Μπορείτε να μας το πείτε και αργότερα.</label>
         </div>
-        <p class="fine" data-t="fine" data-html>Κρατάμε ό,τι γράψετε εδώ για να σας απαντήσουμε. Αν δεν γίνετε πελάτες μας, σβήνεται 2 χρόνια μετά την τελευταία μας επαφή. <a href="/privacy.html">Πολιτική Απορρήτου</a></p>
+        <div class="tick" id="w_terms" style="display:none">
+          <input type="checkbox" id="f_terms">
+          <label for="f_terms" data-t="terms2" data-html>Διάβασα και δέχομαι τους <a href="/terms.html" target="_blank">Όρους</a> και την <a href="/privacy.html" target="_blank">Πολιτική Απορρήτου</a>.</label>
+        </div>
+        <p class="fine" id="fine" data-t="fine" data-html>Κρατάμε ό,τι γράψετε εδώ για να σας απαντήσουμε. Αν δεν γίνετε πελάτες μας, σβήνεται 2 χρόνια μετά την τελευταία μας επαφή. <a href="/privacy.html">Πολιτική Απορρήτου</a></p>
 
         <div class="actions"><button type="submit" class="btn" id="send" data-t="send">Αποστολή</button></div>
         <div class="err" id="err" role="alert"></div>
@@ -186,6 +192,12 @@ const T = {
     eDown:"Η φόρμα δεν είναι διαθέσιμη αυτή τη στιγμή. Γράψτε μας στο info@takeaseat.gr ή τηλεφωνήστε στο 697 735 5378.",
     doneH:"Ευχαριστούμε!", doneP:"Το μήνυμά σας στάλθηκε. Θα σας απαντήσουμε στο {email}, συνήθως την ίδια ή την επόμενη μέρα.",
     doneP2:"Σας στείλαμε κι ένα σύντομο email επιβεβαίωσης. Αν δεν το βλέπετε, κοιτάξτε και στα ανεπιθύμητα.", back:"Πίσω στην αρχική",
+    tFree:"Δωρεάν σχέδιο online, έως 8 τραπέζια", tUnlock:"Ξεκλείδωμα του δωρεάν σχεδίου (25 €)", mUnlock:"π.χ. πόσα τραπέζια χρειάζεστε. Θα σας απαντήσουμε με τον τρόπο πληρωμής.",
+    terms2:"Διάβασα και δέχομαι τους <a href=\"/terms.html\" target=\"_blank\">Όρους</a> και την <a href=\"/privacy.html\" target=\"_blank\">Πολιτική Απορρήτου</a>.",
+    fineFree:"Το δωρεάν σχέδιο χωράει έως 8 τραπέζια καλεσμένων και μένει online, για να το ανοίγετε από κινητό και υπολογιστή. Θα σας στείλουμε τον σύνδεσμο με email. Αν δεν τον ανοίξετε μέσα σε 30 ημέρες, ή αν αργότερα δεν ανοίξετε το σχέδιο για 6 μήνες, διαγράφεται (στη δεύτερη περίπτωση σας ειδοποιούμε πρώτα). Χρειάζεστε περισσότερα τραπέζια; Το ξεκλειδώνετε με 25 €.",
+    sendFree:"Στείλτε μου τον σύνδεσμο", eTerms:"Τσεκάρετε ότι δέχεστε τους Όρους και την Πολιτική Απορρήτου.", eDateFree:"Διαλέξτε την ημερομηνία της εκδήλωσης, μέσα στα επόμενα 2 χρόνια.",
+    doneFreeH:"Σχεδόν έτοιμο!", doneFreeP:"Σας στείλαμε email στο {email} με τον σύνδεσμο του σχεδίου σας. Ανοίξτε τον στο Chrome ή στο Safari.",
+    doneFreeP2:"Αν δεν το βλέπετε σε λίγα λεπτά, κοιτάξτε και στα ανεπιθύμητα. Αν αυτό το email έχει ήδη σχέδιο στο TakeaSeat, σας στείλαμε τους συνδέσμους του αντί για καινούργιο.",
   },
   en: {
     title:"Contact — TakeaSeat", home:"Home", try:"Free demo", h1:"Contact us", lead:"Write to us and we will answer soon, usually the same day or the next.",
@@ -203,6 +215,12 @@ const T = {
     eDown:"The form is not available right now. Write to info@takeaseat.gr or call +30 697 735 5378.",
     doneH:"Thank you!", doneP:"Your message has been sent. We will answer at {email}, usually the same day or the next.",
     doneP2:"We have also sent you a short confirmation email. If you cannot see it, please check your spam folder.", back:"Back to the home page",
+    tFree:"A free online plan, up to 8 tables", tUnlock:"Unlock my free plan (25 €)", mUnlock:"e.g. how many tables you need. We will answer with how to pay.",
+    terms2:"I have read and accept the <a href=\"/terms.html\" target=\"_blank\">Terms</a> and the <a href=\"/privacy.html#en\" target=\"_blank\">Privacy Policy</a>.",
+    fineFree:"The free plan holds up to 8 guest tables and stays online, so you can open it on your phone and your computer. We will email you the link. If it is not opened within 30 days, or if the plan is later not opened for 6 months, it is deleted (in the second case we tell you first). Need more tables? You unlock it for 25 €.",
+    sendFree:"Send me the link", eTerms:"Please tick that you accept the Terms and the Privacy Policy.", eDateFree:"Please choose the date of the event, within the next 2 years.",
+    doneFreeH:"Almost there!", doneFreeP:"We have emailed {email} the link to your plan. Open it in Chrome or Safari.",
+    doneFreeP2:"If you cannot see it in a few minutes, please check your spam folder. If this email already has a plan with TakeaSeat, we sent you its links instead of a new one.",
   },
 };
 const qs = new URLSearchParams(location.search);
@@ -210,9 +228,11 @@ const lang = qs.get("lang") === "en" ? "en" : "el", t = k => T[lang][k];
 const $ = id => document.getElementById(id);
 const KINDS = ["wedding", "baptism", "party", "company", "venue", "organiser"];
 const hasNoDate = () => kind === "venue" || kind === "organiser";   // they write about their business, not about one evening
-const TOPICS = { venue: ["demo", "other"], other: ["start", "ask", "other"] };
+const TOPICS = { venue: ["demo", "other"], other: ["start", "free", "ask", "other"] };   // a bare link opens the message form: "start" stays first
 let kind = KINDS.includes(qs.get("kind")) ? qs.get("kind") : "wedding";
 let topic = qs.get("q");
+if (topic === "unlock") TOPICS.other.splice(1, 0, "unlock");   // only a link asks to unlock: the planner's «more tables» note
+const isFree = () => topic === "free" && !hasNoDate();
 
 if (lang === "en") {
   document.documentElement.lang = "en"; document.title = t("title");
@@ -226,7 +246,7 @@ const press = (group, v) => document.querySelectorAll(`[data-pick="${group}"] .c
 function drawTopics() {
   const list = TOPICS[hasNoDate() ? "venue" : "other"];
   if (!list.includes(topic)) topic = list[0];
-  const word = { start: t("tStart"), ask: t(kind === "party" || kind === "company" ? "tAskPlace" : "tAskVenue"), demo: t(kind === "organiser" ? "tDemoOffice" : "tDemo"), other: t("tOther") };
+  const word = { free: t("tFree"), unlock: t("tUnlock"), start: t("tStart"), ask: t(kind === "party" || kind === "company" ? "tAskPlace" : "tAskVenue"), demo: t(kind === "organiser" ? "tDemoOffice" : "tDemo"), other: t("tOther") };
   $("topics").innerHTML = list.map(v => `<button type="button" class="chip" data-v="${v}">${word[v]}</button>`).join("");
   press("topic", topic);
 }
@@ -238,7 +258,15 @@ function sync() {
   $("l_place").textContent = office ? t("pOffice") : noDate ? t("pOwn") : t(kind === "party" || kind === "company" ? "pPlace" : "pVenue");
   $("o_place").style.display = noDate ? "none" : "";
   $("f_place").placeholder = office ? t("pOfficePh") : noDate ? t("pOwnPh") : t("pPh");
-  $("f_message").placeholder = t({ start: kind === "company" ? "mStartCo" : "mStart", ask: "mAsk", demo: office ? "mDemoOffice" : "mDemo", other: "mOther" }[topic]);
+  $("f_message").placeholder = t({ free: "mOther", unlock: "mUnlock", start: kind === "company" ? "mStartCo" : "mStart", ask: "mAsk", demo: office ? "mDemoOffice" : "mDemo", other: "mOther" }[topic]);
+  // the free plan's sign-up: only what the plan needs, the date required, and the terms
+  const free = isFree();
+  for (const id of ["w_phone", "w_place", "w_message", "w_nomail"]) $(id).style.display = free ? "none" : "";
+  $("w_terms").style.display = free ? "" : "none";
+  $("o_date").style.display = free ? "none" : "";
+  $("f_date").max = free ? ymd(new Date(Date.now() + 729 * 86400000)) : "";
+  $("fine").innerHTML = t(free ? "fineFree" : "fine");
+  $("send").textContent = t(free ? "sendFree" : "send");
 }
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-pick] .chip"); if (!b) return;
@@ -250,6 +278,32 @@ $("f_date").min = ymd(new Date());
 sync();
 
 const errBox = $("err");
+const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+// The free online plan: POST /signup/free. It answers {ok:true} whatever the address is; the mail says the rest.
+async function signupFree(v) {
+  const body = { kind, name: v("f_name"), email: v("f_email"), date: $("f_date").value, terms: $("f_terms").checked, website: $("f_website").value, lang };
+  if (!body.name) return fail(t("eName"), $("f_name"));
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(body.email)) return fail(t("eEmail"), $("f_email"));
+  if (!body.date || body.date < $("f_date").min || ($("f_date").max && body.date > $("f_date").max)) return fail(t("eDateFree"), $("f_date"));
+  if (!body.terms) return fail(t("eTerms"), $("f_terms"));
+  const btn = $("send"); btn.disabled = true; btn.textContent = t("sending");
+  let r = null, d = {};
+  try { r = await fetch("/signup/free", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); d = await r.json().catch(() => ({})); }
+  catch (x) { r = null; }
+  btn.disabled = false; btn.textContent = t("sendFree");
+  if (r && r.ok && d.ok) {
+    $("card").innerHTML = `<div class="done" role="status"><div class="big">✓</div><h2>${t("doneFreeH")}</h2><p>${t("doneFreeP").replace("{email}", "<b>" + esc(body.email) + "</b>")}</p><p>${t("doneFreeP2")}</p><p style="margin-top:16px"><a href="/">${t("back")}</a></p></div>`;
+    $("card").scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  const code = d && d.error;
+  if (code === "bad_name") return fail(t("eName"), $("f_name"));
+  if (code === "bad_email") return fail(t("eEmail"), $("f_email"));
+  if (code === "bad_date") return fail(t("eDateFree"), $("f_date"));
+  if (code === "terms_required") return fail(t("eTerms"), $("f_terms"));
+  if (code === "rate_limited") return fail(t("eRate"));
+  fail(t("eDown"));
+}
 function fail(msg, el) {
   errBox.textContent = msg; errBox.classList.add("on");
   document.querySelectorAll("[aria-invalid]").forEach(x => x.removeAttribute("aria-invalid"));
@@ -260,6 +314,7 @@ $("form").addEventListener("submit", async e => {
   e.preventDefault();
   errBox.classList.remove("on");
   const v = id => $(id).value.trim();
+  if (isFree()) return signupFree(v);
   const body = { kind, topic, name: v("f_name"), email: v("f_email"), phone: v("f_phone"), date: hasNoDate() ? "" : $("f_date").value,
     place: v("f_place"), message: $("f_message").value.trim(), noMail: $("f_nomail").checked, website: $("f_website").value, lang };
   if (!body.name) return fail(t("eName"), $("f_name"));
@@ -273,7 +328,6 @@ $("form").addEventListener("submit", async e => {
   catch (x) { r = null; }
   btn.disabled = false; btn.textContent = t("send");
   if (r && r.ok && d.ok) {
-    const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
     $("card").innerHTML = `<div class="done" role="status"><div class="big">✓</div><h2>${t("doneH")}</h2><p>${t("doneP").replace("{email}", "<b>" + esc(body.email) + "</b>")}</p><p>${t("doneP2")}</p><p style="margin-top:16px"><a href="/">${t("back")}</a></p></div>`;
     $("card").scrollIntoView({ behavior: "smooth", block: "start" });
     return;

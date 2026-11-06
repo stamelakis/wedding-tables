@@ -5216,4 +5216,170 @@ function leadStageOf(l) { return l.lost ? 8 : l.stage || 1; }
   }
 }
 
+// ---------- 30. the free online plan: sign up alone, up to 8 guest tables, unlock for 25 €, unused plans go ----------
+{
+  const saved = new Map(m), mail0 = env.MAIL, sent = [];
+  env.MAIL = { enabled: true, from: 'TakeaSeat <hello@takeaseat.gr>', send: msg => { sent.push(msg); return true; } };
+  let ipN = 0;
+  const su = (body, ip) => call('POST', '/signup/free', { name: 'Ελένη & Πέτρος', email: 'free1@example.gr', kind: 'wedding', date: athensDay(10), terms: true, lang: 'el', ...body },
+    { 'X-Real-IP': ip || ('198.18.60.' + (++ipN)) });
+  const lastTo = to => sent.filter(x => x.to === to).pop();
+  const coupleBy = e => [...m.keys()].filter(k => k.startsWith('couple:')).map(k => raw(k)).find(c => c.email === e) || null;
+  const claimOf = x => (String((x && x.text) || '').match(/#claim=([A-Za-z0-9]+)/) || [])[1] || '';
+  const tablesN = n => Array.from({ length: n }, (_, i) => ({ id: i + 1, shape: 'round', x: 100 * i, y: 100, label: String(i + 1), capacity: 8, seats: Array(8).fill(null) }));
+  const head = { id: 99, shape: 'head', x: 0, y: 0, label: 'Νυφικό', capacity: 6, seats: Array(6).fill(null) };
+  const ago = (k, days, fields) => patchRaw(k, o => { for (const f of fields) if (o[f]) o[f] -= days * 86400000; });
+  const TIMES = ['createdAt', 'claimAt', 'claimedAt', 'seenAt'];
+  try {
+    // -- the shape, before anything is written --
+    const c0 = m.size;
+    const bad = [[{ name: '  ' }, 'bad_name'], [{ email: 'όχι' }, 'bad_email'], [{ date: '' }, 'bad_date'], [{ date: athensDay(-1) }, 'bad_date'],
+      [{ date: athensDay(800) }, 'bad_date'], [{ date: '2027-02-30' }, 'bad_date'], [{ terms: false }, 'terms_required'], [{ terms: 'yes' }, 'terms_required']];
+    for (const [b, err] of bad) { const r = await su(b, '198.18.61.1'); ok(r.status === 400 && r.d.error === err, 'free: «' + JSON.stringify(b) + '» is refused (' + err + ')', r.d); }
+    ok(m.size === c0 && sent.length === 0, 'free: a refused sign-up writes nothing and mails nothing');
+    { const keep = env.MAIL; delete env.MAIL; const r = await su({}); env.MAIL = keep;
+      ok(r.status === 503 && r.d.error === 'mail_off' && !coupleBy('free1@example.gr'), 'free: with mail off there is no way in, so nothing is made'); }
+
+    // -- a good sign-up: one couple record, one plan nobody can open yet, one mail --
+    const r1 = await su({ email: 'Free1@Example.gr' });
+    ok(r1.status === 200 && JSON.stringify(r1.d) === '{"ok":true}', 'free: the answer is one word', r1.d);
+    const F = coupleBy('free1@example.gr');
+    ok(F && F.free === true && !F.unlockedAt && F.termsAt > 0 && F.kind === 'wedding' && !F.custType && F.mailed === true, 'free: a couple record marked free, with the time the terms were accepted', F);
+    const FP = raw('plan:' + F.planId);
+    ok(FP.weddingDate === athensDay(10) && FP.opensAt === null && FP.coupleId === F.id && FP.plan === null, 'free: its plan carries the event date and opens at once (nothing bought, nothing to withdraw from)', FP);
+    ok(!m.has('ledger:c:' + F.id), 'free: no due is written: nothing is owed');
+    ok((raw('couples:index') || []).includes(F.id) && (raw('email:free1@example.gr').couples || []).includes(F.id), 'free: indexed, so the address can recover its links');
+    const mail1 = lastTo('free1@example.gr');
+    ok(mail1 && /δωρεάν/.test(mail1.subject) && /έως 8 τραπέζια/.test(mail1.text) && /25 €/.test(mail1.text) && claimOf(mail1) === F.claimToken, 'free: the mail carries the one-time link, the 8 tables and the 25 € unlock', mail1 && mail1.text);
+    ok((await call('GET', '/plans/' + F.planId)).status === 401, 'free: the plan id alone opens nothing');
+
+    // -- one plan per address: the second sign-up re-sends the links, never a second plan --
+    let before = sent.length;
+    ok(JSON.stringify((await su({ name: 'Δεύτερο' })).d) === '{"ok":true}', 'free: the same address again answers the same word');
+    ok([...m.keys()].filter(k => k.startsWith('couple:') && raw(k).email === 'free1@example.gr').length === 1, 'free: … and makes no second plan');
+    ok(sent.length === before + 1 && sent[before].to === 'free1@example.gr' && claimOf(sent[before]) === F.claimToken, 'free: … the address gets its links again, as /recover sends (the unopened link, once more)', sent[before] && sent[before].subject);
+    m.set('email:venue-free@example.gr', JSON.stringify({ venues: ['someVenue'], couples: [] }));
+    await su({ email: 'venue-free@example.gr' });
+    ok(!coupleBy('venue-free@example.gr'), 'free: an address that has a console gets no free plan');
+
+    // -- the bot trap and the limits --
+    before = sent.length;
+    ok((await su({ email: 'bot@example.gr', website: 'http://spam' })).status === 200 && !coupleBy('bot@example.gr') && sent.length === before, 'free: the bot trap answers ok and makes nothing');
+    const ipR = [];
+    for (let i = 0; i < 4; i++) ipR.push(await su({ email: 'ip' + i + '@example.gr' }, '198.18.62.9'));
+    ok(ipR.slice(0, 3).every(x => x.status === 200) && ipR[3].status === 429 && !coupleBy('ip3@example.gr'), 'free: three sign-ups a day from one address, the fourth waits', ipR.map(x => x.status));
+    { const allKey = 'rl:freesignup:all', keep = m.get(allKey);
+      m.set(allKey, JSON.stringify(Array(100).fill(Date.now())));
+      const r = await su({ email: 'flood@example.gr' });
+      ok(r.status === 503 && r.d.error === 'busy' && !coupleBy('flood@example.gr'), 'free: 100 new plans a day at most; the door opens again by itself tomorrow', r.d);
+      if (keep) m.set(allKey, keep); else m.delete(allKey); }
+    { const r = await su({ email: 'company-free@example.gr', kind: 'company' });
+      const Co = coupleBy('company-free@example.gr');
+      ok(r.status === 200 && Co && Co.custType === 'company' && raw('plan:' + Co.planId).kind === 'company', 'free: a company signs up alone too, and is a company customer', Co); }
+
+    // -- the claim link opens it; the planner is told the limit --
+    const cl = await call('POST', '/claim', { token: F.claimToken, nonce: 'free-phone' });
+    ok(cl.status === 200 && cl.d.id === F.planId && cl.d.editKey, 'free: the mailed link opens the plan, as a bought one does', cl.d);
+    const H = { 'X-Edit-Key': cl.d.editKey };
+    let g = await call('GET', '/plans/' + F.planId, undefined, H);
+    ok(g.status === 200 && g.d.free && g.d.free.max === 8 && g.d.role === 'couple', 'free: the plan says it is free and holds 8', g.d.free);
+    ok((await call('GET', '/plans/' + F.planId, undefined, { 'X-View-Key': cl.d.readKey })).d.free === undefined, 'free: a view link is not told about the limit (it cannot add tables anyway)');
+    ok(raw('couple:' + F.id).seenAt > 0, 'free: an opening is noted (at most once a day), for the idle rule');
+
+    // -- the server holds the line at 8 guest tables --
+    let up = g.d.updated;
+    let p = await call('PUT', '/plans/' + F.planId, { plan: layout({ tables: [head, ...tablesN(8)] }), baseUpdated: up }, H);
+    ok(p.status === 200, 'free: 8 guest tables plus the head table are saved', p.d);
+    up = p.d.updated;
+    p = await call('PUT', '/plans/' + F.planId, { plan: layout({ tables: [head, ...tablesN(9)] }), baseUpdated: up }, H);
+    ok(p.status === 403 && p.d.error === 'free_limit' && p.d.max === 8 && p.d.updated === up, 'free: a 9th guest table is refused, and the plan is unchanged', p.d);
+    ok(raw('plan:' + F.planId).plan.tables.length === 9, 'free: … the stored plan still has its 8 + head');
+    p = await call('PUT', '/plans/' + F.planId, { plan: layout({ tables: [{ ...head, id: 98 }, head, ...tablesN(8)] }), baseUpdated: up }, H);
+    ok(p.status === 403 && p.d.error === 'free_limit', 'free: a second head table counts as a guest table, as in the planner');
+    p = await call('PUT', '/plans/' + F.planId, { plan: layout({ tables: [head, ...tablesN(8)], guests: { a: { name: 'Μαρία' } } }), baseUpdated: up }, H);
+    ok(p.status === 200, 'free: a save that adds no table always goes through', p.d);
+    up = p.d.updated;
+    ok((await call('POST', '/plans', { name: 'extra', plan: layout({ tables: tablesN(9) }), parentId: F.planId }, H)).d.error === 'free_limit', 'free: an extra plan of a free plan holds no more than it does');
+    ok((await call('POST', '/plans', { name: 'extra', plan: layout({ tables: tablesN(3) }), parentId: F.planId }, H)).status === 200, 'free: … a small extra plan is fine');
+
+    // -- «Πελάτες» and the contact topic --
+    const row = (await call('GET', '/admin/customers', undefined, OWN)).d.customers.find(x => x.key === 'c:' + F.id);
+    ok(row && row.free === true && !(row.flags || []).includes('claim_unused'), 'free: «Πελάτες» marks it free and never asks Andreas to chase an unopened one', row);
+    const card = (await call('GET', '/admin/customers/c:' + F.id, undefined, OWN)).d;
+    ok(card.memory && card.memory.years === 2 && card.timeline.some(t => t.code === 'free_signup') && !card.timeline.some(t => t.code === 'bought'), 'free: kept like a non-buyer (2 years), and its timeline says sign-up, not bought', { memory: card.memory, timeline: card.timeline });
+    { const r = await call('POST', '/contact', { kind: 'wedding', topic: 'unlock', name: 'Ελένη', email: 'free1@example.gr', lang: 'el' }, { 'X-Real-IP': '198.18.63.1' });
+      ok(r.status === 200, 'free: the planner link «more tables» is a contact topic the form accepts', r.d); }
+
+    // -- unlock: Andreas presses the button once they paid --
+    ok((await call('PATCH', '/admin/couples/' + F.id, { unlock: true }, { 'X-Owner-Key': 'nope' })).status === 403, 'free: only the owner unlocks');
+    before = sent.length;
+    const un = await call('PATCH', '/admin/couples/' + F.id, { unlock: true }, OWN);
+    ok(un.status === 200 && raw('couple:' + F.id).unlockedAt > 0, 'free: the unlock is recorded', un.d);
+    const L = raw('ledger:c:' + F.id);
+    ok(L.dues.length === 1 && L.dues[0].src === 'unlock', 'free: … 25 € is expected on «Πληρωμές», like a new customer', L.dues);
+    ok(sent.length === before + 1 && sent[before].to === 'free1@example.gr', 'free: … and the customer is told by mail', sent[before] && sent[before].subject);
+    await call('PATCH', '/admin/couples/' + F.id, { unlock: true }, OWN);
+    ok(raw('ledger:c:' + F.id).dues.length === 1 && sent.length === before + 1, 'free: pressing it twice adds no second due and no second mail');
+    p = await call('PUT', '/plans/' + F.planId, { plan: layout({ tables: [head, ...tablesN(12)] }), baseUpdated: up }, H);
+    ok(p.status === 200, 'free: unlocked, the 9th table and beyond are saved', p.d);
+    ok((await call('GET', '/plans/' + F.planId, undefined, H)).d.free === undefined, 'free: … and the planner is no longer told a limit');
+    ok((await call('GET', '/admin/customers/c:' + F.id, undefined, OWN)).d.memory.years === 5, 'free: unlocked, it is kept as a buyer is (5 years)');
+
+    // -- the sweep: never-opened links, idle plans --
+    const G = coupleBy('ip0@example.gr'), Gp = G.planId;
+    ago('couple:' + G.id, 31, ['claimAt', 'createdAt']);
+    let s = await mod.sweep(env);
+    ok(s.freeUnopened >= 1 && !m.has('couple:' + G.id) && !m.has('plan:' + Gp) && !m.has('claim:' + G.claimToken) && !m.has('books:c:' + G.id), 'free: a link never opened in 30 days takes its plan with it, and the books keep nothing', s);
+    ok(!m.has('email:ip0@example.gr') || !(raw('email:ip0@example.gr').couples || []).length, 'free: … the address is free to sign up again');
+
+    const I = coupleBy('ip1@example.gr');
+    const ic = await call('POST', '/claim', { token: I.claimToken, nonce: 'idle' });
+    const IH = { 'X-Edit-Key': ic.d.editKey };
+    await call('GET', '/plans/' + I.planId, undefined, IH);
+    ago('couple:' + I.id, 179, TIMES);
+    before = sent.length;
+    await mod.sweep(env);
+    ok(!raw('couple:' + I.id).idleWarnedAt && sent.length === before, 'free: 179 days unopened is still fine');
+    ago('couple:' + I.id, 2, TIMES);
+    s = await mod.sweep(env);
+    const w = lastTo('ip1@example.gr');
+    ok(s.freeWarned >= 1 && raw('couple:' + I.id).idleWarnedAt > 0 && w && sent.length === before + 1, 'free: after 6 months unopened, one warning mail', { s, text: w && w.text });
+    await mod.sweep(env);
+    ok(sent.length === before + 1 && m.has('couple:' + I.id), 'free: the warning goes once, and nothing is erased yet');
+    await call('GET', '/plans/' + I.planId, undefined, IH);
+    ok(!raw('couple:' + I.id).idleWarnedAt, 'free: opening the plan clears the warning');
+    ago('couple:' + I.id, 181, TIMES);
+    await mod.sweep(env);
+    ok(raw('couple:' + I.id).idleWarnedAt > 0, 'free: idle again, warned again');
+    ago('couple:' + I.id, 15, ['idleWarnedAt']);
+    s = await mod.sweep(env);
+    ok(s.freeIdle >= 1 && !m.has('couple:' + I.id) && !m.has('plan:' + I.planId) && !m.has('books:c:' + I.id), 'free: 14 days after the warning, still unopened, it is erased with nothing for the books', s);
+
+    // an unlocked plan is no longer touched by either rule
+    ago('couple:' + F.id, 400, TIMES);
+    before = sent.length; await mod.sweep(env);
+    ok(m.has('couple:' + F.id) && !raw('couple:' + F.id).idleWarnedAt && !sent.slice(before).some(x => x.to === 'free1@example.gr'), 'free: an unlocked plan is a bought one: no idle rule');
+
+    // without mail, no warning, so nothing is erased for idleness
+    const J = coupleBy('ip2@example.gr');
+    patchRaw('couple:' + J.id, o => { o.claimedAt = Date.now() - 200 * 86400000; o.createdAt -= 200 * 86400000; o.claimAt -= 200 * 86400000; });
+    { const keep = env.MAIL; delete env.MAIL; await mod.sweep(env); await mod.sweep(env); env.MAIL = keep; }
+    ok(m.has('couple:' + J.id) && !raw('couple:' + J.id).idleWarnedAt, 'free: with mail off nobody is warned, so nobody is erased');
+
+    // -- the pages say it --
+    const fs = await import('node:fs');
+    const rd = f => fs.readFileSync(path.join(root, f), 'utf8');
+    const ep = rd('epikoinonia.html'), tm = rd('terms.html'), pv = rd('privacy.html'), ix = rd('index.html'), pl = rd('planner.src.html'), ad = rd('admin.html');
+    ok(/\/signup\/free/.test(ep) && /q=free/.test(ix), 'pages: the home page links the free sign-up, and the form posts it');
+    ok(/8Β\. Το δωρεάν σχέδιο online/.test(tm) && /8B\. The free online plan/.test(tm), 'terms: the free plan has its own paragraph, in both languages');
+    ok(/Δωρεάν σχέδιο online/.test(pv) && /A free online plan/.test(pv), 'privacy: what is kept of a free plan, and for how long, in both languages');
+    ok(/capFree:/.test(pl) && /free_limit/.test(pl) && /q=unlock/.test(pl), 'planner: a free plan stops at the limit, says why and links the unlock');
+    ok(/Ξεκλείδωμα \(25 €\)/.test(ad) && /unlock:\s*true/.test(ad), 'admin: the unlock button sends the unlock');
+    ok(!/σβήνουμε ποτέ/i.test(tm + pv + ep + ix), 'pages: never «δεν σβήνουμε ποτέ»');
+  } finally {
+    env.MAIL = mail0;
+    m.clear(); for (const [k, v] of saved) m.set(k, v);
+  }
+}
+
 console.log(`\nall ${n} checks passed`);

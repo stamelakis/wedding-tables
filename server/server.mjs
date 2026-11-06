@@ -296,28 +296,28 @@ http.createServer(async (req, res) => {
   // the same budget as the venue's own laptop saving the plan on that wifi, and each would lock the other out.
   if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS' && !isFind) {
     const ip = clientIp(req);
-    const isCreate = req.method === 'POST' && canon === '/plans';
+    const isCreate = req.method === 'POST' && (canon === '/plans' || canon === '/signup/free');   // a free sign-up makes a plan too
     if (!rateOk(ip + (isCreate ? ':create' : ':write'), isCreate ? 20 : 120, 60000)) {
       res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '60' }); res.end('{"error":"rate_limited"}'); return;
     }
     // e-mail requests: 20 an hour per IP (each address is also limited to 3 an hour by the worker)
-    if ((req.method === 'POST' || req.method === 'PUT') && (canon === '/recover' || canon === '/admin/recover' || canon === '/admin/owner' || canon === '/admin/test/email' || canon === '/signup/venue' || canon === '/contact' || /^\/(plans|venues)\/[^/]+\/email$/.test(canon)) && !rateOk(ip + ':mail', 20, 3600000)) {
+    if ((req.method === 'POST' || req.method === 'PUT') && (canon === '/recover' || canon === '/admin/recover' || canon === '/admin/owner' || canon === '/admin/test/email' || canon === '/signup/venue' || canon === '/signup/free' || canon === '/contact' || /^\/(plans|venues)\/[^/]+\/email$/.test(canon)) && !rateOk(ip + ':mail', 20, 3600000)) {
       res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '3600' }); res.end('{"error":"rate_limited"}'); return;
     }
     // The venue signup is the one unauthenticated write that creates an account: a burst is stopped here, and the
     // worker keeps the real fence (3 a day per address, in the store, so a restart does not hand out a fresh budget).
-    if (canon === '/signup/venue' && !rateOk(ip + ':signup', 5, 3600000)) {
+    if ((canon === '/signup/venue' || canon === '/signup/free') && !rateOk(ip + ':signup', 5, 3600000)) {
       res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '3600' }); res.end('{"error":"rate_limited"}'); return;
     }
     // The contact form the same way: a burst stopped here, the real fence (5 a day per address) in the worker's store.
     if (canon === '/contact' && !rateOk(ip + ':contact', 5, 3600000)) {
       res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '3600' }); res.end('{"error":"rate_limited"}'); return;
     }
-    // …and they are the two unauthenticated writes a FOREIGN page could make a visitor's browser send. A POST with
+    // …and they are the three unauthenticated writes a FOREIGN page could make a visitor's browser send. A POST with
     // text/plain is a CORS "simple request": no preflight, so the per-IP fence above would be spending the visitor's
     // address instead of the attacker's. Demanding JSON forces a preflight, and the preflight answers with our one
     // fixed Access-Control-Allow-Origin, which no other page passes. A stated foreign Origin is refused outright.
-    if (canon === '/signup/venue' || canon === '/contact') {
+    if (canon === '/signup/venue' || canon === '/signup/free' || canon === '/contact') {
       const ct = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
       if (ct !== 'application/json') { res.writeHead(415, { 'Content-Type': 'application/json' }); res.end('{"error":"bad_content_type"}'); return; }
       const org = String(req.headers.origin || '').trim();
