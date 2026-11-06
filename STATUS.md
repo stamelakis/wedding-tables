@@ -2,8 +2,8 @@
 
 Updated: 2026-11-06
 
-**Status:** Live runs `61752df` (deployed 2026-11-04, tag `deploy-2026-11-04-2`, pre-deploy backup
-`/opt/backups/takeaseat-20261104-191356.db.gz.age`), healthy. **Phase 3 of `COMPANIES-PLAN.md` is live:** a company's console, saved rooms, old designs, the 1–5 year choice. Operations phases 1–6 are live.
+**Status:** Live runs `c557b34` (deployed 2026-11-06, pre-deploy backup
+`/opt/backups/takeaseat-20261106-151817.db.gz.age`), healthy. **Phase 3 of `COMPANIES-PLAN.md` is live:** a company's console, saved rooms, old designs, the 1–5 year choice. Operations phases 1–6 are live.
 
 **Phase 4 (the γραφείο εκδηλώσεων) is live and done.** Andreas signed a test γραφείο up on the live site on 2026-11-04: the setup mail, the agreement at first opening, two saved rooms, a γάμος and a γιορτή from Αίγλη, and he reported no «κτήμα». The event from the second room, a βάπτιση from Ανατολή, was made by the session through the API on the running server with that γραφείο's own key, and it recorded Ανατολή. Both rooms had the same tables, so that proves the room's name and not different tables; the room dropdown itself worked on the local copy and was never chosen on live. Both test customers were then removed by hand: 15 rows, plus their entries in `venues:index` and `signups:index`; nothing on live names them, and Jockey's row is unchanged. Backup just before that delete: `/opt/backups/takeaseat-20261104-224121.db.gz.age`. Also checked on live, read-only with no sign-in and no form sent: `/health`, 13 pages, `/admin/customers` refusing without a key, the sitemap, the home section, the guide, the γραφείο's login and sign-up form at 375px with no console errors, a bare `venue.html` still saying Κτήμα, the new paragraphs in terms, dpa and privacy, the γιορτή demo loading. 1796 checks pass, on the local copy and in the server's build; `/security-review` found nothing. Seen at 375px on the local copy: sign-up, its mail, the agreement, console, two rooms, two events, the planner as γραφείο and as client, the old-design dialog, guide and home section, admin's card and ready replies. Rooms with tables were seen in a client's wedding and γιορτή, opened from their links, built through the API. **Not seen on screen:** a βάπτιση on a γραφείο's plan (scans only), English and German (tests only), the room saved from inside the planner and not through the API. Andreas read the new Greek on 2026-11-04 and changed nothing.
 
@@ -19,8 +19,8 @@ Updated: 2026-11-06
 
 ## Next
 
-1. **What Google and link previews show still names three kinds** (index.html:7, 8, 14, 15, 25, epikoinonia.html:8). Left on purpose by Andreas: those words affect the ranking, so change them
-   deliberately, once companies start looking. Every other line found by a search for a baptism and a party named close together now includes company events.
+1. **The home page title still names three kinds** (index.html:7 and 14, «…για γάμο, βάπτιση & γιορτή…»). Kept on purpose by
+   Andreas on 2026-11-06: the title carries the ranking. The descriptions already name company events.
 2. **Phase 7 (online payment)** waits on the company, accountant and lawyer. The page's remaining English sections move
    to Greek as each is touched.
 3. **Only if a free online plan is ever offered: an 8-table limit on the server.** Not a gap today (checked
@@ -80,6 +80,7 @@ Updated: 2026-11-06
 
 ## History
 
+- 2026-11-06: The Google, link-preview and structured-data descriptions (index.html, epikoinonia.html) now name «εταιρική εκδήλωση»; titles kept. Live as `c557b34`; the new text was read back from live.
 - 2026-11-05: CLAUDE.md trimmed from 216 to 128 lines: one line per decision; the full records moved to `COMPANIES-PLAN.md` §7, `HANDOFF.md` §10 and `OPERATIONS-PLAN.md` §9 (`257b864`).
 - 2026-11-05: Phase 4 of `COMPANIES-PLAN.md` finished: a test γραφείο went through the live site, then both test customers were removed by hand.
 - 2026-11-04: Phase 3 of `COMPANIES-PLAN.md` live: a company's console, saved rooms, old designs, the 1–5 year choice (`9a092f8`, `deploy-2026-11-04-1`). Live test company passed 32 of 32 through the API and was removed.
