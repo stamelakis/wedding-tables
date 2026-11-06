@@ -2,8 +2,8 @@
 
 Updated: 2026-11-06
 
-**Status:** Live runs `c557b34` (deployed 2026-11-06, pre-deploy backup
-`/opt/backups/takeaseat-20261106-151817.db.gz.age`), healthy. **Phase 3 of `COMPANIES-PLAN.md` is live:** a company's console, saved rooms, old designs, the 1–5 year choice. Operations phases 1–6 are live.
+**Status:** Live runs `fa76fde` (deployed 2026-11-06 as `deploy-2026-11-06-1`, pre-deploy backup
+`/opt/backups/takeaseat-20261106-155334.db.gz.age`), healthy. **Phase 3 of `COMPANIES-PLAN.md` is live:** a company's console, saved rooms, old designs, the 1–5 year choice. Operations phases 1–6 are live.
 
 **Phase 4 (the γραφείο εκδηλώσεων) is live and done.** Andreas signed a test γραφείο up on the live site on 2026-11-04: the setup mail, the agreement at first opening, two saved rooms, a γάμος and a γιορτή from Αίγλη, and he reported no «κτήμα». The event from the second room, a βάπτιση from Ανατολή, was made by the session through the API on the running server with that γραφείο's own key, and it recorded Ανατολή. Both rooms had the same tables, so that proves the room's name and not different tables; the room dropdown itself worked on the local copy and was never chosen on live. Both test customers were then removed by hand: 15 rows, plus their entries in `venues:index` and `signups:index`; nothing on live names them, and Jockey's row is unchanged. Backup just before that delete: `/opt/backups/takeaseat-20261104-224121.db.gz.age`. Also checked on live, read-only with no sign-in and no form sent: `/health`, 13 pages, `/admin/customers` refusing without a key, the sitemap, the home section, the guide, the γραφείο's login and sign-up form at 375px with no console errors, a bare `venue.html` still saying Κτήμα, the new paragraphs in terms, dpa and privacy, the γιορτή demo loading. 1796 checks pass, on the local copy and in the server's build; `/security-review` found nothing. Seen at 375px on the local copy: sign-up, its mail, the agreement, console, two rooms, two events, the planner as γραφείο and as client, the old-design dialog, guide and home section, admin's card and ready replies. Rooms with tables were seen in a client's wedding and γιορτή, opened from their links, built through the API. **Not seen on screen:** a βάπτιση on a γραφείο's plan (scans only), English and German (tests only), the room saved from inside the planner and not through the API. Andreas read the new Greek on 2026-11-04 and changed nothing.
 
@@ -75,11 +75,10 @@ Updated: 2026-11-06
   `TakeaSeatHermes.lnk` and check the file (HANDOFF). The cause is in Hermes's `hermes_control.py`, another project.
 - **This PC's C: drive is 98 % full** (9.7 GB free on 2026-10-23). Not the server's; the server is at 24 %.
 - The 🛟 on the «Υποστήριξη έως …» badge shows as an empty box on Windows 10 browsers (no such emoji there).
-- **The tour once threw a `TypeError … 'prep'`** when «Επόμενο» was pressed past its last step (planner around line 5502, seen 2026-11-03 in a screen check, not
-  company-specific). Seen again 2026-11-04 from scripted clicks on «Επόμενο» past the last step; not reproduced by a person, not company-specific, not fixed.
 
 ## History
 
+- 2026-11-06: Fixed the guided tour's `TypeError … 'prep'`: a second quick click on a card not yet redrawn moved the tour past its last step (or below the first with «Πίσω»). Buttons now ignore a click once the tour left their step; 3 checks, 1799 pass. Live as `fa76fde` (`deploy-2026-11-06-1`); on live, five quick clicks moved one step and «Τέλος» closed cleanly, no console errors.
 - 2026-11-06: The Google, link-preview and structured-data descriptions (index.html, epikoinonia.html) now name «εταιρική εκδήλωση»; titles kept. Live as `c557b34`; the new text was read back from live.
 - 2026-11-05: CLAUDE.md trimmed from 216 to 128 lines: one line per decision; the full records moved to `COMPANIES-PLAN.md` §7, `HANDOFF.md` §10 and `OPERATIONS-PLAN.md` §9 (`257b864`).
 - 2026-11-05: Phase 4 of `COMPANIES-PLAN.md` finished: a test γραφείο went through the live site, then both test customers were removed by hand.
