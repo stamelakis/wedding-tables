@@ -1,6 +1,6 @@
 # TakeaSeat — STATUS
 
-Updated: 2026-11-05
+Updated: 2026-11-06
 
 **Status:** Live runs `61752df` (deployed 2026-11-04, tag `deploy-2026-11-04-2`, pre-deploy backup
 `/opt/backups/takeaseat-20261104-191356.db.gz.age`), healthy. **Phase 3 of `COMPANIES-PLAN.md` is live:** a company's console, saved rooms, old designs, the 1–5 year choice. Operations phases 1–6 are live.
@@ -80,6 +80,7 @@ Updated: 2026-11-05
 
 ## History
 
+- 2026-11-05: CLAUDE.md trimmed from 216 to 128 lines: one line per decision; the full records moved to `COMPANIES-PLAN.md` §7, `HANDOFF.md` §10 and `OPERATIONS-PLAN.md` §9 (`257b864`).
 - 2026-11-05: Phase 4 of `COMPANIES-PLAN.md` finished: a test γραφείο went through the live site, then both test customers were removed by hand.
 - 2026-11-04: Phase 3 of `COMPANIES-PLAN.md` live: a company's console, saved rooms, old designs, the 1–5 year choice (`9a092f8`, `deploy-2026-11-04-1`). Live test company passed 32 of 32 through the API and was removed.
 - 2026-11-03: The last five lines name company events: the 25 € price, how a venue makes an event, the console's welcome, the γιορτή guide, the Greek terms (`be68c33`, `deploy-2026-11-03-8`).
