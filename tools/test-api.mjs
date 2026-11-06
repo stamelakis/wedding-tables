@@ -2464,6 +2464,17 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     ok(hitw.status === 200 && hitw.d.kind === 'wedding', 'kind: a wedding answers «wedding», as it always did');
   }
 
+  // ---- the guided tour: a second quick click on a card not yet redrawn must not move the tour again ----
+  // (two clicks on «Επόμενο» before the redraw ran the step past the last one: TypeError reading 'prep', tour stuck on screen)
+  {
+    const fs = await import('node:fs');
+    const src = fs.readFileSync(path.join(root, 'planner.src.html'), 'utf8');
+    const a = src.indexOf('function placeTour('), b = src.indexOf('\n}', a), body = src.slice(a, b);
+    ok(a > 0 && /const at=tour\.i, stale=\(\)=>!tour\|\|tour\.i!==at;/.test(body), 'planner tour: each card remembers the step it was drawn for');
+    ok(/\[data-a="next"\]'\)\.onclick=\(\)=>\{ if\(stale\(\)\) return;/.test(body), 'planner tour: «Επόμενο» on an out-of-date card does nothing');
+    ok(/bk\.onclick=\(\)=>\{ if\(stale\(\)\) return;/.test(body), 'planner tour: «Πίσω» on an out-of-date card does nothing');
+  }
+
   // ---- the planner's own words: the dictionary twins, and the rule tr() uses to pick one ----
   {
     const fs = await import('node:fs');

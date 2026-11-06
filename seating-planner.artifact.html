@@ -5569,8 +5569,10 @@ function placeTour(){
   if(!isNarrow() && visible){ const w=card.offsetWidth||380; card.style.left=clamp(r.left, 12, vw-w-12)+"px"; card.style.right=""; }
   else { card.style.left="12px"; card.style.right="12px"; }
   card.querySelectorAll('[data-a="skip"]').forEach(b=>b.onclick=()=>endTour());
-  const bk=card.querySelector('[data-a="back"]'); if(bk) bk.onclick=()=>{ if(st.after) st.after(); tour.i--; showTourStep(); };
-  card.querySelector('[data-a="next"]').onclick=()=>{ if(last){ endTour(); return; } if(st.after) st.after(); tour.i++; showTourStep(); };
+  // the card is redrawn two frames after a step changes: a second quick click on this card must not move the tour again (it ran past the last step)
+  const at=tour.i, stale=()=>!tour||tour.i!==at;
+  const bk=card.querySelector('[data-a="back"]'); if(bk) bk.onclick=()=>{ if(stale()) return; if(st.after) st.after(); tour.i--; showTourStep(); };
+  card.querySelector('[data-a="next"]').onclick=()=>{ if(stale()) return; if(last){ endTour(); return; } if(st.after) st.after(); tour.i++; showTourStep(); };
 }
 window.addEventListener("resize",()=>{ if(tour) placeTour(); });
 $("helpBtn").addEventListener("click",startTour);
