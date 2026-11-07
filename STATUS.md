@@ -1,18 +1,17 @@
 # TakeaSeat — STATUS
 
-Updated: 2026-11-06
+Updated: 2026-11-08
 
-**Status:** Live runs `fa76fde` (deployed 2026-11-06 as `deploy-2026-11-06-1`, pre-deploy backup
-`/opt/backups/takeaseat-20261106-155334.db.gz.age`), healthy. **Phase 3 of `COMPANIES-PLAN.md` is live:** a company's console, saved rooms, old designs, the 1–5 year choice. Operations phases 1–6 are live.
+**Status:** Live runs `94f43ab` (deployed 2026-11-08 as `deploy-2026-11-08-1`, pre-deploy backup
+`/opt/backups/takeaseat-20261107-230309.db.gz.age`), healthy. **Phase 3 of `COMPANIES-PLAN.md` is live:** a company's console, saved rooms, old designs, the 1–5 year choice. Operations phases 1–6 are live.
 
-**The free online plan is built and committed, NOT deployed** (2026-11-06; HANDOFF §1l). Anyone signs up alone at
-`epikoinonia.html?q=free` with name, email, date and the terms tick, and gets the link by mail. The plan holds 8 guest
-tables, on screen and on the server; «Ξεκλείδωμα (25 €)…» on the admin card lifts it. Never-opened links go after 30
-days; plans unopened for 6 months get one warning and go 14 days later. 1862 checks pass; `/security-review` found
-nothing above the bar. Seen at 375px on the local copy: the Greek form and its checks, the mail, the claim, the 9th
-table stopped with its note and «Ξεκλείδωμα» link, the server refusing a forced 9th (the planner went back to 8 and
-said why), admin's row, card and unlock (25 € due, mail), then the 9th table saved. The `verifier` then passed the home strip, the English form,
-the unlock link's form, terms §8Β and privacy at 375px. A same-millisecond double unlock could add a second 25 € due: fixed, with a test.
+**The free online plan is live** (2026-11-08; HANDOFF §1l). Anyone signs up alone at `epikoinonia.html?q=free` and
+gets the link by mail; 8 guest tables until «Ξεκλείδωμα (25 €)…» on the admin card; idle cleanup after 30 days / 6
+months. Price: 25 € with ΦΠΑ for everyone, companies included (Andreas said deploy without changing it). Checked on
+live: `/health`, the main pages with no console errors, the home strip, the form at 375px with no overflow, terms §8Β and
+privacy. One real sign-up with Andreas's own email: the mail arrived and the link opened (`claimedAt`, `seenAt` set).
+Then that test customer was forgotten (backup just before: `/opt/backups/takeaseat-20261107-230825.db.gz.age`); no
+card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table stopped, and an unlock (both on the local copy only).
 
 **Phase 4 (the γραφείο εκδηλώσεων) is live and done** (2026-11-04; the full check is in History).
 
@@ -21,8 +20,6 @@ the unlock link's form, terms §8Β and privacy at 375px. A same-millisecond dou
 **Not checked live:** the signed-in screens in a browser (a company's console and its planner were seen on the local copy only, and we do not type live keys into pages); the one real venue's console (needs its own key; its card opens, and it never had a saved room). Also not yet seen live: a company plan used for real, its PDF, a real iPhone tapping the kind picker in the demo, a real form sent as a company, a real new due on «Πληρωμές», a real morning mail.
 
 ## In progress / unfinished
-
-- **The free online plan waits for Andreas's reading and his OK to deploy** (see Waiting on Andreas).
 
 - The keep choice's warning before a shorter period was seen only on made-up data in the page, because a past event cannot be created through the screen. Its deletion is covered by the tests. Worth a look the first time a real customer has an old event.
 - Party plans created before 2026-10-17 keep the label «Τραπέζι της γιορτής» until the customer renames it
@@ -34,18 +31,11 @@ the unlock link's form, terms §8Β and privacy at 375px. A same-millisecond dou
    Andreas on 2026-11-06: the title carries the ranking. The descriptions already name company events.
 2. **Phase 7 (online payment)** waits on the company, accountant and lawyer. The page's remaining English sections move
    to Greek as each is touched.
-0. **Deploy the free online plan** once Andreas has read its Greek and says go. Done when: live `/health` is fine, the
-   form at `epikoinonia.html?q=free` shows at 375px, and one sign-up with Andreas's own email gets the mail and opens.
-   Then delete that test plan («Ξέχασε τον πελάτη…»; a free plan leaves nothing in the books).
 
 ## Waiting on Andreas
 
-- **Read the free plan's Greek, then say «deploy» or what to change.** Where it is, on the local copy
-  (`preview_start takeaseat-maillog`): the home page strip «Ξεκινήστε δωρεάν, online…»; the form at
-  `epikoinonia.html?kind=wedding&q=free` (its fine print and the button «Στείλτε μου τον σύνδεσμο»); the mails «Το δωρεάν
-  σχέδιό σας», «Το σχέδιό σας ξεκλειδώθηκε» and the 6-month warning (`freeClaim`, `freeUnlocked`, `freeIdle` in
-  `wedding-sync-worker.js`); the planner note «Το δωρεάν σχέδιο έχει έως 8 τραπέζια…»; terms §8Β and the privacy §7
-  bullet «Δωρεάν σχέδιο online». Also decide: the price is 25 € with ΦΠΑ, like a direct couple; say if a company should pay differently.
+- **The first real free sign-up:** when one shows in «Πελάτες» (marked free), say if anything reads wrong. When one
+  asks to unlock, press «Ξεκλείδωμα (25 €)…» on its card after the payment. If a company should pay differently from 25 €, say so.
 
 - **The first real company:** sell it with «+ Εταιρεία», press «+1 εκδήλωση (25 €)» when it buys another, and say if anything reads wrong. Its screens have not been seen signed in on live. You can also open «Πελάτες» once and check nothing named ΔΟΚΙΜΗ is there.
 - **When something comes up in «Σήμερα»:** try «αύριο» on a line and «Επαναφορά» under «Κρυμμένα». The 08:00 mail comes
@@ -103,6 +93,7 @@ the unlock link's form, terms §8Β and privacy at 375px. A same-millisecond dou
 
 ## History
 
+- 2026-11-08: Deployed the free online plan as `94f43ab` (`deploy-2026-11-08-1`). Live smoke test passed; one sign-up with Andreas's email got the mail and opened, then was forgotten.
 - 2026-11-06: Built the free online plan (8 guest tables, unlock 25 €, idle cleanup), commits `42b1a24` and the wrap commit; not deployed. CLAUDE.md's "no server-side cap" decision replaced.
 - 2026-11-06: Fixed the guided tour's `TypeError … 'prep'`: a second quick click on a card not yet redrawn moved the tour past its last step (or below the first with «Πίσω»). Buttons now ignore a click once the tour left their step; 3 checks, 1799 pass. Live as `fa76fde` (`deploy-2026-11-06-1`); on live, five quick clicks moved one step and «Τέλος» closed cleanly, no console errors.
 - 2026-11-06: The Google, link-preview and structured-data descriptions (index.html, epikoinonia.html) now name «εταιρική εκδήλωση»; titles kept. Live as `c557b34`; the new text was read back from live.
