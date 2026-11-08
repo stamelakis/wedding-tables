@@ -2882,7 +2882,7 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
       'retention: a year after the event the couple\'s plan is deleted and leaves the list; the address stays on the memory card only', sw);
     // what the customer is told matches: a year for everyone, and the notes go the day after
     const fs = await import('node:fs'), read = f => fs.readFileSync(path.join(root, f), 'utf8');
-    const lands = ['plano-trapezion-gamou.html', 'plano-trapezion-vaptisis.html', 'plano-trapezion-giortis.html', 'plano-trapezion-etairikis-ekdilosis.html'];
+    const lands = ['plano-trapezion-gamou.html', 'plano-trapezion-vaptisis.html', 'plano-trapezion-giortis.html', 'plano-trapezion-etairikis-ekdilosis.html', 'dorean-schedio-trapezion.html'];
     const pages = ['index.html', 'privacy.html', 'terms.html', 'dpa.html', ...lands];
     ok(pages.every(f => !/σβήνουμε ποτέ|never delete/i.test(read(f))), 'retention: no page promises we never delete (GDPR storage limitation)');
     ok(lands.every(f => !/Επτά ημέρες μετά|7 ημέρες μετά/.test(read(f)) && /Έναν χρόνο μετά/.test(read(f)) && /σημειώσεις των καλεσμένων σας σβήνονται/.test(read(f))),
@@ -3906,7 +3906,7 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     const page = read('epikoinonia.html');
     ok(/fetch\(["']\/contact["']/.test(page) && /name="website"/.test(page) && /id="f_nomail"/.test(page) && /"application\/json"/.test(page),
       'page: epikoinonia.html posts JSON to /contact, with the trap and the decision-6 tick');
-    for (const f of ['index.html', 'plano-trapezion-gamou.html', 'plano-trapezion-vaptisis.html', 'plano-trapezion-giortis.html', 'plano-trapezion-etairikis-ekdilosis.html'])
+    for (const f of ['index.html', 'plano-trapezion-gamou.html', 'plano-trapezion-vaptisis.html', 'plano-trapezion-giortis.html', 'plano-trapezion-etairikis-ekdilosis.html', 'dorean-schedio-trapezion.html'])
       ok(!/mailto:info@takeaseat\.gr\?/.test(read(f)) && /href="\/epikoinonia\.html\?kind=/.test(read(f)), 'page: ' + f + ' — every «write to us» button opens the form');
     ok(/epikoinonia\.html/.test(read('sitemap.xml')), 'page: the form is in the sitemap');
     ok(/φόρμα επικοινωνίας/.test(read('privacy.html')) && /contact form/.test(read('privacy.html')), 'page: privacy names the contact form, in both languages');
@@ -4217,13 +4217,13 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
       // what a new due says is what the pages say: every euro figure on a public page is one of the two prices
       const fs = await import('node:fs'), read = f => fs.readFileSync(path.join(root, f), 'utf8');
       const P = (await first(await couple({}))).amount / 100, S = (await first(await venue({}))).amount / 100;
-      for (const [f, both] of [['index.html', true], ['terms.html', true], ['plano-trapezion-gamou.html', false], ['plano-trapezion-vaptisis.html', false], ['plano-trapezion-giortis.html', false], ['plano-trapezion-etairikis-ekdilosis.html', false]]) {
+      for (const [f, both] of [['index.html', true], ['terms.html', true], ['plano-trapezion-gamou.html', false], ['plano-trapezion-vaptisis.html', false], ['plano-trapezion-giortis.html', false], ['plano-trapezion-etairikis-ekdilosis.html', false], ['dorean-schedio-trapezion.html', false]]) {
         const got = [...read(f).matchAll(/(\d[\d.,]*) ?(?:€|&euro;)|(?:€|&euro;) ?(\d[\d.,]*)/g)].map(e => e[1] || e[2]);
         ok(got.includes(String(P)) && (!both || got.includes(String(S))) && got.every(e => ['0', String(P), String(S)].includes(e)), 'price: ' + f + ' names only what a new due says', got);
       }
       for (const [f, says] of [['terms.html', S + ' € τον χρόνο, πλέον ΦΠΑ'], ['terms.html', S + ' € per year, plus VAT'], ['terms.html', P + ' € εφάπαξ, με ΦΠΑ'], ['terms.html', P + ' € one-off, VAT included'],
         ['index.html', S + ' € πλέον ΦΠΑ'], ['index.html', P + ' € εφάπαξ με ΦΠΑ'], ['index.html', '"price":"' + S + '","priceCurrency":"EUR","valueAddedTaxIncluded":false'], ['index.html', '"price":"' + P + '","priceCurrency":"EUR","valueAddedTaxIncluded":true'],
-        ['plano-trapezion-gamou.html', P + ' € εφάπαξ με ΦΠΑ'], ['plano-trapezion-vaptisis.html', P + ' € εφάπαξ με ΦΠΑ'], ['plano-trapezion-giortis.html', P + ' € εφάπαξ με ΦΠΑ'], ['plano-trapezion-etairikis-ekdilosis.html', P + ' € εφάπαξ με ΦΠΑ'],
+        ['plano-trapezion-gamou.html', P + ' € εφάπαξ με ΦΠΑ'], ['dorean-schedio-trapezion.html', P + ' € εφάπαξ με ΦΠΑ'], ['plano-trapezion-vaptisis.html', P + ' € εφάπαξ με ΦΠΑ'], ['plano-trapezion-giortis.html', P + ' € εφάπαξ με ΦΠΑ'], ['plano-trapezion-etairikis-ekdilosis.html', P + ' € εφάπαξ με ΦΠΑ'],
         ['admin.html', 'κοστίζει ' + P + ' € (με ΦΠΑ)'], ['admin.html', '(' + P + ' € με ΦΠΑ)'], ['admin.html', 'μετά ' + S + ' € + ΦΠΑ τον χρόνο'], ['admin.html', 'placeholder="π.χ. ' + P + ',00"']])
         ok(read(f).includes(says), 'price: ' + f + ' says «' + says + '»');
     }
@@ -5377,6 +5377,28 @@ function leadStageOf(l) { return l.lost ? 8 : l.stage || 1; }
     ok(/capFree:/.test(pl) && /free_limit/.test(pl) && /q=unlock/.test(pl), 'planner: a free plan stops at the limit, says why and links the unlock');
     ok(/Ξεκλείδωμα \(25 €\)/.test(ad) && /unlock:\s*true/.test(ad), 'admin: the unlock button sends the unlock');
     ok(!/σβήνουμε ποτέ/i.test(tm + pv + ep + ix), 'pages: never «δεν σβήνουμε ποτέ»');
+
+    // -- its own page: dorean-schedio-trapezion.html --
+    const fp = rd('dorean-schedio-trapezion.html'), wk = rd('wedding-sync-worker.js'), dock = rd('server/Dockerfile');
+    const num = k => Number((wk.match(new RegExp('\\b' + k + ' = (\\d+)')) || [])[1]);
+    ok(dock.split('dorean-schedio-trapezion.html').length === 3 && rd('sitemap.xml').includes('https://takeaseat.gr/dorean-schedio-trapezion.html'), 'free page: in both Dockerfile lists and the sitemap');
+    ok(!/noindex/.test(fp) && fp.includes('<link rel="canonical" href="https://takeaseat.gr/dorean-schedio-trapezion.html">'), 'free page: indexable, with its own address');
+    const fld = JSON.parse(fp.match(/<script type="application\/ld\+json">\s*([\s\S]*?)<\/script>/)[1])['@graph'];
+    const faqLd = (fld.find(g => g['@type'] === 'FAQPage') || {}).mainEntity || [];
+    const shown = [...fp.matchAll(/<summary>([^<]*)<\/summary>\s*<p>([\s\S]*?)<\/p>/g)].map(e => [e[1], e[2].replace(/<[^>]+>/g, '')]);
+    ok(faqLd.length >= 8 && faqLd.length === shown.length && faqLd.every((q, i) => q.name === shown[i][0] && q.acceptedAnswer.text === shown[i][1]),
+      'free page: the structured questions are word for word the ones on screen', { ld: faqLd.length, shown: shown.length });
+    ok(['wedding', 'baptism', 'party', 'company'].every(k => fp.includes('href="/epikoinonia.html?kind=' + k + '&amp;q=free"')) && fp.includes('q=unlock') && fp.includes('href="/lab.html"'),
+      'free page: a sign-up button for each of the four kinds, the unlock and the device-only demo');
+    ok(num('STARTER_GUEST_TABLES') === 8 && /FREE_TABLES = STARTER_GUEST_TABLES/.test(wk) && /έως 8 τραπέζια καλεσμένων/.test(fp) && /δεν μετράει στα 8/.test(fp),
+      'free page: 8 guest tables, the main table not counted, as the server counts');
+    ok(num('FREE_IDLE_DAYS') === 180 && num('FREE_IDLE_WARN_DAYS') === 14 && /μέσα σε 30 ημέρες τον σύνδεσμο/.test(fp) && /για 6 μήνες, σας στέλνουμε email/.test(fp) && /μέσα σε 14 ημέρες από αυτό, διαγράφεται/.test(fp)
+      && /μέσα σε 30 ημέρες τον σύνδεσμο/.test(tm) && /για 6 μήνες/.test(tm) && /14 ημέρες/.test(tm),
+      'free page: 30 days, 6 months and 14 days, as the terms and the sweep say');
+    ok(/Ένα ανά email/.test(fp) && /δεν γίνεται ποτέ μόνο του πληρωμένο/.test(fp) && /δεν γίνεται ποτέ μόνο του πληρωμένο/.test(tm), 'free page: one per email, and never paid by itself, as the terms say');
+    ok(!/αναμνηστικό/.test(fp) && !/14 ημερών/.test(fp), 'free page: promises no keepsake mail and no withdrawal wait');
+    ok(['index.html', 'plano-trapezion-gamou.html', 'plano-trapezion-vaptisis.html', 'plano-trapezion-giortis.html', 'plano-trapezion-etairikis-ekdilosis.html'].every(f => rd(f).includes('href="/dorean-schedio-trapezion.html"')),
+      'free page: the home page and the four event pages link it');
   } finally {
     env.MAIL = mail0;
     m.clear(); for (const [k, v] of saved) m.set(k, v);
