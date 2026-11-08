@@ -27,8 +27,9 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 
 ## Next
 
-1. **The home page title still names three kinds** (index.html:7 and 14, «…για γάμο, βάπτιση & γιορτή…»). Kept on purpose by
-   Andreas on 2026-11-06: the title carries the ranking. The descriptions already name company events.
+1. **Home page: four doors and a four-kind title** (committed locally 2026-11-08, NOT deployed). Title «Κάτοψη κτήματος
+   για γάμο, βάπτιση, γιορτή & εταιρική εκδήλωση»; four hero buttons (κτήματα, γραφεία, εταιρείες, ζευγάρια &
+   οικογένειες); the free online plan named in the hero and both couple cards. Waits on Andreas reading the Greek, then deploy.
 2. **Phase 7 (online payment)** waits on the company, accountant and lawyer. The page's remaining English sections move
    to Greek as each is touched.
 
