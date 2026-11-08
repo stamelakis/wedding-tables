@@ -2,8 +2,9 @@
 
 Updated: 2026-11-08
 
-**Status:** Live runs `94f43ab` (deployed 2026-11-08 as `deploy-2026-11-08-1`, pre-deploy backup
-`/opt/backups/takeaseat-20261107-230309.db.gz.age`), healthy. **Phase 3 of `COMPANIES-PLAN.md` is live:** a company's console, saved rooms, old designs, the 1–5 year choice. Operations phases 1–6 are live.
+**Status:** Live runs `2eeebf6` (deployed 2026-11-08 as `deploy-2026-11-08-2`, pre-deploy backup
+`/opt/backups/takeaseat-20261108-101050.db.gz.age`), healthy. Home page: four doors (κτήματα, γραφεία, εταιρείες,
+ζευγάρια & οικογένειες), title names all four events, free plan named in the hero; checked live at 375px, no console errors. **Phase 3 of `COMPANIES-PLAN.md` is live:** a company's console, saved rooms, old designs, the 1–5 year choice. Operations phases 1–6 are live.
 
 **The free online plan is live** (2026-11-08; HANDOFF §1l). Anyone signs up alone at `epikoinonia.html?q=free` and
 gets the link by mail; 8 guest tables until «Ξεκλείδωμα (25 €)…» on the admin card; idle cleanup after 30 days / 6
@@ -27,9 +28,9 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 
 ## Next
 
-1. **Home page: four doors and a four-kind title** (committed locally 2026-11-08, NOT deployed). Title «Κάτοψη κτήματος
-   για γάμο, βάπτιση, γιορτή & εταιρική εκδήλωση»; four hero buttons (κτήματα, γραφεία, εταιρείες, ζευγάρια &
-   οικογένειες); the free online plan named in the hero and both couple cards. Waits on Andreas reading the Greek, then deploy.
+1. **Ideas for presenting the site, not started** (Andreas picked 1–2 of 5 on 2026-11-08; both now live): a «Δωρεάν
+   σχέδιο τραπεζιών» landing page; «Ποιοι είμαστε» + short FAQ (needs Andreas's facts); a few words from the real
+   κτήμα (needs its OK). The four-door hero and the four-kind title are live as `2eeebf6`.
 2. **Phase 7 (online payment)** waits on the company, accountant and lawyer. The page's remaining English sections move
    to Greek as each is touched.
 
