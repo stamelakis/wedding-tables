@@ -95,6 +95,7 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 
 ## History
 
+- 2026-11-08: Home page hero now has four doors (κτήματα, γραφεία, εταιρείες, ζευγάρια & οικογένειες), the title names all four events, and the free online plan is named in the hero and both couple cards. Live as `2eeebf6` (`deploy-2026-11-08-2`); checked live at 375px, no console errors.
 - 2026-11-08: Deployed the free online plan as `94f43ab` (`deploy-2026-11-08-1`). Live smoke test passed; one sign-up with Andreas's email got the mail and opened, then was forgotten.
 - 2026-11-06: Built the free online plan (8 guest tables, unlock 25 €, idle cleanup), commits `42b1a24` and the wrap commit; not deployed. CLAUDE.md's "no server-side cap" decision replaced.
 - 2026-11-06: Fixed the guided tour's `TypeError … 'prep'`: a second quick click on a card not yet redrawn moved the tour past its last step (or below the first with «Πίσω»). Buttons now ignore a click once the tour left their step; 3 checks, 1799 pass. Live as `fa76fde` (`deploy-2026-11-06-1`); on live, five quick clicks moved one step and «Τέλος» closed cleanly, no console errors.
