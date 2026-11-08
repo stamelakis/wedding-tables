@@ -2,8 +2,9 @@
 
 Updated: 2026-11-08
 
-**Status:** Live runs `2eeebf6` (deployed 2026-11-08 as `deploy-2026-11-08-2`, pre-deploy backup
-`/opt/backups/takeaseat-20261108-101050.db.gz.age`), healthy. Home page: four doors (κτήματα, γραφεία, εταιρείες,
+**Status:** Live runs `9e5f069` (deployed 2026-11-08 as `deploy-2026-11-08-3`, pre-deploy backup
+`/opt/backups/takeaseat-20261108-130634.db.gz.age`), healthy. New page `dorean-schedio-trapezion.html` («Δωρεάν σχέδιο
+τραπεζιών»), linked from the home page and the four event pages; checked live at 375px, no console errors. Home page: four doors (κτήματα, γραφεία, εταιρείες,
 ζευγάρια & οικογένειες), title names all four events, free plan named in the hero; checked live at 375px, no console errors. **Phase 3 of `COMPANIES-PLAN.md` is live:** a company's console, saved rooms, old designs, the 1–5 year choice. Operations phases 1–6 are live.
 
 **The free online plan is live** (2026-11-08; HANDOFF §1l). Anyone signs up alone at `epikoinonia.html?q=free` and
@@ -28,14 +29,15 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 
 ## Next
 
-1. **Ideas for presenting the site, not started** (Andreas picked 1–2 of 5 on 2026-11-08; both now live): a «Δωρεάν
-   σχέδιο τραπεζιών» landing page; «Ποιοι είμαστε» + short FAQ (needs Andreas's facts); a few words from the real
-   κτήμα (needs its OK). The four-door hero and the four-kind title are live as `2eeebf6`.
+1. **Ideas for presenting the site, not started:** «Ποιοι είμαστε» + short FAQ (needs Andreas's facts); a few words
+   from the real κτήμα (needs its OK). Done: the four-door hero and title (`2eeebf6`), the free-plan page (`9e5f069`).
 2. **Phase 7 (online payment)** waits on the company, accountant and lawyer. The page's remaining English sections move
    to Greek as each is touched.
 
 ## Waiting on Andreas
 
+- **Read the Greek of the new free-plan page** (https://takeaseat.gr/dorean-schedio-trapezion.html) and the one new
+  sentence in each event page's «Θέλετε πρώτα να το δείτε;» box. Say what reads wrong.
 - **The first real free sign-up:** when one shows in «Πελάτες» (marked free), say if anything reads wrong. When one
   asks to unlock, press «Ξεκλείδωμα (25 €)…» on its card after the payment. If a company should pay differently from 25 €, say so.
 
@@ -95,6 +97,7 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 
 ## History
 
+- 2026-11-08: New landing page «Δωρεάν σχέδιο τραπεζιών» (`dorean-schedio-trapezion.html`): what the free plan gives, device demo vs free vs 25 € unlock, timeline, terms 8Β rules, 10 FAQ with matching JSON-LD; linked from home and the four event pages; 12 checks, 1874 pass. Live as `9e5f069` (`deploy-2026-11-08-3`); live smoke test passed.
 - 2026-11-08: Home page hero now has four doors (κτήματα, γραφεία, εταιρείες, ζευγάρια & οικογένειες), the title names all four events, and the free online plan is named in the hero and both couple cards. Live as `2eeebf6` (`deploy-2026-11-08-2`); checked live at 375px, no console errors.
 - 2026-11-08: Deployed the free online plan as `94f43ab` (`deploy-2026-11-08-1`). Live smoke test passed; one sign-up with Andreas's email got the mail and opened, then was forgotten.
 - 2026-11-06: Built the free online plan (8 guest tables, unlock 25 €, idle cleanup), commits `42b1a24` and the wrap commit; not deployed. CLAUDE.md's "no server-side cap" decision replaced.

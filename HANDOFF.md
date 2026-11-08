@@ -503,6 +503,7 @@ Browser ──HTTPS──> Caddy (edu-admin-caddy-1, owns :80/:443 on the shared
 | `venue.html` | Venue console (a κτήμα: log in with venue key → create weddings → copy couple links → 🔑 rotate key). |
 | `plano-trapezion-gamou.html` | Long-form couples page («πλάνο τραπεζιών γάμου»), with its own FAQ JSON-LD. |
 | `plano-trapezion-vaptisis.html` | The same for parents («πλάνο τραπεζιών βάπτισης», §1i) — its own words, not a copy. In `sitemap.xml`. |
+| `dorean-schedio-trapezion.html` | The free online plan's own page («δωρεάν σχέδιο τραπεζιών», §1l): sign-up buttons per kind, demo vs free vs unlock, terms 8Β rules. Tests keep its numbers equal to the terms and the server constants. In `sitemap.xml`. |
 | `privacy.html` / `terms.html` / `dpa.html` | Legal (GR+EN). Privacy+Terms are publishable; DPA has per-signature blanks. |
 | `wedding-sync-worker.js` | **The API logic** (shared by the Cloudflare worker and the self-host server). |
 | `server/server.mjs` | Self-host server: SQLite KV adapter + static server + rate limiting + disk guard. |
