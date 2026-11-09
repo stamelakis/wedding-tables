@@ -2,12 +2,14 @@
 
 Updated: 2026-11-09
 
-**Status:** Live runs `743fa73` (deployed 2026-11-09 as `deploy-2026-11-09-4`, pre-deploy backup
-`/opt/backups/takeaseat-20261109-151548.db.gz.age`), healthy. **New: «Συνεργάτες»** (⋯ menu): the event's vendors (role,
-name, phone, arrival, where they set up) kept in the plan, editable by every writer, read-only for viewers, never copied
-to another event; «Εκτύπωση» → «Συνεργάτες» prints them by arrival time. On a company plan «Συνεργάτες της εκδήλωσης».
-privacy and dpa list it (version 9 Nov 2026). Checked live in the lab (add, reload, print, company wording, no console
-errors). Not seen: on a real online plan, or on paper. Also new today: place cards and table cards in «Εκτύπωση» (fold not yet seen on a real printer). Also live since 2026-11-09 and checked at 375px (details in History): the home hero for
+**Status:** Live runs `8dbb223` (deployed 2026-11-09 as `deploy-2026-11-09-5`, pre-deploy backup
+`/opt/backups/takeaseat-20261109-170809.db.gz.age`), healthy. **New: «Πρόγραμμα»** (⋯ menu): the event's timeline (time,
+what, who, note) kept in the plan, editable by every writer, read-only for viewers, never copied to another event; shown
+and printed in the order of the night (00:00–05:59 after the evening). «who» suggests the vendors, and the printed sheet
+carries a vendor's phone when «who» names one. On a company plan «Πρόγραμμα της εκδήλωσης». privacy and dpa list it.
+Checked locally (add, reload, sort, print, read-only, company, 375px) and live in the lab (menu, add, reload, print
+option, company wording, no console errors). Not seen: on a real online plan, or on paper. Also new today: «Συνεργάτες»
+(the vendors list, `743fa73`) and place cards and table cards in «Εκτύπωση» (fold not yet seen on a real printer). Also live since 2026-11-09 and checked at 375px (details in History): the home hero for
 every reader, «Ποιοι είμαστε», the free-plan page, the four-door home page. **Phase 3 of `COMPANIES-PLAN.md` is live:** a
 company's console, saved rooms, old designs, the 1–5 year choice. Operations phases 1–6 are live.
 
@@ -33,16 +35,16 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 
 1. **Ideas for presenting the site:** a few words from the real κτήμα (needs its OK). Done: the four-door hero
    (`2eeebf6`), the hero for every reader (`bc7574b`), the free-plan page (`9e5f069`), «Ποιοι είμαστε» (`d1e4823`).
-2. **More for the night of the event** (agreed 2026-11-09; place cards and «Συνεργάτες» done): a run-of-show
-   (χρονοδιάγραμμα) shared with venue, DJ and photographer, and door check-in for company events. Andreas picks which
-   first; plan and "done when" before building.
+2. **More for the night of the event** (agreed 2026-11-09; place cards, «Συνεργάτες» and «Πρόγραμμα» done): door
+   check-in for company events is left. Plan and "done when" before building.
 3. **Phase 7 (online payment)** waits on the company, accountant and lawyer. The page's remaining English sections move
    to Greek as each is touched.
 
 ## Waiting on Andreas
 
-- **Read the Greek of «Συνεργάτες»:** in lab.html → ⋯ → «Συνεργάτες…» (the hint at the top, the placeholders), and the
-  new words in privacy.html («Περιεχόμενο σχεδίου» row) and dpa.html («Υποκείμενα», «Δεδομένα»). Say what reads wrong.
+- **Read the Greek of «Συνεργάτες» and «Πρόγραμμα»:** in lab.html → ⋯ → «Συνεργάτες…» and «Πρόγραμμα…» (the hint at
+  the top, the placeholders, the suggested moments per kind), and the new words in privacy.html («Περιεχόμενο σχεδίου»
+  row) and dpa.html («Υποκείμενα», «Δεδομένα»). Say what reads wrong.
 - **Print one page of place cards and one table card on a real printer** (lab.html → ⋯ → Εκτύπωση → «Καρτελάκια
   θέσεων» / «Κάρτες τραπεζιών»), cut and fold them, and say if the fold lands right and the names read well.
 - **Read the Greek of the new free-plan page** (https://takeaseat.gr/dorean-schedio-trapezion.html) and the one new
@@ -106,6 +108,7 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 
 ## History
 
+- 2026-11-09: «Πρόγραμμα» (`openTimeline`, `printTimeline`, `state.timeline`, ≤ 60 lines, time HH:MM or empty): built like «Συνεργάτες», no server change. Order of the night via `tlnKey` (00:00–05:59 after 23:59, no time last). The phone on paper only when «who» equals a vendor's role or name (`tlnPhones`). Deployed as `deploy-2026-11-09-5`; live smoke test by DOM only (the pane screenshot timed out).
 - 2026-11-04 (moved from the status block): Checked on live for phase 3: read-only, `/health`, 14 pages, `/admin/customers` refusing without a key, the company login's words, terms 8Α, dpa, privacy and the company guide at 375px with no console errors, the company demo. Then a test company through the API on the running server, 32 of 32: agreement gate, rooms, an event from a room, the allowance (three requests at once made one event on the real database), «+1 εκδήλωση», an old design with names and no note, the keep choice, delete, forget. Afterwards it and its two `books:` rows were removed; nothing on live names it. Backup just before that delete: `/opt/backups/takeaseat-20261104-164035.db.gz.age`.
 - 2026-11-09: «Συνεργάτες» (`openVendors`, `printVendors`, `state.vendors`, ≤ 40 rows, time HH:MM or empty): no server change, since `layoutOnly`/`designFrom` copy named parts only, so vendors never travel; not in `PERM_KEYS`. Role suggestions per kind; `c_mVendors` avoids clashing with the company group «Συνεργάτες». Empty rows go when the dialog closes. 16 new checks, 1909 pass. Checked locally (wedding, γιορτή, company, en, de, 375px, view-only) and live in the lab. Live as `743fa73` (`deploy-2026-11-09-4`).
 - 2026-11-09: Place cards and table cards in the planner's print window (`printCards`): tent cards, upper face upside down, every sheet ≤ 170 × 228 mm (checked as PDF on A4 and Letter at default and 20 mm margins: no extra sheet); no QR, no credit on a place card; el/en/de; 11 new checks, 1893 pass. Ideas agreed next: «Συνεργάτες» sheet, run-of-show, door check-in for companies (the per-table menu sheet was dropped: most venues serve buffet). Live as `7d7534e` (`deploy-2026-11-09-3`).
