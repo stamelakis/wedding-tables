@@ -228,6 +228,15 @@ ok(after.name === 'Άννα & Πέτρος' && Object.keys(after.plan.guests).le
 const moved = JSON.parse(JSON.stringify(after.plan)); moved.features.find(f => f.id === 'fc').x = 77;
 r = await call('PUT', '/plans/' + W.planId, { plan: moved, baseUpdated: after.updated }, { 'X-Edit-Key': W.editKey });
 ok(!r.d.enforced && raw('plan:' + W.planId).plan.features.find(f => f.id === 'fc').x === 77, 'the couple moves its own decor freely');
+// «Συνεργάτες»: not one of the venue's locks — the couple of a locked plan writes the list, the venue reads the same one
+{
+  const c3 = raw('plan:' + W.planId), withV = JSON.parse(JSON.stringify(c3.plan));
+  withV.vendors = [{ id: 'v1', role: 'Φωτογράφος', name: 'Γιάννης Φωτό', phone: '6900000001', time: '17:30', where: 'δίπλα στην πίστα' }];
+  r = await call('PUT', '/plans/' + W.planId, { plan: withV, baseUpdated: c3.updated }, { 'X-Edit-Key': W.editKey });
+  ok(r.status === 200 && !r.d.enforced && raw('plan:' + W.planId).plan.vendors[0].phone === '6900000001', 'vendors: the couple of a locked venue plan keeps the vendors it wrote', r.d);
+  r = await call('GET', '/plans/' + W.planId, undefined, { 'X-Edit-Key': W.venueKey });
+  ok(r.status === 200 && r.d.plan.vendors.length === 1 && r.d.plan.vendors[0].time === '17:30', 'vendors: the venue reads the same list', r.d.plan.vendors);
+}
 const cur2 = raw('plan:' + W.planId);
 const t2 = JSON.parse(JSON.stringify(cur2.plan)); t2.tables[0].x = 5;
 r = await call('PUT', '/plans/' + W.planId, { plan: t2, baseUpdated: cur2.updated }, { 'X-Edit-Key': W.editKey, 'X-Client': '1' });
@@ -2495,6 +2504,28 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     const keys = ['pmCards', 'pmTCards', 'pcTable', 'pcWord', 'pcNone', 'pcNoTables'];
     ok(['el', 'en', 'de'].every(l => keys.every(k => typeof T_ALL[l][k] === 'string' && T_ALL[l][k].length)), 'print cards: every new word exists in el, en and de');
     ok(['el', 'en', 'de'].every(l => T_ALL[l].pcTable.includes('{t}')), 'print cards: «Τραπέζι {t}» carries the number in every language');
+  }
+
+  // ---- «Συνεργάτες»: the event's vendors, kept in the plan, printed as one sheet for the staff ----
+  {
+    const fs = await import('node:fs');
+    const src = fs.readFileSync(path.join(root, 'planner.src.html'), 'utf8');
+    const fn = name => { const a = src.indexOf('function ' + name + '('); return a < 0 ? '' : src.slice(a, src.indexOf('\n}', a)); };
+    const pv = fn('printVendors'), san = fn('sanitizePlan');
+    ok(/name="pmode" value="vendors"/.test(src) && /if\(v==="vendors"\)\{ pdfChoice=v;[^\n]*printVendors\(\); return; \}/.test(src), 'vendors: the print dialog offers the sheet, chosen for the visit');
+    ok(!/"vendors"/.test(/function printListMode[^\n]*/.exec(src)[0]), 'vendors: not one of the door lists state.printMode may hold');
+    ok(pv && !/qrSvg/.test(pv) && /printBrandOn\(\)\?/.test(pv) && /remove\("haspqr","pposter","pmeasure","pcards"\)/.test(pv), 'vendors: no QR on the sheet, the credit follows the print switch, no other layout leaks in');
+    ok(/list\.sort\(\(a,b\)=>\(a\.time\|\|"99:99"\)\.localeCompare\(b\.time\|\|"99:99"\)/.test(pv) && /filter\(vendFilled\)/.test(pv), 'vendors: by arrival time, the ones without a time last, empty rows never printed');
+    ok(/if\(s\.vendors!=null\) s\.vendors=/.test(san) && /\^\(\[01\]\\d\|2\[0-3\]\):\[0-5\]\\d\$/.test(san), 'vendors: a loaded plan is cleaned only when it has the list, and a time is HH:MM or nothing');
+    ok(!/vendors/.test(/const PERM_KEYS=\[[^\]]*\]/.exec(src)[0]), 'vendors: not one of the parts a venue can lock');
+    ok(/primary\.push\(\["vendors",tr\("mVendors"\)\+"…"\]\);/.test(src) && !/if\(!ro\) primary\.push\(\["vendors"/.test(src), 'vendors: in the ⋯ menu for everyone, a viewer included (to read and print)');
+    const da = src.indexOf('const T_ALL='), db = src.indexOf('const T=T_ALL[LANG]');
+    const T_ALL = new Function('return (' + src.slice(da + 'const T_ALL='.length, db).trim().replace(/;$/, '') + ')')();
+    const keys = ['mVendors', 'c_mVendors', 'vHint', 'vHintRo', 'vRole', 'vName', 'vPhone', 'vTime', 'vWhere', 'vWherePh', 'c_vWherePh', 'vAdd', 'vPrint', 'vDel', 'vDelAsk', 'vNone', 'vNoneRo', 'vNonePrint', 'vMax', 'vTotal', 'pmVendors', 'c_pmVendors'];
+    ok(['el', 'en', 'de'].every(l => keys.every(k => typeof T_ALL[l][k] === 'string' && T_ALL[l][k].length)), 'vendors: every new word exists in el, en and de', ['el', 'en', 'de'].map(l => keys.filter(k => typeof T_ALL[l][k] !== 'string')));
+    ok(['el', 'en', 'de'].every(l => ['vRoles', 'b_vRoles', 'p_vRoles', 'c_vRoles'].every(k => Array.isArray(T_ALL[l][k]) && T_ALL[l][k].length >= 5)), 'vendors: role suggestions for every kind, in every language');
+    ok(['el', 'en', 'de'].every(l => T_ALL[l].vTotal.includes('{n}') && T_ALL[l].vDelAsk.includes('{n}')), 'vendors: the count and the name reach their sentences');
+    ok(T_ALL.el.c_mVendors !== 'Συνεργάτες', 'vendors: on a company plan the list is not named like the «Συνεργάτες» group');
   }
 
   // ---- the planner's own words: the dictionary twins, and the rule tr() uses to pick one ----
@@ -5162,16 +5193,20 @@ function leadStageOf(l) { return l.lost ? 8 : l.stage || 1; }
     const people = layout({
       tables: [{ id: 1, shape: 'round', x: 300, y: 300, label: 'Τραπέζι Α', capacity: 2, seats: ['g1', 'g2'] }],
       guests: { g1: { name: 'Νίκος Παπαδάκης', note: 'αλλεργία στα φιστίκια', groupId: 'grpA' }, g2: { name: 'Μαρία Οικονόμου', groupId: 'grpA' } },
-      groups: [{ id: 'grpA', name: 'Φίλοι Νίκου', color: '#e26d8a' }] });
+      groups: [{ id: 'grpA', name: 'Φίλοι Νίκου', color: '#e26d8a' }],
+      vendors: [{ id: 'v1', role: 'DJ', name: 'Παλιός DJ', phone: '6911111111', time: '19:00', where: '' }] });
     await call('PUT', '/plans/' + E1.d.planId, { plan: people }, { 'X-Edit-Key': rec.venueKey });
+    ok(raw('plan:' + E1.d.planId).plan.vendors[0].name === 'Παλιός DJ', 'vendors: the server keeps the list with the plan');
     const before = m.get('plan:' + E1.d.planId);
     r = await made({ fromPlanId: E1.d.planId });
     let cp = raw('plan:' + r.d.planId).plan;
     ok(r.status === 200 && !Object.keys(cp.guests).length && cp.tables[0].seats.every(x => x === null) && !JSON.stringify(cp).includes('Φίλοι Νίκου'), 'old design: unasked, a γραφείο copies the room only, as for a new client: no names, seats or groups', cp.groups);
+    ok(!('vendors' in cp), 'old design: the room alone carries no vendors', cp.vendors);
     r = await made({ fromPlanId: E1.d.planId, people: true });
     cp = raw('plan:' + r.d.planId).plan;
     ok(r.status === 200 && cp.guests.g1.name === 'Νίκος Παπαδάκης' && cp.tables[0].seats.join() === 'g1,g2' && cp.guests.g1.groupId === 'grpA' && cp.groups[0].name === 'Φίλοι Νίκου', 'old design: asked, a γραφείο brings names, seats and their groups (Andreas, 2026-11-04)', cp.guests);
     ok(!JSON.stringify(raw('plan:' + r.d.planId)).includes('φιστίκια') && !('note' in cp.guests.g1), 'old design: the notes never travel, for a γραφείο either', cp.guests.g1);
+    ok(!('vendors' in cp) && !JSON.stringify(raw('plan:' + r.d.planId)).includes('6911111111'), 'old design: the vendors never travel, even with the names and seats', cp.vendors);
     ok(m.get('plan:' + E1.d.planId) === before, 'old design: the source is left as it was');
     await call('PUT', '/plans/' + KE.d.planId, { plan: people }, { 'X-Edit-Key': raw('plan:' + KE.d.planId).venueKey });
     r = await made({ fromPlanId: KE.d.planId, people: true }, K.H, K.id);

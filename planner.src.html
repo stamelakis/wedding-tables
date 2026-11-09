@@ -586,6 +586,18 @@ __ROBOTS__
   .grow .gname{ flex:1; min-width:0; height:36px; padding:0 10px; border:1px solid var(--line); border-radius:9px; font-size:14px; }
   .grow .n{ font-size:12px; color:var(--faint); min-width:26px; text-align:right; font-variant-numeric:tabular-nums; }
   .grow.add{ border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
+  /* «Συνεργάτες» (openVendors): one row per vendor on a PC, a three-line card per vendor on a phone */
+  .vnd{ display:grid; grid-template-columns:1fr 1.15fr 1fr 118px 1.3fr 36px; grid-template-areas:"r n p t w d"; gap:6px; align-items:center; padding:4px 0; }
+  .modal .vnd .vf{ min-width:0; width:100%; height:36px; padding:0 8px; border:1px solid var(--line); border-radius:9px; font-size:14px; background:var(--paper); }   /* .modal: outranks the modal's own 12px input rule */
+  .modal .vnd .vf[readonly]{ background:transparent; border-color:transparent; padding:0 2px; }
+  .vnd .v-role{ grid-area:r; } .vnd .v-name{ grid-area:n; } .vnd .v-phone{ grid-area:p; } .vnd .v-time{ grid-area:t; } .vnd .v-where{ grid-area:w; } .vnd .vdel{ grid-area:d; }
+  .vnd.vhead{ font-size:11px; color:var(--faint); padding:0 0 2px; }
+  .vnd.vhead span:nth-child(1){ grid-area:r; } .vnd.vhead span:nth-child(2){ grid-area:n; } .vnd.vhead span:nth-child(3){ grid-area:p; } .vnd.vhead span:nth-child(4){ grid-area:t; } .vnd.vhead span:nth-child(5){ grid-area:w; }
+  @media (max-width:700px){
+    .vnd{ grid-template-columns:1fr 1fr 36px; grid-template-areas:"r n d" "p t t" "w w w"; padding:8px 0 10px; border-bottom:1px solid var(--line); }
+    .vnd.vhead{ display:none; }
+    .modal .vnd .vf{ font-size:16px; }   /* 16px: an iPhone zooms the page into any smaller field */
+  }
   #palette, #groupmenu{ z-index:320; }   /* may open from inside a modal (300) — must sit above it */
   #palette{ width:auto; padding:6px; }
   .pal{ display:grid; grid-template-columns:repeat(5,34px); gap:6px; padding:4px; }
@@ -737,6 +749,7 @@ __ROBOTS__
   .modal-back.open{ display:flex; }
   .modal{ background:var(--card); border-radius:16px; width:min(620px,94vw); max-height:84vh; overflow:auto; box-shadow:0 30px 80px rgba(0,0,0,.35); }
   .modal.narrow{ width:min(440px,94vw); }
+  .modal.vwide{ width:min(860px,94vw); }   /* «Συνεργάτες»: five fields on one row */
   .delskip{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--soft); margin:6px 0 2px; cursor:pointer; user-select:none; }
   .delskip input{ width:16px; height:16px; margin:0; }
   .modal-head{ display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--card); z-index:1; }
@@ -1108,6 +1121,15 @@ __ROBOTS__
      folded and standing, each side reads upright to the people sitting on that side. No text-transform on Greek here
      (an upper-cased «Τραπέζι» would keep its accent on some browsers). */
   #printarea.pcards{ padding:0; }
+  /* «Συνεργάτες» (printVendors): one ruled table, by arrival time, header repeated on a second page. No uppercase
+     on Greek here either. */
+  #printarea .pvend{ width:100%; table-layout:fixed; border-collapse:collapse; font-size:12.5px; line-height:1.35; }
+  #printarea .pvend thead{ display:table-header-group; }
+  #printarea .pvend tr{ break-inside:avoid; page-break-inside:avoid; }
+  #printarea .pvend th{ text-align:left; font-size:10.5px; font-weight:700; color:#444; border-bottom:1.5px solid #333; padding:4px 6px; }
+  #printarea .pvend td{ border-bottom:1px solid #ddd; padding:7px 6px; vertical-align:top; overflow-wrap:anywhere; }
+  #printarea .pvend .vt{ width:11%; font-weight:700; font-variant-numeric:tabular-nums; }
+  #printarea .pvend .vr{ width:19%; } #printarea .pvend .vn{ width:22%; } #printarea .pvend .vp{ width:18%; font-variant-numeric:tabular-nums; } #printarea .pvend .vw{ width:30%; }
   #printarea .pcsheet{ display:grid; grid-template-columns:85mm 85mm; grid-auto-rows:76mm; width:170mm; margin:0 auto;
     border-top:.3mm dashed #aaa; border-left:.3mm dashed #aaa; break-after:page; page-break-after:always; }
   #printarea .pcsheet:last-child, #printarea .ptsheet:last-child{ break-after:auto; page-break-after:auto; }
@@ -1311,6 +1333,7 @@ __ROBOTS__
       <label class="imode" style="margin-top:6px"><input type="radio" name="pmode" value="parties"><span data-t="pmParties"></span></label>
       <label class="imode" style="margin-top:6px"><input type="radio" name="pmode" value="cards"><span data-t="pmCards"></span></label>
       <label class="imode" style="margin-top:6px"><input type="radio" name="pmode" value="tcards"><span data-t="pmTCards"></span></label>
+      <label class="imode" style="margin-top:6px"><input type="radio" name="pmode" value="vendors"><span data-t="pmVendors"></span></label>
       <label class="imode" style="margin-top:6px"><input type="radio" name="pmode" value="pdf"><span data-t="pmPdf"></span></label>
       <label class="imode" style="margin-top:6px" id="pmKeepRow" hidden><input type="radio" name="pmode" value="keepsake"><span data-t="pmKeep"></span></label>
       <label class="imode" style="margin-top:6px" id="pmPosterRow" hidden><input type="radio" name="pmode" value="poster"><span data-t="pmPoster"></span></label>
@@ -1337,6 +1360,13 @@ __ROBOTS__
     <div class="modal-head"><strong data-t="groupsTitle"></strong><button class="mx" id="groupsClose">✕</button></div>
     <div class="mhint" data-t="groupsHint"></div>
     <div class="mbody" id="groupsBody"></div>
+  </div>
+</div>
+<div id="vendModal" class="modal-back">
+  <div class="modal vwide">
+    <div class="modal-head"><strong id="vendTitle"></strong><button class="mx" id="vendClose">✕</button></div>
+    <div class="mhint" id="vendHint"></div>
+    <div class="mbody" id="vendBody"></div>
   </div>
 </div>
 <div id="fillmenu" class="popover"></div>
@@ -1529,7 +1559,7 @@ el:{
   rbVenue:"🏛 Κτήμα", rbVenueTip:"Ανοίξατε τον γάμο ως κτήμα: αλλάζετε τα πάντα. Το ζευγάρι αλλάζει μόνο ό,τι του επιτρέπετε.", rbTemplate:"🏛 Πρότυπο χώρου", rbTemplateTip:"Αυτή είναι η διάταξη του χώρου σας: κάθε νέα εκδήλωση ξεκινά από εδώ (χωρίς καλεσμένους). Όσες υπάρχουν ήδη δεν αλλάζουν.", rbPreview:"👁 Όπως το βλέπει το ζευγάρι",
   rbSupport:"🛟 Υποστήριξη · έως {t}", rbSupportTip:"Ο ιδιοκτήτης σάς έδωσε προσωρινή πρόσβαση. Τίποτα δεν μένει σε αυτή τη συσκευή.", rbViewer:"👁 Μόνο προβολή", rbViewerTip:"Βλέπετε το σχέδιο· δεν μπορείτε να το αλλάξετε.",
   rbLocked:"🔒 Χώρος: {v}", rbLockedTip:"Το κτήμα έχει στήσει τον χώρο — πατήστε για να δείτε τι μπορείτε να αλλάξετε.", rbSupportOn:"🛟 Η TakeaSeat έχει πρόσβαση", rbSupportOnTip:"Έχετε δώσει πρόσβαση στην υποστήριξη έως {t} — πατήστε για να τη διακόψετε.",
-  permFloor:"Δάπεδο & μέγεθος χώρου", permDecor:"Στοιχεία του κτήματος (πίστα, μπαρ, μπουφέδες, WC…)", permLayout:"Θέσεις τραπεζιών στον χώρο", permTables:"Προσθήκη / διαγραφή τραπεζιών", permSeats:"Αριθμός θέσεων ανά τραπέζι", permLabels:"Ονόματα τραπεζιών", permMax:"έως {n} ανά τραπέζι", permAlways:"Καλεσμένοι, θέσεις, ομάδες, προσκλητήρια, εκτύπωση",
+  permFloor:"Δάπεδο & μέγεθος χώρου", permDecor:"Στοιχεία του κτήματος (πίστα, μπαρ, μπουφέδες, WC…)", permLayout:"Θέσεις τραπεζιών στον χώρο", permTables:"Προσθήκη / διαγραφή τραπεζιών", permSeats:"Αριθμός θέσεων ανά τραπέζι", permLabels:"Ονόματα τραπεζιών", permMax:"έως {n} ανά τραπέζι", permAlways:"Καλεσμένοι, θέσεις, ομάδες, προσκλητήρια, συνεργάτες, εκτύπωση",
   tLockedPart:"Αυτό το ορίζει το κτήμα ({w}).", tLockedByVenue:"Ο χώρος μένει όπως τον έστησε {v} — κρατήθηκαν οι δικές σας αλλαγές (ονόματα, θέσεις).",
   accSpace:"Ο χώρος σας — από {v}", accSpaceHint:"Το κτήμα έχει στήσει τον χώρο. Εσείς μπορείτε:", accCouplePerms:"Τι μπορεί να αλλάξει το ζευγάρι", accCouplePermsHint:"Αλλάζει από την κονσόλα του κτήματος (Δικαιώματα).", accPreview:"Δείτε το όπως το ζευγάρι", tPreviewOn:"Βλέπετε όσα βλέπει το ζευγάρι.", tPreviewOff:"Πλήρης προβολή κτήματος.",
   accSupport:"Υποστήριξη TakeaSeat", accSupportHint:"Η TakeaSeat δεν ανοίγει το σχέδιό σας χωρίς πρόσκλησή σας — κάθε πρόσβαση καταγράφεται. Αν χρειαστείτε βοήθεια, δώστε μας πρόσβαση για λίγο — τη διακόπτετε όποτε θέλετε και βλέπετε παρακάτω τι κάναμε.", accSupportHintVenue:"Η TakeaSeat δεν ανοίγει τους γάμους σας χωρίς πρόσκλησή σας — κάθε πρόσβαση καταγράφεται. Για βοήθεια, δώστε μας πρόσβαση σε αυτόν τον γάμο για λίγο — τη διακόπτετε όποτε θέλετε.",
@@ -1663,6 +1693,19 @@ el:{
   pcTable:"Τραπέζι {t}", pcWord:"Τραπέζι",
   pcNone:"Δεν έχει θέση κανείς ακόμη, οπότε δεν υπάρχουν καρτελάκια για εκτύπωση.",
   pcNoTables:"Κανένα τραπέζι δεν έχει όνομα ή αριθμό για να τυπωθεί.",
+  mVendors:"Συνεργάτες", c_mVendors:"Συνεργάτες της εκδήλωσης",
+  vHint:"Όσοι δουλεύουν στην εκδήλωση, με τηλέφωνο, ώρα άφιξης και το σημείο όπου στήνουν. Τους βλέπει όποιος ανοίγει το σχέδιο, και τυπώνονται σε μία σελίδα από την «Εκτύπωση».",
+  vHintRo:"Όσοι δουλεύουν στην εκδήλωση. Μπορείτε να τους δείτε και να τους τυπώσετε, όχι να τους αλλάξετε.",
+  vRole:"Ρόλος", vName:"Όνομα", vPhone:"Τηλέφωνο", vTime:"Ώρα άφιξης", vWhere:"Πού στήνει",
+  vWherePh:"Πού στήνει (π.χ. δίπλα στην πίστα)", c_vWherePh:"Πού στήνει (π.χ. δίπλα στη σκηνή)",
+  vAdd:"+ Προσθήκη συνεργάτη", vPrint:"Εκτύπωση", vDel:"Αφαίρεση", vDelAsk:"«{n}»: αφαίρεση από τους συνεργάτες;",
+  vNone:"Δεν έχετε προσθέσει κανέναν ακόμη. Πατήστε «+ Προσθήκη συνεργάτη».", vNoneRo:"Δεν έχει προστεθεί κανείς ακόμη.",
+  vNonePrint:"Δεν υπάρχουν συνεργάτες για εκτύπωση. Προσθέστε τους εδώ.", vMax:"Έως 40 συνεργάτες σε κάθε σχέδιο.", vTotal:"Σύνολο: {n}",
+  pmVendors:"Συνεργάτες — τηλέφωνα, ώρες άφιξης και πού στήνει ο καθένας", c_pmVendors:"Συνεργάτες της εκδήλωσης — τηλέφωνα, ώρες άφιξης και πού στήνει ο καθένας",
+  vRoles:["Φωτογράφος","Βιντεογράφος","DJ","Ορχήστρα","Στολισμός","Ανθοπωλείο","Ζαχαροπλαστείο","Κομμώτρια","Μακιγιέρ","Μπαρ","Catering","Μεταφορά"],
+  b_vRoles:["Φωτογράφος","Βιντεογράφος","DJ","Στολισμός","Ζαχαροπλαστείο","Μπομπονιέρες","Animation για παιδιά","Catering"],
+  p_vRoles:["Φωτογράφος","DJ","Ορχήστρα","Στολισμός","Ζαχαροπλαστείο","Μπαρ","Catering"],
+  c_vRoles:["Ήχος και φωτισμός","Παρουσιαστής","Φωτογράφος","Βιντεογράφος","Catering","Μπαρ","Στολισμός","Μεταφορά","Εκτυπώσεις και σήμανση"],
   labBride:"Νύφη", labGroom:"Γαμπρός",
   labNames:["Μαρία Π.","Γιώργος Κ.","Ελένη Α.","Νίκος Δ.","Κατερίνα Μ.","Δημήτρης Σ.","Σοφία Λ.","Κώστας Β.","Άννα Χ.","Παναγιώτης Ρ.","Χριστίνα Τ.","Μιχάλης Γ.","Ειρήνη Ν.","Βασίλης Ζ.","Δέσποινα Φ.","Αλέξανδρος Κ.","Ιωάννα Π.","Θανάσης Μ.","Αγγελική Σ.","Στέλιος Α.","Φωτεινή Δ.","Μανώλης Λ.","Ζωή Β.","Πέτρος Χ.","Ευαγγελία Ρ.","Σπύρος Τ.","Ναταλία Γ.","Χρήστος Ν.","Μαρίνα Ζ.","Λευτέρης Φ.","Αναστασία Κ.","Αντώνης Π.","Ελευθερία Μ.","Σταύρος Σ.","Νεφέλη Α.","Ορέστης Δ.","Δανάη Λ.","Άρης Β.","Ισμήνη Χ.","Φίλιππος Ρ."],
   // ---- βαπτίσεις: the twins of every key whose text NAMES the event (see tr() / EVK). Nothing else is duplicated;
@@ -1829,7 +1872,7 @@ en:{
   rbVenue:"🏛 Venue", rbVenueTip:"You opened this wedding as the venue: you can change everything. The couple changes only what you allow.", rbTemplate:"🏛 Venue template", rbTemplateTip:"This is your venue layout: every new event starts from here (without guests). Existing events do not change.", rbPreview:"👁 As the couple sees it",
   rbSupport:"🛟 Support · until {t}", rbSupportTip:"The owner gave you temporary access. Nothing stays on this device.", rbViewer:"👁 View only", rbViewerTip:"You can see the plan but not change it.",
   rbLocked:"🔒 Space: {v}", rbLockedTip:"The venue has set up the space — tap to see what you can change.", rbSupportOn:"🛟 TakeaSeat has access", rbSupportOnTip:"You gave support access until {t} — tap to end it.",
-  permFloor:"Floor & size of the space", permDecor:"The venue's elements (dance floor, bar, buffets, WC…)", permLayout:"Table positions", permTables:"Add / delete tables", permSeats:"Number of seats per table", permLabels:"Table names", permMax:"up to {n} per table", permAlways:"Guests, seats, groups, invitations, printing",
+  permFloor:"Floor & size of the space", permDecor:"The venue's elements (dance floor, bar, buffets, WC…)", permLayout:"Table positions", permTables:"Add / delete tables", permSeats:"Number of seats per table", permLabels:"Table names", permMax:"up to {n} per table", permAlways:"Guests, seats, groups, invitations, vendors, printing",
   tLockedPart:"The venue sets this ({w}).", tLockedByVenue:"The space stays as {v} set it up — your own changes (names, seats) were kept.",
   accSpace:"Your space — by {v}", accSpaceHint:"The venue has set up the space. You can:", accCouplePerms:"What the couple may change", accCouplePermsHint:"Changed from the venue console (Permissions).", accPreview:"See it as the couple does", tPreviewOn:"You now see what the couple sees.", tPreviewOff:"Full venue view.",
   accSupport:"TakeaSeat support", accSupportHint:"TakeaSeat never opens your plan without your invitation — every access is logged. If you need help, give us access for a while — end it whenever you like and see below what we did.", accSupportHintVenue:"TakeaSeat never opens your weddings without your invitation — every access is logged. For help, give us access to this wedding for a while — end it whenever you like.",
@@ -1962,6 +2005,19 @@ en:{
   pcTable:"Table {t}", pcWord:"Table",
   pcNone:"Nobody has a seat yet, so there are no place cards to print.",
   pcNoTables:"No table has a name or number to print.",
+  mVendors:"Vendors", c_mVendors:"Vendors",
+  vHint:"Everyone working at the event, with their phone number, arrival time and where they set up. Anyone who opens the plan sees them, and “Print” puts them on one sheet.",
+  vHintRo:"Everyone working at the event. You can see and print them, but not change them.",
+  vRole:"Role", vName:"Name", vPhone:"Phone", vTime:"Arrives", vWhere:"Sets up at",
+  vWherePh:"Sets up at (e.g. by the dance floor)", c_vWherePh:"Sets up at (e.g. by the stage)",
+  vAdd:"+ Add a vendor", vPrint:"Print", vDel:"Remove", vDelAsk:"Remove “{n}” from the vendors?",
+  vNone:"Nobody yet. Tap “+ Add a vendor”.", vNoneRo:"Nobody has been added yet.",
+  vNonePrint:"There are no vendors to print. Add them here.", vMax:"Up to 40 vendors per plan.", vTotal:"Total: {n}",
+  pmVendors:"Vendors — phone numbers, arrival times and where each one sets up", c_pmVendors:"Vendors — phone numbers, arrival times and where each one sets up",
+  vRoles:["Photographer","Videographer","DJ","Band","Decoration","Florist","Cake","Hair","Make-up","Bar","Catering","Transport"],
+  b_vRoles:["Photographer","Videographer","DJ","Decoration","Cake","Favours","Children’s entertainment","Catering"],
+  p_vRoles:["Photographer","DJ","Band","Decoration","Cake","Bar","Catering"],
+  c_vRoles:["Sound and lighting","Presenter","Photographer","Videographer","Catering","Bar","Decoration","Transport","Printing and signage"],
   labBride:"Bride", labGroom:"Groom",
   labNames:["Maria P.","George K.","Helen A.","Nick D.","Katerina M.","Jim S.","Sophia L.","Kostas V.","Anna C.","Peter R.","Christina T.","Michael G.","Irene N.","Bill Z.","Despina F.","Alex K.","Joanna P.","Thanos M.","Angela S.","Steve A.","Fay D.","Manolis L.","Zoe V.","Petros C.","Eva R.","Spyros T.","Natalie G.","Chris N.","Marina Z.","Lefteris F.","Anastasia K.","Tony P.","Ellie M.","Stavros S.","Nefeli A.","Orestis D.","Danae L.","Aris V.","Ismene C.","Philip R."],
   // ---- christenings: the twins of every key whose text NAMES the event (see tr() / EVK).
@@ -2121,7 +2177,7 @@ de:{
   rbVenue:"🏛 Location", rbVenueTip:"Sie haben diese Hochzeit als Location geöffnet: Sie können alles ändern. Das Paar ändert nur, was Sie erlauben.", rbTemplate:"🏛 Raumvorlage", rbTemplateTip:"Das ist die Aufstellung Ihrer Location: jede neue Veranstaltung beginnt hier (ohne Gäste). Bestehende Veranstaltungen ändern sich nicht.", rbPreview:"👁 So sieht es das Paar",
   rbSupport:"🛟 Support · bis {t}", rbSupportTip:"Der Eigentümer hat Ihnen vorübergehend Zugriff gegeben. Nichts bleibt auf diesem Gerät.", rbViewer:"👁 Nur ansehen", rbViewerTip:"Sie sehen den Plan, können ihn aber nicht ändern.",
   rbLocked:"🔒 Raum: {v}", rbLockedTip:"Die Location hat den Raum eingerichtet — antippen, um zu sehen, was Sie ändern können.", rbSupportOn:"🛟 TakeaSeat hat Zugriff", rbSupportOnTip:"Sie haben dem Support bis {t} Zugriff gegeben — antippen zum Beenden.",
-  permFloor:"Boden & Größe des Raums", permDecor:"Elemente der Location (Tanzfläche, Bar, Buffets, WC…)", permLayout:"Position der Tische", permTables:"Tische hinzufügen / löschen", permSeats:"Anzahl der Plätze pro Tisch", permLabels:"Tischnamen", permMax:"bis {n} pro Tisch", permAlways:"Gäste, Plätze, Gruppen, Einladungen, Druck",
+  permFloor:"Boden & Größe des Raums", permDecor:"Elemente der Location (Tanzfläche, Bar, Buffets, WC…)", permLayout:"Position der Tische", permTables:"Tische hinzufügen / löschen", permSeats:"Anzahl der Plätze pro Tisch", permLabels:"Tischnamen", permMax:"bis {n} pro Tisch", permAlways:"Gäste, Plätze, Gruppen, Einladungen, Dienstleister, Druck",
   tLockedPart:"Das legt die Location fest ({w}).", tLockedByVenue:"Der Raum bleibt, wie {v} ihn eingerichtet hat — Ihre eigenen Änderungen (Namen, Plätze) wurden übernommen.",
   accSpace:"Ihr Raum — von {v}", accSpaceHint:"Die Location hat den Raum eingerichtet. Sie können:", accCouplePerms:"Was das Paar ändern darf", accCouplePermsHint:"Wird in der Location-Konsole geändert (Rechte).", accPreview:"So ansehen, wie es das Paar sieht", tPreviewOn:"Sie sehen jetzt, was das Paar sieht.", tPreviewOff:"Volle Ansicht der Location.",
   accSupport:"TakeaSeat-Support", accSupportHint:"TakeaSeat öffnet Ihren Plan nie ohne Ihre Einladung — jeder Zugriff wird protokolliert. Wenn Sie Hilfe brauchen, geben Sie uns kurz Zugriff — Sie beenden ihn jederzeit und sehen unten, was wir getan haben.", accSupportHintVenue:"TakeaSeat öffnet Ihre Hochzeiten nie ohne Ihre Einladung — jeder Zugriff wird protokolliert. Für Hilfe geben Sie uns kurz Zugriff auf diese Hochzeit — Sie beenden ihn jederzeit.",
@@ -2254,6 +2310,19 @@ de:{
   pcTable:"Tisch {t}", pcWord:"Tisch",
   pcNone:"Noch hat niemand einen Platz, daher gibt es keine Tischkärtchen zu drucken.",
   pcNoTables:"Kein Tisch hat einen Namen oder eine Nummer zum Drucken.",
+  mVendors:"Dienstleister", c_mVendors:"Dienstleister",
+  vHint:"Alle, die bei der Veranstaltung arbeiten, mit Telefonnummer, Ankunftszeit und Aufbauort. Wer den Plan öffnet, sieht sie, und „Drucken“ bringt sie auf ein Blatt.",
+  vHintRo:"Alle, die bei der Veranstaltung arbeiten. Sie können sie ansehen und drucken, aber nicht ändern.",
+  vRole:"Aufgabe", vName:"Name", vPhone:"Telefon", vTime:"Ankunft", vWhere:"Aufbauort",
+  vWherePh:"Aufbauort (z. B. neben der Tanzfläche)", c_vWherePh:"Aufbauort (z. B. neben der Bühne)",
+  vAdd:"+ Dienstleister hinzufügen", vPrint:"Drucken", vDel:"Entfernen", vDelAsk:"„{n}“ aus den Dienstleistern entfernen?",
+  vNone:"Noch niemand. Tippen Sie auf „+ Dienstleister hinzufügen“.", vNoneRo:"Noch niemand eingetragen.",
+  vNonePrint:"Keine Dienstleister zum Drucken. Tragen Sie sie hier ein.", vMax:"Bis zu 40 Dienstleister pro Plan.", vTotal:"Insgesamt: {n}",
+  pmVendors:"Dienstleister — Telefonnummern, Ankunftszeiten und wo jeder aufbaut", c_pmVendors:"Dienstleister — Telefonnummern, Ankunftszeiten und wo jeder aufbaut",
+  vRoles:["Fotograf","Videograf","DJ","Band","Dekoration","Florist","Torte","Friseur","Make-up","Bar","Catering","Transport"],
+  b_vRoles:["Fotograf","Videograf","DJ","Dekoration","Torte","Gastgeschenke","Kinderanimation","Catering"],
+  p_vRoles:["Fotograf","DJ","Band","Dekoration","Torte","Bar","Catering"],
+  c_vRoles:["Ton und Licht","Moderation","Fotograf","Videograf","Catering","Bar","Dekoration","Transport","Druck und Beschilderung"],
   labBride:"Braut", labGroom:"Bräutigam",
   labNames:["Maria P.","Georg K.","Helena A.","Niko D.","Katharina M.","Jan S.","Sophie L.","Konstantin V.","Anna C.","Peter R.","Christina T.","Michael G.","Irene N.","Wilhelm Z.","Despina F.","Alex K.","Johanna P.","Thomas M.","Angelika S.","Stefan A.","Frieda D.","Manuel L.","Zoe V.","Petra C.","Eva R.","Sebastian T.","Natalie G.","Christoph N.","Marina Z.","Leon F.","Anastasia K.","Anton P.","Elli M.","Stefanos S.","Nefeli A.","Oliver D.","Diana L.","Aris V.","Isabel C.","Philipp R."],
   // ---- Taufen: die Zwillinge jedes Schlüssels, dessen Text die Veranstaltung BENENNT (siehe tr() / EVK).
@@ -2862,7 +2931,7 @@ function sanitizePlan(s){ if(!s||typeof s!=="object") return s;
     let mx=2001; const num=x=>{ const m=/(\d+)$/.exec(String(x)); const v=m?+m[1]:0; return v<=1e9?v:0; };
     (Array.isArray(s.tables)?s.tables:[]).forEach(t=>{ if(t) mx=Math.max(mx,num(t.id)); });
     Object.keys((s.guests&&typeof s.guests==="object")?s.guests:{}).forEach(k=>{ mx=Math.max(mx,num(k)); });
-    ["features","groups","parties"].forEach(k=>(Array.isArray(s[k])?s[k]:[]).forEach(o=>{ if(o) mx=Math.max(mx,num(o.id)); }));
+    ["features","groups","parties","vendors"].forEach(k=>(Array.isArray(s[k])?s[k]:[]).forEach(o=>{ if(o) mx=Math.max(mx,num(o.id)); }));
     s._uid=mx+1;
   }
     if(!Array.isArray(s.tables)) s.tables=[];
@@ -2874,6 +2943,13 @@ function sanitizePlan(s){ if(!s||typeof s!=="object") return s;
     s.features=s.features.filter(f=>f&&typeof f==="object");
     if(!Array.isArray(s.parties)) s.parties=[];
     s.parties=s.parties.filter(p=>p&&typeof p==="object"&&p.id!=null).map(p=>({ id:String(p.id).replace(/[^\w-]/g,"").slice(0,40)||("p"+Math.floor(Math.random()*1e6)), name:String(p.name??"").slice(0,80) }));
+    // «Συνεργάτες»: only when the plan has the list — a plan without one stays byte for byte what it was (no save on load).
+    // Self-contained like the rest of sanitizePlan: no const from further down (it runs during the top-level load).
+    if(s.vendors!=null) s.vendors=(Array.isArray(s.vendors)?s.vendors:[]).filter(v=>v&&typeof v==="object").slice(0,40).map(v=>{
+      const o={ id:String(v.id??"").replace(/[^\w-]/g,"").slice(0,40)||("v"+Math.floor(Math.random()*1e6)) };
+      [["role",40],["name",60],["phone",30],["time",5],["where",80]].forEach(([k,n])=>{ o[k]=String(v[k]??"").slice(0,n); });
+      if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(o.time)) o.time="";   // what <input type="time"> writes; anything else would sort wrongly on paper
+      return o; });
     for(const k of Object.keys(s.guests)){ const g=s.guests[k]; if(!g||typeof g!=="object"){ delete s.guests[k]; continue; }
       g.name=String(g.name??"").slice(0,80); if(g.groupId!=null&&(typeof g.groupId!=="string"||!s.groups.some(x=>String(x.id)===g.groupId))) g.groupId=null; if(g.note!=null) g.note=String(g.note).slice(0,200);
       if(g.partyId!=null&&(typeof g.partyId!=="string"||!s.parties.some(p=>p.id===g.partyId))) g.partyId=null;
@@ -3695,6 +3771,52 @@ function renderGroupsModal(){
 function openGroupsModal(){ if(ACCESS.ro){ roToast(); return; } setNav(false); renderGroupsModal(); $("groupsModal").classList.add("open"); }
 $("groupsClose").addEventListener("click",()=>$("groupsModal").classList.remove("open"));
 $("groupsModal").addEventListener("click",e=>{ if(e.target.id==="groupsModal") e.currentTarget.classList.remove("open"); });
+// ---- «Συνεργάτες»: who works at the event (role, name, phone, arrival, where they set up), printed for the staff ----
+// It lives in the plan (state.vendors), so everyone who opens the plan sees the same list, and it goes when the plan
+// goes. It never travels to another event: the server's copies (layoutOnly / designFrom) take named parts only.
+// Every role that may write may edit it — it is not one of the venue's locks (PERM_KEYS); a viewer only reads it.
+const VEND_KEYS=["role","name","phone","time","where"];
+const vendFilled=v=>VEND_KEYS.some(k=>String(v[k]||"").trim());
+function renderVendModal(){
+  const ro=ACCESS.ro, list=state.vendors||[], body=$("vendBody");
+  $("vendTitle").textContent=tr("mVendors"); $("vendHint").textContent=tr(ro?"vHintRo":"vHint");
+  const inp=(v,k,type,ph,max)=>`<input class="vf v-${k}" data-k="${k}" type="${type}"${type==="tel"?' inputmode="tel"':""}${k==="role"?' list="vendRoles"':""} autocomplete="off" maxlength="${max}" value="${escapeHtml(v[k]||"")}" placeholder="${escapeHtml(ph)}" aria-label="${escapeHtml(ph)}"${ro?" readonly":""}>`;
+  const roles=tr("vRoles");
+  body.innerHTML=(list.length
+      ? `<div class="vnd vhead"><span>${escapeHtml(tr("vRole"))}</span><span>${escapeHtml(tr("vName"))}</span><span>${escapeHtml(tr("vPhone"))}</span><span>${escapeHtml(tr("vTime"))}</span><span>${escapeHtml(tr("vWhere"))}</span></div>`
+        +list.map(v=>`<div class="vnd" data-id="${escapeHtml(v.id)}">${inp(v,"role","text",tr("vRole"),40)}${inp(v,"name","text",tr("vName"),60)}${inp(v,"phone","tel",tr("vPhone"),30)}${inp(v,"time","time",tr("vTime"),5)}${inp(v,"where","text",tr("vWherePh"),80)}`
+          +(ro?"":`<button class="ibtn danger vdel" data-act="del" title="${escapeHtml(tr("vDel"))}" aria-label="${escapeHtml(tr("vDel"))}">${ICON("trash")}</button>`)+`</div>`).join("")
+      : `<div class="mhint" style="padding:6px 0">${escapeHtml(tr(ro?"vNoneRo":"vNone"))}</div>`)
+    +`<datalist id="vendRoles">${(Array.isArray(roles)?roles:[]).map(r=>`<option value="${escapeHtml(r)}">`).join("")}</datalist>`
+    +`<div class="mrow">${ro?"":`<button class="ibtn" id="vendAdd">${escapeHtml(tr("vAdd"))}</button>`}${list.length?`<button class="ibtn primary" id="vendPrint">${escapeHtml(tr("vPrint"))}</button>`:""}</div>`;
+  body.querySelectorAll(".vnd[data-id]").forEach(row=>{
+    const id=row.dataset.id, cur=()=>(state.vendors||[]).find(x=>x.id===id);   // looked up at commit time: a sync may have replaced state
+    row.querySelectorAll(".vf").forEach(inpEl=>inpEl.addEventListener("change",()=>{
+      const v=cur(); if(!v||ro) return; const k=inpEl.dataset.k, val=inpEl.value.trim();
+      if(v[k]!==val){ v[k]=val; save(); } }));   // never redraws: the cursor is already in the next field
+    const del=row.querySelector('[data-act="del"]');
+    if(del) del.onclick=()=>{ const v=cur(); if(!v) return;
+      if(vendFilled(v) && !confirm(tr("vDelAsk",{n:v.name||v.role||v.phone}))) return;
+      state.vendors=(state.vendors||[]).filter(x=>x.id!==id); save(); renderVendModal(); };
+  });
+  const add=$("vendAdd"); if(add) add.onclick=()=>{
+    if(!Array.isArray(state.vendors)) state.vendors=[];
+    if(state.vendors.length>=40){ toast(tr("vMax"),3500); return; }
+    const v={ id:"v"+nextId(), role:"", name:"", phone:"", time:"", where:"" }; state.vendors.push(v); save(); renderVendModal();
+    const r=body.querySelector(`.vnd[data-id="${v.id}"] .v-role`); if(r) r.focus(); };
+  const pr=$("vendPrint"); if(pr) pr.onclick=()=>{ closeVendors(); printVendors(); };
+}
+function openVendors(){ setNav(false); renderVendModal(); $("vendModal").classList.add("open"); }
+// A row left completely empty is not a vendor: it goes when the dialog closes (no undo step of its own).
+function closeVendors(){
+  const a=document.activeElement; if(a && a.blur && $("vendBody").contains(a)) a.blur();   // its «change» commits first
+  $("vendModal").classList.remove("open");
+  if(!ACCESS.ro && Array.isArray(state.vendors) && state.vendors.some(v=>!vendFilled(v))){ state.vendors=state.vendors.filter(vendFilled); save({noHistory:true}); }
+}
+$("vendClose").addEventListener("click",closeVendors);
+$("vendModal").addEventListener("click",e=>{ if(e.target.id==="vendModal") closeVendors(); });
+$("vendBody").addEventListener("keydown",e=>{ if(!e.target.matches("input")) return; e.stopPropagation();   // the planner's shortcuts must not fire while typing
+  if(e.key==="Enter"){ e.preventDefault(); e.target.blur(); } else if(e.key==="Escape"){ e.preventDefault(); closeVendors(); } });
 function openPalette(g, anchorEl){
   if(ACCESS.ro) return;
   const m=$("palette"); const cols=[...GROUP_PALETTE,...EXTRA_PALETTE];
@@ -6237,6 +6359,7 @@ $("moreBtn").addEventListener("click",e=>{
   if(ACCESS.locked) primary.push(["keepsake",tr("lifePdf")]);
   if(!ro) primary.push(["groups",tr("mGroups")]);
   primary.push(["inv",tr("mInv")]);   // read only: to look (who is in which invitation, where they sit)
+  primary.push(["vendors",tr("mVendors")+"…"]);   // read only too: to look up a phone number and print the sheet
   primary.push(["print",tr("mPrint")]);
   if(findMenuOk()) primary.push(["find",tr("mFind")]);   // the door-list QR: writers only, never a viewer, never a local-only plan
   primary.push(["tour",tr("mTour")],["help",tr("mHelp")]);
@@ -6248,7 +6371,7 @@ $("moreBtn").addEventListener("click",e=>{
   if(skipDeleteConfirm() && !ro) more.push(["askdel",tr("mAskDel")]);
   if(!ro) more.push(["reset",tr("mReset")]);
   if(!IS_LAB) more.push(["cap",tr("mLang")],["lang-el","ΕΛ · Ελληνικά"],["lang-en","EN · English"],["lang-de","DE · Deutsch"]);
-  const MI={keepsake:EVMARK(),share:"cloud",groups:"people",inv:"mail",print:"print",find:"search",tour:"help",help:"chat",askdel:"help",access:"people",newplan:"plus",planmore:"edit",round:"table",rect:"longtable",head:EVMARK(),decor:"decor",auto:"spark",xlsxseat:"up",xlsxall:"up",csvout:"up",csvin:"dl",export:"up",import:"dl",amelie:"mail",history:"clock"};
+  const MI={keepsake:EVMARK(),share:"cloud",groups:"people",inv:"mail",vendors:"phone",print:"print",find:"search",tour:"help",help:"chat",askdel:"help",access:"people",newplan:"plus",planmore:"edit",round:"table",rect:"longtable",head:EVMARK(),decor:"decor",auto:"spark",xlsxseat:"up",xlsxall:"up",csvout:"up",csvin:"dl",export:"up",import:"dl",amelie:"mail",history:"clock"};
   const row=([a,l])=>a==="cap"?`<div class="gm-cap">${escapeHtml(l)}</div>`:`<div class="gm-item${a==="reset"?" danger":""}${a==="lang-"+LANG?" on":""}" data-act="${a}">${MI[a]?ICON(MI[a]):'<span class="ic"></span>'}${escapeHtml(l)}</div>`;
   m.innerHTML=primary.map(row).join("")+`<div class="gm-sep"></div><div class="gm-item more" data-act="more"><span class="ic"></span>${escapeHtml(tr("mMore"))} ›</div><div class="gm-more">${more.map(row).join("")}</div>`;
   m.querySelectorAll(".gm-item").forEach(it=>it.onclick=ev=>{ ev.stopPropagation(); const a=it.dataset.act;
@@ -6258,7 +6381,7 @@ $("moreBtn").addEventListener("click",e=>{
     else if(a==="newplan") newProfile(); else if(a==="planmore") openProfileMenu(anchorOf($("moreBtn")));
     else if(a==="access") openAccess(); else if(a==="help") openHelp(); else if(a==="keepsake") downloadPdf("keepsake", null);
     else if(a==="round") addRoundTable(); else if(a==="rect") addRectTable(); else if(a==="history") openHistory(); else if(a==="groups") openGroupsModal(); else if(a==="inv") enterInv(null); else if(a==="tour") startTour();
-    else if(a==="auto") autoSeat(); else if(a==="export"){ if((currentProfile()||{}).support){ toast(tr("tNoCopySupport"),4000); return; } openExport(); } else if(a==="import") openImport(); else if(a==="amelie") openAmelie(); else if(a==="print") openPrint(); else if(a==="find") openFind(); else if(a==="reset") resetPlan();
+    else if(a==="auto") autoSeat(); else if(a==="export"){ if((currentProfile()||{}).support){ toast(tr("tNoCopySupport"),4000); return; } openExport(); } else if(a==="import") openImport(); else if(a==="amelie") openAmelie(); else if(a==="vendors") openVendors(); else if(a==="print") openPrint(); else if(a==="find") openFind(); else if(a==="reset") resetPlan();
     else if(a==="askdel"){ try{ localStorage.removeItem(DEL_SKIP_KEY); localStorage.removeItem(MERGE_SKIP_KEY); }catch(e){} toast(tr("tAskDel"),2500); }
     else if(a.startsWith("lang-")){ const l=a.slice(5); location.href=({el:"seating-planner-el.html",en:"seating-planner.html",de:"seating-planner-de.html"})[l]; } });
   showPopover(m, anchorOf(e.currentTarget));
@@ -7507,6 +7630,7 @@ $("printGo").addEventListener("click",()=>{ const v=printPick();
   // Place cards and table cards: chosen for this visit like the poster, never remembered in state.printMode (that is
   // the door LIST the plan prints by default; the cards are printed once, on the day the room is set).
   if(v==="cards"||v==="tcards"){ pdfChoice=v; $("printModal").classList.remove("open"); printCards(v); return; }
+  if(v==="vendors"){ pdfChoice=v; $("printModal").classList.remove("open"); printVendors(); return; }   // the same: a sheet for the day, not a door list
   pdfChoice=""; const mode=printListMode(v); const m=$("printModal");
   if(state.printMode!==mode){ state.printMode=mode; save({noHistory:true}); } m.classList.remove("open"); buildAndPrint(mode); });
 // PDF: the server renders the plan this device shows (local plans, the lab and unsynced edits included) — POST /pdf, stateless.
@@ -7746,6 +7870,23 @@ function printCards(mode){
   // The class goes when the print is over, or the next list printed from this page would inherit the card layout.
   const done=()=>{ area.classList.remove("pcards"); window.removeEventListener("afterprint",done); };
   window.addEventListener("afterprint",done);
+  window.print();
+}
+// «Συνεργάτες»: one ruled table for the staff, by arrival time (no time last), then by role. No QR: the sheet is not
+// for guests. The credit rides on the counts line like every list, so it can never cost a sheet.
+function printVendors(){
+  const list=(state.vendors||[]).filter(vendFilled);
+  if(!list.length){ toast(tr("vNonePrint"),4500); openVendors(); return; }
+  const coll=(a,b)=>String(a).localeCompare(String(b),LANG,{sensitivity:"base",numeric:true});
+  list.sort((a,b)=>(a.time||"99:99").localeCompare(b.time||"99:99")||coll(a.role,b.role)||coll(a.name,b.name));
+  const area=$("printarea"); area.classList.remove("haspqr","pposter","pmeasure","pcards");
+  const cur=currentProfile()||{}, wd=cur.life&&cur.life.weddingDate;
+  const meta=[tr("mVendors"), wd?tr("printWed",{d:fmtDate(wd)}):"", tr("printAt",{t:new Date().toLocaleString(LANG,{dateStyle:"short",timeStyle:"short"})})].filter(Boolean).join(" · ");
+  const td=(c,s)=>`<td class="${c}">${escapeHtml(String(s||"").trim())}</td>`;
+  area.innerHTML=`<h2>${escapeHtml(cur.name||tr("mVendors"))}</h2><div class="pmeta">${escapeHtml(meta)}</div>`
+    +`<div class="psub"><span class="psubt">${escapeHtml(tr("vTotal",{n:list.length}))}</span>${printBrandOn()?`<span class="pbrandline">${escapeHtml(tr("printBrand"))}</span>`:""}</div>`
+    +`<table class="pvend"><thead><tr><th class="vt">${escapeHtml(tr("vTime"))}</th><th class="vr">${escapeHtml(tr("vRole"))}</th><th class="vn">${escapeHtml(tr("vName"))}</th><th class="vp">${escapeHtml(tr("vPhone"))}</th><th class="vw">${escapeHtml(tr("vWhere"))}</th></tr></thead><tbody>`
+    +list.map(v=>`<tr>${td("vt",v.time)}${td("vr",v.role)}${td("vn",v.name)}${td("vp",v.phone)}${td("vw",v.where)}</tr>`).join("")+`</tbody></table>`;
   window.print();
 }
 
