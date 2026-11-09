@@ -2,11 +2,12 @@
 
 Updated: 2026-11-09
 
-**Status:** Live runs `7d7534e` (deployed 2026-11-09 as `deploy-2026-11-09-3`, pre-deploy backup
-`/opt/backups/takeaseat-20261109-140829.db.gz.age`), healthy. **New: place cards and table cards** in the planner's «Εκτύπωση»
-(«Καρτελάκια θέσεων», 6 tent cards per sheet, none for a cancelled guest; «Κάρτες τραπεζιών», one per sheet), printed in the
-browser; checked live in the lab (wedding and company: 28 cards on 5 sheets, one card per table, no console errors). Not
-seen: the fold on a real printer. Also live since 2026-11-09 and checked at 375px (details in History): the home hero for
+**Status:** Live runs `743fa73` (deployed 2026-11-09 as `deploy-2026-11-09-4`, pre-deploy backup
+`/opt/backups/takeaseat-20261109-151548.db.gz.age`), healthy. **New: «Συνεργάτες»** (⋯ menu): the event's vendors (role,
+name, phone, arrival, where they set up) kept in the plan, editable by every writer, read-only for viewers, never copied
+to another event; «Εκτύπωση» → «Συνεργάτες» prints them by arrival time. On a company plan «Συνεργάτες της εκδήλωσης».
+privacy and dpa list it (version 9 Nov 2026). Checked live in the lab (add, reload, print, company wording, no console
+errors). Not seen: on a real online plan, or on paper. Also new today: place cards and table cards in «Εκτύπωση» (fold not yet seen on a real printer). Also live since 2026-11-09 and checked at 375px (details in History): the home hero for
 every reader, «Ποιοι είμαστε», the free-plan page, the four-door home page. **Phase 3 of `COMPANIES-PLAN.md` is live:** a
 company's console, saved rooms, old designs, the 1–5 year choice. Operations phases 1–6 are live.
 
@@ -34,14 +35,16 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 
 1. **Ideas for presenting the site:** a few words from the real κτήμα (needs its OK). Done: the four-door hero
    (`2eeebf6`), the hero for every reader (`bc7574b`), the free-plan page (`9e5f069`), «Ποιοι είμαστε» (`d1e4823`).
-2. **More for the night of the event** (agreed 2026-11-09, place cards done): a «Συνεργάτες» sheet (vendors: role,
-   phone, arrival, where they set up), a run-of-show (χρονοδιάγραμμα) shared with venue, DJ and photographer, and door
-   check-in for company events. Andreas picks which first; plan and "done when" before building.
+2. **More for the night of the event** (agreed 2026-11-09; place cards and «Συνεργάτες» done): a run-of-show
+   (χρονοδιάγραμμα) shared with venue, DJ and photographer, and door check-in for company events. Andreas picks which
+   first; plan and "done when" before building.
 3. **Phase 7 (online payment)** waits on the company, accountant and lawyer. The page's remaining English sections move
    to Greek as each is touched.
 
 ## Waiting on Andreas
 
+- **Read the Greek of «Συνεργάτες»:** in lab.html → ⋯ → «Συνεργάτες…» (the hint at the top, the placeholders), and the
+  new words in privacy.html («Περιεχόμενο σχεδίου» row) and dpa.html («Υποκείμενα», «Δεδομένα»). Say what reads wrong.
 - **Print one page of place cards and one table card on a real printer** (lab.html → ⋯ → Εκτύπωση → «Καρτελάκια
   θέσεων» / «Κάρτες τραπεζιών»), cut and fold them, and say if the fold lands right and the names read well.
 - **Read the Greek of the new free-plan page** (https://takeaseat.gr/dorean-schedio-trapezion.html) and the one new
@@ -105,6 +108,7 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 
 ## History
 
+- 2026-11-09: «Συνεργάτες» (`openVendors`, `printVendors`, `state.vendors`, ≤ 40 rows, time HH:MM or empty): no server change, since `layoutOnly`/`designFrom` copy named parts only, so vendors never travel; not in `PERM_KEYS`. Role suggestions per kind; `c_mVendors` avoids clashing with the company group «Συνεργάτες». Empty rows go when the dialog closes. 16 new checks, 1909 pass. Checked locally (wedding, γιορτή, company, en, de, 375px, view-only) and live in the lab. Live as `743fa73` (`deploy-2026-11-09-4`).
 - 2026-11-09: Place cards and table cards in the planner's print window (`printCards`): tent cards, upper face upside down, every sheet ≤ 170 × 228 mm (checked as PDF on A4 and Letter at default and 20 mm margins: no extra sheet); no QR, no credit on a place card; el/en/de; 11 new checks, 1893 pass. Ideas agreed next: «Συνεργάτες» sheet, run-of-show, door check-in for companies (the per-table menu sheet was dropped: most venues serve buffet). Live as `7d7534e` (`deploy-2026-11-09-3`).
 
 - 2026-11-09: Home hero rewritten in Andreas's words so it speaks to couples, families and companies too, not only the κτήμα; «Δείτε πώς λειτουργεί» (#features) and «Δοκιμάστε το» (lab); four equal outlined doors. Live as `bc7574b` (`deploy-2026-11-09-2`), checked live at desktop and 375px.
