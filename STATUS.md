@@ -42,9 +42,9 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 
 ## Waiting on Andreas
 
-- **Read the Greek of «Συνεργάτες» and «Πρόγραμμα»:** in lab.html → ⋯ → «Συνεργάτες…» and «Πρόγραμμα…» (the hint at
-  the top, the placeholders, the suggested moments per kind), and the new words in privacy.html («Περιεχόμενο σχεδίου»
-  row) and dpa.html («Υποκείμενα», «Δεδομένα»). Say what reads wrong.
+- **Read the Greek of «Συνεργάτες»:** in lab.html → ⋯ → «Συνεργάτες…» (the hint at the top, the placeholders), and the
+  new words in privacy.html («Περιεχόμενο σχεδίου» row) and dpa.html («Υποκείμενα», «Δεδομένα»). Say what reads wrong.
+  («Πρόγραμμα» was read on live on 2026-11-09 with no corrections.)
 - **Print one page of place cards and one table card on a real printer** (lab.html → ⋯ → Εκτύπωση → «Καρτελάκια
   θέσεων» / «Κάρτες τραπεζιών»), cut and fold them, and say if the fold lands right and the names read well.
 - **Read the Greek of the new free-plan page** (https://takeaseat.gr/dorean-schedio-trapezion.html) and the one new
