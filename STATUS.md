@@ -30,7 +30,7 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 ## Next
 
 1. **Ideas for presenting the site:** a few words from the real κτήμα (needs its OK). Done: the four-door hero
-   (`2eeebf6`), the free-plan page (`9e5f069`), «Ποιοι είμαστε» (`d1e4823`).
+   (`2eeebf6`), the hero for every reader (`bc7574b`), the free-plan page (`9e5f069`), «Ποιοι είμαστε» (`d1e4823`).
 2. **Phase 7 (online payment)** waits on the company, accountant and lawyer. The page's remaining English sections move
    to Greek as each is touched.
 
@@ -96,6 +96,8 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 - The 🛟 on the «Υποστήριξη έως …» badge shows as an empty box on Windows 10 browsers (no such emoji there).
 
 ## History
+
+- 2026-11-09: Home hero rewritten in Andreas's words so it speaks to couples, families and companies too, not only the κτήμα; «Δείτε πώς λειτουργεί» (#features) and «Δοκιμάστε το» (lab); four equal outlined doors. Live as `bc7574b` (`deploy-2026-11-09-2`), checked live at desktop and 375px.
 
 - 2026-11-09: «Ποιοι είμαστε» page (`poioi-eimaste.html`): story (made for our own wedding, Θήβα, 2026), six «πώς δουλεύουμε» cards, 9 site-wide FAQ with matching JSON-LD and an Organization entry with no person and no legal name; linked from every public footer; 6 new checks, 1882 pass. Live as `d1e4823` (`deploy-2026-11-09-1`); live smoke test passed.
 
