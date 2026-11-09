@@ -598,6 +598,18 @@ __ROBOTS__
     .vnd.vhead{ display:none; }
     .modal .vnd .vf{ font-size:16px; }   /* 16px: an iPhone zooms the page into any smaller field */
   }
+  /* «Πρόγραμμα» (openTimeline): the same fields as «Συνεργάτες» (.vf), one row per moment on a PC, a card on a phone */
+  .tln{ display:grid; grid-template-columns:118px 1.5fr 1fr 1.4fr 36px; grid-template-areas:"t w o n d"; gap:6px; align-items:center; padding:4px 0; }
+  .modal .tln .vf{ min-width:0; width:100%; height:36px; padding:0 8px; border:1px solid var(--line); border-radius:9px; font-size:14px; background:var(--paper); }
+  .modal .tln .vf[readonly]{ background:transparent; border-color:transparent; padding:0 2px; }
+  .tln .t-time{ grid-area:t; } .tln .t-what{ grid-area:w; } .tln .t-who{ grid-area:o; } .tln .t-note{ grid-area:n; } .tln .vdel{ grid-area:d; }
+  .tln.vhead{ font-size:11px; color:var(--faint); padding:0 0 2px; }
+  .tln.vhead span:nth-child(1){ grid-area:t; } .tln.vhead span:nth-child(2){ grid-area:w; } .tln.vhead span:nth-child(3){ grid-area:o; } .tln.vhead span:nth-child(4){ grid-area:n; }
+  @media (max-width:700px){
+    .tln{ grid-template-columns:118px 1fr 36px; grid-template-areas:"t w d" "o o o" "n n n"; padding:8px 0 10px; border-bottom:1px solid var(--line); }
+    .tln.vhead{ display:none; }
+    .modal .tln .vf{ font-size:16px; }
+  }
   #palette, #groupmenu{ z-index:320; }   /* may open from inside a modal (300) — must sit above it */
   #palette{ width:auto; padding:6px; }
   .pal{ display:grid; grid-template-columns:repeat(5,34px); gap:6px; padding:4px; }
@@ -1130,6 +1142,10 @@ __ROBOTS__
   #printarea .pvend td{ border-bottom:1px solid #ddd; padding:7px 6px; vertical-align:top; overflow-wrap:anywhere; }
   #printarea .pvend .vt{ width:11%; font-weight:700; font-variant-numeric:tabular-nums; }
   #printarea .pvend .vr{ width:19%; } #printarea .pvend .vn{ width:22%; } #printarea .pvend .vp{ width:18%; font-variant-numeric:tabular-nums; } #printarea .pvend .vw{ width:30%; }
+  /* «Πρόγραμμα» (printTimeline): the same ruled table; the phone column only when a «who» is one of the vendors */
+  #printarea .pvend .tt{ width:11%; font-weight:700; font-variant-numeric:tabular-nums; }
+  #printarea .pvend .tw{ width:31%; font-weight:600; } #printarea .pvend .to{ width:20%; } #printarea .pvend .tn{ width:38%; }
+  #printarea .pvend.tph .tw{ width:27%; } #printarea .pvend.tph .to{ width:18%; } #printarea .pvend.tph .tn{ width:28%; } #printarea .pvend .tp{ width:16%; font-variant-numeric:tabular-nums; }
   #printarea .pcsheet{ display:grid; grid-template-columns:85mm 85mm; grid-auto-rows:76mm; width:170mm; margin:0 auto;
     border-top:.3mm dashed #aaa; border-left:.3mm dashed #aaa; break-after:page; page-break-after:always; }
   #printarea .pcsheet:last-child, #printarea .ptsheet:last-child{ break-after:auto; page-break-after:auto; }
@@ -1334,6 +1350,7 @@ __ROBOTS__
       <label class="imode" style="margin-top:6px"><input type="radio" name="pmode" value="cards"><span data-t="pmCards"></span></label>
       <label class="imode" style="margin-top:6px"><input type="radio" name="pmode" value="tcards"><span data-t="pmTCards"></span></label>
       <label class="imode" style="margin-top:6px"><input type="radio" name="pmode" value="vendors"><span data-t="pmVendors"></span></label>
+      <label class="imode" style="margin-top:6px"><input type="radio" name="pmode" value="timeline"><span data-t="pmTimeline"></span></label>
       <label class="imode" style="margin-top:6px"><input type="radio" name="pmode" value="pdf"><span data-t="pmPdf"></span></label>
       <label class="imode" style="margin-top:6px" id="pmKeepRow" hidden><input type="radio" name="pmode" value="keepsake"><span data-t="pmKeep"></span></label>
       <label class="imode" style="margin-top:6px" id="pmPosterRow" hidden><input type="radio" name="pmode" value="poster"><span data-t="pmPoster"></span></label>
@@ -1367,6 +1384,13 @@ __ROBOTS__
     <div class="modal-head"><strong id="vendTitle"></strong><button class="mx" id="vendClose">✕</button></div>
     <div class="mhint" id="vendHint"></div>
     <div class="mbody" id="vendBody"></div>
+  </div>
+</div>
+<div id="tlnModal" class="modal-back">
+  <div class="modal vwide">
+    <div class="modal-head"><strong id="tlnTitle"></strong><button class="mx" id="tlnClose">✕</button></div>
+    <div class="mhint" id="tlnHint"></div>
+    <div class="mbody" id="tlnBody"></div>
   </div>
 </div>
 <div id="fillmenu" class="popover"></div>
@@ -1559,7 +1583,7 @@ el:{
   rbVenue:"🏛 Κτήμα", rbVenueTip:"Ανοίξατε τον γάμο ως κτήμα: αλλάζετε τα πάντα. Το ζευγάρι αλλάζει μόνο ό,τι του επιτρέπετε.", rbTemplate:"🏛 Πρότυπο χώρου", rbTemplateTip:"Αυτή είναι η διάταξη του χώρου σας: κάθε νέα εκδήλωση ξεκινά από εδώ (χωρίς καλεσμένους). Όσες υπάρχουν ήδη δεν αλλάζουν.", rbPreview:"👁 Όπως το βλέπει το ζευγάρι",
   rbSupport:"🛟 Υποστήριξη · έως {t}", rbSupportTip:"Ο ιδιοκτήτης σάς έδωσε προσωρινή πρόσβαση. Τίποτα δεν μένει σε αυτή τη συσκευή.", rbViewer:"👁 Μόνο προβολή", rbViewerTip:"Βλέπετε το σχέδιο· δεν μπορείτε να το αλλάξετε.",
   rbLocked:"🔒 Χώρος: {v}", rbLockedTip:"Το κτήμα έχει στήσει τον χώρο — πατήστε για να δείτε τι μπορείτε να αλλάξετε.", rbSupportOn:"🛟 Η TakeaSeat έχει πρόσβαση", rbSupportOnTip:"Έχετε δώσει πρόσβαση στην υποστήριξη έως {t} — πατήστε για να τη διακόψετε.",
-  permFloor:"Δάπεδο & μέγεθος χώρου", permDecor:"Στοιχεία του κτήματος (πίστα, μπαρ, μπουφέδες, WC…)", permLayout:"Θέσεις τραπεζιών στον χώρο", permTables:"Προσθήκη / διαγραφή τραπεζιών", permSeats:"Αριθμός θέσεων ανά τραπέζι", permLabels:"Ονόματα τραπεζιών", permMax:"έως {n} ανά τραπέζι", permAlways:"Καλεσμένοι, θέσεις, ομάδες, προσκλητήρια, συνεργάτες, εκτύπωση",
+  permFloor:"Δάπεδο & μέγεθος χώρου", permDecor:"Στοιχεία του κτήματος (πίστα, μπαρ, μπουφέδες, WC…)", permLayout:"Θέσεις τραπεζιών στον χώρο", permTables:"Προσθήκη / διαγραφή τραπεζιών", permSeats:"Αριθμός θέσεων ανά τραπέζι", permLabels:"Ονόματα τραπεζιών", permMax:"έως {n} ανά τραπέζι", permAlways:"Καλεσμένοι, θέσεις, ομάδες, προσκλητήρια, συνεργάτες, πρόγραμμα, εκτύπωση",
   tLockedPart:"Αυτό το ορίζει το κτήμα ({w}).", tLockedByVenue:"Ο χώρος μένει όπως τον έστησε {v} — κρατήθηκαν οι δικές σας αλλαγές (ονόματα, θέσεις).",
   accSpace:"Ο χώρος σας — από {v}", accSpaceHint:"Το κτήμα έχει στήσει τον χώρο. Εσείς μπορείτε:", accCouplePerms:"Τι μπορεί να αλλάξει το ζευγάρι", accCouplePermsHint:"Αλλάζει από την κονσόλα του κτήματος (Δικαιώματα).", accPreview:"Δείτε το όπως το ζευγάρι", tPreviewOn:"Βλέπετε όσα βλέπει το ζευγάρι.", tPreviewOff:"Πλήρης προβολή κτήματος.",
   accSupport:"Υποστήριξη TakeaSeat", accSupportHint:"Η TakeaSeat δεν ανοίγει το σχέδιό σας χωρίς πρόσκλησή σας — κάθε πρόσβαση καταγράφεται. Αν χρειαστείτε βοήθεια, δώστε μας πρόσβαση για λίγο — τη διακόπτετε όποτε θέλετε και βλέπετε παρακάτω τι κάναμε.", accSupportHintVenue:"Η TakeaSeat δεν ανοίγει τους γάμους σας χωρίς πρόσκλησή σας — κάθε πρόσβαση καταγράφεται. Για βοήθεια, δώστε μας πρόσβαση σε αυτόν τον γάμο για λίγο — τη διακόπτετε όποτε θέλετε.",
@@ -1706,6 +1730,21 @@ el:{
   b_vRoles:["Φωτογράφος","Βιντεογράφος","DJ","Στολισμός","Ζαχαροπλαστείο","Μπομπονιέρες","Animation για παιδιά","Catering"],
   p_vRoles:["Φωτογράφος","DJ","Ορχήστρα","Στολισμός","Ζαχαροπλαστείο","Μπαρ","Catering"],
   c_vRoles:["Ήχος και φωτισμός","Παρουσιαστής","Φωτογράφος","Βιντεογράφος","Catering","Μπαρ","Στολισμός","Μεταφορά","Εκτυπώσεις και σήμανση"],
+  mTimeline:"Πρόγραμμα", c_mTimeline:"Πρόγραμμα της εκδήλωσης",
+  tlHint:"Τι γίνεται και τι ώρα, και ποιος το αναλαμβάνει. Το βλέπει όποιος ανοίγει το σχέδιο, και τυπώνεται σε μία σελίδα από την «Εκτύπωση». Ό,τι γίνεται μετά τα μεσάνυχτα μπαίνει στο τέλος.",
+  tlHintRo:"Τι γίνεται και τι ώρα. Μπορείτε να το δείτε και να το τυπώσετε, όχι να το αλλάξετε.",
+  tlTime:"Ώρα", tlWhat:"Τι γίνεται", tlWho:"Ποιος", tlNote:"Σημείωση",
+  tlWhatPh:"Τι γίνεται (π.χ. πρώτος χορός)", b_tlWhatPh:"Τι γίνεται (π.χ. κόψιμο τούρτας)", p_tlWhatPh:"Τι γίνεται (π.χ. κόψιμο τούρτας)", c_tlWhatPh:"Τι γίνεται (π.χ. καλωσόρισμα)",
+  tlWhoPh:"Ποιος (π.χ. DJ)", c_tlWhoPh:"Ποιος (π.χ. παρουσιαστής)",
+  tlNotePh:"Σημείωση (π.χ. ποιο τραγούδι)", c_tlNotePh:"Σημείωση (π.χ. μικρόφωνο στη σκηνή)",
+  tlAdd:"+ Προσθήκη γραμμής", tlDelAsk:"«{n}»: αφαίρεση από το πρόγραμμα;",
+  tlNone:"Το πρόγραμμα είναι ακόμη άδειο. Πατήστε «+ Προσθήκη γραμμής».", tlNoneRo:"Δεν έχει γραφτεί πρόγραμμα ακόμη.",
+  tlNonePrint:"Το πρόγραμμα είναι άδειο. Γράψτε το εδώ και μετά τυπώστε το.", tlMax:"Έως 60 γραμμές σε κάθε πρόγραμμα.",
+  pmTimeline:"Πρόγραμμα — τι γίνεται κάθε ώρα και ποιος το αναλαμβάνει", c_pmTimeline:"Πρόγραμμα της εκδήλωσης — τι γίνεται κάθε ώρα και ποιος το αναλαμβάνει",
+  tlMoments:["Υποδοχή καλεσμένων","Είσοδος του ζευγαριού","Πρώτος χορός","Σερβίρισμα φαγητού","Ομιλίες","Κόψιμο τούρτας","Πέταγμα ανθοδέσμης","Ανοίγει η πίστα","Τελευταίο τραγούδι"],
+  b_tlMoments:["Υποδοχή καλεσμένων","Άφιξη από την εκκλησία","Σερβίρισμα φαγητού","Animation για τα παιδιά","Κόψιμο τούρτας","Μπομπονιέρες","Τελευταίο τραγούδι"],
+  p_tlMoments:["Υποδοχή καλεσμένων","Σερβίρισμα φαγητού","Ομιλίες","Κόψιμο τούρτας","Ανοίγει η πίστα","Τελευταίο τραγούδι"],
+  c_tlMoments:["Προσέλευση","Καλωσόρισμα","Χαιρετισμός","Ομιλίες","Παρουσίαση","Βραβεύσεις","Δείπνο","Μουσική","Λήξη"],
   labBride:"Νύφη", labGroom:"Γαμπρός",
   labNames:["Μαρία Π.","Γιώργος Κ.","Ελένη Α.","Νίκος Δ.","Κατερίνα Μ.","Δημήτρης Σ.","Σοφία Λ.","Κώστας Β.","Άννα Χ.","Παναγιώτης Ρ.","Χριστίνα Τ.","Μιχάλης Γ.","Ειρήνη Ν.","Βασίλης Ζ.","Δέσποινα Φ.","Αλέξανδρος Κ.","Ιωάννα Π.","Θανάσης Μ.","Αγγελική Σ.","Στέλιος Α.","Φωτεινή Δ.","Μανώλης Λ.","Ζωή Β.","Πέτρος Χ.","Ευαγγελία Ρ.","Σπύρος Τ.","Ναταλία Γ.","Χρήστος Ν.","Μαρίνα Ζ.","Λευτέρης Φ.","Αναστασία Κ.","Αντώνης Π.","Ελευθερία Μ.","Σταύρος Σ.","Νεφέλη Α.","Ορέστης Δ.","Δανάη Λ.","Άρης Β.","Ισμήνη Χ.","Φίλιππος Ρ."],
   // ---- βαπτίσεις: the twins of every key whose text NAMES the event (see tr() / EVK). Nothing else is duplicated;
@@ -1872,7 +1911,7 @@ en:{
   rbVenue:"🏛 Venue", rbVenueTip:"You opened this wedding as the venue: you can change everything. The couple changes only what you allow.", rbTemplate:"🏛 Venue template", rbTemplateTip:"This is your venue layout: every new event starts from here (without guests). Existing events do not change.", rbPreview:"👁 As the couple sees it",
   rbSupport:"🛟 Support · until {t}", rbSupportTip:"The owner gave you temporary access. Nothing stays on this device.", rbViewer:"👁 View only", rbViewerTip:"You can see the plan but not change it.",
   rbLocked:"🔒 Space: {v}", rbLockedTip:"The venue has set up the space — tap to see what you can change.", rbSupportOn:"🛟 TakeaSeat has access", rbSupportOnTip:"You gave support access until {t} — tap to end it.",
-  permFloor:"Floor & size of the space", permDecor:"The venue's elements (dance floor, bar, buffets, WC…)", permLayout:"Table positions", permTables:"Add / delete tables", permSeats:"Number of seats per table", permLabels:"Table names", permMax:"up to {n} per table", permAlways:"Guests, seats, groups, invitations, vendors, printing",
+  permFloor:"Floor & size of the space", permDecor:"The venue's elements (dance floor, bar, buffets, WC…)", permLayout:"Table positions", permTables:"Add / delete tables", permSeats:"Number of seats per table", permLabels:"Table names", permMax:"up to {n} per table", permAlways:"Guests, seats, groups, invitations, vendors, timeline, printing",
   tLockedPart:"The venue sets this ({w}).", tLockedByVenue:"The space stays as {v} set it up — your own changes (names, seats) were kept.",
   accSpace:"Your space — by {v}", accSpaceHint:"The venue has set up the space. You can:", accCouplePerms:"What the couple may change", accCouplePermsHint:"Changed from the venue console (Permissions).", accPreview:"See it as the couple does", tPreviewOn:"You now see what the couple sees.", tPreviewOff:"Full venue view.",
   accSupport:"TakeaSeat support", accSupportHint:"TakeaSeat never opens your plan without your invitation — every access is logged. If you need help, give us access for a while — end it whenever you like and see below what we did.", accSupportHintVenue:"TakeaSeat never opens your weddings without your invitation — every access is logged. For help, give us access to this wedding for a while — end it whenever you like.",
@@ -2018,6 +2057,21 @@ en:{
   b_vRoles:["Photographer","Videographer","DJ","Decoration","Cake","Favours","Children’s entertainment","Catering"],
   p_vRoles:["Photographer","DJ","Band","Decoration","Cake","Bar","Catering"],
   c_vRoles:["Sound and lighting","Presenter","Photographer","Videographer","Catering","Bar","Decoration","Transport","Printing and signage"],
+  mTimeline:"Timeline", c_mTimeline:"Event timeline",
+  tlHint:"What happens when, and who takes care of it. Anyone who opens the plan sees it, and “Print” puts it on one sheet. Anything after midnight goes at the end.",
+  tlHintRo:"What happens when. You can see and print it, but not change it.",
+  tlTime:"Time", tlWhat:"What happens", tlWho:"Who", tlNote:"Note",
+  tlWhatPh:"What happens (e.g. first dance)", b_tlWhatPh:"What happens (e.g. cutting the cake)", p_tlWhatPh:"What happens (e.g. cutting the cake)", c_tlWhatPh:"What happens (e.g. welcome)",
+  tlWhoPh:"Who (e.g. DJ)", c_tlWhoPh:"Who (e.g. presenter)",
+  tlNotePh:"Note (e.g. which song)", c_tlNotePh:"Note (e.g. microphone on stage)",
+  tlAdd:"+ Add a line", tlDelAsk:"Remove “{n}” from the timeline?",
+  tlNone:"The timeline is still empty. Tap “+ Add a line”.", tlNoneRo:"No timeline has been written yet.",
+  tlNonePrint:"The timeline is empty. Write it here, then print it.", tlMax:"Up to 60 lines per timeline.",
+  pmTimeline:"Timeline — what happens when, and who takes care of it", c_pmTimeline:"Event timeline — what happens when, and who takes care of it",
+  tlMoments:["Guests arrive","The couple’s entrance","First dance","Dinner is served","Speeches","Cutting the cake","Bouquet toss","Dance floor opens","Last song"],
+  b_tlMoments:["Guests arrive","Arrival from the church","Dinner is served","Children’s entertainment","Cutting the cake","Favours","Last song"],
+  p_tlMoments:["Guests arrive","Dinner is served","Speeches","Cutting the cake","Dance floor opens","Last song"],
+  c_tlMoments:["Arrival","Welcome","Opening address","Talks","Presentation","Awards","Dinner","Music","Close"],
   labBride:"Bride", labGroom:"Groom",
   labNames:["Maria P.","George K.","Helen A.","Nick D.","Katerina M.","Jim S.","Sophia L.","Kostas V.","Anna C.","Peter R.","Christina T.","Michael G.","Irene N.","Bill Z.","Despina F.","Alex K.","Joanna P.","Thanos M.","Angela S.","Steve A.","Fay D.","Manolis L.","Zoe V.","Petros C.","Eva R.","Spyros T.","Natalie G.","Chris N.","Marina Z.","Lefteris F.","Anastasia K.","Tony P.","Ellie M.","Stavros S.","Nefeli A.","Orestis D.","Danae L.","Aris V.","Ismene C.","Philip R."],
   // ---- christenings: the twins of every key whose text NAMES the event (see tr() / EVK).
@@ -2177,7 +2231,7 @@ de:{
   rbVenue:"🏛 Location", rbVenueTip:"Sie haben diese Hochzeit als Location geöffnet: Sie können alles ändern. Das Paar ändert nur, was Sie erlauben.", rbTemplate:"🏛 Raumvorlage", rbTemplateTip:"Das ist die Aufstellung Ihrer Location: jede neue Veranstaltung beginnt hier (ohne Gäste). Bestehende Veranstaltungen ändern sich nicht.", rbPreview:"👁 So sieht es das Paar",
   rbSupport:"🛟 Support · bis {t}", rbSupportTip:"Der Eigentümer hat Ihnen vorübergehend Zugriff gegeben. Nichts bleibt auf diesem Gerät.", rbViewer:"👁 Nur ansehen", rbViewerTip:"Sie sehen den Plan, können ihn aber nicht ändern.",
   rbLocked:"🔒 Raum: {v}", rbLockedTip:"Die Location hat den Raum eingerichtet — antippen, um zu sehen, was Sie ändern können.", rbSupportOn:"🛟 TakeaSeat hat Zugriff", rbSupportOnTip:"Sie haben dem Support bis {t} Zugriff gegeben — antippen zum Beenden.",
-  permFloor:"Boden & Größe des Raums", permDecor:"Elemente der Location (Tanzfläche, Bar, Buffets, WC…)", permLayout:"Position der Tische", permTables:"Tische hinzufügen / löschen", permSeats:"Anzahl der Plätze pro Tisch", permLabels:"Tischnamen", permMax:"bis {n} pro Tisch", permAlways:"Gäste, Plätze, Gruppen, Einladungen, Dienstleister, Druck",
+  permFloor:"Boden & Größe des Raums", permDecor:"Elemente der Location (Tanzfläche, Bar, Buffets, WC…)", permLayout:"Position der Tische", permTables:"Tische hinzufügen / löschen", permSeats:"Anzahl der Plätze pro Tisch", permLabels:"Tischnamen", permMax:"bis {n} pro Tisch", permAlways:"Gäste, Plätze, Gruppen, Einladungen, Dienstleister, Ablaufplan, Druck",
   tLockedPart:"Das legt die Location fest ({w}).", tLockedByVenue:"Der Raum bleibt, wie {v} ihn eingerichtet hat — Ihre eigenen Änderungen (Namen, Plätze) wurden übernommen.",
   accSpace:"Ihr Raum — von {v}", accSpaceHint:"Die Location hat den Raum eingerichtet. Sie können:", accCouplePerms:"Was das Paar ändern darf", accCouplePermsHint:"Wird in der Location-Konsole geändert (Rechte).", accPreview:"So ansehen, wie es das Paar sieht", tPreviewOn:"Sie sehen jetzt, was das Paar sieht.", tPreviewOff:"Volle Ansicht der Location.",
   accSupport:"TakeaSeat-Support", accSupportHint:"TakeaSeat öffnet Ihren Plan nie ohne Ihre Einladung — jeder Zugriff wird protokolliert. Wenn Sie Hilfe brauchen, geben Sie uns kurz Zugriff — Sie beenden ihn jederzeit und sehen unten, was wir getan haben.", accSupportHintVenue:"TakeaSeat öffnet Ihre Hochzeiten nie ohne Ihre Einladung — jeder Zugriff wird protokolliert. Für Hilfe geben Sie uns kurz Zugriff auf diese Hochzeit — Sie beenden ihn jederzeit.",
@@ -2323,6 +2377,21 @@ de:{
   b_vRoles:["Fotograf","Videograf","DJ","Dekoration","Torte","Gastgeschenke","Kinderanimation","Catering"],
   p_vRoles:["Fotograf","DJ","Band","Dekoration","Torte","Bar","Catering"],
   c_vRoles:["Ton und Licht","Moderation","Fotograf","Videograf","Catering","Bar","Dekoration","Transport","Druck und Beschilderung"],
+  mTimeline:"Ablaufplan", c_mTimeline:"Ablaufplan der Veranstaltung",
+  tlHint:"Was wann passiert und wer sich darum kümmert. Wer den Plan öffnet, sieht ihn, und „Drucken“ bringt ihn auf ein Blatt. Alles nach Mitternacht steht am Ende.",
+  tlHintRo:"Was wann passiert. Sie können ihn ansehen und drucken, aber nicht ändern.",
+  tlTime:"Uhrzeit", tlWhat:"Was passiert", tlWho:"Wer", tlNote:"Notiz",
+  tlWhatPh:"Was passiert (z. B. Eröffnungstanz)", b_tlWhatPh:"Was passiert (z. B. Anschneiden der Torte)", p_tlWhatPh:"Was passiert (z. B. Anschneiden der Torte)", c_tlWhatPh:"Was passiert (z. B. Begrüßung)",
+  tlWhoPh:"Wer (z. B. DJ)", c_tlWhoPh:"Wer (z. B. Moderation)",
+  tlNotePh:"Notiz (z. B. welches Lied)", c_tlNotePh:"Notiz (z. B. Mikrofon auf der Bühne)",
+  tlAdd:"+ Zeile hinzufügen", tlDelAsk:"„{n}“ aus dem Ablaufplan entfernen?",
+  tlNone:"Der Ablaufplan ist noch leer. Tippen Sie auf „+ Zeile hinzufügen“.", tlNoneRo:"Noch kein Ablaufplan eingetragen.",
+  tlNonePrint:"Der Ablaufplan ist leer. Tragen Sie ihn hier ein und drucken Sie ihn dann.", tlMax:"Bis zu 60 Zeilen pro Ablaufplan.",
+  pmTimeline:"Ablaufplan — was wann passiert und wer sich darum kümmert", c_pmTimeline:"Ablaufplan der Veranstaltung — was wann passiert und wer sich darum kümmert",
+  tlMoments:["Empfang der Gäste","Einzug des Brautpaars","Eröffnungstanz","Essen wird serviert","Reden","Anschneiden der Torte","Brautstraußwurf","Tanzfläche öffnet","Letztes Lied"],
+  b_tlMoments:["Empfang der Gäste","Ankunft aus der Kirche","Essen wird serviert","Kinderanimation","Anschneiden der Torte","Gastgeschenke","Letztes Lied"],
+  p_tlMoments:["Empfang der Gäste","Essen wird serviert","Reden","Anschneiden der Torte","Tanzfläche öffnet","Letztes Lied"],
+  c_tlMoments:["Ankunft","Begrüßung","Grußwort","Vorträge","Präsentation","Preisverleihung","Abendessen","Musik","Ende"],
   labBride:"Braut", labGroom:"Bräutigam",
   labNames:["Maria P.","Georg K.","Helena A.","Niko D.","Katharina M.","Jan S.","Sophie L.","Konstantin V.","Anna C.","Peter R.","Christina T.","Michael G.","Irene N.","Wilhelm Z.","Despina F.","Alex K.","Johanna P.","Thomas M.","Angelika S.","Stefan A.","Frieda D.","Manuel L.","Zoe V.","Petra C.","Eva R.","Sebastian T.","Natalie G.","Christoph N.","Marina Z.","Leon F.","Anastasia K.","Anton P.","Elli M.","Stefanos S.","Nefeli A.","Oliver D.","Diana L.","Aris V.","Isabel C.","Philipp R."],
   // ---- Taufen: die Zwillinge jedes Schlüssels, dessen Text die Veranstaltung BENENNT (siehe tr() / EVK).
@@ -2931,7 +3000,7 @@ function sanitizePlan(s){ if(!s||typeof s!=="object") return s;
     let mx=2001; const num=x=>{ const m=/(\d+)$/.exec(String(x)); const v=m?+m[1]:0; return v<=1e9?v:0; };
     (Array.isArray(s.tables)?s.tables:[]).forEach(t=>{ if(t) mx=Math.max(mx,num(t.id)); });
     Object.keys((s.guests&&typeof s.guests==="object")?s.guests:{}).forEach(k=>{ mx=Math.max(mx,num(k)); });
-    ["features","groups","parties","vendors"].forEach(k=>(Array.isArray(s[k])?s[k]:[]).forEach(o=>{ if(o) mx=Math.max(mx,num(o.id)); }));
+    ["features","groups","parties","vendors","timeline"].forEach(k=>(Array.isArray(s[k])?s[k]:[]).forEach(o=>{ if(o) mx=Math.max(mx,num(o.id)); }));
     s._uid=mx+1;
   }
     if(!Array.isArray(s.tables)) s.tables=[];
@@ -2949,6 +3018,12 @@ function sanitizePlan(s){ if(!s||typeof s!=="object") return s;
       const o={ id:String(v.id??"").replace(/[^\w-]/g,"").slice(0,40)||("v"+Math.floor(Math.random()*1e6)) };
       [["role",40],["name",60],["phone",30],["time",5],["where",80]].forEach(([k,n])=>{ o[k]=String(v[k]??"").slice(0,n); });
       if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(o.time)) o.time="";   // what <input type="time"> writes; anything else would sort wrongly on paper
+      return o; });
+    // «Πρόγραμμα»: the same rules as the vendors — cleaned only when the plan has it, a time is HH:MM or nothing.
+    if(s.timeline!=null) s.timeline=(Array.isArray(s.timeline)?s.timeline:[]).filter(t=>t&&typeof t==="object").slice(0,60).map(t=>{
+      const o={ id:String(t.id??"").replace(/[^\w-]/g,"").slice(0,40)||("t"+Math.floor(Math.random()*1e6)) };
+      [["time",5],["what",80],["who",60],["note",120]].forEach(([k,n])=>{ o[k]=String(t[k]??"").slice(0,n); });
+      if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(o.time)) o.time="";
       return o; });
     for(const k of Object.keys(s.guests)){ const g=s.guests[k]; if(!g||typeof g!=="object"){ delete s.guests[k]; continue; }
       g.name=String(g.name??"").slice(0,80); if(g.groupId!=null&&(typeof g.groupId!=="string"||!s.groups.some(x=>String(x.id)===g.groupId))) g.groupId=null; if(g.note!=null) g.note=String(g.note).slice(0,200);
@@ -3817,6 +3892,62 @@ $("vendClose").addEventListener("click",closeVendors);
 $("vendModal").addEventListener("click",e=>{ if(e.target.id==="vendModal") closeVendors(); });
 $("vendBody").addEventListener("keydown",e=>{ if(!e.target.matches("input")) return; e.stopPropagation();   // the planner's shortcuts must not fire while typing
   if(e.key==="Enter"){ e.preventDefault(); e.target.blur(); } else if(e.key==="Escape"){ e.preventDefault(); closeVendors(); } });
+// ---- «Πρόγραμμα»: what happens when and who takes care of it (time, what, who, note), printed for venue, DJ, photographer ----
+// Built like «Συνεργάτες»: it lives in the plan (state.timeline), every writer edits it, a viewer reads and prints it, it
+// is not one of the venue's locks and it never travels to another event (the server copies named parts only).
+// Shown and printed in the order of the night: 00:00–05:59 counts as after midnight and goes last, a line with no time
+// after that. The stored order is the order of adding; a row never jumps while it is being typed (no redraw on change).
+const TLN_KEYS=["time","what","who","note"];
+const tlnFilled=t=>TLN_KEYS.some(k=>String(t[k]||"").trim());
+const tlnKey=t=>!t.time?"3":(t.time<"06:00"?"2":"1")+t.time;
+function tlnSorted(list){ return list.map((t,i)=>[t,i]).sort((a,b)=>tlnKey(a[0]).localeCompare(tlnKey(b[0]))||a[1]-b[1]).map(x=>x[0]); }
+// The vendors whose role or name is exactly what «who» says: their phone goes beside the line on paper.
+function tlnPhones(who){ const w=String(who||"").trim().toLocaleLowerCase(LANG); if(!w) return "";
+  const ph=(state.vendors||[]).filter(v=>String(v.phone||"").trim() && [v.role,v.name].some(x=>String(x||"").trim().toLocaleLowerCase(LANG)===w)).map(v=>v.phone.trim());
+  return [...new Set(ph)].join(", "); }
+function renderTlnModal(){
+  const ro=ACCESS.ro, list=tlnSorted(state.timeline||[]), body=$("tlnBody");
+  $("tlnTitle").textContent=tr("mTimeline"); $("tlnHint").textContent=tr(ro?"tlHintRo":"tlHint");
+  const inp=(t,k,type,ph,max)=>`<input class="vf t-${k}" data-k="${k}" type="${type}"${k==="what"?' list="tlnWhat"':k==="who"?' list="tlnWho"':""} autocomplete="off" maxlength="${max}" value="${escapeHtml(t[k]||"")}" placeholder="${escapeHtml(ph)}" aria-label="${escapeHtml(ph)}"${ro?" readonly":""}>`;
+  const arr=x=>Array.isArray(x)?x:[];
+  const whos=[...new Set([...(state.vendors||[]).flatMap(v=>[v.role,v.name]),...arr(tr("vRoles"))].map(x=>String(x||"").trim()).filter(Boolean))];
+  body.innerHTML=(list.length
+      ? `<div class="tln vhead"><span>${escapeHtml(tr("tlTime"))}</span><span>${escapeHtml(tr("tlWhat"))}</span><span>${escapeHtml(tr("tlWho"))}</span><span>${escapeHtml(tr("tlNote"))}</span></div>`
+        +list.map(t=>`<div class="tln" data-id="${escapeHtml(t.id)}">${inp(t,"time","time",tr("tlTime"),5)}${inp(t,"what","text",tr("tlWhatPh"),80)}${inp(t,"who","text",tr("tlWhoPh"),60)}${inp(t,"note","text",tr("tlNotePh"),120)}`
+          +(ro?"":`<button class="ibtn danger vdel" data-act="del" title="${escapeHtml(tr("vDel"))}" aria-label="${escapeHtml(tr("vDel"))}">${ICON("trash")}</button>`)+`</div>`).join("")
+      : `<div class="mhint" style="padding:6px 0">${escapeHtml(tr(ro?"tlNoneRo":"tlNone"))}</div>`)
+    +`<datalist id="tlnWhat">${arr(tr("tlMoments")).map(r=>`<option value="${escapeHtml(r)}">`).join("")}</datalist>`
+    +`<datalist id="tlnWho">${whos.map(r=>`<option value="${escapeHtml(r)}">`).join("")}</datalist>`
+    +`<div class="mrow">${ro?"":`<button class="ibtn" id="tlnAdd">${escapeHtml(tr("tlAdd"))}</button>`}${list.length?`<button class="ibtn primary" id="tlnPrint">${escapeHtml(tr("vPrint"))}</button>`:""}</div>`;
+  body.querySelectorAll(".tln[data-id]").forEach(row=>{
+    const id=row.dataset.id, cur=()=>(state.timeline||[]).find(x=>x.id===id);   // looked up at commit time: a sync may have replaced state
+    row.querySelectorAll(".vf").forEach(inpEl=>inpEl.addEventListener("change",()=>{
+      const t=cur(); if(!t||ro) return; const k=inpEl.dataset.k, val=inpEl.value.trim();
+      if(t[k]!==val){ t[k]=val; save(); } }));
+    const del=row.querySelector('[data-act="del"]');
+    if(del) del.onclick=()=>{ const t=cur(); if(!t) return;
+      if(tlnFilled(t) && !confirm(tr("tlDelAsk",{n:t.what||t.who||t.time||t.note}))) return;
+      state.timeline=(state.timeline||[]).filter(x=>x.id!==id); save(); renderTlnModal(); };
+  });
+  const add=$("tlnAdd"); if(add) add.onclick=()=>{
+    const a=document.activeElement; if(a && a.blur && body.contains(a)) a.blur();   // the field being typed commits before the redraw
+    if(!Array.isArray(state.timeline)) state.timeline=[];
+    if(state.timeline.length>=60){ toast(tr("tlMax"),3500); return; }
+    const t={ id:"t"+nextId(), time:"", what:"", who:"", note:"" }; state.timeline.push(t); save(); renderTlnModal();
+    const r=body.querySelector(`.tln[data-id="${t.id}"] .t-time`); if(r) r.focus(); };
+  const pr=$("tlnPrint"); if(pr) pr.onclick=()=>{ closeTimeline(); printTimeline(); };
+}
+function openTimeline(){ setNav(false); renderTlnModal(); $("tlnModal").classList.add("open"); }
+// A line left completely empty is not a moment: it goes when the dialog closes (no undo step of its own).
+function closeTimeline(){
+  const a=document.activeElement; if(a && a.blur && $("tlnBody").contains(a)) a.blur();   // its «change» commits first
+  $("tlnModal").classList.remove("open");
+  if(!ACCESS.ro && Array.isArray(state.timeline) && state.timeline.some(t=>!tlnFilled(t))){ state.timeline=state.timeline.filter(tlnFilled); save({noHistory:true}); }
+}
+$("tlnClose").addEventListener("click",closeTimeline);
+$("tlnModal").addEventListener("click",e=>{ if(e.target.id==="tlnModal") closeTimeline(); });
+$("tlnBody").addEventListener("keydown",e=>{ if(!e.target.matches("input")) return; e.stopPropagation();   // the planner's shortcuts must not fire while typing
+  if(e.key==="Enter"){ e.preventDefault(); e.target.blur(); } else if(e.key==="Escape"){ e.preventDefault(); closeTimeline(); } });
 function openPalette(g, anchorEl){
   if(ACCESS.ro) return;
   const m=$("palette"); const cols=[...GROUP_PALETTE,...EXTRA_PALETTE];
@@ -6360,6 +6491,7 @@ $("moreBtn").addEventListener("click",e=>{
   if(!ro) primary.push(["groups",tr("mGroups")]);
   primary.push(["inv",tr("mInv")]);   // read only: to look (who is in which invitation, where they sit)
   primary.push(["vendors",tr("mVendors")+"…"]);   // read only too: to look up a phone number and print the sheet
+  primary.push(["timeline",tr("mTimeline")+"…"]);   // the same: the DJ or the photographer with a view link reads and prints it
   primary.push(["print",tr("mPrint")]);
   if(findMenuOk()) primary.push(["find",tr("mFind")]);   // the door-list QR: writers only, never a viewer, never a local-only plan
   primary.push(["tour",tr("mTour")],["help",tr("mHelp")]);
@@ -6371,7 +6503,7 @@ $("moreBtn").addEventListener("click",e=>{
   if(skipDeleteConfirm() && !ro) more.push(["askdel",tr("mAskDel")]);
   if(!ro) more.push(["reset",tr("mReset")]);
   if(!IS_LAB) more.push(["cap",tr("mLang")],["lang-el","ΕΛ · Ελληνικά"],["lang-en","EN · English"],["lang-de","DE · Deutsch"]);
-  const MI={keepsake:EVMARK(),share:"cloud",groups:"people",inv:"mail",vendors:"phone",print:"print",find:"search",tour:"help",help:"chat",askdel:"help",access:"people",newplan:"plus",planmore:"edit",round:"table",rect:"longtable",head:EVMARK(),decor:"decor",auto:"spark",xlsxseat:"up",xlsxall:"up",csvout:"up",csvin:"dl",export:"up",import:"dl",amelie:"mail",history:"clock"};
+  const MI={keepsake:EVMARK(),share:"cloud",groups:"people",inv:"mail",vendors:"phone",timeline:"clock",print:"print",find:"search",tour:"help",help:"chat",askdel:"help",access:"people",newplan:"plus",planmore:"edit",round:"table",rect:"longtable",head:EVMARK(),decor:"decor",auto:"spark",xlsxseat:"up",xlsxall:"up",csvout:"up",csvin:"dl",export:"up",import:"dl",amelie:"mail",history:"clock"};
   const row=([a,l])=>a==="cap"?`<div class="gm-cap">${escapeHtml(l)}</div>`:`<div class="gm-item${a==="reset"?" danger":""}${a==="lang-"+LANG?" on":""}" data-act="${a}">${MI[a]?ICON(MI[a]):'<span class="ic"></span>'}${escapeHtml(l)}</div>`;
   m.innerHTML=primary.map(row).join("")+`<div class="gm-sep"></div><div class="gm-item more" data-act="more"><span class="ic"></span>${escapeHtml(tr("mMore"))} ›</div><div class="gm-more">${more.map(row).join("")}</div>`;
   m.querySelectorAll(".gm-item").forEach(it=>it.onclick=ev=>{ ev.stopPropagation(); const a=it.dataset.act;
@@ -6381,7 +6513,7 @@ $("moreBtn").addEventListener("click",e=>{
     else if(a==="newplan") newProfile(); else if(a==="planmore") openProfileMenu(anchorOf($("moreBtn")));
     else if(a==="access") openAccess(); else if(a==="help") openHelp(); else if(a==="keepsake") downloadPdf("keepsake", null);
     else if(a==="round") addRoundTable(); else if(a==="rect") addRectTable(); else if(a==="history") openHistory(); else if(a==="groups") openGroupsModal(); else if(a==="inv") enterInv(null); else if(a==="tour") startTour();
-    else if(a==="auto") autoSeat(); else if(a==="export"){ if((currentProfile()||{}).support){ toast(tr("tNoCopySupport"),4000); return; } openExport(); } else if(a==="import") openImport(); else if(a==="amelie") openAmelie(); else if(a==="vendors") openVendors(); else if(a==="print") openPrint(); else if(a==="find") openFind(); else if(a==="reset") resetPlan();
+    else if(a==="auto") autoSeat(); else if(a==="export"){ if((currentProfile()||{}).support){ toast(tr("tNoCopySupport"),4000); return; } openExport(); } else if(a==="import") openImport(); else if(a==="amelie") openAmelie(); else if(a==="vendors") openVendors(); else if(a==="timeline") openTimeline(); else if(a==="print") openPrint(); else if(a==="find") openFind(); else if(a==="reset") resetPlan();
     else if(a==="askdel"){ try{ localStorage.removeItem(DEL_SKIP_KEY); localStorage.removeItem(MERGE_SKIP_KEY); }catch(e){} toast(tr("tAskDel"),2500); }
     else if(a.startsWith("lang-")){ const l=a.slice(5); location.href=({el:"seating-planner-el.html",en:"seating-planner.html",de:"seating-planner-de.html"})[l]; } });
   showPopover(m, anchorOf(e.currentTarget));
@@ -7631,6 +7763,7 @@ $("printGo").addEventListener("click",()=>{ const v=printPick();
   // the door LIST the plan prints by default; the cards are printed once, on the day the room is set).
   if(v==="cards"||v==="tcards"){ pdfChoice=v; $("printModal").classList.remove("open"); printCards(v); return; }
   if(v==="vendors"){ pdfChoice=v; $("printModal").classList.remove("open"); printVendors(); return; }   // the same: a sheet for the day, not a door list
+  if(v==="timeline"){ pdfChoice=v; $("printModal").classList.remove("open"); printTimeline(); return; }
   pdfChoice=""; const mode=printListMode(v); const m=$("printModal");
   if(state.printMode!==mode){ state.printMode=mode; save({noHistory:true}); } m.classList.remove("open"); buildAndPrint(mode); });
 // PDF: the server renders the plan this device shows (local plans, the lab and unsynced edits included) — POST /pdf, stateless.
@@ -7887,6 +8020,22 @@ function printVendors(){
     +`<div class="psub"><span class="psubt">${escapeHtml(tr("vTotal",{n:list.length}))}</span>${printBrandOn()?`<span class="pbrandline">${escapeHtml(tr("printBrand"))}</span>`:""}</div>`
     +`<table class="pvend"><thead><tr><th class="vt">${escapeHtml(tr("vTime"))}</th><th class="vr">${escapeHtml(tr("vRole"))}</th><th class="vn">${escapeHtml(tr("vName"))}</th><th class="vp">${escapeHtml(tr("vPhone"))}</th><th class="vw">${escapeHtml(tr("vWhere"))}</th></tr></thead><tbody>`
     +list.map(v=>`<tr>${td("vt",v.time)}${td("vr",v.role)}${td("vn",v.name)}${td("vp",v.phone)}${td("vw",v.where)}</tr>`).join("")+`</tbody></table>`;
+  window.print();
+}
+// «Πρόγραμμα»: one ruled table in the order of the night (after midnight last, no time at the very end). A phone column
+// only when some «who» is exactly a vendor's role or name. No QR (not for guests); the credit follows the print switch.
+function printTimeline(){
+  const list=tlnSorted((state.timeline||[]).filter(tlnFilled));
+  if(!list.length){ toast(tr("tlNonePrint"),4500); openTimeline(); return; }
+  const rows=list.map(t=>({ t, ph:tlnPhones(t.who) })), anyPh=rows.some(r=>r.ph);
+  const area=$("printarea"); area.classList.remove("haspqr","pposter","pmeasure","pcards");
+  const cur=currentProfile()||{}, wd=cur.life&&cur.life.weddingDate;
+  const meta=[tr("mTimeline"), wd?tr("printWed",{d:fmtDate(wd)}):"", tr("printAt",{t:new Date().toLocaleString(LANG,{dateStyle:"short",timeStyle:"short"})})].filter(Boolean).join(" · ");
+  const td=(c,s)=>`<td class="${c}">${escapeHtml(String(s||"").trim())}</td>`;
+  area.innerHTML=`<h2>${escapeHtml(cur.name||tr("mTimeline"))}</h2><div class="pmeta">${escapeHtml(meta)}</div>`
+    +(printBrandOn()?`<div class="psub"><span class="psubt"></span><span class="pbrandline">${escapeHtml(tr("printBrand"))}</span></div>`:"")
+    +`<table class="pvend${anyPh?" tph":""}"><thead><tr><th class="tt">${escapeHtml(tr("tlTime"))}</th><th class="tw">${escapeHtml(tr("tlWhat"))}</th><th class="to">${escapeHtml(tr("tlWho"))}</th>${anyPh?`<th class="tp">${escapeHtml(tr("vPhone"))}</th>`:""}<th class="tn">${escapeHtml(tr("tlNote"))}</th></tr></thead><tbody>`
+    +rows.map(({t,ph})=>`<tr>${td("tt",t.time)}${td("tw",t.what)}${td("to",t.who)}${anyPh?td("tp",ph):""}${td("tn",t.note)}</tr>`).join("")+`</tbody></table>`;
   window.print();
 }
 

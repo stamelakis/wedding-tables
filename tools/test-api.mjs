@@ -237,6 +237,15 @@ ok(!r.d.enforced && raw('plan:' + W.planId).plan.features.find(f => f.id === 'fc
   r = await call('GET', '/plans/' + W.planId, undefined, { 'X-Edit-Key': W.venueKey });
   ok(r.status === 200 && r.d.plan.vendors.length === 1 && r.d.plan.vendors[0].time === '17:30', 'vendors: the venue reads the same list', r.d.plan.vendors);
 }
+// «Πρόγραμμα»: the same — the couple of a locked plan writes the timeline, the venue reads the same one
+{
+  const c3 = raw('plan:' + W.planId), withT = JSON.parse(JSON.stringify(c3.plan));
+  withT.timeline = [{ id: 't1', time: '21:30', what: 'Πρώτος χορός', who: 'DJ', note: 'το τραγούδι μας' }];
+  r = await call('PUT', '/plans/' + W.planId, { plan: withT, baseUpdated: c3.updated }, { 'X-Edit-Key': W.editKey });
+  ok(r.status === 200 && !r.d.enforced && raw('plan:' + W.planId).plan.timeline[0].what === 'Πρώτος χορός', 'timeline: the couple of a locked venue plan keeps the timeline it wrote', r.d);
+  r = await call('GET', '/plans/' + W.planId, undefined, { 'X-Edit-Key': W.venueKey });
+  ok(r.status === 200 && r.d.plan.timeline.length === 1 && r.d.plan.timeline[0].time === '21:30' && r.d.plan.vendors.length === 1, 'timeline: the venue reads the same timeline, the vendors still there', r.d.plan.timeline);
+}
 const cur2 = raw('plan:' + W.planId);
 const t2 = JSON.parse(JSON.stringify(cur2.plan)); t2.tables[0].x = 5;
 r = await call('PUT', '/plans/' + W.planId, { plan: t2, baseUpdated: cur2.updated }, { 'X-Edit-Key': W.editKey, 'X-Client': '1' });
@@ -2526,6 +2535,30 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     ok(['el', 'en', 'de'].every(l => ['vRoles', 'b_vRoles', 'p_vRoles', 'c_vRoles'].every(k => Array.isArray(T_ALL[l][k]) && T_ALL[l][k].length >= 5)), 'vendors: role suggestions for every kind, in every language');
     ok(['el', 'en', 'de'].every(l => T_ALL[l].vTotal.includes('{n}') && T_ALL[l].vDelAsk.includes('{n}')), 'vendors: the count and the name reach their sentences');
     ok(T_ALL.el.c_mVendors !== 'Συνεργάτες', 'vendors: on a company plan the list is not named like the «Συνεργάτες» group');
+    // ---- «Πρόγραμμα»: what happens when, kept in the plan, printed in the order of the night ----
+    const pt = fn('printTimeline');
+    ok(/name="pmode" value="timeline"/.test(src) && /if\(v==="timeline"\)\{ pdfChoice=v;[^\n]*printTimeline\(\); return; \}/.test(src), 'timeline: the print dialog offers the sheet, chosen for the visit');
+    ok(!/"timeline"/.test(/function printListMode[^\n]*/.exec(src)[0]), 'timeline: not one of the door lists state.printMode may hold');
+    ok(pt && !/qrSvg/.test(pt) && /printBrandOn\(\)\?/.test(pt) && /remove\("haspqr","pposter","pmeasure","pcards"\)/.test(pt) && /tlnSorted\(\(state\.timeline\|\|\[\]\)\.filter\(tlnFilled\)\)/.test(pt), 'timeline: no QR, the credit follows the print switch, no other layout leaks in, empty lines never printed');
+    ok(/if\(s\.timeline!=null\) s\.timeline=/.test(san) && /\["features","groups","parties","vendors","timeline"\]/.test(san), 'timeline: a loaded plan is cleaned only when it has one, and its ids count for nextId');
+    ok(!/timeline/.test(/const PERM_KEYS=\[[^\]]*\]/.exec(src)[0]), 'timeline: not one of the parts a venue can lock');
+    ok(/primary\.push\(\["timeline",tr\("mTimeline"\)\+"…"\]\);/.test(src) && !/if\(!ro\) primary\.push\(\["timeline"/.test(src), 'timeline: in the ⋯ menu for everyone, a viewer included (to read and print)');
+    // The order of the night, run on the real functions: evening first, after midnight next, no time last, ties as added.
+    {
+      const grab = re => re.exec(src)[0];
+      const sorter = new Function(grab(/const tlnKey=[^\n]*/) + '\n' + grab(/function tlnSorted\([^\n]*/) + '\nreturn tlnSorted;')();
+      const got = sorter([{ id: 'a', time: '00:30' }, { id: 'b', time: '' }, { id: 'c', time: '21:00' }, { id: 'd', time: '19:30' }, { id: 'e', time: '05:59' }, { id: 'f', time: '06:00' }, { id: 'g', time: '21:00' }]).map(t => t.id).join('');
+      ok(got === 'fdcgaeb', 'timeline: 06:00 → 23:59, then 00:00 → 05:59, then lines with no time; equal times keep their order', got);
+      const phones = new Function('state', 'LANG', grab(/function tlnPhones\([^\n]*\n[^\n]*\n[^\n]*/) + '\nreturn tlnPhones;');
+      const st = { vendors: [{ role: 'DJ', name: 'Νίκος', phone: '690' }, { role: 'Φωτογράφος', name: 'Ελένη', phone: '' }, { role: 'dj', name: 'Β', phone: '691' }] };
+      const f = phones(st, 'el');
+      ok(f(' dj ') === '690, 691' && f('Νίκος') === '690' && f('Φωτογράφος') === '' && f('') === '' && f('D') === '', 'timeline: a phone only for an exact role or name, every match, none without a number', [f('dj'), f('Νίκος')]);
+    }
+    const tkeys = ['mTimeline', 'c_mTimeline', 'tlHint', 'tlHintRo', 'tlTime', 'tlWhat', 'tlWho', 'tlNote', 'tlWhatPh', 'b_tlWhatPh', 'p_tlWhatPh', 'c_tlWhatPh', 'tlWhoPh', 'c_tlWhoPh', 'tlNotePh', 'c_tlNotePh', 'tlAdd', 'tlDelAsk', 'tlNone', 'tlNoneRo', 'tlNonePrint', 'tlMax', 'pmTimeline', 'c_pmTimeline'];
+    ok(['el', 'en', 'de'].every(l => tkeys.every(k => typeof T_ALL[l][k] === 'string' && T_ALL[l][k].length)), 'timeline: every new word exists in el, en and de', ['el', 'en', 'de'].map(l => tkeys.filter(k => typeof T_ALL[l][k] !== 'string')));
+    ok(['el', 'en', 'de'].every(l => ['tlMoments', 'b_tlMoments', 'p_tlMoments', 'c_tlMoments'].every(k => Array.isArray(T_ALL[l][k]) && T_ALL[l][k].length >= 5)), 'timeline: moment suggestions for every kind, in every language');
+    ok(['el', 'en', 'de'].every(l => T_ALL[l].tlDelAsk.includes('{n}')), 'timeline: the line reaches its remove question');
+    ok(!/ζευγ|γάμ|νύφ|γαμπρ/i.test(T_ALL.el.c_tlMoments.join() + T_ALL.el.b_tlMoments.join() + T_ALL.el.p_tlMoments.join()), 'timeline: no wedding words in the other kinds\' moments');
   }
 
   // ---- the planner's own words: the dictionary twins, and the rule tr() uses to pick one ----
@@ -5194,7 +5227,8 @@ function leadStageOf(l) { return l.lost ? 8 : l.stage || 1; }
       tables: [{ id: 1, shape: 'round', x: 300, y: 300, label: 'Τραπέζι Α', capacity: 2, seats: ['g1', 'g2'] }],
       guests: { g1: { name: 'Νίκος Παπαδάκης', note: 'αλλεργία στα φιστίκια', groupId: 'grpA' }, g2: { name: 'Μαρία Οικονόμου', groupId: 'grpA' } },
       groups: [{ id: 'grpA', name: 'Φίλοι Νίκου', color: '#e26d8a' }],
-      vendors: [{ id: 'v1', role: 'DJ', name: 'Παλιός DJ', phone: '6911111111', time: '19:00', where: '' }] });
+      vendors: [{ id: 'v1', role: 'DJ', name: 'Παλιός DJ', phone: '6911111111', time: '19:00', where: '' }],
+      timeline: [{ id: 't1', time: '22:00', what: 'Κοπή τούρτας Παλαιού', who: 'DJ', note: '' }] });
     await call('PUT', '/plans/' + E1.d.planId, { plan: people }, { 'X-Edit-Key': rec.venueKey });
     ok(raw('plan:' + E1.d.planId).plan.vendors[0].name === 'Παλιός DJ', 'vendors: the server keeps the list with the plan');
     const before = m.get('plan:' + E1.d.planId);
@@ -5202,11 +5236,13 @@ function leadStageOf(l) { return l.lost ? 8 : l.stage || 1; }
     let cp = raw('plan:' + r.d.planId).plan;
     ok(r.status === 200 && !Object.keys(cp.guests).length && cp.tables[0].seats.every(x => x === null) && !JSON.stringify(cp).includes('Φίλοι Νίκου'), 'old design: unasked, a γραφείο copies the room only, as for a new client: no names, seats or groups', cp.groups);
     ok(!('vendors' in cp), 'old design: the room alone carries no vendors', cp.vendors);
+    ok(raw('plan:' + E1.d.planId).plan.timeline[0].time === '22:00' && !('timeline' in cp), 'timeline: kept with the plan, and the room alone carries none', cp.timeline);
     r = await made({ fromPlanId: E1.d.planId, people: true });
     cp = raw('plan:' + r.d.planId).plan;
     ok(r.status === 200 && cp.guests.g1.name === 'Νίκος Παπαδάκης' && cp.tables[0].seats.join() === 'g1,g2' && cp.guests.g1.groupId === 'grpA' && cp.groups[0].name === 'Φίλοι Νίκου', 'old design: asked, a γραφείο brings names, seats and their groups (Andreas, 2026-11-04)', cp.guests);
     ok(!JSON.stringify(raw('plan:' + r.d.planId)).includes('φιστίκια') && !('note' in cp.guests.g1), 'old design: the notes never travel, for a γραφείο either', cp.guests.g1);
     ok(!('vendors' in cp) && !JSON.stringify(raw('plan:' + r.d.planId)).includes('6911111111'), 'old design: the vendors never travel, even with the names and seats', cp.vendors);
+    ok(!('timeline' in cp) && !JSON.stringify(raw('plan:' + r.d.planId)).includes('Παλαιού'), 'old design: the timeline never travels, even with the names and seats', cp.timeline);
     ok(m.get('plan:' + E1.d.planId) === before, 'old design: the source is left as it was');
     await call('PUT', '/plans/' + KE.d.planId, { plan: people }, { 'X-Edit-Key': raw('plan:' + KE.d.planId).venueKey });
     r = await made({ fromPlanId: KE.d.planId, people: true }, K.H, K.id);
