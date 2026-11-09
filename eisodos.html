@@ -206,14 +206,20 @@ var TAS_DOOR = (function () {
 
   function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
   function fmtTime(ms) {
-    try { return new Intl.DateTimeFormat(LANG === "el" ? "el-GR" : LANG === "de" ? "de-DE" : "en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Athens" }).format(new Date(ms)); }
+    try { return new Intl.DateTimeFormat(LANG === "el" ? "el-GR" : LANG === "de" ? "de-DE" : "en-GB", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Europe/Athens" }).format(new Date(ms)); }
     catch (e) { var d = new Date(ms); return ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2); }
   }
   function fmtDay(ms) {
     try { return new Intl.DateTimeFormat(LANG === "el" ? "el-GR" : LANG === "de" ? "de-DE" : "en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Athens" }).format(new Date(ms)); }
     catch (e) { return new Date(ms).toDateString(); }
   }
-  function tableText(h) { var t = T(); return h.table ? fill(t.table, { t: h.table }) : t.noTable; }
+  /* a number gets the word («Τραπέζι 4»); a label that is already a name («Κεντρικό τραπέζι», «Σκηνή») stands alone */
+  var fold = function (s) { try { return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); } catch (e) { return s.toLowerCase(); } };
+  function tableText(h) {
+    var t = T(); if (!h.table) return t.noTable;
+    var lab = String(h.table);
+    return /\d/.test(lab) && !/τραπεζ|table|tisch/.test(fold(lab)) ? fill(t.table, { t: lab }) : lab;
+  }
 
   var toastT = null;
   function toast(s) { var n = $("toast"); n.textContent = s; n.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(function () { n.classList.remove("on"); }, 3500); }
@@ -325,7 +331,7 @@ var TAS_DOOR = (function () {
       if (fatalOf(r)) { render(); return; }
       if (r.s === 200 && r.d.ok) {
         counts(r.d); h.at = r.d.at || null;
-        toast(on ? fill(T().toastIn, { n: h.name, t: h.table ? fill(T().table, { t: h.table }) : T().toastNoTable }) : fill(T().toastOut, { n: h.name }));
+        toast(on ? fill(T().toastIn, { n: h.name, t: h.table ? tableText(h) : T().toastNoTable }) : fill(T().toastOut, { n: h.name }));
         render();
         /* the next guest: the text is selected, so typing replaces it */
         if (on) { try { q.focus({ preventScroll: true }); q.select(); } catch (e) {} }
@@ -341,13 +347,18 @@ var TAS_DOOR = (function () {
     if (!TOK || V.fatal || document.hidden) return;
     post("/door", { token: TOK }).then(function (r) {
       if (fatalOf(r)) { render(); return; }
-      if (r.s === 200 && r.d.ok) { counts(r.d); render(); }
+      if (r.s === 200 && r.d.ok) {
+        counts(r.d); render();
+        /* the rows on screen too, so a guest marked on another phone shows as arrived here */
+        var idle = !timer && !Object.keys(busy).some(function (k) { return busy[k]; });
+        if (idle && V.hits && q.value.trim().length >= 2) search();
+      }
     }, function () {});
   }
   function stopPoll() { if (poll) { clearInterval(poll); poll = null; } }
 
-  q.addEventListener("input", function () { clearTimeout(timer); timer = setTimeout(search, 300); });
-  q.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); clearTimeout(timer); search(); try { q.blur(); } catch (x) {} } });
+  q.addEventListener("input", function () { clearTimeout(timer); timer = setTimeout(function () { timer = null; search(); }, 300); });
+  q.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); clearTimeout(timer); timer = null; search(); try { q.blur(); } catch (x) {} } });
   document.addEventListener("visibilitychange", function () { if (!document.hidden) { refresh(); if (V.hits && q.value.trim().length >= 2) search(); } });
   Array.prototype.forEach.call($("langs").children, function (b) { b.addEventListener("click", function () { LANG = b.getAttribute("data-l"); render(); }); });
   window.addEventListener("hashchange", function () {

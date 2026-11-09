@@ -7784,6 +7784,12 @@ async function doorLoad(){
 }
 // The lists, from the plan on this screen and the marks from the server: a guest deleted here is never listed, and
 // one who said no (status «cut») is not expected, unless they came anyway.
+// A bare number gets the word («Τραπέζι 4»); a label that already names itself («Κεντρικό τραπέζι», «Σκηνή») stands alone.
+function doorTableText(t){
+  if(!t) return tr("doorNoTable");
+  const f=t.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+  return /\d/.test(t)&&!/τραπεζ|table|tisch/.test(f)?tr("doorTable")+" "+t:t;
+}
 function doorLists(){
   const marks=(doorArr&&doorArr.arrivals)||{}, seat={};
   state.tables.forEach(t=>t.seats.forEach(id=>{ if(id) seat[id]=t; }));
@@ -7823,10 +7829,10 @@ function renderDoorBody(){
     const li=(r,right)=>`<li style="display:flex;gap:8px;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--line)"><span>${escapeHtml(r.n)}</span><span style="color:var(--soft);white-space:nowrap">${escapeHtml(right)}</span></li>`;
     const box=(title,rows,empty,right)=>`<div class="mhint" style="padding:10px 0 4px;font-weight:600">${escapeHtml(title)}</div>`
       +(rows.length?`<ul style="list-style:none;margin:0;padding:0;max-height:220px;overflow:auto;font-size:14px">${rows.map(r=>li(r,right(r))).join("")}</ul>`:hint(empty,"0"));
-    const time=ms=>{ try{ return new Date(ms).toLocaleTimeString(LANG,{hour:"2-digit",minute:"2-digit"}); }catch(e){ return ""; } };
+    const time=ms=>{ try{ return new Date(ms).toLocaleTimeString(LANG,{hour:"2-digit",minute:"2-digit",hourCycle:"h23"}); }catch(e){ return ""; } };
     h+=`<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)"><div style="font-size:18px;font-weight:700">${escapeHtml(tr("doorCount",{a:inn.length,t:inn.length+out.length}))}</div>`
       +`<div class="mrow"><button class="ibtn" id="doorRefBtn">${escapeHtml(tr("doorRefresh"))}</button>${out.length?`<button class="ibtn" id="doorPrintBtn">${escapeHtml(tr("doorPrint"))}</button>`:""}</div>`
-      +box(tr("doorMissing",{n:out.length}),out,tr("doorAllIn"),r=>r.t||tr("doorNoTable"))
+      +box(tr("doorMissing",{n:out.length}),out,tr("doorAllIn"),r=>doorTableText(r.t))
       +box(tr("doorIn",{n:inn.length}),inn,tr("doorNone"),r=>time(r.at))+`</div>`;
   }
   body.innerHTML=h;

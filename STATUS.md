@@ -3,7 +3,8 @@
 Updated: 2026-11-09
 
 **Status:** Live runs `8dbb223` (deployed 2026-11-09 as `deploy-2026-11-09-5`, pre-deploy backup
-`/opt/backups/takeaseat-20261109-170809.db.gz.age`), healthy. **New: «Πρόγραμμα»** (⋯ menu): the event's timeline (time,
+`/opt/backups/takeaseat-20261109-170809.db.gz.age`), healthy. **Built locally, not deployed: «Είσοδος (αφίξεις)»**
+(door check-in for company events; see Next #2). **New on live: «Πρόγραμμα»** (⋯ menu): the event's timeline (time,
 what, who, note) kept in the plan, editable by every writer, read-only for viewers, never copied to another event; shown
 and printed in the order of the night (00:00–05:59 after the evening). «who» suggests the vendors, and the printed sheet
 carries a vendor's phone when «who» names one. On a company plan «Πρόγραμμα της εκδήλωσης». privacy and dpa list it.
@@ -36,14 +37,23 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 1. [you: get the κτήμα's OK and its words] **Ideas for presenting the site:** a few words from the real κτήμα. Done:
    the four-door hero (`2eeebf6`), the hero for every reader (`bc7574b`), the free-plan page (`9e5f069`), «Ποιοι
    είμαστε» (`d1e4823`).
-2. [you: approve the plan and its "done when"] **More for the night of the event** (agreed 2026-11-09; place cards,
-   «Συνεργάτες» and «Πρόγραμμα» done): door check-in for company events is left. Plan and "done when" before building.
+2. [you: OK to deploy, then read the Greek] **«Είσοδος (αφίξεις)» is built and checked locally** (2026-11-09). A company
+   plan's ⋯ menu switches on a separate door link (`eisodos.html#key`); door staff type a name, see the table and tap
+   «Ήρθε»; the planner panel shows arrived / not yet, prints the not-yet list. Works only on the event day, until 12:00
+   the next day, when link and arrivals are erased (privacy and dpa updated). Checked on screen: two phones marking at
+   once with no tap lost, the other phone catching up within 20 s, counter equal in panel and phones, print sheet,
+   switch-off stops the phone, el/en/de, 375px. 1972 checks pass. Not seen: a real phone, live, the erasure at 12:00 on
+   screen (tests only), the German panel (strings tested only).
 3. [you: company, accountant, lawyer] **Phase 7 (online payment).** The page's remaining English sections move to
    Greek as each is touched.
 4. [auto] **«1 ακόμη δεν μπήκαν» in the singular** (`labCapCut`, planner.src.html): done when the lab shows a singular
    verb for one trimmed table and the plural for more.
 
 ## Waiting on Andreas
+
+- **Say OK to deploy «Είσοδος (αφίξεις)»**, then read its Greek on live: the door page (`eisodos.html`, opened from a
+  company plan's ⋯ → «Είσοδος (αφίξεις)…» → the link), the panel's hints, and the new lines in privacy.html («Αφίξεις
+  στην είσοδο») and dpa.html («Δεδομένα», and the retention list). Say what reads wrong.
 
 - **Read the Greek of «Συνεργάτες»:** in lab.html → ⋯ → «Συνεργάτες…» (the hint at the top, the placeholders), and the
   new words in privacy.html («Περιεχόμενο σχεδίου» row) and dpa.html («Υποκείμενα», «Δεδομένα»). Say what reads wrong.
