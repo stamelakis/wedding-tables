@@ -87,6 +87,8 @@
   .hero h1{ font-size:clamp(32px,4.6vw,52px); line-height:1.06; margin:.3em 0 .35em; color:#fff; }
   .hero p.lead{ font-size:18px; color:#ddd3e2; max-width:46ch; margin:0 0 26px; }
   .hero .cta{ display:flex; gap:12px; flex-wrap:wrap; }
+  .hero .cta.doors{ margin-top:14px; gap:8px; }
+  .hero .cta.doors .btn{ padding:8px 14px; font-size:14px; border-color:rgba(255,255,255,.28); }
   .hero .tiny{ margin-top:16px; font-size:13px; color:#b9acc6; }
   .hero .tiny b{ color:#e7dcef; }
   .hero .tiny a{ color:#e7dcef; text-decoration:underline; }
@@ -210,6 +212,7 @@
     .fcard .btn{ width:100%; justify-content:center; }
     .hero .cta{ gap:10px; }
     .hero .cta .btn{ width:100%; justify-content:center; text-align:center; }
+    .hero .cta.doors .btn{ width:auto; flex:1 1 calc(50% - 4px); padding:9px 10px; font-size:13.5px; }
   }
   @media (max-width:420px){
     .nav .btn .lbl-full{ display:none; }
@@ -242,10 +245,16 @@
   <div class="wrap">
     <div>
       <div class="eyebrow">Για κτήματα, γραφεία εκδηλώσεων, εταιρείες, ζευγάρια &amp; οικογένειες</div>
-      <h1>Η κάτοψη του κτήματός σας, έτοιμη για κάθε εκδήλωση της χρονιάς.</h1>
-      <p class="lead">Λογισμικό για κτήματα γάμων και χώρους δεξιώσεων: το κτήμα σχεδιάζει μία φορά τη δική του αίθουσα — τραπέζια, νυφικό τραπέζι, πίστα, μπουφέδες, είσοδο — και κάθε ζευγάρι ή οικογένεια τοποθετεί μετά τους καλεσμένους της από το κινητό, μέσα στον πραγματικό χώρο· όχι σε ένα άδειο τετράγωνο. <b>Γάμοι, βαπτίσεις, γιορτές και εταιρικές εκδηλώσεις</b>, με την ίδια συνδρομή.</p>
+      <!-- Andreas's own words (2026-11-09). The hero speaks to every reader: the old one said «του κτήματός σας»
+           and a couple left in two seconds thinking the site was not for them. The four doors stay equal. -->
+      <h1>Τα τραπέζια και οι καλεσμένοι σας, στη θέση τους.</h1>
+      <p class="lead">Οργανώστε τη διάταξη των τραπεζιών και τις θέσεις των καλεσμένων σε μια διαδραστική κάτοψη του χώρου σας. Για <b>γάμους, βαπτίσεις, γιορτές και εταιρικές εκδηλώσεις</b>.</p>
       <div class="cta">
-        <a class="btn primary" href="#ktimata">Για κτήματα &amp; χώρους δεξιώσεων</a>
+        <a class="btn primary" href="#features">Δείτε πώς λειτουργεί</a>
+        <a class="btn ghost" href="/lab.html">Δοκιμάστε το</a>
+      </div>
+      <div class="cta doors">
+        <a class="btn ghost" href="#ktimata">Για κτήματα &amp; χώρους δεξιώσεων</a>
         <a class="btn ghost" href="#grafeia">Για γραφεία εκδηλώσεων</a>
         <a class="btn ghost" href="/plano-trapezion-etairikis-ekdilosis.html">Για εταιρείες</a>
         <a class="btn ghost" href="#zevgaria">Για ζευγάρια &amp; οικογένειες</a>
