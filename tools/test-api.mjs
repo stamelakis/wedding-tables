@@ -19,7 +19,13 @@ const raw = k => JSON.parse(m.get(k));
 const patchRaw = (k, fn) => { const o = raw(k); fn(o); m.set(k, JSON.stringify(o)); if (k.startsWith('plan:')) m.delete('meta:archive'); };
 const NEW = { 'X-Client': '2' };
 
-const athensDay = n => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Athens', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(Date.now() + n * 86400000));
+// Calendar days from today in Athens, never n × 24 h: across a clock change (late October) the hours land on the
+// wrong day between 23:00 and midnight, which once stopped a deploy.
+const athensDay = n => {
+  const d = new Date(new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Athens', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()) + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+};
 async function call(method, url, body, headers = {}) {
   // Phase shim for the sections written before phases existed: their plans are edited right away (a wedding 10 days
   // out, "start now"). New tests opt out by passing weddingDate / date / startNow explicitly (undefined = omit).
@@ -644,7 +650,7 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
 // ---------- 9. after the wedding: view only, keepsake, deletion; dates can't be gamed; trash; renewals ----------
 {
   const tz = d => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Athens', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
-  const today = tz(new Date()), day = n => tz(new Date(Date.now() + n * 86400000));
+  const today = tz(new Date()), day = athensDay;   // calendar days, never n × 24 h (see athensDay)
   const sent = [];
   env.MAIL = { enabled: true, from: 'x', send: m => { sent.push(m); return true; } };
   const V9 = (await call('POST', '/admin/venues', { name: 'Life', license: { type: 'seasonal' } }, OWN)).d, HV = { 'X-Venue-Key': V9.key };

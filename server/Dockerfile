@@ -46,9 +46,10 @@ COPY server/package.json ./package.json
 COPY wedding-sync-worker.js ./
 COPY server/rate.mjs ./server/
 COPY server/pdf.mjs ./server/
+COPY server/server.mjs ./server/
 COPY tools/test-api.mjs ./tools/
 # the tests also read files of the product itself and assert on what is in them (the retention promises among them)
-COPY planner.src.html venue.html admin.html sitemap.xml index.html privacy.html terms.html dpa.html plano-trapezion-gamou.html plano-trapezion-vaptisis.html plano-trapezion-giortis.html plano-trapezion-etairikis-ekdilosis.html grafeio-ekdiloseon.html dorean-schedio-trapezion.html poioi-eimaste.html epikoinonia.html trapezi.html eisodos.html ./
+COPY planner.src.html venue.html admin.html sitemap.xml index.html privacy.html terms.html dpa.html plano-trapezion-gamou.html plano-trapezion-vaptisis.html plano-trapezion-giortis.html plano-trapezion-etairikis-ekdilosis.html grafeio-ekdiloseon.html dorean-schedio-trapezion.html poioi-eimaste.html epikoinonia.html trapezi.html eisodos.html robots.txt ./
 COPY server/Dockerfile ./server/
 COPY tools/build-planner.mjs ./tools/
 RUN ln -s /app/node_modules /t/node_modules \
