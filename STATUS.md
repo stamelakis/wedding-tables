@@ -2,8 +2,8 @@
 
 Updated: 2026-11-09
 
-**Status:** Live runs `9e5f069` (deployed 2026-11-08 as `deploy-2026-11-08-3`, pre-deploy backup
-`/opt/backups/takeaseat-20261108-130634.db.gz.age`), healthy. New page `dorean-schedio-trapezion.html` («Δωρεάν σχέδιο
+**Status:** Live runs `d1e4823` (deployed 2026-11-09 as `deploy-2026-11-09-1`, pre-deploy backup
+`/opt/backups/takeaseat-20261109-104350.db.gz.age`), healthy. New page `poioi-eimaste.html` («Ποιοι είμαστε», 9 FAQ), in every public footer; checked live at 375px, no console errors. «TakeaSeat» stands in for the legal name until the company is registered; no person named (Andreas's choice). New page `dorean-schedio-trapezion.html` («Δωρεάν σχέδιο
 τραπεζιών»), linked from the home page and the four event pages; checked live at 375px, no console errors. Home page: four doors (κτήματα, γραφεία, εταιρείες,
 ζευγάρια & οικογένειες), title names all four events, free plan named in the hero; checked live at 375px, no console errors. **Phase 3 of `COMPANIES-PLAN.md` is live:** a company's console, saved rooms, old designs, the 1–5 year choice. Operations phases 1–6 are live.
 
@@ -29,16 +29,13 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 
 ## Next
 
-1. **«Ποιοι είμαστε» page built, not deployed** (`poioi-eimaste.html`: story, six «πώς δουλεύουμε» cards, 9 FAQ with
-   JSON-LD; in every public footer, the sitemap and both Dockerfile lists; 1882 checks pass; seen at 375px locally).
-   Deploy after Andreas reads the Greek. «TakeaSeat» stands in for the legal name until the company is registered;
-   no person is named (Andreas's choice). Still an idea: a few words from the real κτήμα (needs its OK).
+1. **Ideas for presenting the site:** a few words from the real κτήμα (needs its OK). Done: the four-door hero
+   (`2eeebf6`), the free-plan page (`9e5f069`), «Ποιοι είμαστε» (`d1e4823`).
 2. **Phase 7 (online payment)** waits on the company, accountant and lawyer. The page's remaining English sections move
    to Greek as each is touched.
 
 ## Waiting on Andreas
 
-- **Read the Greek of the new «Ποιοι είμαστε» page** (local only until you say deploy): the story is written from your three lines, so check it says what you meant, especially «μια μικρή ομάδα», «Δεν βρήκαμε κάτι που να μας ταιριάζει» and «Σας απαντάει άνθρωπος».
 - **Read the Greek of the new free-plan page** (https://takeaseat.gr/dorean-schedio-trapezion.html) and the one new
   sentence in each event page's «Θέλετε πρώτα να το δείτε;» box. Say what reads wrong.
 - **The first real free sign-up:** when one shows in «Πελάτες» (marked free), say if anything reads wrong. When one
@@ -99,6 +96,8 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 - The 🛟 on the «Υποστήριξη έως …» badge shows as an empty box on Windows 10 browsers (no such emoji there).
 
 ## History
+
+- 2026-11-09: «Ποιοι είμαστε» page (`poioi-eimaste.html`): story (made for our own wedding, Θήβα, 2026), six «πώς δουλεύουμε» cards, 9 site-wide FAQ with matching JSON-LD and an Organization entry with no person and no legal name; linked from every public footer; 6 new checks, 1882 pass. Live as `d1e4823` (`deploy-2026-11-09-1`); live smoke test passed.
 
 - 2026-11-08: New landing page «Δωρεάν σχέδιο τραπεζιών» (`dorean-schedio-trapezion.html`): what the free plan gives, device demo vs free vs 25 € unlock, timeline, terms 8Β rules, 10 FAQ with matching JSON-LD; linked from home and the four event pages; 12 checks, 1874 pass. Live as `9e5f069` (`deploy-2026-11-08-3`); live smoke test passed.
 - 2026-11-08: Home page hero now has four doors (κτήματα, γραφεία, εταιρείες, ζευγάρια & οικογένειες), the title names all four events, and the free online plan is named in the hero and both couple cards. Live as `2eeebf6` (`deploy-2026-11-08-2`); checked live at 375px, no console errors.
