@@ -1102,6 +1102,32 @@ __ROBOTS__
   /* buildAndPrint("alpha") lays the page out here, off screen at print width, to measure each block before printing */
   #printarea.pmeasure{ display:block; position:absolute; left:-10000px; top:0; width:170mm; padding:0 10px;
     visibility:hidden; pointer-events:none; }
+  /* ---- place cards and table cards (printCards): tent cards, cut on the dashed line, folded on the dotted one.
+     Every sheet is at most 170 × 228 mm, which A4 and Letter both hold at the default margins and at 20 mm; a sheet
+     ends with a page break, so a card is never cut in two by the printer. The upper face is turned upside down: once
+     folded and standing, each side reads upright to the people sitting on that side. No text-transform on Greek here
+     (an upper-cased «Τραπέζι» would keep its accent on some browsers). */
+  #printarea.pcards{ padding:0; }
+  #printarea .pcsheet{ display:grid; grid-template-columns:85mm 85mm; grid-auto-rows:76mm; width:170mm; margin:0 auto;
+    border-top:.3mm dashed #aaa; border-left:.3mm dashed #aaa; break-after:page; page-break-after:always; }
+  #printarea .pcsheet:last-child, #printarea .ptsheet:last-child{ break-after:auto; page-break-after:auto; }
+  #printarea .pcc{ display:flex; flex-direction:column; border-right:.3mm dashed #aaa; border-bottom:.3mm dashed #aaa;
+    break-inside:avoid; min-height:0; overflow:hidden; }
+  #printarea .pcf, #printarea .ptf{ flex:1 1 0; min-height:0; overflow:hidden; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center; }
+  #printarea .pcf{ padding:3mm 5mm; }
+  #printarea .pcf.up, #printarea .ptf.up{ transform:rotate(180deg); }
+  #printarea .pcf + .pcf, #printarea .ptf + .ptf{ border-top:.3mm dotted #bbb; }   /* the fold */
+  #printarea .pcn{ font-family:var(--serif); line-height:1.15; color:#222; overflow-wrap:anywhere; }
+  #printarea .pct{ margin-top:2mm; font-size:12px; color:#666; letter-spacing:.04em; }
+  #printarea .ptsheet{ break-after:page; page-break-after:always; }
+  #printarea .ptc{ width:170mm; height:228mm; margin:0 auto; display:flex; flex-direction:column; border:.3mm dashed #aaa;
+    break-inside:avoid; }
+  #printarea .ptf{ position:relative; padding:8mm 10mm; }
+  #printarea .ptw{ font-size:24px; letter-spacing:.12em; color:#555; }
+  #printarea .ptn{ font-family:var(--serif); font-size:150px; line-height:1; color:#222; }
+  #printarea .ptl{ font-family:var(--serif); line-height:1.15; color:#222; overflow-wrap:anywhere; }
+  #printarea .ptbrand{ position:absolute; left:0; right:0; bottom:4mm; font-size:9px; color:#999; }
 </style>
 </head>
 <body>
@@ -1283,6 +1309,8 @@ __ROBOTS__
       <label class="imode" style="margin-top:6px"><input type="radio" name="pmode" value="alphainv"><span data-t="pmInv"></span></label>
       <label class="imode" style="margin-top:6px"><input type="radio" name="pmode" value="names"><span data-t="pmNames"></span></label>
       <label class="imode" style="margin-top:6px"><input type="radio" name="pmode" value="parties"><span data-t="pmParties"></span></label>
+      <label class="imode" style="margin-top:6px"><input type="radio" name="pmode" value="cards"><span data-t="pmCards"></span></label>
+      <label class="imode" style="margin-top:6px"><input type="radio" name="pmode" value="tcards"><span data-t="pmTCards"></span></label>
       <label class="imode" style="margin-top:6px"><input type="radio" name="pmode" value="pdf"><span data-t="pmPdf"></span></label>
       <label class="imode" style="margin-top:6px" id="pmKeepRow" hidden><input type="radio" name="pmode" value="keepsake"><span data-t="pmKeep"></span></label>
       <label class="imode" style="margin-top:6px" id="pmPosterRow" hidden><input type="radio" name="pmode" value="poster"><span data-t="pmPoster"></span></label>
@@ -1630,6 +1658,11 @@ el:{
   tFindOn:"Ενεργό — τυπώστε τη λίστα ή την αφίσα με το QR", tFindOff:"Κλειστό — το QR δεν απαντά πια", tFindRotated:"Νέος κωδικός — τυπώστε ξανά λίστα και αφίσα",
   qrLine:"Βρες το τραπέζι σου", pmPoster:"Αφίσα εισόδου (A4) — μεγάλο QR «Βρες το τραπέζι σου»", posterEl:"Βρες το τραπέζι σου", posterEn:"Find your table",
   pmQrWhere:"Το QR «Βρες το τραπέζι σου» μπαίνει πάνω στις τέσσερις λίστες και στην αφίσα εισόδου. Τα δύο PDF δεν το έχουν.",
+  pmCards:"Καρτελάκια θέσεων — ένα για κάθε καλεσμένο με θέση, 6 σε κάθε σελίδα, για κόψιμο και δίπλωμα",
+  pmTCards:"Κάρτες τραπεζιών — μία για κάθε τραπέζι, μία σε κάθε σελίδα, για δίπλωμα",
+  pcTable:"Τραπέζι {t}", pcWord:"Τραπέζι",
+  pcNone:"Δεν έχει θέση κανείς ακόμη, οπότε δεν υπάρχουν καρτελάκια για εκτύπωση.",
+  pcNoTables:"Κανένα τραπέζι δεν έχει όνομα ή αριθμό για να τυπωθεί.",
   labBride:"Νύφη", labGroom:"Γαμπρός",
   labNames:["Μαρία Π.","Γιώργος Κ.","Ελένη Α.","Νίκος Δ.","Κατερίνα Μ.","Δημήτρης Σ.","Σοφία Λ.","Κώστας Β.","Άννα Χ.","Παναγιώτης Ρ.","Χριστίνα Τ.","Μιχάλης Γ.","Ειρήνη Ν.","Βασίλης Ζ.","Δέσποινα Φ.","Αλέξανδρος Κ.","Ιωάννα Π.","Θανάσης Μ.","Αγγελική Σ.","Στέλιος Α.","Φωτεινή Δ.","Μανώλης Λ.","Ζωή Β.","Πέτρος Χ.","Ευαγγελία Ρ.","Σπύρος Τ.","Ναταλία Γ.","Χρήστος Ν.","Μαρίνα Ζ.","Λευτέρης Φ.","Αναστασία Κ.","Αντώνης Π.","Ελευθερία Μ.","Σταύρος Σ.","Νεφέλη Α.","Ορέστης Δ.","Δανάη Λ.","Άρης Β.","Ισμήνη Χ.","Φίλιππος Ρ."],
   // ---- βαπτίσεις: the twins of every key whose text NAMES the event (see tr() / EVK). Nothing else is duplicated;
@@ -1924,6 +1957,11 @@ en:{
   tFindOn:"On — print the list or the poster with the QR", tFindOff:"Off — the QR no longer answers", tFindRotated:"New code — print the list and the poster again",
   qrLine:"Find your table", pmPoster:"Entrance poster (A4) — a big “Find your table” QR", posterEl:"Βρες το τραπέζι σου", posterEn:"Find your table",
   pmQrWhere:"The “Find your table” QR rides on the four lists and on the entrance poster. The two PDFs do not carry it.",
+  pmCards:"Place cards — one for each seated guest, 6 to a sheet, to cut and fold",
+  pmTCards:"Table cards — one for each table, one to a sheet, to fold",
+  pcTable:"Table {t}", pcWord:"Table",
+  pcNone:"Nobody has a seat yet, so there are no place cards to print.",
+  pcNoTables:"No table has a name or number to print.",
   labBride:"Bride", labGroom:"Groom",
   labNames:["Maria P.","George K.","Helen A.","Nick D.","Katerina M.","Jim S.","Sophia L.","Kostas V.","Anna C.","Peter R.","Christina T.","Michael G.","Irene N.","Bill Z.","Despina F.","Alex K.","Joanna P.","Thanos M.","Angela S.","Steve A.","Fay D.","Manolis L.","Zoe V.","Petros C.","Eva R.","Spyros T.","Natalie G.","Chris N.","Marina Z.","Lefteris F.","Anastasia K.","Tony P.","Ellie M.","Stavros S.","Nefeli A.","Orestis D.","Danae L.","Aris V.","Ismene C.","Philip R."],
   // ---- christenings: the twins of every key whose text NAMES the event (see tr() / EVK).
@@ -2211,6 +2249,11 @@ de:{
   tFindOn:"Aktiv — drucken Sie die Liste oder das Plakat mit dem QR-Code", tFindOff:"Aus — der QR-Code antwortet nicht mehr", tFindRotated:"Neuer Code — Liste und Plakat neu drucken",
   qrLine:"Finde deinen Tisch", pmPoster:"Eingangsplakat (A4) — großer „Finde deinen Tisch“-QR-Code", posterEl:"Βρες το τραπέζι σου", posterEn:"Find your table",
   pmQrWhere:"Der QR-Code „Finde deinen Tisch“ ist auf den vier Listen und auf dem Eingangsplakat. Die beiden PDFs haben ihn nicht.",
+  pmCards:"Tischkärtchen — eines für jeden Gast mit Platz, 6 pro Blatt, zum Ausschneiden und Falten",
+  pmTCards:"Tischaufsteller — einer für jeden Tisch, einer pro Blatt, zum Falten",
+  pcTable:"Tisch {t}", pcWord:"Tisch",
+  pcNone:"Noch hat niemand einen Platz, daher gibt es keine Tischkärtchen zu drucken.",
+  pcNoTables:"Kein Tisch hat einen Namen oder eine Nummer zum Drucken.",
   labBride:"Braut", labGroom:"Bräutigam",
   labNames:["Maria P.","Georg K.","Helena A.","Niko D.","Katharina M.","Jan S.","Sophie L.","Konstantin V.","Anna C.","Peter R.","Christina T.","Michael G.","Irene N.","Wilhelm Z.","Despina F.","Alex K.","Johanna P.","Thomas M.","Angelika S.","Stefan A.","Frieda D.","Manuel L.","Zoe V.","Petra C.","Eva R.","Sebastian T.","Natalie G.","Christoph N.","Marina Z.","Leon F.","Anastasia K.","Anton P.","Elli M.","Stefanos S.","Nefeli A.","Oliver D.","Diana L.","Aris V.","Isabel C.","Philipp R."],
   // ---- Taufen: die Zwillinge jedes Schlüssels, dessen Text die Veranstaltung BENENNT (siehe tr() / EVK).
@@ -7461,6 +7504,9 @@ $("printGo").addEventListener("click",()=>{ const v=printPick();
   // The entrance poster: printed from here like the lists, but it is not one of them — state.printMode must never
   // remember it (the finder can be switched off, and then there is no poster to fall back to).
   if(v==="poster"){ if(!findIsOn()){ printPosterSync(); return; } pdfChoice="poster"; $("printModal").classList.remove("open"); buildAndPrint("poster"); return; }
+  // Place cards and table cards: chosen for this visit like the poster, never remembered in state.printMode (that is
+  // the door LIST the plan prints by default; the cards are printed once, on the day the room is set).
+  if(v==="cards"||v==="tcards"){ pdfChoice=v; $("printModal").classList.remove("open"); printCards(v); return; }
   pdfChoice=""; const mode=printListMode(v); const m=$("printModal");
   if(state.printMode!==mode){ state.printMode=mode; save({noHistory:true}); } m.classList.remove("open"); buildAndPrint(mode); });
 // PDF: the server renders the plan this device shows (local plans, the lab and unsynced edits included) — POST /pdf, stateless.
@@ -7529,7 +7575,7 @@ function buildAndPrint(mode){
   // in the header of every print mode. It is the FIRST thing in #printarea and absolutely positioned, which is what
   // keeps it off the flow and off the page count — see .pqr in the stylesheet for why that is the only safe shape.
   const qrOn=findIsOn();
-  area.classList.remove("pposter");
+  area.classList.remove("pposter","pcards");   // "pcards": printCards drops it after printing, this is the belt for a browser that never says so
   area.classList.toggle("haspqr", qrOn);
   const qrHead=qrOn?`<div class="pqr"><span class="pqrt">${escapeHtml(tr("qrLine"))}</span>${qrSvg(findUrl(findState().key), tr("qrLine"))}</div>`:"";
   // ---- the entrance poster: one A4 page with the couple, the date, a 120 mm code and the two lines. Nothing else:
@@ -7658,6 +7704,48 @@ function buildAndPrint(mode){
   const parties=(state.parties||[]).map(p=>({p, m:partyMembers(p.id)})).filter(x=>x.m.length).sort((a,b)=>a.p.name.localeCompare(b.p.name));
   const invHtml=(parties.length&&!byParties)?`<h3 class="pinvh">${escapeHtml(tr("printInvites"))}</h3><div class="pinvs">${parties.map(({p,m})=>`<div class="pinv"><b>${escapeHtml(caseName(p.name))}</b> <span class="n">(${m.length})</span><ul>${m.map(id=>`<li>${escapeHtml(guestName(id))}${tableOf[id]?` <span class="ptag">— ${escapeHtml(tableOf[id])}</span>`:` <span class="ptag">— ${escapeHtml(tr("printNoSeat"))}</span>`}</li>`).join("")}</ul></div>`).join("")}</div>`:"";
   area.innerHTML=head+subLine+`<div class="ptables">${cards}</div>${unHtml}${invHtml}`;
+  window.print();
+}
+
+// ---- Place cards («cards») and table cards («tcards»): printed here in the browser like the poster, so they work for
+// the lab, a free plan and a plan kept only on this device, with no server. Both are TENT cards: a card is two faces
+// one above the other, folded along the dotted line between them, and the upper face is printed upside down so that,
+// standing on the table, each side reads upright from its own side.
+//   cards  — one per guest who has a chair, 6 to a sheet (2 × 3 cards of 85 × 76 mm, so 38 mm tall when folded),
+//            in table order and seat order inside a table, so they come off the printer the way the room is laid.
+//            A guest marked «ακυρώθηκε» gets none. The name is the full name as typed (the letter-case choice of the
+//            Aa menu applies; the short / initials view does not — a place card carries the whole name).
+//   tcards — one per table that has a label, one to a sheet (170 × 228 mm, so 114 mm tall when folded).
+// Every sheet is at most 170 × 228 mm: that fits A4 and Letter at the browser's default margins and at 20 mm, the
+// same budget the poster keeps. No QR on either (it belongs to the door), and never the credit on a place card: it
+// sits on a guest's plate. The table card carries the credit small at its foot, under the venue's print switch.
+// Labels a venue typed as a bare number («7», «12Α») print as «Τραπέζι 7»; any other label prints as it was typed.
+function cardTableText(label){ const s=String(label||"").trim(); return /^\d{1,3}[A-Za-zΑ-Ωα-ω]?$/.test(s)?tr("pcTable",{t:s}):s; }
+function cardFit(s, steps){ const n=String(s).length; for(const [max,px] of steps) if(n<=max) return px; return steps[steps.length-1][1]; }
+function printCards(mode){
+  const area=$("printarea");
+  area.classList.remove("haspqr","pposter","pmeasure");
+  if(mode==="cards"){
+    const list=[];
+    state.tables.forEach(t=>t.seats.forEach(gid=>{ if(gid&&state.guests[gid]&&gStatus(gid)!=="cut") list.push({name:guestName(gid), table:cardTableText(t.label)}); }));
+    if(!list.length){ toast(tr("pcNone"),4500); return; }
+    const face=(c,up)=>`<div class="pcf${up?" up":""}"><div class="pcn" style="font-size:${cardFit(c.name,[[18,26],[26,21],[34,17]])}px">${escapeHtml(c.name)}</div>`
+      +(c.table?`<div class="pct">${escapeHtml(c.table)}</div>`:"")+`</div>`;
+    const sheets=[]; for(let i=0;i<list.length;i+=6) sheets.push(list.slice(i,i+6));
+    area.innerHTML=sheets.map(s=>`<div class="pcsheet">${s.map(c=>`<div class="pcc">${face(c,true)}${face(c,false)}</div>`).join("")}</div>`).join("");
+  } else {
+    const tbls=state.tables.map(t=>String(t.label||"").trim()).filter(Boolean);
+    if(!tbls.length){ toast(tr("pcNoTables"),4500); return; }
+    const brand=printBrandOn()?`<div class="ptbrand">${escapeHtml(tr("printBrand"))}</div>`:"";
+    const face=(lbl,up)=>{ const num=/^\d{1,3}[A-Za-zΑ-Ωα-ω]?$/.test(lbl);
+      return `<div class="ptf${up?" up":""}">`+(num?`<div class="ptw">${escapeHtml(tr("pcWord"))}</div><div class="ptn">${escapeHtml(lbl)}</div>`
+        :`<div class="ptl" style="font-size:${cardFit(lbl,[[8,72],[14,54],[24,40]])}px">${escapeHtml(lbl)}</div>`)+(up?"":brand)+`</div>`; };
+    area.innerHTML=tbls.map(l=>`<div class="ptsheet"><div class="ptc">${face(l,true)}${face(l,false)}</div></div>`).join("");
+  }
+  area.classList.add("pcards");
+  // The class goes when the print is over, or the next list printed from this page would inherit the card layout.
+  const done=()=>{ area.classList.remove("pcards"); window.removeEventListener("afterprint",done); };
+  window.addEventListener("afterprint",done);
   window.print();
 }
 

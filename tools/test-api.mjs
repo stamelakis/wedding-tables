@@ -2475,6 +2475,28 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     ok(/bk\.onclick=\(\)=>\{ if\(stale\(\)\) return;/.test(body), 'planner tour: «Πίσω» on an out-of-date card does nothing');
   }
 
+  // ---- place cards and table cards: two more choices in «Εκτύπωση», printed in the browser ----
+  {
+    const fs = await import('node:fs');
+    const src = fs.readFileSync(path.join(root, 'planner.src.html'), 'utf8');
+    const a = src.indexOf('function printCards('), b = src.indexOf('\n}', a), body = src.slice(a, b);
+    ok(/name="pmode" value="cards"/.test(src) && /name="pmode" value="tcards"/.test(src), 'print cards: the print dialog offers place cards and table cards');
+    ok(/if\(v==="cards"\|\|v==="tcards"\)\{ pdfChoice=v;[^\n]*printCards\(v\); return; \}/.test(src), 'print cards: chosen for the visit, never remembered as the default list');
+    ok(!/"cards"|"tcards"/.test(/function printListMode[^\n]*/.exec(src)[0]), 'print cards: not one of the door lists state.printMode may hold');
+    ok(a > 0 && /gStatus\(gid\)!=="cut"/.test(body), 'print cards: a cancelled guest gets no place card');
+    ok(/i\+=6\) sheets\.push\(list\.slice\(i,i\+6\)\)/.test(body), 'print cards: six place cards to a sheet');
+    ok(!/printBrand|qrSvg/.test(body.slice(0, body.indexOf('} else {'))), 'print cards: no credit and no QR on a place card');
+    ok(/printBrandOn\(\)\?/.test(body.slice(body.indexOf('} else {'))), 'print cards: the credit on a table card follows the print switch');
+    ok(/remove\("haspqr","pposter","pmeasure"\)/.test(body) && /remove\("pposter","pcards"\)/.test(src), 'print cards: neither layout leaks into the next print');
+    // Each sheet must fit A4 and Letter at 20 mm margins (170 × 228 mm at most): 2 × 85 mm by 3 × 76 mm, and 170 × 228.
+    ok(/grid-template-columns:85mm 85mm; grid-auto-rows:76mm; width:170mm/.test(src) && /\.ptc\{ width:170mm; height:228mm;/.test(src), 'print cards: every sheet fits A4 and Letter');
+    const da = src.indexOf('const T_ALL='), db = src.indexOf('const T=T_ALL[LANG]');
+    const T_ALL = new Function('return (' + src.slice(da + 'const T_ALL='.length, db).trim().replace(/;$/, '') + ')')();
+    const keys = ['pmCards', 'pmTCards', 'pcTable', 'pcWord', 'pcNone', 'pcNoTables'];
+    ok(['el', 'en', 'de'].every(l => keys.every(k => typeof T_ALL[l][k] === 'string' && T_ALL[l][k].length)), 'print cards: every new word exists in el, en and de');
+    ok(['el', 'en', 'de'].every(l => T_ALL[l].pcTable.includes('{t}')), 'print cards: «Τραπέζι {t}» carries the number in every language');
+  }
+
   // ---- the planner's own words: the dictionary twins, and the rule tr() uses to pick one ----
   {
     const fs = await import('node:fs');
