@@ -12,7 +12,7 @@ Checked locally (add, reload, sort, print, read-only, company, 375px) and live i
 option, company wording, no console errors). Not seen: on a real online plan, or on paper. Also new today: «Συνεργάτες»
 (the vendors list, `743fa73`) and place cards and table cards in «Εκτύπωση» (fold not yet seen on a real printer). Also live since 2026-11-09 and checked at 375px (details in History): the home hero for
 every reader, «Ποιοι είμαστε», the free-plan page, the four-door home page. **Phase 3 of `COMPANIES-PLAN.md` is live:** a
-company's console, saved rooms, old designs, the 1–5 year choice. Operations phases 1–6 are live.
+company's console, saved rooms, old designs, the 1–5 year choice. Phase 4 (γραφείο) and operations phases 1–6 are live.
 
 **The free online plan is live** (2026-11-08; HANDOFF §1l). Anyone signs up alone at `epikoinonia.html?q=free` and
 gets the link by mail; 8 guest tables until «Ξεκλείδωμα (25 €)…» on the admin card; idle cleanup after 30 days / 6
@@ -21,8 +21,6 @@ live: `/health`, the main pages with no console errors, the home strip, the form
 privacy. One real sign-up with Andreas's own email: the mail arrived and the link opened (`claimedAt`, `seenAt` set).
 Then that test customer was forgotten (backup just before: `/opt/backups/takeaseat-20261107-230825.db.gz.age`); no
 card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table stopped, and an unlock (both on the local copy only).
-
-**Phase 4 (the γραφείο εκδηλώσεων) is live and done** (2026-11-04; the full check is in History).
 
 **Not checked live:** the signed-in screens in a browser (a company's console and its planner were seen on the local copy only, and we do not type live keys into pages); the one real venue's console (needs its own key; its card opens, and it never had a saved room). Also not yet seen live: a company plan used for real, its PDF, a real iPhone tapping the kind picker in the demo, a real form sent as a company, a real new due on «Πληρωμές», a real morning mail.
 
@@ -120,6 +118,8 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 - The 🛟 on the «Υποστήριξη έως …» badge shows as an empty box on Windows 10 browsers (no such emoji there).
 
 ## History
+
+- 2026-11-09: «Είσοδος (αφίξεις)» built and checked locally (`0193b0d`, `e105ed2`); waits on the deploy OK.
 
 - 2026-11-09: «Πρόγραμμα» (`openTimeline`, `printTimeline`, `state.timeline`, ≤ 60 lines, time HH:MM or empty): built like «Συνεργάτες», no server change. Order of the night via `tlnKey` (00:00–05:59 after 23:59, no time last). The phone on paper only when «who» equals a vendor's role or name (`tlnPhones`). Deployed as `deploy-2026-11-09-5`; live smoke test by DOM only (the pane screenshot timed out).
 - 2026-11-04 (moved from the status block): Checked on live for phase 3: read-only, `/health`, 14 pages, `/admin/customers` refusing without a key, the company login's words, terms 8Α, dpa, privacy and the company guide at 375px with no console errors, the company demo. Then a test company through the API on the running server, 32 of 32: agreement gate, rooms, an event from a room, the allowance (three requests at once made one event on the real database), «+1 εκδήλωση», an old design with names and no note, the keep choice, delete, forget. Afterwards it and its two `books:` rows were removed; nothing on live names it. Backup just before that delete: `/opt/backups/takeaseat-20261104-164035.db.gz.age`.
