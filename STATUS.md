@@ -2,8 +2,11 @@
 
 Updated: 2026-11-09
 
-**Status:** Live runs `bc7574b` (deployed 2026-11-09 as `deploy-2026-11-09-2`, pre-deploy backup
-`/opt/backups/takeaseat-20261109-114755.db.gz.age`), healthy. Home hero now speaks to every reader, in Andreas's own words («Τα τραπέζια και οι καλεσμένοι σας, στη θέση τους.»), with «Δείτε πώς λειτουργεί» / «Δοκιμάστε το» and the four doors as equal outlined buttons; checked live at desktop and 375px, no console errors. New page `poioi-eimaste.html` («Ποιοι είμαστε», 9 FAQ), in every public footer; checked live at 375px, no console errors. «TakeaSeat» stands in for the legal name until the company is registered; no person named (Andreas's choice). New page `dorean-schedio-trapezion.html` («Δωρεάν σχέδιο
+**Status:** Live runs `7d7534e` (deployed 2026-11-09 as `deploy-2026-11-09-3`, pre-deploy backup
+`/opt/backups/takeaseat-20261109-140829.db.gz.age`), healthy. **New: place cards and table cards** in the planner's «Εκτύπωση»
+(«Καρτελάκια θέσεων», 6 tent cards per sheet, none for a cancelled guest; «Κάρτες τραπεζιών», one per sheet), printed in the
+browser; checked live in the lab (wedding and company: 28 cards on 5 sheets, one card per table, no console errors). Not
+seen: the fold on a real printer. Home hero now speaks to every reader, in Andreas's own words («Τα τραπέζια και οι καλεσμένοι σας, στη θέση τους.»), with «Δείτε πώς λειτουργεί» / «Δοκιμάστε το» and the four doors as equal outlined buttons; checked live at desktop and 375px, no console errors. New page `poioi-eimaste.html` («Ποιοι είμαστε», 9 FAQ), in every public footer; checked live at 375px, no console errors. «TakeaSeat» stands in for the legal name until the company is registered; no person named (Andreas's choice). New page `dorean-schedio-trapezion.html` («Δωρεάν σχέδιο
 τραπεζιών»), linked from the home page and the four event pages; checked live at 375px, no console errors. Home page: four doors (κτήματα, γραφεία, εταιρείες,
 ζευγάρια & οικογένειες), title names all four events, free plan named in the hero; checked live at 375px, no console errors. **Phase 3 of `COMPANIES-PLAN.md` is live:** a company's console, saved rooms, old designs, the 1–5 year choice. Operations phases 1–6 are live.
 
@@ -31,11 +34,16 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 
 1. **Ideas for presenting the site:** a few words from the real κτήμα (needs its OK). Done: the four-door hero
    (`2eeebf6`), the hero for every reader (`bc7574b`), the free-plan page (`9e5f069`), «Ποιοι είμαστε» (`d1e4823`).
-2. **Phase 7 (online payment)** waits on the company, accountant and lawyer. The page's remaining English sections move
+2. **More for the night of the event** (agreed 2026-11-09, place cards done): a «Συνεργάτες» sheet (vendors: role,
+   phone, arrival, where they set up), a run-of-show (χρονοδιάγραμμα) shared with venue, DJ and photographer, and door
+   check-in for company events. Andreas picks which first; plan and "done when" before building.
+3. **Phase 7 (online payment)** waits on the company, accountant and lawyer. The page's remaining English sections move
    to Greek as each is touched.
 
 ## Waiting on Andreas
 
+- **Print one page of place cards and one table card on a real printer** (lab.html → ⋯ → Εκτύπωση → «Καρτελάκια
+  θέσεων» / «Κάρτες τραπεζιών»), cut and fold them, and say if the fold lands right and the names read well.
 - **Read the Greek of the new free-plan page** (https://takeaseat.gr/dorean-schedio-trapezion.html) and the one new
   sentence in each event page's «Θέλετε πρώτα να το δείτε;» box. Say what reads wrong.
 - **The first real free sign-up:** when one shows in «Πελάτες» (marked free), say if anything reads wrong. When one
@@ -96,6 +104,8 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 - The 🛟 on the «Υποστήριξη έως …» badge shows as an empty box on Windows 10 browsers (no such emoji there).
 
 ## History
+
+- 2026-11-09: Place cards and table cards in the planner's print window (`printCards`): tent cards, upper face upside down, every sheet ≤ 170 × 228 mm (checked as PDF on A4 and Letter at default and 20 mm margins: no extra sheet); no QR, no credit on a place card; el/en/de; 11 new checks, 1893 pass. Ideas agreed next: «Συνεργάτες» sheet, run-of-show, door check-in for companies (the per-table menu sheet was dropped: most venues serve buffet). Live as `7d7534e` (`deploy-2026-11-09-3`).
 
 - 2026-11-09: Home hero rewritten in Andreas's words so it speaks to couples, families and companies too, not only the κτήμα; «Δείτε πώς λειτουργεί» (#features) and «Δοκιμάστε το» (lab); four equal outlined doors. Live as `bc7574b` (`deploy-2026-11-09-2`), checked live at desktop and 375px.
 
