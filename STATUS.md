@@ -2,9 +2,9 @@
 
 Updated: 2026-11-09
 
-**Status:** Live runs `8dbb223` (deployed 2026-11-09 as `deploy-2026-11-09-5`, pre-deploy backup
-`/opt/backups/takeaseat-20261109-170809.db.gz.age`), healthy. **Built locally, not deployed: «Είσοδος (αφίξεις)»**
-(door check-in for company events; see Next #2). **New on live: «Πρόγραμμα»** (⋯ menu): the event's timeline (time,
+**Status:** Live runs `9bc8a5d` (deployed 2026-11-09 as `deploy-2026-11-09-6`, pre-deploy backup
+`/opt/backups/takeaseat-20261109-210227.db.gz.age`), healthy. **New on live: «Είσοδος (αφίξεις)»** (door check-in for
+company events; details in History). **Also new today: «Πρόγραμμα»** (⋯ menu): the event's timeline (time,
 what, who, note) kept in the plan, editable by every writer, read-only for viewers, never copied to another event; shown
 and printed in the order of the night (00:00–05:59 after the evening). «who» suggests the vendors, and the printed sheet
 carries a vendor's phone when «who» names one. On a company plan «Πρόγραμμα της εκδήλωσης». privacy and dpa list it.
@@ -35,21 +35,14 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 1. [you: get the κτήμα's OK and its words] **Ideas for presenting the site:** a few words from the real κτήμα. Done:
    the four-door hero (`2eeebf6`), the hero for every reader (`bc7574b`), the free-plan page (`9e5f069`), «Ποιοι
    είμαστε» (`d1e4823`).
-2. [you: OK to deploy, then read the Greek] **«Είσοδος (αφίξεις)» is built and checked locally** (2026-11-09). A company
-   plan's ⋯ menu switches on a separate door link (`eisodos.html#key`); door staff type a name, see the table and tap
-   «Ήρθε»; the planner panel shows arrived / not yet, prints the not-yet list. Works only on the event day, until 12:00
-   the next day, when link and arrivals are erased (privacy and dpa updated). Checked on screen: two phones marking at
-   once with no tap lost, the other phone catching up within 20 s, counter equal in panel and phones, print sheet,
-   switch-off stops the phone, el/en/de, 375px. 1972 checks pass. Not seen: a real phone, live, the erasure at 12:00 on
-   screen (tests only), the German panel (strings tested only).
-3. [you: company, accountant, lawyer] **Phase 7 (online payment).** The page's remaining English sections move to
+2. [you: company, accountant, lawyer] **Phase 7 (online payment).** The page's remaining English sections move to
    Greek as each is touched.
-4. [auto] **«1 ακόμη δεν μπήκαν» in the singular** (`labCapCut`, planner.src.html): done when the lab shows a singular
+3. [auto] **«1 ακόμη δεν μπήκαν» in the singular** (`labCapCut`, planner.src.html): done when the lab shows a singular
    verb for one trimmed table and the plural for more.
 
 ## Waiting on Andreas
 
-- **Say OK to deploy «Είσοδος (αφίξεις)»**, then read its Greek on live: the door page (`eisodos.html`, opened from a
+- **Read the Greek of «Είσοδος (αφίξεις)»** on live: the door page (`eisodos.html`, opened from a
   company plan's ⋯ → «Είσοδος (αφίξεις)…» → the link), the panel's hints, and the new lines in privacy.html («Αφίξεις
   στην είσοδο») and dpa.html («Δεδομένα», and the retention list). Say what reads wrong.
 
@@ -119,7 +112,13 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 
 ## History
 
-- 2026-11-09: «Είσοδος (αφίξεις)» built and checked locally (`0193b0d`, `e105ed2`); waits on the deploy OK.
+- 2026-11-09: «Είσοδος (αφίξεις)» live as `deploy-2026-11-09-6`. A company plan's ⋯ menu switches on a separate door
+  link (`eisodos.html#key`); staff type a name, see the table, tap «Ήρθε»; the panel shows arrived / not yet and prints
+  the not-yet list. Works on the event day until 12:00 next day, then link and arrivals are erased. Checked locally: two
+  phones at once, catch-up within 20 s, counter equal, print, switch-off, el/en/de, 375px. Live: health, pages 200,
+  noindex, robots, `/door` answers, no console errors. Not seen: a real phone on a real event, the German panel. The
+  first deploy try stopped in the build (check stage lacked server.mjs/robots.txt; a test date helper counted 24 h
+  across the October clock change); both fixed in `9bc8a5d`, nothing shipped from the failed try.
 
 - 2026-11-09: «Πρόγραμμα» (`openTimeline`, `printTimeline`, `state.timeline`, ≤ 60 lines, time HH:MM or empty): built like «Συνεργάτες», no server change. Order of the night via `tlnKey` (00:00–05:59 after 23:59, no time last). The phone on paper only when «who» equals a vendor's role or name (`tlnPhones`). Deployed as `deploy-2026-11-09-5`; live smoke test by DOM only (the pane screenshot timed out).
 - 2026-11-04 (moved from the status block): Checked on live for phase 3: read-only, `/health`, 14 pages, `/admin/customers` refusing without a key, the company login's words, terms 8Α, dpa, privacy and the company guide at 375px with no console errors, the company demo. Then a test company through the API on the running server, 32 of 32: agreement gate, rooms, an event from a room, the allowance (three requests at once made one event on the real database), «+1 εκδήλωση», an old design with names and no note, the keep choice, delete, forget. Afterwards it and its two `books:` rows were removed; nothing on live names it. Backup just before that delete: `/opt/backups/takeaseat-20261104-164035.db.gz.age`.
