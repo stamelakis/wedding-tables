@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- The door staff's page («Είσοδος», company events): it reads guest names, so it is never indexed. robots.txt disallows
+     it and the server sends X-Robots-Tag: noindex for this path (server.mjs, NOINDEX). -->
+<meta name="robots" content="noindex,nofollow">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#2b2134">
+<title>Είσοδος — TakeaSeat</title>
+<script>
+/* The key lives in the URL FRAGMENT, so it never reaches a server in a URL, a Referer or an access log; the page sends it
+   in the POST body. Unlike the guests' finder, a reload must NOT lose it: a phone at the door gets reloaded, locked and
+   woken all evening. So it is kept in sessionStorage — this tab only, gone when the tab closes — and out of the address bar. */
+var TAS_DOOR = (function () {
+  var t = "", ok = function (s) { return /^[A-Za-z0-9]{22,64}$/.test(s); };
+  try {
+    var h = (location.hash || "").slice(1);
+    if (ok(h)) { t = h; try { sessionStorage.setItem("tas.door", h); } catch (e) {} }
+    else { try { var s = sessionStorage.getItem("tas.door") || ""; if (ok(s)) t = s; } catch (e) {} }
+    if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+  } catch (e) {}
+  return t;
+})();
+</script>
+<style>
+  :root{
+    --paper:#f7f4f1; --paper-2:#efe9e2; --card:#fffdfb;
+    --ink:#241f1a; --soft:#5f574d; --faint:#93897c;
+    --line:#e7ded4; --accent:#7d5a8c; --accent-ink:#5c3f68; --accent-soft:#efe6f2;
+    --ok:#2f7a4f; --ok-soft:#e3f1e8; --warn:#9a5b12; --warn-soft:#f8ecdc;
+    --hero-1:#3a2f42; --hero-2:#241b2c;
+    --shadow:0 1px 2px rgba(40,30,20,.05), 0 10px 30px rgba(40,30,20,.07);
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; }
+  body{ background:var(--paper); color:var(--ink); font-family:var(--sans); line-height:1.5;
+        -webkit-font-smoothing:antialiased; -webkit-text-size-adjust:100%; }
+  .wrap{ max-width:600px; margin:0 auto; padding:0 16px; }
+
+  header{ border-bottom:1px solid var(--line); }
+  header .wrap{ display:flex; align-items:center; gap:10px; min-height:56px; }
+  .brand{ font-family:var(--serif); font-weight:700; font-size:19px; letter-spacing:-.01em; }
+  .brand .dot{ color:var(--accent); }
+  .brand small{ font-family:var(--sans); font-weight:600; font-size:13px; color:var(--soft); margin-left:6px; }
+  .langs{ margin-left:auto; display:flex; gap:4px; }
+  .langs button{ font:inherit; font-size:13px; font-weight:700; color:var(--soft); background:transparent;
+                 border:1px solid var(--line); border-radius:9px; padding:0 9px; min-width:44px; min-height:44px; cursor:pointer; }
+  .langs button[aria-pressed="true"]{ background:var(--accent-soft); border-color:#dcc9e3; color:var(--accent-ink); }
+
+  /* the counter: the one number the person at the door is asked all evening */
+  .top{ position:sticky; top:0; z-index:2; background:var(--paper); padding:12px 0 10px; border-bottom:1px solid var(--line); }
+  .event{ font-family:var(--serif); font-size:17px; font-weight:600; line-height:1.25; overflow-wrap:anywhere; }
+  .count{ display:flex; align-items:baseline; gap:8px; margin:2px 0 10px; color:var(--soft); font-size:15px; }
+  .count b{ font-family:var(--serif); font-size:30px; color:var(--ink); line-height:1.1; }
+  .bar{ height:6px; border-radius:6px; background:var(--paper-2); overflow:hidden; margin:-4px 0 12px; }
+  .bar i{ display:block; height:100%; width:0; background:var(--ok); transition:width .3s; }
+  #q{ display:block; width:100%; font:inherit; font-size:21px; line-height:1.3; padding:12px 14px; min-height:54px;
+      border:2px solid var(--line); border-radius:13px; background:var(--card); color:var(--ink); }
+  #q:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 4px var(--accent-soft); }
+
+  main{ padding:12px 0 26px; }
+  .msg{ margin-top:6px; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 16px; box-shadow:var(--shadow); }
+  .msg h2{ margin:0 0 4px; font-family:var(--serif); font-size:19px; font-weight:600; line-height:1.3; }
+  .msg p{ margin:0; color:var(--soft); font-size:15px; }
+
+  .row{ display:flex; align-items:center; gap:10px; margin:0 0 10px; padding:11px 12px 11px 15px; min-height:72px;
+        background:var(--card); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); }
+  .row.in{ background:var(--ok-soft); border-color:#bfdcc9; }
+  .row .who{ flex:1 1 auto; min-width:0; }
+  .row .nm{ display:block; overflow-wrap:anywhere; font-family:var(--serif); font-size:19px; font-weight:600; line-height:1.25; }
+  .row .tb{ display:inline-block; margin-top:4px; font-size:14px; font-weight:700; color:var(--accent-ink);
+            background:var(--accent-soft); border-radius:8px; padding:2px 8px; overflow-wrap:anywhere; }
+  .row .tb.none{ color:var(--warn); background:var(--warn-soft); }
+  .row .cut{ display:block; margin-top:3px; font-size:13px; color:var(--warn); }
+  .row .when{ display:block; margin-top:3px; font-size:14px; font-weight:700; color:var(--ok); }
+  .mark{ flex:none; min-width:112px; min-height:52px; font:inherit; font-size:18px; font-weight:700; color:#fff;
+         background:var(--accent); border:0; border-radius:12px; cursor:pointer; padding:0 14px; }
+  .mark:active{ transform:translateY(1px); }
+  .mark[disabled]{ opacity:.55; cursor:default; }
+  .undo{ flex:none; min-width:96px; min-height:48px; font:inherit; font-size:15px; font-weight:600; color:var(--soft);
+         background:transparent; border:1px solid var(--line); border-radius:12px; cursor:pointer; padding:0 10px; }
+  .err{ display:block; margin-top:3px; font-size:13px; font-weight:600; color:#a1301f; }
+
+  .toast{ position:fixed; left:50%; bottom:18px; transform:translateX(-50%); max-width:calc(100% - 32px); z-index:5;
+          background:var(--ink); color:#fff; border-radius:12px; padding:11px 16px; font-size:16px; box-shadow:var(--shadow);
+          opacity:0; pointer-events:none; transition:opacity .2s; overflow-wrap:anywhere; }
+  .toast.on{ opacity:1; }
+
+  footer{ border-top:1px solid var(--line); padding:16px 0 24px; text-align:center; font-size:13px; color:var(--faint); }
+  footer a{ color:var(--soft); }
+  @media (max-width:340px){ .wrap{ padding:0 13px; } .langs button{ min-width:40px; padding:0 6px; } .mark{ min-width:96px; } }
+</style>
+</head>
+<body>
+
+<header><div class="wrap">
+  <span class="brand">Take<span class="dot">a</span>Seat<small id="brandSub"></small></span>
+  <div class="langs" id="langs" role="group" aria-label="Γλώσσα / Language / Sprache">
+    <button type="button" data-l="el" lang="el">ΕΛ</button>
+    <button type="button" data-l="en" lang="en">EN</button>
+    <button type="button" data-l="de" lang="de">DE</button>
+  </div>
+</div></header>
+
+<noscript><div class="wrap"><div class="msg"><h2>Η σελίδα χρειάζεται JavaScript.</h2><p lang="en">This page needs JavaScript.</p></div></div></noscript>
+
+<div class="top" id="top" hidden><div class="wrap">
+  <div class="event" id="evName"></div>
+  <div class="count" id="count"></div>
+  <div class="bar" aria-hidden="true"><i id="barFill"></i></div>
+  <label for="q" id="qLabel" style="position:absolute;left:-9999px"></label>
+  <input id="q" type="search" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" enterkeyhint="search" maxlength="40">
+</div></div>
+
+<main class="wrap" id="main" hidden>
+  <div id="out" aria-live="polite"></div>
+</main>
+
+<div class="toast" id="toast" role="status"></div>
+<footer><div class="wrap"><a id="foot" href="/" target="_blank" rel="noopener"></a></div></footer>
+
+<script>
+(function () {
+  "use strict";
+  var TOK = TAS_DOOR; try { TAS_DOOR = ""; } catch (e) {}
+
+  var S = {
+    el: {
+      title: "Είσοδος — TakeaSeat", sub: "Είσοδος",
+      count: "{a} από {t} ήρθαν",
+      ph: "Γράψτε όνομα ή επώνυμο", label: "Αναζήτηση καλεσμένου",
+      start: "Γράψτε δύο γράμματα από το όνομα του καλεσμένου.",
+      mark: "Ήρθε", undo: "Αναίρεση", arrived: "Ήρθε στις {t}",
+      table: "Τραπέζι {t}", noTable: "Χωρίς τραπέζι", cut: "Είχε δηλώσει ότι δεν έρχεται",
+      toastIn: "✓ {n} · {t}", toastNoTable: "χωρίς τραπέζι", toastOut: "Αναιρέθηκε: {n}",
+      many: "Πολλά ονόματα ταιριάζουν.", manySub: "Γράψτε περισσότερα γράμματα, ή και το μικρό όνομα.",
+      none: "Δεν βρέθηκε στη λίστα.", noneSub: "Δοκιμάστε μόνο το επώνυμο. Αν δεν βρεθεί, ρωτήστε τον υπεύθυνο της εκδήλωσης.",
+      gone: "Αυτός ο σύνδεσμος δεν ισχύει.", goneSub: "Ζητήστε τον νέο σύνδεσμο εισόδου από τον υπεύθυνο της εκδήλωσης.",
+      noTok: "Ανοίξτε τον σύνδεσμο εισόδου.", noTokSub: "Η σελίδα ανοίγει μόνο από τον σύνδεσμο που σας έστειλε ο υπεύθυνος της εκδήλωσης.",
+      early: "Η είσοδος ανοίγει την ημέρα της εκδήλωσης.", earlySub: "Ανοίγει {d}, στις 00:00. Μέχρι τότε δεν φαίνονται ονόματα.",
+      late: "Η είσοδος έκλεισε.", lateSub: "Ο σύνδεσμος λειτουργεί ως τις 12:00 της επόμενης μέρας. Οι αφίξεις έχουν σβηστεί.",
+      busy: "Πολλές αναζητήσεις αυτή τη στιγμή.", busySub: "Δοκιμάστε ξανά σε ένα λεπτό.",
+      net: "Δεν υπάρχει σύνδεση.", netSub: "Ελέγξτε το δίκτυο του κινητού. Τίποτα δεν σώθηκε όσο έλειπε η σύνδεση.",
+      notSaved: "Δεν σώθηκε — πατήστε ξανά.",
+      oops: "Κάτι δεν πήγε καλά.", oopsSub: "Δοκιμάστε ξανά σε λίγο.",
+      foot: "Φτιαγμένο με το TakeaSeat"
+    },
+    en: {
+      title: "Entrance — TakeaSeat", sub: "Entrance",
+      count: "{a} of {t} arrived",
+      ph: "Type a first name or surname", label: "Find a guest",
+      start: "Type two letters of the guest's name.",
+      mark: "Arrived", undo: "Undo", arrived: "Arrived at {t}",
+      table: "Table {t}", noTable: "No table", cut: "Had said they would not come",
+      toastIn: "✓ {n} · {t}", toastNoTable: "no table", toastOut: "Undone: {n}",
+      many: "Many names match.", manySub: "Type more letters, or the first name too.",
+      none: "Not on the list.", noneSub: "Try the surname on its own. If it is still not found, ask the person in charge of the event.",
+      gone: "This link is no longer valid.", goneSub: "Ask the person in charge of the event for the new entrance link.",
+      noTok: "Open the entrance link.", noTokSub: "This page only opens from the link the person in charge of the event sent you.",
+      early: "The entrance opens on the day of the event.", earlySub: "It opens on {d} at 00:00. Until then no names are shown.",
+      late: "The entrance is closed.", lateSub: "The link works until 12:00 the next day. The arrivals have been erased.",
+      busy: "A great many searches right now.", busySub: "Please try again in a minute.",
+      net: "No connection.", netSub: "Check the phone's network. Nothing was saved while the connection was down.",
+      notSaved: "Not saved — tap again.",
+      oops: "Something went wrong.", oopsSub: "Please try again shortly.",
+      foot: "Made with TakeaSeat"
+    },
+    de: {
+      title: "Eingang — TakeaSeat", sub: "Eingang",
+      count: "{a} von {t} angekommen",
+      ph: "Vor- oder Nachname eingeben", label: "Gast suchen",
+      start: "Geben Sie zwei Buchstaben des Namens ein.",
+      mark: "Ist da", undo: "Rückgängig", arrived: "Angekommen um {t}",
+      table: "Tisch {t}", noTable: "Kein Tisch", cut: "Hatte abgesagt",
+      toastIn: "✓ {n} · {t}", toastNoTable: "kein Tisch", toastOut: "Rückgängig: {n}",
+      many: "Viele Namen passen.", manySub: "Geben Sie mehr Buchstaben ein, oder auch den Vornamen.",
+      none: "Nicht auf der Liste.", noneSub: "Versuchen Sie nur den Nachnamen. Wenn er weiterhin fehlt, fragen Sie die verantwortliche Person der Veranstaltung.",
+      gone: "Dieser Link gilt nicht mehr.", goneSub: "Fragen Sie die verantwortliche Person der Veranstaltung nach dem neuen Eingangslink.",
+      noTok: "Öffnen Sie den Eingangslink.", noTokSub: "Diese Seite öffnet sich nur über den Link, den Ihnen die verantwortliche Person der Veranstaltung geschickt hat.",
+      early: "Der Eingang öffnet am Tag der Veranstaltung.", earlySub: "Er öffnet am {d} um 00:00. Bis dahin werden keine Namen gezeigt.",
+      late: "Der Eingang ist geschlossen.", lateSub: "Der Link gilt bis 12:00 Uhr am nächsten Tag. Die Ankünfte wurden gelöscht.",
+      busy: "Gerade sehr viele Suchanfragen.", busySub: "Bitte versuchen Sie es in einer Minute noch einmal.",
+      net: "Keine Verbindung.", netSub: "Prüfen Sie das Netz des Handys. Ohne Verbindung wurde nichts gespeichert.",
+      notSaved: "Nicht gespeichert — bitte noch einmal tippen.",
+      oops: "Etwas ist schiefgelaufen.", oopsSub: "Bitte versuchen Sie es gleich noch einmal.",
+      foot: "Erstellt mit TakeaSeat"
+    }
+  };
+  var LANG = (function () {
+    var l = "";
+    try { l = String((navigator.languages && navigator.languages[0]) || navigator.language || "").toLowerCase(); } catch (e) {}
+    return /^el/.test(l) ? "el" : /^de/.test(l) ? "de" : /^en/.test(l) ? "en" : "el";
+  })();
+  var T = function () { return S[LANG]; };
+  var fill = function (s, o) { return String(s).replace(/\{(\w+)\}/g, function (m, k) { return o[k] == null ? "" : String(o[k]); }); };
+
+  var $ = function (id) { return document.getElementById(id); };
+  var q = $("q"), out = $("out");
+  /* msg: a card instead of results; fatal: the search is hidden, typing cannot help */
+  var V = { event: null, arrived: null, total: null, hits: null, msg: null, fatal: false, opensAt: null, rowErr: {} };
+  var seq = 0, busy = {}, timer = null, poll = null;
+
+  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+  function fmtTime(ms) {
+    try { return new Intl.DateTimeFormat(LANG === "el" ? "el-GR" : LANG === "de" ? "de-DE" : "en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Athens" }).format(new Date(ms)); }
+    catch (e) { var d = new Date(ms); return ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2); }
+  }
+  function fmtDay(ms) {
+    try { return new Intl.DateTimeFormat(LANG === "el" ? "el-GR" : LANG === "de" ? "de-DE" : "en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Athens" }).format(new Date(ms)); }
+    catch (e) { return new Date(ms).toDateString(); }
+  }
+  function tableText(h) { var t = T(); return h.table ? fill(t.table, { t: h.table }) : t.noTable; }
+
+  var toastT = null;
+  function toast(s) { var n = $("toast"); n.textContent = s; n.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(function () { n.classList.remove("on"); }, 3500); }
+
+  function words(m) {
+    var t = T();
+    switch (m.key) {
+      case "start": return [t.start, ""];
+      case "many": return [t.many, t.manySub];
+      case "none": return [t.none, t.noneSub];
+      case "gone": return [t.gone, t.goneSub];
+      case "noTok": return [t.noTok, t.noTokSub];
+      case "early": return [t.early, fill(t.earlySub, { d: V.opensAt ? fmtDay(V.opensAt) : "" })];
+      case "late": return [t.late, t.lateSub];
+      case "busy": return [t.busy, t.busySub];
+      case "net": return [t.net, t.netSub];
+      default: return [t.oops, t.oopsSub];
+    }
+  }
+
+  function rowOf(h) {
+    var t = T(), r = el("div", "row" + (h.at ? " in" : "")), who = el("div", "who");
+    who.appendChild(el("span", "nm", h.name));
+    who.appendChild(el("span", "tb" + (h.table ? "" : " none"), tableText(h)));
+    if (h.cut && !h.at) who.appendChild(el("span", "cut", t.cut));
+    if (h.at) who.appendChild(el("span", "when", fill(t.arrived, { t: fmtTime(h.at) })));
+    if (V.rowErr[h.id]) who.appendChild(el("span", "err", t.notSaved));
+    r.appendChild(who);
+    var b = el("button", h.at ? "undo" : "mark", h.at ? t.undo : t.mark); b.type = "button";
+    if (busy[h.id]) b.disabled = true;
+    b.addEventListener("click", function () { mark(h, !h.at); });
+    r.appendChild(b);
+    return r;
+  }
+
+  function render() {
+    var t = T();
+    document.documentElement.lang = LANG; document.title = t.title;
+    $("brandSub").textContent = "· " + t.sub;
+    q.placeholder = t.ph; $("qLabel").textContent = t.label; $("foot").textContent = t.foot;
+    Array.prototype.forEach.call($("langs").children, function (b) { b.setAttribute("aria-pressed", b.getAttribute("data-l") === LANG ? "true" : "false"); });
+    $("evName").textContent = V.event || "";
+    var hasCount = V.total != null;
+    $("count").textContent = "";
+    if (hasCount) {
+      var parts = fill(t.count, { a: "\u0001", t: V.total }).split("\u0001");
+      $("count").appendChild(document.createTextNode(parts[0]));
+      $("count").appendChild(el("b", null, String(V.arrived)));
+      $("count").appendChild(document.createTextNode(parts[1] || ""));
+    }
+    $("barFill").style.width = hasCount && V.total ? Math.min(100, Math.round(100 * V.arrived / V.total)) + "%" : "0";
+    $("top").hidden = V.fatal;
+    out.textContent = "";
+    if (V.msg) {
+      var w = words(V.msg), box = el("div", "msg");
+      box.appendChild(el("h2", null, w[0])); if (w[1]) box.appendChild(el("p", null, w[1]));
+      out.appendChild(box);
+    }
+    if (V.hits) V.hits.forEach(function (h) { out.appendChild(rowOf(h)); });
+    $("main").hidden = false;
+  }
+
+  function post(path, body) {
+    var ctl = null, tm = null;
+    try { ctl = new AbortController(); } catch (e) {}
+    var opts = { method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store", credentials: "omit", body: JSON.stringify(body) };
+    if (ctl) { opts.signal = ctl.signal; tm = setTimeout(function () { try { ctl.abort(); } catch (e) {} }, 15000); }
+    return fetch(path, opts).then(function (r) {
+      return r.text().then(function (txt) { var d = null; try { d = JSON.parse(txt); } catch (e) {} if (tm) clearTimeout(tm); return { s: r.status, d: d || {} }; });
+    }, function (e) { if (tm) clearTimeout(tm); throw e; });
+  }
+  function counts(d) {
+    if (d.event != null) V.event = String(d.event);
+    if (typeof d.arrived === "number") V.arrived = d.arrived;
+    if (typeof d.total === "number") V.total = d.total;
+  }
+  /* the answers that end the evening for this link: the search goes, one card stays */
+  function fatalOf(r) {
+    if (r.s === 404 && r.d.error === "not_found") { V.fatal = true; V.hits = null; V.msg = { key: "gone" }; stopPoll(); return true; }
+    if (r.s === 403 && r.d.error === "closed") {
+      if (r.d.event != null) V.event = String(r.d.event);
+      V.opensAt = r.d.opensAt || null; V.fatal = true; V.hits = null;
+      V.msg = { key: r.d.opensAt && Date.now() < r.d.opensAt ? "early" : "late" }; stopPoll(); return true;
+    }
+    return false;
+  }
+
+  function search() {
+    var text = q.value.replace(/\s+/g, " ").trim(), mine = ++seq;
+    if (text.length < 2) { V.hits = null; V.msg = { key: "start" }; render(); return; }
+    post("/door", { token: TOK, q: text }).then(function (r) {
+      if (mine !== seq) return;
+      if (fatalOf(r)) { render(); return; }
+      if (r.s === 200 && r.d.ok) {
+        counts(r.d);
+        if (r.d.tooMany) { V.hits = null; V.msg = { key: "many" }; }
+        else { V.hits = r.d.matches || []; V.msg = V.hits.length ? null : { key: "none" }; }
+        render(); return;
+      }
+      V.hits = null; V.msg = { key: r.s === 429 ? "busy" : "oops" }; render();
+    }, function () { if (mine !== seq) return; V.hits = null; V.msg = { key: "net" }; render(); });
+  }
+
+  function mark(h, on) {
+    if (busy[h.id]) return;
+    busy[h.id] = true; delete V.rowErr[h.id]; render();
+    post("/door/mark", { token: TOK, guest: h.id, on: on }).then(function (r) {
+      busy[h.id] = false;
+      if (fatalOf(r)) { render(); return; }
+      if (r.s === 200 && r.d.ok) {
+        counts(r.d); h.at = r.d.at || null;
+        toast(on ? fill(T().toastIn, { n: h.name, t: h.table ? fill(T().table, { t: h.table }) : T().toastNoTable }) : fill(T().toastOut, { n: h.name }));
+        render();
+        /* the next guest: the text is selected, so typing replaces it */
+        if (on) { try { q.focus({ preventScroll: true }); q.select(); } catch (e) {} }
+        return;
+      }
+      if (r.s === 404 && r.d.error === "no_guest") { search(); return; }   // deleted from the plan meanwhile: the list is redrawn
+      V.rowErr[h.id] = true; render();
+    }, function () { busy[h.id] = false; V.rowErr[h.id] = true; render(); });
+  }
+
+  /* the counter, every 20 seconds while the page is in front: the other phones at the door mark guests too */
+  function refresh() {
+    if (!TOK || V.fatal || document.hidden) return;
+    post("/door", { token: TOK }).then(function (r) {
+      if (fatalOf(r)) { render(); return; }
+      if (r.s === 200 && r.d.ok) { counts(r.d); render(); }
+    }, function () {});
+  }
+  function stopPoll() { if (poll) { clearInterval(poll); poll = null; } }
+
+  q.addEventListener("input", function () { clearTimeout(timer); timer = setTimeout(search, 300); });
+  q.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); clearTimeout(timer); search(); try { q.blur(); } catch (x) {} } });
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) { refresh(); if (V.hits && q.value.trim().length >= 2) search(); } });
+  Array.prototype.forEach.call($("langs").children, function (b) { b.addEventListener("click", function () { LANG = b.getAttribute("data-l"); render(); }); });
+  window.addEventListener("hashchange", function () {
+    var h = (location.hash || "").slice(1);
+    if (location.hash) { try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {} }
+    if (!/^[A-Za-z0-9]{22,64}$/.test(h)) return;
+    TOK = h; try { sessionStorage.setItem("tas.door", h); } catch (e) {}
+    location.reload();
+  });
+
+  if (!TOK) { V.fatal = true; V.msg = { key: "noTok" }; render(); return; }
+  V.msg = { key: "start" }; render();
+  refresh();
+  poll = setInterval(refresh, 20000);
+  try { q.focus({ preventScroll: true }); } catch (e) { q.focus(); }
+})();
+</script>
+</body>
+</html>

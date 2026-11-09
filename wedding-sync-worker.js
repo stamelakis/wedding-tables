@@ -538,6 +538,15 @@ export async function sweep(env) {
     const p = (f && f.id) ? safeParse(await env.PLANS.get("plan:" + f.id)) : null;
     if (!p || !p.find || p.find.key !== k.slice(5)) { await env.PLANS.delete(k); out.find++; }
   }
+  for (const k of (await env.PLANS.list("door:")) || []) {   // the same for the door staff's link…
+    const f = safeParse(await env.PLANS.get(k));
+    const p = (f && f.id) ? safeParse(await env.PLANS.get("plan:" + f.id)) : null;
+    if (!p || !p.door || p.door.key !== k.slice(5)) { await env.PLANS.delete(k); out.find++; }
+  }
+  for (const k of (await env.PLANS.list("arr:")) || []) {   // … and arrivals whose plan is gone, or whose door link was ended
+    const p = safeParse(await env.PLANS.get("plan:" + k.slice(4)));
+    if (!p || !p.door) { await env.PLANS.delete(k); out.find++; }
+  }
   for (const k of (await env.PLANS.list("tok:")) || []) {
     const t = safeParse(await env.PLANS.get(k));
     const gone = t && ((t.cid && !(await env.PLANS.get("couple:" + t.cid))) || (t.vid && !(await env.PLANS.get("venue:" + t.vid))));
@@ -644,6 +653,15 @@ async function lifecycleSweep(env, now) {
       await kvUpdate(env, k, cur => { if (!cur || !cur.find) return null; delete cur.find; return cur; });
       out.findEnded++; findOpen = false;
     }
+    // «Είσοδος»: at 12:00 the day after the event the staff link goes, and every arrival with it — who came is the
+    // evening's business, not the year the plan is kept. A plan that ever had a door link stays off the archive until then.
+    let doorLive = !!rec.door;
+    if (doorLive && now >= doorEndsAt(L)) {
+      if (rec.door.key) await env.PLANS.delete("door:" + rec.door.key);
+      await env.PLANS.delete("arr:" + id);
+      await kvUpdate(env, k, cur => { if (!cur || !cur.door) return null; delete cur.door; return cur; });
+      out.doorEnded = (out.doorEnded || 0) + 1; doorLive = false;
+    }
     // The keepsake: once, to a couple who bought directly (main plan) — before any deletion; if it could not be made or
     // sent, the plan waits up to 3 more days for another try rather than disappearing without it.
     let holdPurge = false, keepsakeDue = false;
@@ -685,7 +703,7 @@ async function lifecycleSweep(env, now) {
       continue;
     }
     // Nothing left to do but delete it (or keep it): on the archive list until then.
-    if (L.locked && !findOpen && !keepsakeDue && !holdPurge) { plans[id] = L.deleteAt || 0; out.archived++; }
+    if (L.locked && !findOpen && !doorLive && !keepsakeDue && !holdPurge) { plans[id] = L.deleteAt || 0; out.archived++; }
   }
   for (const id of Object.keys(plans)) if (!listed.has(id)) delete plans[id];   // deleted some other way
   const arcNew = JSON.stringify({ fullDay: full ? day : arc.fullDay, plans });
@@ -1433,7 +1451,7 @@ function findMatches(plan, q) {
       else { const p = f.indexOf(q); if (p >= 0) { rank = 2; at = p; } }
     }
     if (rank < 0) continue;
-    out.push({ rank, at, name: name.slice(0, 120), table: seat.has(id) ? seat.get(id) : null });
+    out.push({ rank, at, id, name: name.slice(0, 120), table: seat.has(id) ? seat.get(id) : null });   // the id is for the door list only; the finder's answer never carries it
   }
   out.sort((a, b) => a.rank - b.rank || a.at - b.at || a.name.length - b.name.length || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
   return out;
@@ -1504,6 +1522,88 @@ function findTokenOf(s) {
   const h = t.lastIndexOf("#"); if (h >= 0) t = t.slice(h + 1);
   t = t.trim();
   return FIND_TOKEN.test(t) ? t : "";
+}
+
+// ---- the door list («Είσοδος»): who has arrived, marked at the entrance of a COMPANY event ----
+// The staff at the door hold their own link (eisodos.html#<key>), never the plan's edit link: it can look a guest up and
+// mark them arrived, and nothing else. It works on the day of the event only, until 12:00 the next day.
+//   · rec.door = {key, on, at, by, rotatedAt} on the plan RECORD, like rec.find; door:<key> → {id, day, n} is the way in.
+//   · The arrivals live in their own row, arr:<planId> = {g: {guestId: ms}}, NEVER in the plan: three phones at the door
+//     and a laptop moving seats would otherwise overwrite each other (a plan save replaces the whole plan). Each tap is
+//     one atomic update of that one row.
+//   · Arrivals are erased with the door key at the end of the window (lifecycleSweep), and with the plan (purgePlan).
+//   · Company events only (kindOf(rec) === "company"); a plan whose kind changes away stops answering.
+const DOOR_MAX = 8, DOOR_Q_MIN = 2, DOOR_PER_TOKEN_DAY = 20000, DOOR_AFTER_HOURS = 12;
+const doorOut = findOut;   // the same four fields as the finder's
+const doorOpensAt = L => (L && L.weddingDate) ? athensMidnight(L.weddingDate) : null;
+const doorEndsAt = L => (L && L.weddingDate) ? athensMidnight(addDays(L.weddingDate, 1)) + DOOR_AFTER_HOURS * 3600000 : ((L && L.lockAt) || 0);
+function doorOpen(L) { const a = doorOpensAt(L); return !!a && Date.now() >= a && Date.now() < doorEndsAt(L); }
+const doorWindow = L => ({ weddingDate: L ? L.weddingDate : null, opensAt: doorOpensAt(L), closesAt: doorEndsAt(L) || null, open: doorOpen(L) });
+const arrOf = row => (row && row.g && typeof row.g === "object" && !Array.isArray(row.g)) ? row.g : {};
+// Who is expected (every guest but those who said no) and how many of THEM are marked. A mark for a guest since deleted
+// from the plan is not counted, and never shown.
+function doorCounts(plan, marks) {
+  const guests = (plan && plan.guests && typeof plan.guests === "object" && !Array.isArray(plan.guests)) ? plan.guests : {};
+  let total = 0, arrived = 0;
+  for (const [id, g] of Object.entries(guests)) {
+    const cut = !!(g && typeof g === "object" && g.status === "cut");
+    if (!cut) total++;
+    if (marks[id]) arrived++;
+  }
+  return { arrived, total };
+}
+// Resolve a door token: spend one of its daily calls, check the switch, the kind and the window. One answer (404) for
+// unknown, rotated, switched off and gone; 403 closed carries the window so the page can say when it opens.
+async function doorResolve(env, raw) {
+  const token = typeof raw === "string" ? raw.trim() : "";
+  if (!FIND_TOKEN.test(token)) return { status: 404, body: { error: "not_found" } };
+  const day = todayAthens();
+  const idx = await kvUpdate(env, "door:" + token, cur => {
+    if (!cur || typeof cur !== "object" || !cur.id) return { __res: { miss: true } };
+    const n = (cur.day === day ? (cur.n || 0) : 0) + 1;
+    if (n > DOOR_PER_TOKEN_DAY) return { __res: { over: true } };
+    cur.day = day; cur.n = n;
+    return { __obj: cur, __res: { id: String(cur.id) } };
+  });
+  const d = (idx && idx.res) || { miss: true };
+  if (d.miss) return { status: 404, body: { error: "not_found" } };
+  if (d.over) { const s = findResetSecs(); return { status: 429, body: { error: "busy", retryAfter: s }, headers: { "Retry-After": String(s) } }; }
+  const rec = safeParse(await env.PLANS.get("plan:" + d.id));
+  if (!rec || rec.deletedAt || rec.template || !rec.door || !rec.door.on || !eq(rec.door.key, token) || kindOf(rec) !== "company")
+    return { status: 404, body: { error: "not_found" } };
+  const L = await planLife(env, rec, d.id);
+  const w = doorWindow(L);
+  if (!w.open) return { status: 403, body: { error: "closed", event: String(rec.name || ""), date: L.weddingDate, opensAt: w.opensAt, closesAt: w.closesAt } };
+  return { id: d.id, rec, L, w };
+}
+async function doorLookup(env, b) {
+  const r = await doorResolve(env, b.token);
+  if (!r.rec) return r;
+  const marks = arrOf(safeParse(await env.PLANS.get("arr:" + r.id)));
+  const base = { ok: true, event: String(r.rec.name || ""), date: r.L.weddingDate, closesAt: r.w.closesAt, ...doorCounts(r.rec.plan, marks) };
+  const q = findFold((typeof b.q === "string" ? b.q : "").slice(0, FIND_Q_MAX));
+  if (q.length < DOOR_Q_MIN) return { status: 200, body: base };   // no query: the counter only
+  const guests = (r.rec.plan && r.rec.plan.guests) || {};
+  const hits = findMatches(r.rec.plan, q);
+  if (hits.length > DOOR_MAX) return { status: 200, body: { ...base, tooMany: true, count: hits.length } };
+  return { status: 200, body: { ...base, matches: hits.map(h => ({ id: h.id, name: h.name, table: h.table, at: marks[h.id] || null,
+    ...((guests[h.id] && guests[h.id].status === "cut") ? { cut: true } : {}) })) } };
+}
+async function doorMark(env, b) {
+  if (typeof b.on !== "boolean" || typeof b.guest !== "string" || !b.guest || b.guest.length > 64) return { status: 400, body: { error: "bad_request" } };
+  const r = await doorResolve(env, b.token);
+  if (!r.rec) return r;
+  const guests = (r.rec.plan && r.rec.plan.guests) || {};
+  if (!Object.prototype.hasOwnProperty.call(guests, b.guest)) return { status: 404, body: { error: "no_guest" } };
+  const now = Date.now();
+  const u = await kvUpdate(env, "arr:" + r.id, cur => {
+    const g = { ...arrOf(cur) };
+    if (b.on) { if (g[b.guest]) return { __res: g }; g[b.guest] = now; }   // a second tap keeps the first time
+    else { if (!g[b.guest]) return { __res: g }; delete g[b.guest]; }
+    return { __obj: { g }, __res: g };
+  });
+  const marks = (u && u.res) || {};
+  return { status: 200, body: { ok: true, guest: b.guest, at: marks[b.guest] || null, ...doorCounts(r.rec.plan, marks) } };
 }
 
 // ======================= Εργαλεία (admin console) =======================
@@ -2618,6 +2718,7 @@ export default {
             if (rec.resetAt) out.resetAt = rec.resetAt;
             if (!rec.template) out.amelie = amelieOut(rec.amelie);   // whether a link is connected and its state — never the key
             if (!rec.template) out.find = findOut(rec.find);   // the door-list QR: its token IS given to a writer, who prints it — never to a view link
+            if (!rec.template && kindOf(rec) === "company") out.door = doorOut(rec.door);   // «Είσοδος»: the staff link, company events only
           }
           const L = await planLife(env, rec, id), directCouple = a.role === "couple" && a.owner.type === "couple";
           out.life = lifeOut(L, rec, directCouple || a.role === "venue", directCouple ? COUPLE_DATE_CHANGES : DATE_CHANGES);   // never for extra plans
@@ -2877,6 +2978,49 @@ export default {
           else await kvUpdate(env, "find:" + r.obj.find.key, cur => (cur && cur.id === id) ? null : { __obj: { id, day: todayAthens(), n: 0 } });   // repair a lost index row without clearing today's count
           return json({ find: findOut(r.obj.find) });
         }
+        // ---- «Είσοδος»: switch the door staff's link on or off, or give it a new key. The same rules as the finder's
+        // switch, plus: company events only. Switching OFF keeps the arrivals already marked (it may come back on).
+        if (parts.length === 3 && parts[2] === "door" && request.method === "PUT") {
+          if (!a) return denied(request, rec);
+          if (!a.write) return json({ error: "read_only" }, 403);
+          if (rec.template) return json({ error: "bad_request" }, 400);
+          const L = await planLife(env, rec, id);
+          const b = await readBody(request);
+          if (typeof b.on !== "boolean") return json({ error: "bad_request" }, 400);
+          if (b.on && kindOf(rec) !== "company") return json({ error: "not_company" }, 409);
+          if (L.locked && b.on && !doorOpen(L)) return json({ error: "locked", life: lifeOut(L, rec, false) }, 403);
+          if (b.on && !L.weddingDate) return json({ error: "no_date" }, 409);
+          const rotate = b.rotate === true, now = Date.now();
+          let minted = null, dropped = null;
+          const r = await kvUpdate(env, key, cur => {
+            if (!cur) return null;
+            const old = (cur.door && typeof cur.door === "object") ? cur.door : null;
+            if (!b.on && !old) return { __res: "none" };
+            const f = { key: (old && old.key) || null, on: b.on, at: (old && old.at) || now, by: a.role, rotatedAt: (old && old.rotatedAt) || null };
+            if (!f.key || rotate) { dropped = (old && old.key) || null; minted = f.key = rnd(FIND_KEY_LEN); if (dropped) f.rotatedAt = now; }
+            if (b.on && !(old && old.on)) f.at = now;
+            cur.door = f;
+            const changed = !old || !old.key || !!old.on !== !!b.on || !!dropped;
+            if (changed) addAudit(cur, a.role, dropped ? "door_rotated" : b.on ? "door_on" : "door_off", 30 * 60000);
+            if (changed && dropped && !b.on) addAudit(cur, a.role, "door_off", 30 * 60000);
+            return { __obj: cur, __res: "ok" };
+          });
+          if (r.res === "none") return json({ door: doorOut(null) });
+          if (!r.obj) return json({ error: "not found" }, 404);
+          if (dropped) await env.PLANS.delete("door:" + dropped);   // every phone holding the old link stops working
+          if (minted) await env.PLANS.put("door:" + minted, JSON.stringify({ id, day: todayAthens(), n: 0 }));
+          else await kvUpdate(env, "door:" + r.obj.door.key, cur => (cur && cur.id === id) ? null : { __obj: { id, day: todayAthens(), n: 0 } });
+          await unarchive(env, id);   // the sweep must see this plan again, to erase the arrivals when the window ends
+          return json({ door: doorOut(r.obj.door), window: doorWindow(L) });
+        }
+        // Who has arrived: for whoever works on the plan (never a view link). Ids and times only; the planner has the names.
+        if (parts.length === 3 && parts[2] === "arrivals" && request.method === "GET") {
+          if (!a) return denied(request, rec);
+          if (a.role === "viewer" || rec.template) return json({ error: "read_only" }, 403);
+          const L = await planLife(env, rec, id);
+          const marks = arrOf(safeParse(await env.PLANS.get("arr:" + id)));
+          return json({ arrivals: marks, ...doorCounts(rec.plan, marks), window: doorWindow(L), door: doorOut(rec.door) });
+        }
       }
       // ---------------- the guest finder: PUBLIC, no credential — a guest at the door scans the QR and types their name ----------------
       if (parts[0] === "find" && parts.length === 1) {
@@ -2887,6 +3031,14 @@ export default {
         const b = await readBody(request);
         const a = await findLookup(env, b.token, b.q, false);   // the one lookup; the owner's tester calls it with probe = true
         return json(a.body, a.status, a.headers);               // the guest is told the answer and never the reason behind it
+      }
+      // ---------------- «Είσοδος»: the door staff's phone. The token in the body, never the URL, as with /find ----------------
+      if (parts[0] === "door" && (parts.length === 1 || (parts.length === 2 && parts[1] === "mark"))) {
+        if (request.method !== "POST") return json({ error: "method" }, 405);
+        if ([...new URL(request.url).searchParams.keys()].length) return json({ error: "bad_request" }, 400);
+        const b = await readBody(request);
+        const r = parts.length === 1 ? await doorLookup(env, b) : await doorMark(env, b);
+        return json(r.body, r.status, r.headers);
       }
       // ---------------- claim: a couple opens the link TakeaSeat sent (once; the same device may retry briefly) ----------------
       if (parts[0] === "claim" && parts.length === 1 && request.method === "POST") {
@@ -4550,6 +4702,8 @@ async function pushHistory(env, id, rec) {
 async function purgePlan(env, id, rec) {
   const r = rec !== undefined ? rec : safeParse(await env.PLANS.get("plan:" + id));
   if (r && r.find && r.find.key) await env.PLANS.delete("find:" + r.find.key);   // a purged plan's QR stops working with it
+  if (r && r.door && r.door.key) await env.PLANS.delete("door:" + r.door.key);   // … and so does its door staff's link
+  await env.PLANS.delete("arr:" + id);
   await env.PLANS.delete("plan:" + id);
   await env.PLANS.delete("hist:" + id);
   await removeIndex(env, "support:index", id);

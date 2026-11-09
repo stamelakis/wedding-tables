@@ -162,10 +162,10 @@ setTimeout(runSweep, 60000).unref?.(); setInterval(runSweep, 3600000).unref?.();
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png',
   '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.ico': 'image/x-icon', '.webp': 'image/webp', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml; charset=utf-8' };
-const API_PREFIXES = ['/plans', '/codes', '/venues', '/admin', '/claim', '/health', '/recover', '/verify', '/pdf', '/find', '/signup', '/contact'];
+const API_PREFIXES = ['/plans', '/codes', '/venues', '/admin', '/claim', '/health', '/recover', '/verify', '/pdf', '/find', '/door', '/signup', '/contact'];
 // The guest finder's page: never indexed. robots.txt disallows it too; this header is what a crawler that ignores robots.txt
 // still gets. Renaming the page means changing this one line and the Disallow in robots.txt.
-const NOINDEX = new Set(['/trapezi.html']);
+const NOINDEX = new Set(['/trapezi.html', '/eisodos.html']);   // eisodos.html: the door staff's page (company events)
 const MAX_BODY = 3 * 1024 * 1024;   // the largest plan is 512 KB of JSON; anything far bigger is refused before it is read
 const PDF_LANG = { el: 1, en: 1, de: 1 };
 const PDF_WORDS = { el: ['κάτοψη', 'αναμνηστικό'], en: ['floor plan', 'keepsake'], de: ['Grundriss', 'Erinnerung'] };
@@ -290,11 +290,16 @@ http.createServer(async (req, res) => {
     if (!rateOk(ip + ':findfail', 10, 3600000)) { res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '3600' }); res.end('{"error":"busy"}'); return; }
     const a = RL.get(ip + ':findfail'); findSlot = { key: ip + ':findfail', t: a[a.length - 1] };
   }
+  // ---- «Είσοδος» (POST /door, /door/mark): the door staff's phones, a handful behind the venue's one wifi, typing as they
+  // search. Their own budget, so they never spend the company laptop's write budget on the same wifi, nor it theirs.
+  // The token's own daily cap lives in the worker; a door key is 26 random characters, so guessing one is not a risk.
+  const isDoor = req.method === 'POST' && (canon === '/door' || canon === '/door/mark');
+  if (isDoor && !rateOk(clientIp(req) + ':door', 900, 600000)) { res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '60' }); res.end('{"error":"busy","retryAfter":60}'); return; }
   // ---- abuse guards on writes (unauth POST /plans is the disk-fill vector) ----
   // A finder lookup is a POST but not a write — it stores nothing but its own counter — and it has the two stricter
   // limiters above. Left in the shared write budget (120 a minute per IP) the guests arriving at a venue would spend
   // the same budget as the venue's own laptop saving the plan on that wifi, and each would lock the other out.
-  if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS' && !isFind) {
+  if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS' && !isFind && !isDoor) {
     const ip = clientIp(req);
     const isCreate = req.method === 'POST' && (canon === '/plans' || canon === '/signup/free');   // a free sign-up makes a plan too
     if (!rateOk(ip + (isCreate ? ':create' : ':write'), isCreate ? 20 : 120, 60000)) {

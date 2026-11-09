@@ -1436,6 +1436,12 @@
     <div id="findBody" class="mbody"></div>
   </div>
 </div>
+<div id="doorModal" class="modal-back">
+  <div class="modal narrow">
+    <div class="modal-head"><strong data-t="mDoor"></strong><button class="mx" id="doorClose">✕</button></div>
+    <div id="doorBody" class="mbody"></div>
+  </div>
+</div>
 <div id="cloudModal" class="modal-back">
   <div class="modal">
     <div class="modal-head"><strong data-t="cloudTitle"></strong><button class="mx" id="cloudClose">✕</button></div>
@@ -1681,6 +1687,17 @@ el:{
   findPrintHint:"Τυπώστε το: ⋯ → Εκτύπωση. Το μικρό QR μπαίνει πάνω στη λίστα της πόρτας· η «Αφίσα εισόδου» είναι μία σελίδα A4 με μεγάλο QR.",
   findAfter:"Ο γάμος πέρασε: νέο QR δεν ανοίγει πια, αλλά αυτό που τρέχει μπορείτε να το κλείσετε εδώ.",
   findLockedMsg:"Ο γάμος πέρασε — νέο QR δεν ανοίγει πια. Το κλείσιμο δουλεύει πάντα.",
+  mDoor:"Είσοδος (αφίξεις)", doorWhat:"Ένας σύνδεσμος για όσους υποδέχονται τους καλεσμένους στην είσοδο: γράφουν ένα όνομα, βλέπουν το τραπέζι και πατούν «Ήρθε». Με αυτόν τον σύνδεσμο δεν αλλάζει τίποτε άλλο στο σχέδιο.",
+  doorNoDate:"Ορίστε πρώτα την ημερομηνία της εκδήλωσης: ο σύνδεσμος λειτουργεί μόνο εκείνη τη μέρα.", doorLink:"Ο σύνδεσμος για την είσοδο",
+  doorRotHint:"Ο «Νέος κωδικός» σταματά αμέσως τον παλιό σύνδεσμο σε όλα τα κινητά. Οι αφίξεις που σημειώθηκαν μένουν.", doorRotConfirm:"Νέος σύνδεσμος εισόδου; Ο τωρινός σταματά αμέσως σε όλα τα κινητά και πρέπει να στείλετε τον νέο.",
+  doorWindow:"Λειτουργεί μόνο την ημέρα της εκδήλωσης ({d}), από τις 00:00 ως τις 12:00 της επόμενης μέρας.",
+  doorErase:"Οι αφίξεις σβήνονται μόνες τους στις 12:00 της επόμενης μέρας. Αν θέλετε να κρατήσετε τη λίστα, τυπώστε την πριν.",
+  doorSees:"Στο κινητό της εισόδου φαίνονται μόνο το όνομα, το τραπέζι και αν ήρθε κάποιος: όχι σημειώσεις, ομάδες ή άλλα στοιχεία.",
+  doorCount:"Ήρθαν {a} από {t}", doorMissing:"Δεν ήρθαν ακόμη ({n})", doorIn:"Ήρθαν ({n})", doorNone:"Κανείς ακόμη.", doorAllIn:"Ήρθαν όλοι.",
+  doorRefresh:"Ανανέωση", doorPrint:"Εκτύπωση: όσοι δεν ήρθαν", doorPrintTitle:"Δεν ήρθαν ακόμη", doorNoTable:"χωρίς τραπέζι", doorTable:"Τραπέζι", doorName:"Όνομα",
+  doorAfter:"Η είσοδος έκλεισε και οι αφίξεις σβήστηκαν.", doorFail:"Δεν φορτώθηκαν οι αφίξεις. Δοκιμάστε «Ανανέωση».",
+  tDoorOn:"Ο σύνδεσμος εισόδου είναι ενεργός. Στείλτε τον σε όσους θα είναι στην είσοδο.", tDoorOff:"Ο σύνδεσμος εισόδου σταμάτησε. Οι αφίξεις που σημειώθηκαν μένουν.", tDoorRotated:"Νέος σύνδεσμος εισόδου. Ο παλιός δεν ανοίγει πια: στείλτε τον νέο.",
+  atDoorOn:"άνοιξε τον σύνδεσμο εισόδου", atDoorOff:"σταμάτησε τον σύνδεσμο εισόδου", atDoorRot:"έδωσε νέο σύνδεσμο εισόδου",
   tFindOn:"Ενεργό — τυπώστε τη λίστα ή την αφίσα με το QR", tFindOff:"Κλειστό — το QR δεν απαντά πια", tFindRotated:"Νέος κωδικός — τυπώστε ξανά λίστα και αφίσα",
   qrLine:"Βρες το τραπέζι σου", pmPoster:"Αφίσα εισόδου (A4) — μεγάλο QR «Βρες το τραπέζι σου»", posterEl:"Βρες το τραπέζι σου", posterEn:"Find your table",
   pmQrWhere:"Το QR «Βρες το τραπέζι σου» μπαίνει πάνω στις τέσσερις λίστες και στην αφίσα εισόδου. Τα δύο PDF δεν το έχουν.",
@@ -2008,6 +2025,17 @@ en:{
   findPrintHint:"Print it: ⋯ → Print. The small QR rides on the door list; “Entrance poster” is one A4 page with a big one.",
   findAfter:"The wedding is over: no new QR opens now, but the one that is running can be switched off here.",
   findLockedMsg:"The wedding is over — no new QR opens. Switching it off always works.",
+  mDoor:"Entrance (arrivals)", doorWhat:"A link for the people welcoming guests at the entrance: they type a name, see the table and tap “Arrived”. Nothing else in the plan can be changed with it.",
+  doorNoDate:"Set the date of the event first: the link works on that day only.", doorLink:"The entrance link",
+  doorRotHint:"“New code” stops the old link at once on every phone. Arrivals already marked stay.", doorRotConfirm:"A new entrance link? The current one stops at once on every phone and you will need to send the new one.",
+  doorWindow:"It works on the day of the event only ({d}), from 00:00 until 12:00 the next day.",
+  doorErase:"The arrivals are erased by themselves at 12:00 the next day. If you want to keep the list, print it before then.",
+  doorSees:"The entrance phone shows only the name, the table and whether someone has arrived: no notes, groups or other details.",
+  doorCount:"{a} of {t} arrived", doorMissing:"Not here yet ({n})", doorIn:"Arrived ({n})", doorNone:"Nobody yet.", doorAllIn:"Everyone has arrived.",
+  doorRefresh:"Refresh", doorPrint:"Print: not here yet", doorPrintTitle:"Not here yet", doorNoTable:"no table", doorTable:"Table", doorName:"Name",
+  doorAfter:"The entrance is closed and the arrivals have been erased.", doorFail:"The arrivals did not load. Try “Refresh”.",
+  tDoorOn:"The entrance link is on. Send it to the people at the entrance.", tDoorOff:"The entrance link has stopped. Arrivals already marked stay.", tDoorRotated:"New entrance link. The old one no longer opens: send the new one.",
+  atDoorOn:"switched the entrance link on", atDoorOff:"switched the entrance link off", atDoorRot:"made a new entrance link",
   tFindOn:"On — print the list or the poster with the QR", tFindOff:"Off — the QR no longer answers", tFindRotated:"New code — print the list and the poster again",
   qrLine:"Find your table", pmPoster:"Entrance poster (A4) — a big “Find your table” QR", posterEl:"Βρες το τραπέζι σου", posterEn:"Find your table",
   pmQrWhere:"The “Find your table” QR rides on the four lists and on the entrance poster. The two PDFs do not carry it.",
@@ -2328,6 +2356,17 @@ de:{
   findPrintHint:"Drucken: ⋯ → Drucken. Der kleine QR-Code reitet auf der Türliste; „Eingangsplakat“ ist eine A4-Seite mit einem großen.",
   findAfter:"Die Hochzeit ist vorbei: ein neuer QR-Code öffnet nicht mehr, der laufende kann hier aber abgeschaltet werden.",
   findLockedMsg:"Die Hochzeit ist vorbei — ein neuer QR-Code öffnet nicht mehr. Abschalten geht immer.",
+  mDoor:"Eingang (Ankünfte)", doorWhat:"Ein Link für die Personen, die die Gäste am Eingang empfangen: Sie geben einen Namen ein, sehen den Tisch und tippen auf „Ist da“. Sonst lässt sich mit diesem Link nichts am Plan ändern.",
+  doorNoDate:"Legen Sie zuerst das Datum der Veranstaltung fest: Der Link funktioniert nur an diesem Tag.", doorLink:"Der Link für den Eingang",
+  doorRotHint:"„Neuer Code“ stoppt den alten Link sofort auf allen Handys. Bereits markierte Ankünfte bleiben.", doorRotConfirm:"Ein neuer Eingangslink? Der jetzige stoppt sofort auf allen Handys, und Sie müssen den neuen verschicken.",
+  doorWindow:"Er funktioniert nur am Tag der Veranstaltung ({d}), von 00:00 bis 12:00 Uhr am nächsten Tag.",
+  doorErase:"Die Ankünfte werden um 12:00 Uhr am nächsten Tag von selbst gelöscht. Wenn Sie die Liste behalten möchten, drucken Sie sie vorher.",
+  doorSees:"Das Handy am Eingang zeigt nur den Namen, den Tisch und ob jemand angekommen ist: keine Notizen, Gruppen oder anderen Angaben.",
+  doorCount:"{a} von {t} angekommen", doorMissing:"Noch nicht da ({n})", doorIn:"Angekommen ({n})", doorNone:"Noch niemand.", doorAllIn:"Alle sind da.",
+  doorRefresh:"Aktualisieren", doorPrint:"Drucken: noch nicht da", doorPrintTitle:"Noch nicht da", doorNoTable:"kein Tisch", doorTable:"Tisch", doorName:"Name",
+  doorAfter:"Der Eingang ist geschlossen, die Ankünfte wurden gelöscht.", doorFail:"Die Ankünfte wurden nicht geladen. Versuchen Sie „Aktualisieren“.",
+  tDoorOn:"Der Eingangslink ist aktiv. Schicken Sie ihn an die Personen am Eingang.", tDoorOff:"Der Eingangslink ist gestoppt. Bereits markierte Ankünfte bleiben.", tDoorRotated:"Neuer Eingangslink. Der alte öffnet sich nicht mehr: Schicken Sie den neuen.",
+  atDoorOn:"hat den Eingangslink eingeschaltet", atDoorOff:"hat den Eingangslink ausgeschaltet", atDoorRot:"hat einen neuen Eingangslink erstellt",
   tFindOn:"Aktiv — drucken Sie die Liste oder das Plakat mit dem QR-Code", tFindOff:"Aus — der QR-Code antwortet nicht mehr", tFindRotated:"Neuer Code — Liste und Plakat neu drucken",
   qrLine:"Finde deinen Tisch", pmPoster:"Eingangsplakat (A4) — großer „Finde deinen Tisch“-QR-Code", posterEl:"Βρες το τραπέζι σου", posterEn:"Find your table",
   pmQrWhere:"Der QR-Code „Finde deinen Tisch“ ist auf den vier Listen und auf dem Eingangsplakat. Die beiden PDFs haben ihn nicht.",
@@ -6465,7 +6504,8 @@ $("moreBtn").addEventListener("click",e=>{
   primary.push(["vendors",tr("mVendors")+"…"]);   // read only too: to look up a phone number and print the sheet
   primary.push(["timeline",tr("mTimeline")+"…"]);   // the same: the DJ or the photographer with a view link reads and prints it
   primary.push(["print",tr("mPrint")]);
-  if(findMenuOk()) primary.push(["find",tr("mFind")]);   // the door-list QR: writers only, never a viewer, never a local-only plan
+  if(findMenuOk()) primary.push(["find",tr("mFind")]);
+  if(doorMenuOk()) primary.push(["door",tr("mDoor")+"…"]);   // «Είσοδος»: company events, whoever works on the plan   // the door-list QR: writers only, never a viewer, never a local-only plan
   primary.push(["tour",tr("mTour")],["help",tr("mHelp")]);
   { const cp=currentProfile(); if(!IS_LAB && cp && cp.cloudId) primary.push(["access",tr("mAccess")]); }
   const more=[];
@@ -6475,7 +6515,7 @@ $("moreBtn").addEventListener("click",e=>{
   if(skipDeleteConfirm() && !ro) more.push(["askdel",tr("mAskDel")]);
   if(!ro) more.push(["reset",tr("mReset")]);
   if(!IS_LAB) more.push(["cap",tr("mLang")],["lang-el","ΕΛ · Ελληνικά"],["lang-en","EN · English"],["lang-de","DE · Deutsch"]);
-  const MI={keepsake:EVMARK(),share:"cloud",groups:"people",inv:"mail",vendors:"phone",timeline:"clock",print:"print",find:"search",tour:"help",help:"chat",askdel:"help",access:"people",newplan:"plus",planmore:"edit",round:"table",rect:"longtable",head:EVMARK(),decor:"decor",auto:"spark",xlsxseat:"up",xlsxall:"up",csvout:"up",csvin:"dl",export:"up",import:"dl",amelie:"mail",history:"clock"};
+  const MI={keepsake:EVMARK(),share:"cloud",groups:"people",inv:"mail",vendors:"phone",timeline:"clock",print:"print",find:"search",door:"people",tour:"help",help:"chat",askdel:"help",access:"people",newplan:"plus",planmore:"edit",round:"table",rect:"longtable",head:EVMARK(),decor:"decor",auto:"spark",xlsxseat:"up",xlsxall:"up",csvout:"up",csvin:"dl",export:"up",import:"dl",amelie:"mail",history:"clock"};
   const row=([a,l])=>a==="cap"?`<div class="gm-cap">${escapeHtml(l)}</div>`:`<div class="gm-item${a==="reset"?" danger":""}${a==="lang-"+LANG?" on":""}" data-act="${a}">${MI[a]?ICON(MI[a]):'<span class="ic"></span>'}${escapeHtml(l)}</div>`;
   m.innerHTML=primary.map(row).join("")+`<div class="gm-sep"></div><div class="gm-item more" data-act="more"><span class="ic"></span>${escapeHtml(tr("mMore"))} ›</div><div class="gm-more">${more.map(row).join("")}</div>`;
   m.querySelectorAll(".gm-item").forEach(it=>it.onclick=ev=>{ ev.stopPropagation(); const a=it.dataset.act;
@@ -6485,7 +6525,7 @@ $("moreBtn").addEventListener("click",e=>{
     else if(a==="newplan") newProfile(); else if(a==="planmore") openProfileMenu(anchorOf($("moreBtn")));
     else if(a==="access") openAccess(); else if(a==="help") openHelp(); else if(a==="keepsake") downloadPdf("keepsake", null);
     else if(a==="round") addRoundTable(); else if(a==="rect") addRectTable(); else if(a==="history") openHistory(); else if(a==="groups") openGroupsModal(); else if(a==="inv") enterInv(null); else if(a==="tour") startTour();
-    else if(a==="auto") autoSeat(); else if(a==="export"){ if((currentProfile()||{}).support){ toast(tr("tNoCopySupport"),4000); return; } openExport(); } else if(a==="import") openImport(); else if(a==="amelie") openAmelie(); else if(a==="vendors") openVendors(); else if(a==="timeline") openTimeline(); else if(a==="print") openPrint(); else if(a==="find") openFind(); else if(a==="reset") resetPlan();
+    else if(a==="auto") autoSeat(); else if(a==="export"){ if((currentProfile()||{}).support){ toast(tr("tNoCopySupport"),4000); return; } openExport(); } else if(a==="import") openImport(); else if(a==="amelie") openAmelie(); else if(a==="vendors") openVendors(); else if(a==="timeline") openTimeline(); else if(a==="print") openPrint(); else if(a==="find") openFind(); else if(a==="door") openDoor(); else if(a==="reset") resetPlan();
     else if(a==="askdel"){ try{ localStorage.removeItem(DEL_SKIP_KEY); localStorage.removeItem(MERGE_SKIP_KEY); }catch(e){} toast(tr("tAskDel"),2500); }
     else if(a.startsWith("lang-")){ const l=a.slice(5); location.href=({el:"seating-planner-el.html",en:"seating-planner.html",de:"seating-planner-de.html"})[l]; } });
   showPopover(m, anchorOf(e.currentTarget));
@@ -6656,6 +6696,8 @@ function adoptAccess(prof, d){
   // follows, and an open panel or print dialog is drawn again with what arrived.
   { const was=JSON.stringify(prof.find||null);
     if("find" in d) prof.find=(d.find&&typeof d.find==="object")?{...d.find}:null; else if(d.role==="viewer") prof.find=null;
+    prof.door=("door" in d && d.door && typeof d.door==="object")?{...d.door}:null;   // «Είσοδος»: company events only, never a viewer
+    if(prof.id===profiles.activeId && $("doorModal").classList.contains("open")) setTimeout(renderDoorBody,0);
     if(was!==JSON.stringify(prof.find||null)) setTimeout(()=>{ saveProfilesIdx();
       if($("findModal").classList.contains("open")) renderFindBody();
       if($("printModal").classList.contains("open")) printPosterSync(); },0); }
@@ -7187,7 +7229,7 @@ function permListHtml(p, keys){
 }
 function auditHtml(list){
   if(!list||!list.length) return `<div class="mhint" style="padding:4px 0 0">${escapeHtml(tr("accLogEmpty"))}</div>`;
-  const WHO={couple:"awCouple",venue:"awVenue",support:"awSupport",admin:"awAdmin",system:"awSystem"}, WHAT={date:"atDate",locked:"atLocked",invite:"atInvite",revoke:"atRevoke",open:"atOpen",save:"atSave",restore:"atRestore",reset:"atReset",claim:"atClaim",claim_reset:"atClaimReset",rotate:"atRotate",recover:"atRecover",email:"atEmail",unfreeze:"atUnfreeze",amelie:"atAmelie",amelie_off:"atAmelieOff"};
+  const WHO={couple:"awCouple",venue:"awVenue",support:"awSupport",admin:"awAdmin",system:"awSystem"}, WHAT={date:"atDate",locked:"atLocked",invite:"atInvite",revoke:"atRevoke",open:"atOpen",save:"atSave",restore:"atRestore",reset:"atReset",claim:"atClaim",claim_reset:"atClaimReset",rotate:"atRotate",recover:"atRecover",email:"atEmail",unfreeze:"atUnfreeze",amelie:"atAmelie",door_on:"atDoorOn",door_off:"atDoorOff",door_rotated:"atDoorRot",amelie_off:"atAmelieOff"};
   return `<ul class="acc-log">${list.slice().reverse().map(e=>`<li><span class="t">${escapeHtml(fmtTime(e.t))}</span><span><b>${escapeHtml(WHO[e.who]?tr(WHO[e.who]):String(e.who))}</b> · ${escapeHtml(WHAT[e.what]?tr(WHAT[e.what],{h:e.h||"",d:e.d?fmtDate(e.d):""}):String(e.what))}</span></li>`).join("")}</ul>`;
 }
 async function refreshAccess(){ const cur=currentProfile(); if(!cur||!cur.cloudId) return;
@@ -7681,6 +7723,119 @@ async function findPut(on, rotate){
   if(st===403&&err==="locked"){ if(d.life){ cur.life={...(cur.life||{}),...d.life}; saveProfilesIdx(); applyAccess(); } renderFindBody(); toast(tr("findLockedMsg"),8000); return; }
   if(st===401||st===403){ await refreshAccess(); applyAccess(); renderFindBody(); toast(st===403&&err==="read_only"?tr("rbViewerTip"):tr("accFail"),6000); return; }
   renderFindBody(); toast(!r?tr("claimFail"):tr("accFail"),6000);
+}
+
+// ============================================================
+//  «ΕΙΣΟΔΟΣ» — who has arrived, marked at the entrance (company events)
+// ============================================================
+// The server owns it (PUT /plans/:id/door, GET /plans/:id/arrivals, POST /door, POST /door/mark). The staff at the door
+// hold their own link (eisodos.html#key), never the plan's edit link. The arrivals live beside the plan, never in it, so
+// this panel only reads them: a plan save cannot overwrite a tap at the door, nor a tap a seat being moved here.
+function doorUrl(key){ return location.origin+"/eisodos.html#"+key; }
+function doorState(){ const p=currentProfile(), f=p&&p.door; return (f&&typeof f==="object")?f:null; }
+function doorIsOn(){ const f=doorState(); return !!(f&&f.on&&f.key); }
+function doorMenuOk(){ const cur=currentProfile(); return !IS_LAB && EVK==="company" && !!cur && !!cur.cloudId && cur.id===profiles.activeId && !ACCESS.template && ACCESS.role!=="viewer" && !!doorState(); }
+let doorArr=null, doorErr=false, doorPoll=null;
+function openDoor(){
+  if(IS_LAB){ toast(tr("labHint")); return; }
+  doorArr=null; doorErr=false; renderDoorBody(); $("doorModal").classList.add("open");
+  refreshAccess().then(()=>{ if($("doorModal").classList.contains("open")) renderDoorBody(); });
+  doorLoad(); clearInterval(doorPoll); doorPoll=setInterval(()=>{ if(!document.hidden) doorLoad(); },20000);
+}
+function doorClose(){ $("doorModal").classList.remove("open"); clearInterval(doorPoll); doorPoll=null; }
+$("doorClose").addEventListener("click",doorClose);
+$("doorModal").addEventListener("click",e=>{ if(e.target.id==="doorModal") doorClose(); });
+$("doorModal")._close=doorClose;
+async function doorLoad(){
+  const cur=currentProfile(); if(!cur||!cur.cloudId) return;
+  let r=null, d=null;
+  try{ r=await fetch(planPath(cur.cloudId)+"/arrivals",{headers:authHeaders(cur),cache:"no-store"}); d=await r.json().catch(()=>null); }catch(e){}
+  if(r&&r.ok&&d&&d.arrivals){ doorArr=d; doorErr=false; if(d.door) cur.door={...d.door}; }
+  else doorErr=true;
+  if($("doorModal").classList.contains("open")) renderDoorBody();
+}
+// The lists, from the plan on this screen and the marks from the server: a guest deleted here is never listed, and
+// one who said no (status «cut») is not expected, unless they came anyway.
+function doorLists(){
+  const marks=(doorArr&&doorArr.arrivals)||{}, seat={};
+  state.tables.forEach(t=>t.seats.forEach(id=>{ if(id) seat[id]=t; }));
+  const coll=(a,b)=>a.n.localeCompare(b.n,LANG,{sensitivity:"base",numeric:true});
+  const inn=[], out=[];
+  for(const id of Object.keys(state.guests)){
+    const g=state.guests[id], row={ id, n:guestName(id), t:seat[id]?String(seat[id].label||""):"" };
+    if(marks[id]) inn.push({...row, at:marks[id]});
+    else if(!(g&&g.status==="cut")) out.push(row);
+  }
+  inn.sort((a,b)=>b.at-a.at); out.sort(coll);
+  return { inn, out };
+}
+function renderDoorBody(){
+  const body=$("doorBody"); if(!body) return;
+  const cur=currentProfile()||{}, f=doorState(), on=doorIsOn(), L=cur.life||{}, wd=L.weddingDate;
+  const hint=(t,pad)=>`<div class="mhint" style="padding:${pad}">${escapeHtml(t)}</div>`;
+  const closed=!!(doorArr&&doorArr.window&&doorArr.window.closesAt&&Date.now()>=doorArr.window.closesAt);
+  let h=hint(tr("doorWhat"),"0 0 10px");
+  if(!wd) h+=hint(tr("doorNoDate"),"0 0 10px");
+  else if(closed) h+=`<div class="acc-phase">${escapeHtml(tr("doorAfter"))}</div>`;
+  const canOn=!!wd && !closed && findAllowed(cur);
+  if(f && (wd||on)) h+=`<label class="delskip"><input type="checkbox" id="doorSw"${on?" checked":""}${(!on&&!canOn)?" disabled":""}><span>${escapeHtml(tr("findSwitch"))}</span></label>`;
+  if(on){
+    const linkStyle='style="width:100%;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--paper);color:inherit"';
+    h+=`<div class="mhint" style="padding:12px 0 4px;font-weight:600">${escapeHtml(tr("doorLink"))}</div>`
+      +`<input id="doorLinkIn" readonly value="${escapeHtml(doorUrl(f.key))}" ${linkStyle}>`
+      +`<div class="mrow"><button class="ibtn primary" id="doorCopyBtn">${escapeHtml(tr("findCopy"))}</button><button class="ibtn" id="doorRotBtn">${escapeHtml(tr("findRotate"))}</button></div>`
+      +hint(tr("doorRotHint"),"8px 0 0");
+  }
+  if(wd) h+=hint(tr("doorWindow",{d:fmtDate(wd)}),"12px 0 0");
+  h+=hint(tr("doorSees"),"8px 0 0")+hint(tr("doorErase"),"8px 0 0");
+  // the arrivals: whenever the server has any, or the link is on
+  if(doorErr) h+=`<div class="acc-phase" style="margin-top:12px">${escapeHtml(tr("doorFail"))}</div>`;
+  if(doorArr && (on || doorArr.arrived>0)){
+    const {inn,out}=doorLists();
+    const li=(r,right)=>`<li style="display:flex;gap:8px;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--line)"><span>${escapeHtml(r.n)}</span><span style="color:var(--soft);white-space:nowrap">${escapeHtml(right)}</span></li>`;
+    const box=(title,rows,empty,right)=>`<div class="mhint" style="padding:10px 0 4px;font-weight:600">${escapeHtml(title)}</div>`
+      +(rows.length?`<ul style="list-style:none;margin:0;padding:0;max-height:220px;overflow:auto;font-size:14px">${rows.map(r=>li(r,right(r))).join("")}</ul>`:hint(empty,"0"));
+    const time=ms=>{ try{ return new Date(ms).toLocaleTimeString(LANG,{hour:"2-digit",minute:"2-digit"}); }catch(e){ return ""; } };
+    h+=`<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)"><div style="font-size:18px;font-weight:700">${escapeHtml(tr("doorCount",{a:inn.length,t:inn.length+out.length}))}</div>`
+      +`<div class="mrow"><button class="ibtn" id="doorRefBtn">${escapeHtml(tr("doorRefresh"))}</button>${out.length?`<button class="ibtn" id="doorPrintBtn">${escapeHtml(tr("doorPrint"))}</button>`:""}</div>`
+      +box(tr("doorMissing",{n:out.length}),out,tr("doorAllIn"),r=>r.t||tr("doorNoTable"))
+      +box(tr("doorIn",{n:inn.length}),inn,tr("doorNone"),r=>time(r.at))+`</div>`;
+  }
+  body.innerHTML=h;
+  const sw=$("doorSw"); if(sw) sw.onchange=()=>doorPut(sw.checked,false);
+  const cp=$("doorCopyBtn"); if(cp) cp.onclick=()=>copyText($("doorLinkIn"));
+  const rt=$("doorRotBtn"); if(rt) rt.onclick=()=>{ if(confirm(tr("doorRotConfirm"))) doorPut(true,true); };
+  const rf=$("doorRefBtn"); if(rf) rf.onclick=()=>doorLoad();
+  const pr=$("doorPrintBtn"); if(pr) pr.onclick=()=>printDoorMissing();
+}
+async function doorPut(on, rotate){
+  const cur=currentProfile(); if(!cur||!cur.cloudId) return;
+  const sw=$("doorSw"), rt=$("doorRotBtn"); if(sw) sw.disabled=true; if(rt) rt.disabled=true;
+  let r=null, d={};
+  try{ r=await fetch(planPath(cur.cloudId)+"/door",{method:"PUT",headers:authHeaders(cur),
+    body:JSON.stringify(rotate?{on:true,rotate:true}:{on:!!on})}); d=await r.json().catch(()=>({})); }catch(e){}
+  if(r && r.ok && d && d.door){
+    cur.door={...d.door}; saveProfilesIdx(); renderDoorBody(); doorLoad();
+    toast(rotate?tr("tDoorRotated"):on?tr("tDoorOn"):tr("tDoorOff"), rotate?9000:6000); return;
+  }
+  const err=(d&&d.error)||"", st=r?r.status:0;
+  if(st===409&&err==="no_date"){ await refreshAccess(); renderDoorBody(); toast(tr("doorNoDate"),9000); return; }
+  if(st===403&&err==="locked"){ renderDoorBody(); toast(tr("doorAfter"),8000); return; }
+  if(st===401||st===403){ await refreshAccess(); applyAccess(); renderDoorBody(); toast(st===403&&err==="read_only"?tr("rbViewerTip"):tr("accFail"),6000); return; }
+  renderDoorBody(); toast(!r?tr("claimFail"):tr("accFail"),6000);
+}
+// One ruled sheet: who is not here yet, by name, with their table. For the person in charge to go and look, or to keep.
+function printDoorMissing(){
+  const {out}=doorLists(); if(!out.length) return;
+  const area=$("printarea"); area.classList.remove("haspqr","pposter","pmeasure","pcards");
+  const cur=currentProfile()||{}, wd=cur.life&&cur.life.weddingDate;
+  const meta=[tr("doorPrintTitle"), wd?tr("printWed",{d:fmtDate(wd)}):"", tr("printAt",{t:new Date().toLocaleString(LANG,{dateStyle:"short",timeStyle:"short"})})].filter(Boolean).join(" · ");
+  const td=(c,s)=>`<td class="${c}">${escapeHtml(String(s||"").trim())}</td>`;
+  area.innerHTML=`<h2>${escapeHtml(cur.name||tr("doorPrintTitle"))}</h2><div class="pmeta">${escapeHtml(meta)}</div>`
+    +`<div class="psub"><span class="psubt">${escapeHtml(tr("doorMissing",{n:out.length}))}</span>${printBrandOn()?`<span class="pbrandline">${escapeHtml(tr("printBrand"))}</span>`:""}</div>`
+    +`<table class="pvend"><thead><tr><th class="vn">${escapeHtml(tr("doorName"))}</th><th class="vr">${escapeHtml(tr("doorTable"))}</th></tr></thead><tbody>`
+    +out.map(r=>`<tr>${td("vn",r.n)}${td("vr",r.t||tr("doorNoTable"))}</tr>`).join("")+`</tbody></table>`;
+  window.print();
 }
 
 // ============================================================

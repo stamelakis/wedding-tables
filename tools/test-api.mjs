@@ -5515,4 +5515,124 @@ function leadStageOf(l) { return l.lost ? 8 : l.stage || 1; }
   }
 }
 
+// ---------- «Είσοδος»: the door staff's link and the arrivals of a COMPANY event ----------
+// Its own link (never the edit link), company events only, the event day until 12:00 the next day. The arrivals live
+// in arr:<planId>, never in the plan: a plan save must not lose a tap at the door, nor two phones each other's taps.
+// Everything goes at the end of the window, and with the plan.
+{
+  const day = athensDay, fs = await import('node:fs'), rd = f => fs.readFileSync(path.join(root, f), 'utf8');
+  const door = (token, q) => call('POST', '/door', q === undefined ? { token } : { token, q });
+  const markG = (token, guest, on) => call('POST', '/door/mark', { token, guest, on });
+  const setDoor = (id, body, h) => call('PUT', '/plans/' + id + '/door', body, h);
+  const guests = { gd_maria: { name: 'Μαρία Παππά', note: 'Αλλεργία', group: 'grp1' }, gd_nikos: { name: 'Νίκος Παππάς' },
+    gd_eleni: { name: 'Ελένη Δήμου' }, gd_no: { name: 'Γιώργος Αρνητής', status: 'cut' } };
+  for (let i = 0; i < 12; i++) guests['gd_k' + i] = { name: 'Κωστόπουλος ' + i };
+  const plan = layout({ guests }); plan.tables[0].seats[0] = 'gd_maria'; plan.tables[1].seats[0] = 'gd_nikos';
+  const P = (await call('POST', '/plans', { name: 'Ετήσιο δείπνο ΑΒΓ', plan }, OWN)).d;
+  const HW = { 'X-Edit-Key': P.editKey }, HR = { 'X-View-Key': P.readKey };
+  const setPlan = (d, kind = 'company') => patchRaw('plan:' + P.id, o => { o.weddingDate = d; o.kind = kind; o.retention = { lockAfter: false, keep: true }; o.lockedAt = null; });
+
+  // a wedding is never offered one
+  setPlan(day(0), 'wedding');
+  ok(!('door' in (await call('GET', '/plans/' + P.id, undefined, HW)).d), 'door: a wedding plan is not even told the door list exists');
+  r = await setDoor(P.id, { on: true }, HW);
+  ok(r.status === 409 && r.d.error === 'not_company' && !raw('plan:' + P.id).door, 'door: switching it on for a wedding → 409 not_company, nothing stored', r.d);
+
+  setPlan(day(3));
+  r = await call('GET', '/plans/' + P.id, undefined, HW);
+  ok(r.d.door && r.d.door.on === false && r.d.door.key === null, 'door: a company event shows a writer the switch, off, with no key', r.d.door);
+  ok(!('door' in (await call('GET', '/plans/' + P.id, undefined, HR)).d), 'door: a view link is not told it exists');
+  ok((await setDoor(P.id, { on: true })).status === 401, 'door: no credential → 401');
+  r = await setDoor(P.id, { on: true }, HR);
+  ok(r.status === 403 && r.d.error === 'read_only', 'door: a view link cannot switch it on', r.d);
+  ok((await setDoor(P.id, { on: 'yes' }, HW)).status === 400, 'door: {on} must be a boolean');
+  patchRaw('plan:' + P.id, o => { o.weddingDate = null; });
+  ok((await setDoor(P.id, { on: true }, HW)).d.error === 'no_date', 'door: no date, no door list');
+  setPlan(day(3));
+
+  r = await setDoor(P.id, { on: true }, HW);
+  const K1 = r.d.door.key;
+  ok(r.status === 200 && r.d.door.on && /^[A-Za-z0-9]{26}$/.test(K1) && raw('door:' + K1).id === P.id, 'door: switched on, a key of its own, an index row to the plan', r.d);
+  ok(K1 !== P.editKey && !JSON.stringify(raw('plan:' + P.id).plan).includes(K1), 'door: the key is not the edit key and never in the plan JSON a view link reads');
+  ok(raw('plan:' + P.id).audit.at(-1).what === 'door_on', 'door: the access log says it was switched on');
+  ok(rd('planner.src.html').includes('door_on:"atDoorOn"'), 'door: … and the planner words that log line');
+
+  // the window: the event day only
+  r = await door(K1, 'μαρια');
+  ok(r.status === 403 && r.d.error === 'closed' && r.d.opensAt > Date.now() && !JSON.stringify(r.d).includes('Μαρία'), 'door: three days before → closed, with when it opens and no names', r.d);
+  setPlan(day(0));
+  r = await door(K1);
+  ok(r.status === 200 && r.d.ok && r.d.event === 'Ετήσιο δείπνο ΑΒΓ' && r.d.arrived === 0 && r.d.total === 15 && !('matches' in r.d), 'door: on the day, no query → the counter only (15 expected: the one who said no is not)', r.d);
+  r = await door(K1, 'μαρια');
+  ok(r.d.matches.length === 1 && r.d.matches[0].id === 'gd_maria' && r.d.matches[0].table === '1' && r.d.matches[0].at === null, 'door: a search gives the id, the name and the table', r.d.matches);
+  ok(!JSON.stringify(r.d).includes('Αλλεργία') && !JSON.stringify(r.d).includes('grp1') && JSON.stringify(Object.keys(r.d.matches[0])) === '["id","name","table","at"]', 'door: never a note or a group', r.d.matches[0]);
+  ok((await door(K1, 'αρνητ')).d.matches[0].cut === true, 'door: one who said no is found, and marked as such');
+  r = await door(K1, 'κωστοπ');
+  ok(r.d.tooMany === true && r.d.count === 12 && !('matches' in r.d), 'door: more than 8 → «type more», no names', r.d);
+  ok((await door(K1, 'κ')).d.matches === undefined, 'door: one letter is not a search');
+  ok((await door('z'.repeat(26), 'μαρια')).status === 404 && (await door('x', 'μαρια')).status === 404, 'door: an unknown or malformed key → 404');
+  ok((await door(P.editKey, 'μαρια')).status === 404, 'door: the edit key is not a door key');
+  ok((await call('POST', '/door?token=' + K1, { q: 'μαρια' })).status === 400 && (await call('GET', '/door')).status === 405, 'door: the key never in a URL; only POST');
+
+  // marking: two phones at once, a plan save in between, a second tap, an undo
+  const [a1, a2] = await Promise.all([markG(K1, 'gd_maria', true), markG(K1, 'gd_nikos', true)]);
+  ok(a1.d.ok && a2.d.ok && Object.keys(raw('arr:' + P.id).g).length === 2, 'door: two phones marking at the same moment — both kept', raw('arr:' + P.id));
+  const t0 = raw('arr:' + P.id).g.gd_maria;
+  r = await call('PUT', '/plans/' + P.id, { plan: { ...raw('plan:' + P.id).plan, _uid: 60 } }, HW);
+  ok(r.status === 200 && !('arrivals' in raw('plan:' + P.id).plan) && Object.keys(raw('arr:' + P.id).g).length === 2, 'door: a plan save from the laptop leaves the arrivals alone', r.status);
+  r = await markG(K1, 'gd_maria', true);
+  ok(r.d.at === t0 && r.d.arrived === 2 && r.d.total === 15, 'door: a second tap keeps the first time', r.d);
+  ok((await door(K1, 'μαρια')).d.matches[0].at === t0, 'door: the search shows who has arrived, and when');
+  r = await markG(K1, 'gd_nikos', false);
+  ok(r.d.at === null && r.d.arrived === 1 && !raw('arr:' + P.id).g.gd_nikos, 'door: undo takes the mark off', r.d);
+  ok((await markG(K1, 'gd_ghost', true)).d.error === 'no_guest' && (await markG(K1, 'gd_maria', 'yes')).status === 400, 'door: a guest not in the plan → 404; {on} must be a boolean');
+  r = await markG(K1, 'gd_no', true);
+  ok(r.d.arrived === 2 && r.d.total === 15, 'door: one who said no but came counts as arrived', r.d);
+
+  // the planner's view
+  r = await call('GET', '/plans/' + P.id + '/arrivals', undefined, HW);
+  ok(r.status === 200 && r.d.arrivals.gd_maria === t0 && r.d.arrived === 2 && r.d.window.open === true, 'door: the plan\'s writer reads the arrivals', r.d);
+  ok((await call('GET', '/plans/' + P.id + '/arrivals', undefined, HR)).status === 403 && (await call('GET', '/plans/' + P.id + '/arrivals')).status === 401, 'door: a view link and no key read nothing');
+
+  // a new key, off, another kind
+  r = await setDoor(P.id, { on: true, rotate: true }, HW);
+  const K2 = r.d.door.key;
+  ok(K2 !== K1 && (await door(K1)).status === 404 && !m.has('door:' + K1) && (await door(K2)).d.arrived === 2, 'door: a new key stops the old link at once; the arrivals stay');
+  await setDoor(P.id, { on: false }, HW);
+  ok((await door(K2)).status === 404 && raw('arr:' + P.id).g.gd_maria === t0, 'door: switched off → the link answers nothing; the arrivals stay');
+  await setDoor(P.id, { on: true }, HW);
+  ok((await door(K2)).status === 200, 'door: switched on again → the same key works again');
+  patchRaw('plan:' + P.id, o => { o.kind = 'party'; });
+  ok((await door(K2)).status === 404, 'door: a plan that stops being a company event stops answering');
+  patchRaw('plan:' + P.id, o => { o.kind = 'company'; });
+
+  // the end of the window: everything goes
+  await mod.sweep(env);
+  ok(m.has('arr:' + P.id) && raw('plan:' + P.id).door, 'door: on the day the sweep keeps it all');
+  setPlan(day(-2));
+  ok((await door(K2)).d.error === 'closed', 'door: two days after → closed');
+  await mod.sweep(env);
+  ok(!m.has('arr:' + P.id) && !m.has('door:' + K2) && !raw('plan:' + P.id).door, 'door: after 12:00 the next day the sweep erases the arrivals and the key');
+
+  // and with the plan
+  setPlan(day(0));
+  const K3 = (await setDoor(P.id, { on: true }, HW)).d.door.key;
+  await markG(K3, 'gd_eleni', true);
+  ok(m.has('arr:' + P.id), 'door: a fresh mark');
+  ok((await call('DELETE', '/plans/' + P.id, undefined, HW)).status === 200 && !m.has('arr:' + P.id) && !m.has('door:' + K3), 'door: deleting the plan takes the arrivals and the key with it');
+
+  // the page and its wiring
+  const pg = rd('eisodos.html'), dock = rd('server/Dockerfile'), srv = rd('server/server.mjs');
+  ok(dock.split('eisodos.html').length === 3, 'door page: in both Dockerfile lists');
+  ok(/Disallow: \/eisodos\.html/.test(rd('robots.txt')) && srv.includes("'/eisodos.html'") && !rd('sitemap.xml').includes('eisodos') && /noindex,nofollow/.test(pg), 'door page: never indexed (robots, header, meta) and not in the sitemap');
+  ok(srv.includes("'/door'") && /isDoor/.test(srv), 'door page: the server routes /door and gives it its own budget');
+  ok(/history\.replaceState/.test(pg) && /sessionStorage/.test(pg) && /fetch\(path/.test(pg) && !/[?&]token=/.test(pg), 'door page: the key leaves the address bar and travels in the body');
+  ok(['ήρθαν', 'arrived', 'angekommen'].every(w => pg.includes(w)), 'door page: Greek, English and German');
+  const ps = rd('planner.src.html');
+  ok(['mDoor:"Είσοδος (αφίξεις)"', 'mDoor:"Entrance (arrivals)"', 'mDoor:"Eingang (Ankünfte)"'].every(s => ps.includes(s)) && /EVK==="company"/.test(ps.match(/function doorMenuOk[^\n]*/)[0]), 'door: the planner offers it on company events only, in three languages');
+  ok(/σβήνονται/.test((rd('privacy.html').match(/[^\n]*Αφίξεις στην είσοδο[^\n]*/) || [''])[0]) && /Arrivals at the entrance/.test(rd('privacy.html'))
+    && /οι αφίξεις στην «Είσοδο \(αφίξεις\)»/.test(rd('dpa.html')) && /arrivals marked through “Entrance \(arrivals\)” are erased/.test(rd('dpa.html')),
+    'door: privacy and dpa (both languages) say what the arrivals are and when they go');
+}
+
 console.log(`\nall ${n} checks passed`);

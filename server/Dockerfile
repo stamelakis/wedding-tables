@@ -26,7 +26,7 @@ RUN mkdir -p /app/public
 # production while Search Console has already been told it exists.
 # trapezi.html is the guest's finder page: it is NOT in the sitemap (noindex, and it is reached only from the QR's
 # fragment), but it still has to ship — a guest at the door scanning the QR is the one request that cannot 404.
-COPY index.html plano-trapezion-gamou.html plano-trapezion-vaptisis.html plano-trapezion-giortis.html plano-trapezion-etairikis-ekdilosis.html grafeio-ekdiloseon.html dorean-schedio-trapezion.html poioi-eimaste.html epikoinonia.html seating-planner.html seating-planner-de.html seating-planner-el.html lab.html admin.html venue.html privacy.html terms.html dpa.html trapezi.html robots.txt sitemap.xml og-takeaseat.png /app/public/
+COPY index.html plano-trapezion-gamou.html plano-trapezion-vaptisis.html plano-trapezion-giortis.html plano-trapezion-etairikis-ekdilosis.html grafeio-ekdiloseon.html dorean-schedio-trapezion.html poioi-eimaste.html epikoinonia.html seating-planner.html seating-planner-de.html seating-planner-el.html lab.html admin.html venue.html privacy.html terms.html dpa.html trapezi.html eisodos.html robots.txt sitemap.xml og-takeaseat.png /app/public/
 
 ENV PORT=8080 \
     DB_PATH=/data/wedding.db \
@@ -48,7 +48,7 @@ COPY server/rate.mjs ./server/
 COPY server/pdf.mjs ./server/
 COPY tools/test-api.mjs ./tools/
 # the tests also read files of the product itself and assert on what is in them (the retention promises among them)
-COPY planner.src.html venue.html admin.html sitemap.xml index.html privacy.html terms.html dpa.html plano-trapezion-gamou.html plano-trapezion-vaptisis.html plano-trapezion-giortis.html plano-trapezion-etairikis-ekdilosis.html grafeio-ekdiloseon.html dorean-schedio-trapezion.html poioi-eimaste.html epikoinonia.html trapezi.html ./
+COPY planner.src.html venue.html admin.html sitemap.xml index.html privacy.html terms.html dpa.html plano-trapezion-gamou.html plano-trapezion-vaptisis.html plano-trapezion-giortis.html plano-trapezion-etairikis-ekdilosis.html grafeio-ekdiloseon.html dorean-schedio-trapezion.html poioi-eimaste.html epikoinonia.html trapezi.html eisodos.html ./
 COPY server/Dockerfile ./server/
 COPY tools/build-planner.mjs ./tools/
 RUN ln -s /app/node_modules /t/node_modules \
