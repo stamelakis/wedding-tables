@@ -4217,13 +4217,13 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
       // what a new due says is what the pages say: every euro figure on a public page is one of the two prices
       const fs = await import('node:fs'), read = f => fs.readFileSync(path.join(root, f), 'utf8');
       const P = (await first(await couple({}))).amount / 100, S = (await first(await venue({}))).amount / 100;
-      for (const [f, both] of [['index.html', true], ['terms.html', true], ['plano-trapezion-gamou.html', false], ['plano-trapezion-vaptisis.html', false], ['plano-trapezion-giortis.html', false], ['plano-trapezion-etairikis-ekdilosis.html', false], ['dorean-schedio-trapezion.html', false]]) {
+      for (const [f, both] of [['index.html', true], ['terms.html', true], ['plano-trapezion-gamou.html', false], ['plano-trapezion-vaptisis.html', false], ['plano-trapezion-giortis.html', false], ['plano-trapezion-etairikis-ekdilosis.html', false], ['dorean-schedio-trapezion.html', false], ['poioi-eimaste.html', false]]) {
         const got = [...read(f).matchAll(/(\d[\d.,]*) ?(?:€|&euro;)|(?:€|&euro;) ?(\d[\d.,]*)/g)].map(e => e[1] || e[2]);
         ok(got.includes(String(P)) && (!both || got.includes(String(S))) && got.every(e => ['0', String(P), String(S)].includes(e)), 'price: ' + f + ' names only what a new due says', got);
       }
       for (const [f, says] of [['terms.html', S + ' € τον χρόνο, πλέον ΦΠΑ'], ['terms.html', S + ' € per year, plus VAT'], ['terms.html', P + ' € εφάπαξ, με ΦΠΑ'], ['terms.html', P + ' € one-off, VAT included'],
         ['index.html', S + ' € πλέον ΦΠΑ'], ['index.html', P + ' € εφάπαξ με ΦΠΑ'], ['index.html', '"price":"' + S + '","priceCurrency":"EUR","valueAddedTaxIncluded":false'], ['index.html', '"price":"' + P + '","priceCurrency":"EUR","valueAddedTaxIncluded":true'],
-        ['plano-trapezion-gamou.html', P + ' € εφάπαξ με ΦΠΑ'], ['dorean-schedio-trapezion.html', P + ' € εφάπαξ με ΦΠΑ'], ['plano-trapezion-vaptisis.html', P + ' € εφάπαξ με ΦΠΑ'], ['plano-trapezion-giortis.html', P + ' € εφάπαξ με ΦΠΑ'], ['plano-trapezion-etairikis-ekdilosis.html', P + ' € εφάπαξ με ΦΠΑ'],
+        ['plano-trapezion-gamou.html', P + ' € εφάπαξ με ΦΠΑ'], ['dorean-schedio-trapezion.html', P + ' € εφάπαξ με ΦΠΑ'], ['poioi-eimaste.html', P + ' € εφάπαξ με ΦΠΑ'], ['plano-trapezion-vaptisis.html', P + ' € εφάπαξ με ΦΠΑ'], ['plano-trapezion-giortis.html', P + ' € εφάπαξ με ΦΠΑ'], ['plano-trapezion-etairikis-ekdilosis.html', P + ' € εφάπαξ με ΦΠΑ'],
         ['admin.html', 'κοστίζει ' + P + ' € (με ΦΠΑ)'], ['admin.html', '(' + P + ' € με ΦΠΑ)'], ['admin.html', 'μετά ' + S + ' € + ΦΠΑ τον χρόνο'], ['admin.html', 'placeholder="π.χ. ' + P + ',00"']])
         ok(read(f).includes(says), 'price: ' + f + ' says «' + says + '»');
     }
@@ -5399,6 +5399,23 @@ function leadStageOf(l) { return l.lost ? 8 : l.stage || 1; }
     ok(!/αναμνηστικό/.test(fp) && !/14 ημερών/.test(fp), 'free page: promises no keepsake mail and no withdrawal wait');
     ok(['index.html', 'plano-trapezion-gamou.html', 'plano-trapezion-vaptisis.html', 'plano-trapezion-giortis.html', 'plano-trapezion-etairikis-ekdilosis.html'].every(f => rd(f).includes('href="/dorean-schedio-trapezion.html"')),
       'free page: the home page and the four event pages link it');
+
+    // -- «Ποιοι είμαστε»: poioi-eimaste.html --
+    const ab = rd('poioi-eimaste.html');
+    ok(dock.split('poioi-eimaste.html').length === 3 && rd('sitemap.xml').includes('https://takeaseat.gr/poioi-eimaste.html'), 'about page: in both Dockerfile lists and the sitemap');
+    ok(!/noindex/.test(ab) && ab.includes('<link rel="canonical" href="https://takeaseat.gr/poioi-eimaste.html">'), 'about page: indexable, with its own address');
+    const ald = JSON.parse(ab.match(/<script type="application\/ld\+json">\s*([\s\S]*?)<\/script>/)[1])['@graph'];
+    const aFaq = (ald.find(g => g['@type'] === 'FAQPage') || {}).mainEntity || [];
+    const aShown = [...ab.matchAll(/<summary>([^<]*)<\/summary>\s*<p>([\s\S]*?)<\/p>/g)].map(e => [e[1], e[2].replace(/<[^>]+>/g, '')]);
+    ok(aFaq.length >= 8 && aFaq.length === aShown.length && aFaq.every((q, i) => q.name === aShown[i][0] && q.acceptedAnswer.text === aShown[i][1]),
+      'about page: the structured questions are word for word the ones on screen', { ld: aFaq.length, shown: aShown.length });
+    const org = ald.find(g => g['@type'] === 'Organization') || {};
+    ok(org.name === 'TakeaSeat' && org.foundingDate === '2026' && (org.address || {}).addressLocality === 'Θήβα' && !org.founder && !org.legalName,
+      'about page: the company, Θήβα, 2026, and no person named (Andreas asked) and no legal name until the company exists');
+    ok(/Γερμανία/.test(ab) && /Γερμανία/.test(rd('privacy.html')) && /Έναν χρόνο μετά την εκδήλωση/.test(ab) && /από 1 έως 5 χρόνια/.test(ab) && /από 1 έως 5 χρόνια/.test(rd('terms.html'))
+      && /σβήνονται την επόμενη μέρα της εκδήλωσης/.test(ab) && !/σβήνουμε ποτέ/i.test(ab), 'about page: data in Germany, a year, 1 to 5 years, notes the day after, as privacy and terms say');
+    ok(['index.html', 'dorean-schedio-trapezion.html', 'grafeio-ekdiloseon.html', 'plano-trapezion-gamou.html', 'plano-trapezion-vaptisis.html', 'plano-trapezion-giortis.html', 'plano-trapezion-etairikis-ekdilosis.html'].every(f => rd(f).includes('href="/poioi-eimaste.html"')),
+      'about page: the home page, the free page, the γραφείο page and the four event pages link it');
   } finally {
     env.MAIL = mail0;
     m.clear(); for (const [k, v] of saved) m.set(k, v);
