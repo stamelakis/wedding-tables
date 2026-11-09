@@ -2,8 +2,8 @@
 
 Updated: 2026-11-09
 
-**Status:** Live runs `d1e4823` (deployed 2026-11-09 as `deploy-2026-11-09-1`, pre-deploy backup
-`/opt/backups/takeaseat-20261109-104350.db.gz.age`), healthy. New page `poioi-eimaste.html` («Ποιοι είμαστε», 9 FAQ), in every public footer; checked live at 375px, no console errors. «TakeaSeat» stands in for the legal name until the company is registered; no person named (Andreas's choice). New page `dorean-schedio-trapezion.html` («Δωρεάν σχέδιο
+**Status:** Live runs `bc7574b` (deployed 2026-11-09 as `deploy-2026-11-09-2`, pre-deploy backup
+`/opt/backups/takeaseat-20261109-114755.db.gz.age`), healthy. Home hero now speaks to every reader, in Andreas's own words («Τα τραπέζια και οι καλεσμένοι σας, στη θέση τους.»), with «Δείτε πώς λειτουργεί» / «Δοκιμάστε το» and the four doors as equal outlined buttons; checked live at desktop and 375px, no console errors. New page `poioi-eimaste.html` («Ποιοι είμαστε», 9 FAQ), in every public footer; checked live at 375px, no console errors. «TakeaSeat» stands in for the legal name until the company is registered; no person named (Andreas's choice). New page `dorean-schedio-trapezion.html` («Δωρεάν σχέδιο
 τραπεζιών»), linked from the home page and the four event pages; checked live at 375px, no console errors. Home page: four doors (κτήματα, γραφεία, εταιρείες,
 ζευγάρια & οικογένειες), title names all four events, free plan named in the hero; checked live at 375px, no console errors. **Phase 3 of `COMPANIES-PLAN.md` is live:** a company's console, saved rooms, old designs, the 1–5 year choice. Operations phases 1–6 are live.
 
