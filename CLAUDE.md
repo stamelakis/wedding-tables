@@ -95,6 +95,7 @@ One line each, so a session sees the rule. Before changing one, read its full re
 - **The baptism starter adds exactly one thing, the children's corner.** The filter is "does it change a seating decision", not "is it common".
 - **The lab keeps one demo per kind** (`labDoor`). A link naming a kind never rebuilds the open demo.
 - **Place cards print in the browser (`printCards`), each sheet ≤ 170 × 228 mm, never the credit on a place card** (it sits on a guest's plate). A per-table menu sheet was rejected: most venues serve buffet.
+- **«Συνεργάτες» (`state.vendors`) live in the plan, are never one of the venue's locks (`PERM_KEYS`) and never travel to another event** (`layoutOnly`/`designFrom` copy named parts only; do not add `vendors` there). On a company plan it is «Συνεργάτες της εκδήλωσης», because «Συνεργάτες» is also a company guest group.
 - **A free online plan holds 8 guest tables, and the server refuses the 9th** (`FREE_TABLES`, `freeCapped`): a `couple:` row with `free:true` from `POST /signup/free`, one per email. A save that adds no table always passes. Only «Ξεκλείδωμα (25 €)» in admin lifts it.
 - **A free plan never opened in 30 days goes; one unopened for 180 days is warned once, then erased 14 days later** (`freeSweep`). No mail could leave: no warning, so no erasure. Terms 8Β and privacy §7 say so; change them together.
 - **`lab.html` is the one indexed planner build;** the app builds carry `noindex` because their URLs carry `?plan=` tokens. If the lab goes noindex, remove it from `sitemap.xml` in the same commit.

@@ -21,8 +21,6 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 
 **Phase 4 (the γραφείο εκδηλώσεων) is live and done** (2026-11-04; the full check is in History).
 
-**Checked on live for phase 3:** read-only, `/health`, 14 pages, `/admin/customers` refusing without a key, the company login's words, terms 8Α, dpa, privacy and the company guide at 375px with no console errors, the company demo. Then a test company through the API on the running server, 32 of 32: agreement gate, rooms, an event from a room, the allowance (three requests at once made one event on the real database), «+1 εκδήλωση», an old design with names and no note, the keep choice, delete, forget. Afterwards it and its two `books:` rows were removed; nothing on live names it. Backup just before that delete: `/opt/backups/takeaseat-20261104-164035.db.gz.age`.
-
 **Not checked live:** the signed-in screens in a browser (a company's console and its planner were seen on the local copy only, and we do not type live keys into pages); the one real venue's console (needs its own key; its card opens, and it never had a saved room). Also not yet seen live: a company plan used for real, its PDF, a real iPhone tapping the kind picker in the demo, a real form sent as a company, a real new due on «Πληρωμές», a real morning mail.
 
 ## In progress / unfinished
@@ -108,6 +106,7 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 
 ## History
 
+- 2026-11-04 (moved from the status block): Checked on live for phase 3: read-only, `/health`, 14 pages, `/admin/customers` refusing without a key, the company login's words, terms 8Α, dpa, privacy and the company guide at 375px with no console errors, the company demo. Then a test company through the API on the running server, 32 of 32: agreement gate, rooms, an event from a room, the allowance (three requests at once made one event on the real database), «+1 εκδήλωση», an old design with names and no note, the keep choice, delete, forget. Afterwards it and its two `books:` rows were removed; nothing on live names it. Backup just before that delete: `/opt/backups/takeaseat-20261104-164035.db.gz.age`.
 - 2026-11-09: «Συνεργάτες» (`openVendors`, `printVendors`, `state.vendors`, ≤ 40 rows, time HH:MM or empty): no server change, since `layoutOnly`/`designFrom` copy named parts only, so vendors never travel; not in `PERM_KEYS`. Role suggestions per kind; `c_mVendors` avoids clashing with the company group «Συνεργάτες». Empty rows go when the dialog closes. 16 new checks, 1909 pass. Checked locally (wedding, γιορτή, company, en, de, 375px, view-only) and live in the lab. Live as `743fa73` (`deploy-2026-11-09-4`).
 - 2026-11-09: Place cards and table cards in the planner's print window (`printCards`): tent cards, upper face upside down, every sheet ≤ 170 × 228 mm (checked as PDF on A4 and Letter at default and 20 mm margins: no extra sheet); no QR, no credit on a place card; el/en/de; 11 new checks, 1893 pass. Ideas agreed next: «Συνεργάτες» sheet, run-of-show, door check-in for companies (the per-table menu sheet was dropped: most venues serve buffet). Live as `7d7534e` (`deploy-2026-11-09-3`).
 
