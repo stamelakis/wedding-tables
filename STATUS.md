@@ -33,12 +33,15 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 
 ## Next
 
-1. **Ideas for presenting the site:** a few words from the real κτήμα (needs its OK). Done: the four-door hero
-   (`2eeebf6`), the hero for every reader (`bc7574b`), the free-plan page (`9e5f069`), «Ποιοι είμαστε» (`d1e4823`).
-2. **More for the night of the event** (agreed 2026-11-09; place cards, «Συνεργάτες» and «Πρόγραμμα» done): door
-   check-in for company events is left. Plan and "done when" before building.
-3. **Phase 7 (online payment)** waits on the company, accountant and lawyer. The page's remaining English sections move
-   to Greek as each is touched.
+1. [you: get the κτήμα's OK and its words] **Ideas for presenting the site:** a few words from the real κτήμα. Done:
+   the four-door hero (`2eeebf6`), the hero for every reader (`bc7574b`), the free-plan page (`9e5f069`), «Ποιοι
+   είμαστε» (`d1e4823`).
+2. [you: approve the plan and its "done when"] **More for the night of the event** (agreed 2026-11-09; place cards,
+   «Συνεργάτες» and «Πρόγραμμα» done): door check-in for company events is left. Plan and "done when" before building.
+3. [you: company, accountant, lawyer] **Phase 7 (online payment).** The page's remaining English sections move to
+   Greek as each is touched.
+4. [auto] **«1 ακόμη δεν μπήκαν» in the singular** (`labCapCut`, planner.src.html): done when the lab shows a singular
+   verb for one trimmed table and the plural for more.
 
 ## Waiting on Andreas
 
