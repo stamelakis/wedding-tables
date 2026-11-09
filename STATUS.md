@@ -6,9 +6,9 @@ Updated: 2026-11-09
 `/opt/backups/takeaseat-20261109-140829.db.gz.age`), healthy. **New: place cards and table cards** in the planner's «Εκτύπωση»
 («Καρτελάκια θέσεων», 6 tent cards per sheet, none for a cancelled guest; «Κάρτες τραπεζιών», one per sheet), printed in the
 browser; checked live in the lab (wedding and company: 28 cards on 5 sheets, one card per table, no console errors). Not
-seen: the fold on a real printer. Home hero now speaks to every reader, in Andreas's own words («Τα τραπέζια και οι καλεσμένοι σας, στη θέση τους.»), with «Δείτε πώς λειτουργεί» / «Δοκιμάστε το» and the four doors as equal outlined buttons; checked live at desktop and 375px, no console errors. New page `poioi-eimaste.html` («Ποιοι είμαστε», 9 FAQ), in every public footer; checked live at 375px, no console errors. «TakeaSeat» stands in for the legal name until the company is registered; no person named (Andreas's choice). New page `dorean-schedio-trapezion.html` («Δωρεάν σχέδιο
-τραπεζιών»), linked from the home page and the four event pages; checked live at 375px, no console errors. Home page: four doors (κτήματα, γραφεία, εταιρείες,
-ζευγάρια & οικογένειες), title names all four events, free plan named in the hero; checked live at 375px, no console errors. **Phase 3 of `COMPANIES-PLAN.md` is live:** a company's console, saved rooms, old designs, the 1–5 year choice. Operations phases 1–6 are live.
+seen: the fold on a real printer. Also live since 2026-11-09 and checked at 375px (details in History): the home hero for
+every reader, «Ποιοι είμαστε», the free-plan page, the four-door home page. **Phase 3 of `COMPANIES-PLAN.md` is live:** a
+company's console, saved rooms, old designs, the 1–5 year choice. Operations phases 1–6 are live.
 
 **The free online plan is live** (2026-11-08; HANDOFF §1l). Anyone signs up alone at `epikoinonia.html?q=free` and
 gets the link by mail; 8 guest tables until «Ξεκλείδωμα (25 €)…» on the admin card; idle cleanup after 30 days / 6
