@@ -2565,6 +2565,15 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     ok(['el', 'en', 'de'].every(l => ['tlMoments', 'b_tlMoments', 'p_tlMoments', 'c_tlMoments'].every(k => Array.isArray(T_ALL[l][k]) && T_ALL[l][k].length >= 5)), 'timeline: moment suggestions for every kind, in every language');
     ok(['el', 'en', 'de'].every(l => T_ALL[l].tlDelAsk.includes('{n}')), 'timeline: the line reaches its remove question');
     ok(!/ζευγ|γάμ|νύφ|γαμπρ/i.test(T_ALL.el.c_tlMoments.join() + T_ALL.el.b_tlMoments.join() + T_ALL.el.p_tlMoments.join()), 'timeline: no wedding words in the other kinds\' moments');
+    // ---- the lab's trimmed-tables note: one table left out reads in the singular ----
+    {
+      const cutMsg = new Function('T', 'LAB_MAX_TABLES', 'const tr=(k,v)=>T[k].replace(/\\{(\\w+)\\}/g,(m,x)=>v[x]);\n' + /function labCutMsg\([^\n]*/.exec(src)[0] + '\nreturn labCutMsg;');
+      const said = l => { const f = cutMsg(T_ALL[l], 8); return [f('labCapCut', 1), f('labCapCut', 3), f('labCapSkip', 1), f('labCapSkip', 2)]; };
+      const [c1, c3, s1, s2] = said('el');
+      ok(/ένα ακόμη δεν μπήκε /.test(c1) && /οι καλεσμένοι του /.test(c1) && /3 ακόμη δεν μπήκαν/.test(c3) && /^Ένα τραπέζι .* δεν χωράει/.test(s1) && /^2 τραπέζια .* δεν χωρούν/.test(s2), 'lab cap: one trimmed table in the singular, more in the plural', [c1, s1]);
+      ok(['el', 'en', 'de'].every(l => said(l).every(x => !/\{/.test(x)) && said(l)[0].includes('8') && said(l)[0] !== said(l)[1]), 'lab cap: every language has both forms, the limit and the count filled in');
+      ok(!/tr\("labCap(Cut|Skip)"/.test(src), 'lab cap: every trimmed-tables note goes through labCutMsg');
+    }
   }
 
   // ---- the planner's own words: the dictionary twins, and the rule tr() uses to pick one ----

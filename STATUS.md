@@ -37,8 +37,8 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
    είμαστε» (`d1e4823`).
 2. [you: company, accountant, lawyer] **Phase 7 (online payment).** The page's remaining English sections move to
    Greek as each is touched.
-3. [auto] **«1 ακόμη δεν μπήκαν» in the singular** (`labCapCut`, planner.src.html): done when the lab shows a singular
-   verb for one trimmed table and the plural for more.
+3. [you: say «deploy»] **Deploy the singular trimmed-tables note** (done locally 2026-11-19, not on live yet; see
+   History). Small; it can also ride with the next deploy.
 
 ## Waiting on Andreas
 
@@ -104,14 +104,16 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
   port while the shim serves on another, so Hermes says TakeaSeat is "not answering". Fix: restart through
   `TakeaSeatHermes.lnk` and check the file (HANDOFF). The cause is in Hermes's `hermes_control.py`, another project.
 - **This PC's C: drive is nearly full** (17 GB free on 2026-11-06). Not the server's; the server is at 24 %.
-- **The trimmed-tables note says «1 ακόμη δεν μπήκαν»** (plural verb for one table; `labCapCut` in planner.src.html,
-  old, also in the lab). Fix with a singular form when the planner is next touched.
 - On a phone, the free plan's 8-table note shows behind the open tools drawer; it is seen once the drawer closes
   (it stays 12 seconds). The lab behaves the same.
 - The 🛟 on the «Υποστήριξη έως …» badge shows as an empty box on Windows 10 browsers (no such emoji there).
 
 ## History
 
+- 2026-11-19: the lab's trimmed-tables note reads in the singular for one table: «…— ένα ακόμη δεν μπήκε (οι
+  καλεσμένοι του είναι στη λίστα)», and the plural «3 ακόμη δεν μπήκαν» for more; the same for a file whose tables do
+  not fit («Ένα τραπέζι του αρχείου δεν χωράει»), in el, en and de (`labCapCut1`, `labCapSkip1`, `labCutMsg`). Suite
+  1975 checks pass (3 new); seen in the lab preview with 1 and 3 extra tables, no console errors. Not deployed.
 - 2026-11-19: OneDrive check. The project lives at `C:\Users\andre\Documents\GitHub\wedding-tables`, a local folder
   outside OneDrive, so nothing moved. It matches GitHub; live runs `9bc8a5d` (only STATUS.md newer here). The stale July
   copy `OneDrive\Documents\wedding tables` (1 MB, a superseded Cloudflare sync draft) was deleted on Andreas's yes.
