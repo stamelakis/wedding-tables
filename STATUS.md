@@ -1,6 +1,6 @@
 # TakeaSeat — STATUS
 
-Updated: 2026-11-09
+Updated: 2026-11-19
 
 **Status:** Live runs `9bc8a5d` (deployed 2026-11-09 as `deploy-2026-11-09-6`, pre-deploy backup
 `/opt/backups/takeaseat-20261109-210227.db.gz.age`), healthy. **New on live: «Είσοδος (αφίξεις)»** (door check-in for
@@ -112,6 +112,9 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 
 ## History
 
+- 2026-11-19: OneDrive check. The project lives at `C:\Users\andre\Documents\GitHub\wedding-tables`, a local folder
+  outside OneDrive, so nothing moved. It matches GitHub; live runs `9bc8a5d` (only STATUS.md newer here). The stale July
+  copy `OneDrive\Documents\wedding tables` (1 MB, a superseded Cloudflare sync draft) was deleted on Andreas's yes.
 - 2026-11-09: «Είσοδος (αφίξεις)» live as `deploy-2026-11-09-6`. A company plan's ⋯ menu switches on a separate door
   link (`eisodos.html#key`); staff type a name, see the table, tap «Ήρθε»; the panel shows arrived / not yet and prints
   the not-yet list. Works on the event day until 12:00 next day, then link and arrivals are erased. Checked locally: two
