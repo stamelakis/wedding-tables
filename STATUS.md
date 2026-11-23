@@ -28,8 +28,10 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 
 ## Next
 
-1. [you: get the κτήμα's OK and its words] **Ideas for presenting the site:** a few words from the real κτήμα. The
-   message to send and three places for the words are ready in `docs/decisions/ktima-words.md` (2026-11-23). Done:
+1. [you: send the message, paste the reply] **Ideas for presenting the site:** a few words from the real κτήμα.
+   Andreas approved the message as written and place A (2026-11-23; `docs/decisions/ktima-words.md`). Once the reply
+   is pasted: build the quote block in «Για κτήματα» before the free-year offer, show it at 375 px and desktop, get the
+   κτήμα's final «ναι» on a screenshot, then deploy on «deploy». Done:
    the four-door hero (`2eeebf6`), the hero for every reader (`bc7574b`), the free-plan page (`9e5f069`), «Ποιοι
    είμαστε» (`d1e4823`).
 2. [you: company, accountant, lawyer] **Phase 7 (online payment).** The page's remaining English sections move to
@@ -39,9 +41,8 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 
 ## Waiting on Andreas
 
-- **The κτήμα's words: send the message, and place A, B or C?** The Greek message for the real κτήμα and the three
-  places are in `docs/decisions/ktima-words.md` (recommended: A, inside «Για κτήματα» just before the free-year
-  offer). Answer «στείλ' το ως έχει» or your changes, plus a letter; then send it yourself and paste their reply.
+- **Send the message to the κτήμα** (approved as written, place A): copy it from `docs/decisions/ktima-words.md`
+  §1 into Viber or email. When they answer, paste their reply into a new session; keep their written «ναι».
 - **Read the Greek of «Είσοδος (αφίξεις)»** on live: the door page (`eisodos.html`, opened from a
   company plan's ⋯ → «Είσοδος (αφίξεις)…» → the link), the panel's hints, and the new lines in privacy.html («Αφίξεις
   στην είσοδο») and dpa.html («Δεδομένα», and the retention list). Say what reads wrong.
