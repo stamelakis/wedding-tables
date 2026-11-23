@@ -28,10 +28,10 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 
 ## Next
 
-1. [you: send the message, paste the reply] **Ideas for presenting the site:** a few words from the real κτήμα.
-   Andreas approved the message as written and place A (2026-11-23; `docs/decisions/ktima-words.md`). Once the reply
-   is pasted: build the quote block in «Για κτήματα» before the free-year offer, show it at 375 px and desktop, get the
-   κτήμα's final «ναι» on a screenshot, then deploy on «deploy». Done:
+1. [you: only after an agreement with the κτήμα] **Ideas for presenting the site:** a few words from the κτήμα. ON
+   HOLD (2026-11-23): the venue on live is where Andreas had his wedding, not a customer; he will present TakeaSeat
+   to it in person to reach an agreement. Do not contact it. Place A is chosen; the message in
+   `docs/decisions/ktima-words.md` must be reworded then (it assumes they already use it). Done:
    the four-door hero (`2eeebf6`), the hero for every reader (`bc7574b`), the free-plan page (`9e5f069`), «Ποιοι
    είμαστε» (`d1e4823`).
 2. [you: company, accountant, lawyer] **Phase 7 (online payment).** The page's remaining English sections move to
@@ -41,8 +41,6 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 
 ## Waiting on Andreas
 
-- **Send the message to the κτήμα** (approved as written, place A): copy it from `docs/decisions/ktima-words.md`
-  §1 into Viber or email. When they answer, paste their reply into a new session; keep their written «ναι».
 - **Read the Greek of «Είσοδος (αφίξεις)»** on live: the door page (`eisodos.html`, opened from a
   company plan's ⋯ → «Είσοδος (αφίξεις)…» → the link), the panel's hints, and the new lines in privacy.html («Αφίξεις
   στην είσοδο») and dpa.html («Δεδομένα», and the retention list). Say what reads wrong.

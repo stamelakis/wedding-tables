@@ -1,5 +1,9 @@
 # A few words from the real κτήμα: the ask and where they go
 
+> **On hold (2026-11-23).** The κτήμα is not a customer yet: Andreas had his wedding there and will present
+> TakeaSeat to it in person to reach an agreement. Nobody contacts it before then. Place A is chosen. When an
+> agreement exists, reword the message below: it assumes the κτήμα already uses TakeaSeat.
+
 Prep for STATUS «Next» item «get the κτήμα's OK and its words». Nothing here is built or sent. Andreas answers two
 things: **send the message (as is, or with changes)?** and **place A, B or C?**
 
