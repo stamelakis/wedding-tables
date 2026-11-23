@@ -144,8 +144,9 @@ cancel; **no refunds for venues**; deleted weddings are restorable **only by the
 Why: couples (consumers) may withdraw within 14 days of an online purchase; nobody should get free use, and a plan must
 not serve other couples' weddings. Owner decisions (Andreas):
 - **Direct couples**: the admin sells with a **required wedding date**; the planner opens **after the 14-day withdrawal period (00:00 on day 15 after payment)**
-  (`plan.opensAt`, phase `waiting`: read-only + countdown). **Start now** (admin tick, only when the wedding is < 21 days
-  away; the couple consents that a withdrawal then costs the days used) skips the wait.
+  (`plan.opensAt`, phase `waiting`: read-only + countdown). **Start now** (admin tick, any date since 2026-11-23; before,
+  only < 21 days away) skips the wait when the couple asked in writing and consents that a withdrawal then costs the days
+  used (terms §8). The payment reply gives them the sentence to send. Far from the date it opens in `names`.
 - **Phases** (server `life.phase`, couple role only — venue, support, admin never limited): `names` until 00:00 Athens
   **30 days before the wedding** (guests, groups, invitations, seating on existing tables, chair counts, table labels, the
   couple's own decor; NOT add/delete/merge/move tables or the floor — enforced server-side, the plan comes back

@@ -87,6 +87,7 @@ One line each, so a session sees the rule. Before changing one, read its full re
 - **On a company event's screens: «η εταιρεία» and «η εκδήλωση»,** never «διοργανωτής» or «γιορτή» (a test refuses them in `c_`). Its starter has round tables, a «Σκηνή» and no DJ.
 - **The kind makes the customer a company one way only:** to `company` adds `custType`; to a γιορτή it stays a company; to a γάμος or βάπτιση drops `custType` and the ΑΦΜ.
 - **A company buying directly opens at once, with no 14-day withdrawal** (terms 8Α). The guide says «παραστατικό» until the accountant answers and promises no keepsake mail.
+- **«Άμεση έναρξη» is offered for any date, not only under 21 days** (Andreas, 2026-11-23): a paying buyer should not wait two weeks. It needs the buyer's written request (the sentence in the payment reply); a withdrawal then keeps the days of access (terms §8, ν. 2251/1994 3ι §3). Keeping the 21-day limit until the lawyer answered was rejected.
 
 ### The planner, the kinds, keeping data (`HANDOFF.md` §10)
 

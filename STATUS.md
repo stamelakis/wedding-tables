@@ -12,11 +12,8 @@ company's console, saved rooms, old designs, the 1–5 year choice. Phase 4 (γ�
 
 **The free online plan is live** (2026-11-08; HANDOFF §1l). Anyone signs up alone at `epikoinonia.html?q=free` and
 gets the link by mail; 8 guest tables until «Ξεκλείδωμα (25 €)…» on the admin card; idle cleanup after 30 days / 6
-months. Price: 25 € with ΦΠΑ for everyone, companies included (Andreas said deploy without changing it). Checked on
-live: `/health`, the main pages with no console errors, the home strip, the form at 375px with no overflow, terms §8Β and
-privacy. One real sign-up with Andreas's own email: the mail arrived and the link opened (`claimedAt`, `seenAt` set).
-Then that test customer was forgotten (backup just before: `/opt/backups/takeaseat-20261107-230825.db.gz.age`); no
-card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table stopped, and an unlock (both on the local copy only).
+months. Price: 25 € with ΦΠΑ for everyone, companies included. Checked on live, including one real sign-up with
+Andreas's own email (since forgotten; details in History). Not seen live: the 9th table stopped, and an unlock.
 
 **Not checked live:** the signed-in screens in a browser (a company's console and its planner were seen on the local copy only, and we do not type live keys into pages); the one real venue's console (needs its own key; its card opens, and it never had a saved room). Also not yet seen live: a company plan used for real, its PDF, a real iPhone tapping the kind picker in the demo, a real form sent as a company, a real new due on «Πληρωμές», a real morning mail.
 
@@ -36,11 +33,16 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
    είμαστε» (`d1e4823`).
 2. [you: company, accountant, lawyer] **Phase 7 (online payment).** The page's remaining English sections move to
    Greek as each is touched.
-3. [you: say «deploy»] **Deploy the singular trimmed-tables note** (done locally 2026-11-19, not on live yet; see
-   History). Small; it can also ride with the next deploy.
+3. [you: read the Greek, then say «deploy»] **Deploy «Άμεση έναρξη» for any date** (built locally 2026-11-23, not
+   on live; see History) together with the singular trimmed-tables note (2026-11-19). Terms version 23 Νοεμβρίου 2026:
+   change the date in `terms.html` if the deploy happens on another day.
 
 ## Waiting on Andreas
 
+- **Read the Greek of «Άμεση έναρξη» for any date** (local, not live yet): terms.html §8 («Έναρξη», «Δικαίωμα
+  υπαναχώρησης», «Άμεση έναρξη»), the «Όλα με τη σειρά τους» line and the «Μόλις αγοράσετε» step on the wedding,
+  baptism and γιορτή pages, the home price box, and the «Στοιχεία πληρωμής» ready reply in admin.html (the sentence the
+  buyer copies). Say what reads wrong, then «deploy».
 - **Read the Greek of «Είσοδος (αφίξεις)»** on live: the door page (`eisodos.html`, opened from a
   company plan's ⋯ → «Είσοδος (αφίξεις)…» → the link), the panel's hints, and the new lines in privacy.html («Αφίξεις
   στην είσοδο») and dpa.html («Δεδομένα», and the retention list). Say what reads wrong.
@@ -88,8 +90,9 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
   the review may change the numbers. Phase 4: a γραφείο as controller, its tick accepting `dpa.html`, and its copying a client's guests to that client's next event (terms, dpa and privacy state these once it is live). Also: the terms' opening calls direct buyers «ιδιώτες», but a company that
   buys a γιορτή for its own company dinner is a business, and §8 gives every direct buyer the consumer-law 14-day
   withdrawal (ν. 2251/1994), with the planner opening only after it, a business included. And: terms §8's
-  «άμεση έναρξη» names only a γάμος under 21 days away, while the payment reply says «εκδήλωση»; confirm it may
-  cover a βάπτιση or γιορτή and widen §8's wording. The terms' opening now says «ιδιώτες και εταιρείες» while §8 still gives every direct buyer the 14-day withdrawal, and phase 2 is live, so this matters more now. And the four points for companies in `COMPANIES-PLAN.md` §4: the
+  «άμεση έναρξη» is now offered for any event and any date (2026-11-23, by the buyer's written request, with the
+  sentence in the payment reply); confirm that, and say how «the days of access» are counted when such a buyer
+  withdraws within 14 days (§8 does not give a formula). The terms' opening now says «ιδιώτες και εταιρείες» while §8 still gives every direct buyer the 14-day withdrawal, and phase 2 is live, so this matters more now. And the four points for companies in `COMPANIES-PLAN.md` §4: the
   1–5 year choice, a company accepting `dpa.html`, no consumer withdrawal for a company, table labels in saved rooms. Terms 8Α, dpa.html and privacy.html state these live since 2026-11-04, so the review reads them as written.
   And the free online plan (terms 8Β): deleting a plan unopened for 6 months after one warning mail, one free plan per
   email, and that unlocking starts at once (does the 14-day withdrawal apply to the 25 €, as §8 says today?).
@@ -109,6 +112,10 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 
 ## History
 
+- 2026-11-23: «Άμεση έναρξη» for any date (Andreas's choice; was: only an event under 21 days away). The server and
+  admin.html set no date limit; far from the date the plan opens in the names phase. The payment reply gives the buyer
+  the sentence that asks for it. terms §8 (EL/EN), the home price box and the wedding, baptism and γιορτή pages say
+  so; HANDOFF updated. 1985 checks pass. Not deployed.
 - 2026-11-23: prep for the κτήμα's words: the Greek message to send, rules for using the words, and places A/B/C
   (recommended A) in `docs/decisions/ktima-words.md`. No product code changed.
 - 2026-11-19: the lab's trimmed-tables note reads in the singular for one table: «…— ένα ακόμη δεν μπήκε (οι
@@ -137,7 +144,7 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 
 - 2026-11-08: New landing page «Δωρεάν σχέδιο τραπεζιών» (`dorean-schedio-trapezion.html`): what the free plan gives, device demo vs free vs 25 € unlock, timeline, terms 8Β rules, 10 FAQ with matching JSON-LD; linked from home and the four event pages; 12 checks, 1874 pass. Live as `9e5f069` (`deploy-2026-11-08-3`); live smoke test passed.
 - 2026-11-08: Home page hero now has four doors (κτήματα, γραφεία, εταιρείες, ζευγάρια & οικογένειες), the title names all four events, and the free online plan is named in the hero and both couple cards. Live as `2eeebf6` (`deploy-2026-11-08-2`); checked live at 375px, no console errors.
-- 2026-11-08: Deployed the free online plan as `94f43ab` (`deploy-2026-11-08-1`). Live smoke test passed; one sign-up with Andreas's email got the mail and opened, then was forgotten.
+- 2026-11-08: Deployed the free online plan as `94f43ab` (`deploy-2026-11-08-1`). Live smoke test passed; one sign-up with Andreas's email got the mail and opened (`claimedAt`, `seenAt` set), then was forgotten (backup just before: `/opt/backups/takeaseat-20261107-230825.db.gz.age`; no card, no `books:` line).
 - 2026-11-06: Built the free online plan (8 guest tables, unlock 25 €, idle cleanup), commits `42b1a24` and the wrap commit; not deployed. CLAUDE.md's "no server-side cap" decision replaced.
 - 2026-11-06: Fixed the guided tour's `TypeError … 'prep'`: a second quick click on a card not yet redrawn moved the tour past its last step (or below the first with «Πίσω»). Buttons now ignore a click once the tour left their step; 3 checks, 1799 pass. Live as `fa76fde` (`deploy-2026-11-06-1`); on live, five quick clicks moved one step and «Τέλος» closed cleanly, no console errors.
 - 2026-11-06: The Google, link-preview and structured-data descriptions (index.html, epikoinonia.html) now name «εταιρική εκδήλωση»; titles kept. Live as `c557b34`; the new text was read back from live.

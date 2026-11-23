@@ -1028,21 +1028,22 @@ function showCoupleSent(cid, title, note){
   box.dataset.cid=cid; showSent(box, title, note);
 }
 // A couple's planner opens at 00:00 Athens on day 15 after purchase (after their 14-day withdrawal period) — or at once with
-// «Άμεση έναρξη», which the server accepts only for an event less than 3 weeks away; a sale whose planner would open only on
-// or after the event day is refused (never_opens). Tables, floor and decor unlock 30 days before the event.
-const START_NOW_DAYS=21, OPEN_DAYS=15;
-const NEVER_OPENS="Το σχέδιο θα άνοιγε μετά την εκδήλωση. Διάλεξε «Άμεση έναρξη» (μόνο για εκδήλωση σε λιγότερο από 3 εβδομάδες) ή έλεγξε την ημερομηνία.";
+// «Άμεση έναρξη» when the customer asked for it in writing (any date since 2026-11-23); a sale whose planner would open only
+// on or after the event day is refused (never_opens). Tables, floor and decor unlock 30 days before the event.
+const OPEN_DAYS=15, SOON_DAYS=21;
+const NEVER_OPENS="Το σχέδιο θα άνοιγε μετά την εκδήλωση. Διάλεξε «Άμεση έναρξη», αν το ζήτησε ο πελάτης, ή έλεγξε την ημερομηνία.";
 const daysUntil=s=>isYmd(s)?Math.round((Date.parse(s+"T00:00:00Z")-Date.parse(todayYmd()+"T00:00:00Z"))/86400000):NaN;
 function syncStartNow(){
   const dateEl=document.getElementById("cdate"), box=document.getElementById("cstart"), when=document.getElementById("cwhen"); if(!dateEl || !box || !when) return;
-  const d=dateEl.value, n=daysUntil(d), ok=n>=0 && n<START_NOW_DAYS;
-  box.disabled=!ok; if(!ok) box.checked=false;
+  const d=dateEl.value, n=daysUntil(d);
   const OPENS="Το σχέδιο ανοίγει τη 15η μέρα μετά την αγορά (μετά τις 14 μέρες υπαναχώρησης του πελάτη)";
   when.style.color=n>=0 && !box.checked && n<=OPEN_DAYS ? "var(--danger)" : "";
-  when.textContent=!(n>=0) ? OPENS+"· τραπέζια, κάτοψη και διακόσμηση ξεκλειδώνουν 30 μέρες πριν από την εκδήλωση."
-    : box.checked ? "Το σχέδιο ανοίγει αμέσως, με πλήρη επεξεργασία."
+  when.textContent=box.checked ? (!(n>=0) ? "Το σχέδιο ανοίγει αμέσως· τραπέζια, κάτοψη και διακόσμηση ξεκλειδώνουν 30 μέρες πριν από την εκδήλωση."
+        : n>30 ? `Το σχέδιο ανοίγει αμέσως για καλεσμένους και θέσεις· τραπέζια, κάτοψη και διακόσμηση ξεκλειδώνουν στις ${gYmd(ymdPlus(d,-30))}.`
+        : "Το σχέδιο ανοίγει αμέσως, με πλήρη επεξεργασία.")
+    : !(n>=0) ? OPENS+"· τραπέζια, κάτοψη και διακόσμηση ξεκλειδώνουν 30 μέρες πριν από την εκδήλωση."
     : n<=OPEN_DAYS ? `Η εκδήλωση είναι ${n===0?"σήμερα":n===1?"αύριο":`σε ${n} μέρες`} — χωρίς «Άμεση έναρξη» το σχέδιο δεν προλαβαίνει να ανοίξει.`
-    : n<START_NOW_DAYS ? `Η εκδήλωση είναι σε ${n} μέρες — χωρίς «Άμεση έναρξη» το σχέδιο ανοίγει μόλις ${gN(n-OPEN_DAYS,"μέρα","μέρες")} πριν.`
+    : n<SOON_DAYS ? `Η εκδήλωση είναι σε ${n} μέρες — χωρίς «Άμεση έναρξη» το σχέδιο ανοίγει μόλις ${gN(n-OPEN_DAYS,"μέρα","μέρες")} πριν.`
     : n>OPEN_DAYS+30 ? `${OPENS}· τραπέζια, κάτοψη και διακόσμηση ξεκλειδώνουν στις ${gYmd(ymdPlus(d,-30))}.`
     : OPENS+", με πλήρη επεξεργασία.";
 }
@@ -1072,8 +1073,8 @@ function openNewCouple(pre){
         <div id="cafmw" style="display:none" data-type="${preType}"><label for="cafm">ΑΦΜ <span class="hint">— αν το έχεις</span></label><input id="cafm" inputmode="numeric" maxlength="9" autocomplete="off" value="${esc(pre&&pre.afm||"")}"></div>
         <div><label for="clang">Γλώσσα</label><select id="clang">${langOptions("el")}</select></div>
         <div class="full"><label for="ccontact">Σημειώσεις <span class="hint">— μόνο εσύ τις βλέπεις · χωρίς πληροφορίες υγείας</span></label><textarea id="ccontact" maxlength="${NOTES_MAX}" rows="2" placeholder="τηλέφωνο, πώς μας βρήκε, τι ζήτησε…"></textarea></div>
-        <div class="full"><label class="chk"><input type="checkbox" id="cstart" disabled> <span>Άμεση έναρξη
-          <span class="muted" style="display:block">Μόνο όταν η εκδήλωση απέχει λιγότερο από 3 εβδομάδες και ο πελάτης ζήτησε πρόσβαση αμέσως (έχει δεχτεί ότι, αν υπαναχωρήσει, πληρώνει τις μέρες που χρησιμοποίησε)</span></span></label>
+        <div class="full"><label class="chk"><input type="checkbox" id="cstart"> <span>Άμεση έναρξη
+          <span class="muted" style="display:block">Μόνο αν ο πελάτης το ζήτησε γραπτώς (π.χ. απαντώντας στο email με τα στοιχεία πληρωμής) και δέχτηκε ότι, αν υπαναχωρήσει, κρατάμε το ποσό για τις μέρες που είχε πρόσβαση</span></span></label>
           <div class="muted" id="cwhen" style="margin-top:6px"></div></div>
       </div>
       <div class="row fw" style="margin-top:14px"><button class="btn primary" id="createC">Δημιουργία</button>
@@ -1111,10 +1112,9 @@ async function createCouple(){
   if(dateEl.validity && dateEl.validity.badInput){ invalid(dateEl, "Η ημερομηνία δεν είναι πλήρης"); return; }
   const PAST_DATE="Η ημερομηνία δεν μπορεί να είναι στο παρελθόν — το σχέδιο ενός νέου πελάτη θα σβηνόταν αμέσως";
   const NO_DATE="Γράψε την ημερομηνία της εκδήλωσης — από αυτήν εξαρτάται πότε ο πελάτης στήνει τα τραπέζια";
-  const TOO_EARLY="Άμεση έναρξη μόνο για εκδήλωση σε λιγότερο από 3 εβδομάδες";
   if(!weddingDate){ invalid(dateEl, NO_DATE); return; }
   if(weddingDate<todayYmd()){ invalid(dateEl, PAST_DATE); return; }
-  const startNow=!!(startEl.checked && !startEl.disabled);
+  const startNow=!!startEl.checked;
   if(!startNow && daysUntil(weddingDate)<=OPEN_DAYS){ invalid(dateEl, NEVER_OPENS); return; }
   btn.disabled=true;
   const res=await req("/admin/couples",{ method:"POST", body:JSON.stringify({ name, contact, email, lang, kind, weddingDate, ...(startNow?{ startNow:true }:{}), ...(co?{ custType:"company", afm }:{}),
@@ -1128,7 +1128,6 @@ async function createCouple(){
     if(err==="bad_afm"){ invalid(afmEl, "Αυτό το ΑΦΜ δεν είναι έγκυρο"); return; }
     if(err==="past_date"){ invalid(dateEl, PAST_DATE); return; }
     if(err==="missing_date"){ invalid(dateEl, NO_DATE); return; }
-    if(err==="start_now_too_early"){ syncStartNow(); invalid(dateEl, TOO_EARLY); return; }
     if(err==="never_opens"){ syncStartNow(); invalid(dateEl, NEVER_OPENS); return; }
     failToast(res, badEmail(res)?BAD_EMAIL:err==="bad_date"?"Η ημερομηνία δεν είναι έγκυρη":"Δεν δημιουργήθηκε"); return; }
   rememberLang(c.id, lang);
@@ -2991,7 +2990,9 @@ IBAN: ${REPLY_PAY.iban}
 IRIS: ${REPLY_PAY.iris}
 Αιτιολογία: ${k==="company" ? "η επωνυμία της εταιρείας" : "το ονοματεπώνυμό σας"}
 
-${k==="company" ? "Μόλις δω την πληρωμή, σας στέλνω τον σύνδεσμο και τον κωδικό της κονσόλας της εταιρείας σας. Το σχέδιο ανοίγει αμέσως και ολόκληρο. Για το παραστατικό, στείλτε μου την επωνυμία και το ΑΦΜ της εταιρείας." : `Μόλις δω την πληρωμή, σας στέλνω τον σύνδεσμο του σχεδίου σας. Το σχέδιο ανοίγει 14 μέρες μετά την πληρωμή, όσο διαρκεί το δικαίωμα υπαναχώρησης. Αν η εκδήλωση είναι σε λιγότερο από 3 εβδομάδες, μπορεί να ανοίξει αμέσως, αν μου το ζητήσετε γραπτώς (π.χ. απαντώντας σε αυτό το email).`}
+${k==="company" ? "Μόλις δω την πληρωμή, σας στέλνω τον σύνδεσμο και τον κωδικό της κονσόλας της εταιρείας σας. Το σχέδιο ανοίγει αμέσως και ολόκληρο. Για το παραστατικό, στείλτε μου την επωνυμία και το ΑΦΜ της εταιρείας." : `Μόλις δω την πληρωμή, σας στέλνω τον σύνδεσμο του σχεδίου σας. Κανονικά το σχέδιο ανοίγει 14 μέρες μετά την πληρωμή, όσο διαρκεί το δικαίωμα υπαναχώρησης.
+
+Αν θέλετε να ανοίξει αμέσως, γράψτε μου στην απάντησή σας: «Ζητώ να ανοίξει το σχέδιο αμέσως και γνωρίζω ότι, αν υπαναχωρήσω μέσα στις 14 μέρες, κρατάτε το ποσό που αναλογεί στις μέρες που είχα πρόσβαση.»`}
 
 ${REPLY_SIGN}` },
   { id:"remind", venue:false, title:"Υπενθύμιση", subject:"TakeaSeat — το σχέδιο τραπεζιών", text:k=>`Καλησπέρα σας,

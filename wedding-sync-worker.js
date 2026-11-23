@@ -159,9 +159,10 @@ const DAY = 86400000, FALLBACK_DAYS = 548, TRASH_DAYS = 14, DATE_CHANGES = 3, DA
 const DEFAULT_RETENTION = { keepDays: 365, lockAfter: true, keep: false };
 const COUPLE_RETENTION = { keepDays: 365 };   // couples have their own setting (settings.coupleRetention), same default
 // Couple phases: a couple who buys directly waits out the 14-day withdrawal period (the payment day doesn't count, so the
-// planner opens at 00:00 on day 15); everyone
+// planner opens at 00:00 on day 15), unless they asked in writing to start at once («Άμεση έναρξη», any date since
+// 2026-11-23; terms §8: a withdrawal then keeps the part for the days of access); everyone
 // arranges the room only in the last 30 days; a couple's one date change freezes the plan until 14 days before the new date.
-const OPEN_DELAY_DAYS = 15, FULL_WINDOW_DAYS = 30, START_NOW_MAX_DAYS = 21, COUPLE_DATE_CHANGES = 1, FREEZE_BEFORE_DAYS = 14;
+const OPEN_DELAY_DAYS = 15, FULL_WINDOW_DAYS = 30, COUPLE_DATE_CHANGES = 1, FREEZE_BEFORE_DAYS = 14;
 const NAMES_PERMS = { floor: false, decor: true, layout: false, tables: false, seats: true, labels: true, maxSeats: 0 };   // decor: the couple's own items (venue items follow the venue's permission)
 const STARTER_GUEST_TABLES = 8;   // a new plan starts with 8 guest tables + the head table
 // ---- the free online plan (2026-11-06) ----
@@ -3701,9 +3702,9 @@ export default {
             if (!b.weddingDate) return json({ error: "missing_date" }, 400);
             if (!ymdOk(b.weddingDate)) return json({ error: "bad_date" }, 400);
             if (b.weddingDate < todayAthens() && b.allowPast !== true) return json({ error: "past_date" }, 400);
-            // The planner opens 14 days after payment (the couple's withdrawal period); "start now" only for a wedding < 21 days away.
+            // The planner opens 14 days after payment (the couple's withdrawal period), or at once when the buyer asked for it in
+            // writing ("start now", any date: it opens in the names phase until 30 days before, like any plan).
             const startNow = b.startNow === true;
-            if (startNow && b.weddingDate >= addDays(todayAthens(), START_NOW_MAX_DAYS)) return json({ error: "start_now_too_early" }, 400);
             const paidAt = Date.now(), opensAt = startNow ? null : athensMidnight(addDays(todayAthens(), OPEN_DELAY_DAYS));
             if (opensAt && opensAt >= athensMidnight(b.weddingDate)) return json({ error: "never_opens" }, 400);   // it would open only after the wedding: "start now" or check the date
             const company = b.custType === "company" || normKind(b.kind) === "company", afm = company && String(b.afm || "").trim() ? validAfm(b.afm) : "";   // a private buyer's ΑΦΜ is never kept

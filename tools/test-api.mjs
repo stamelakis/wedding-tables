@@ -815,7 +815,22 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
   {
     ok((await call('POST', '/admin/couples', { name: 'NoDate', weddingDate: undefined }, OWN)).d.error === 'missing_date', 'a couple is sold with a wedding date');
     ok((await call('POST', '/venues/' + V9.id + '/weddings', { label: 'NoDate', date: undefined }, HV)).d.error === 'missing_date', 'a venue wedding needs a date');
-    ok((await call('POST', '/admin/couples', { name: 'Early', weddingDate: day(60), startNow: true }, OWN)).d.error === 'start_now_too_early', '"start now" only for a wedding less than 3 weeks away');
+    {   // «Άμεση έναρξη» for any date (2026-11-23): it opens at once, but only for names until 30 days before
+      const fs = await import('node:fs'), rd = f => fs.readFileSync(path.join(root, f), 'utf8');
+      const E = (await call('POST', '/admin/couples', { name: 'Early', weddingDate: day(60), startNow: true }, OWN)).d.couple;
+      ok(E && E.startNow === true && E.life.phase === 'names' && !E.life.opensAt && E.life.fullAt > Date.now() + 29 * 86400000, '"start now" two months out opens at once, in the names phase', E && E.life);
+      const ER = raw('plan:' + raw('couple:' + E.id).planId);
+      ok(ER.opensAt === null, 'a "start now" plan has no opening day');
+      const E2 = (await call('POST', '/admin/couples', { name: 'Next year', weddingDate: day(300), startNow: true }, OWN)).d.couple;
+      ok(E2 && E2.life.phase === 'names', '"start now" works for an event most of a year away');
+      const ad = rd('admin.html'), tm = rd('terms.html'), reply = ad.slice(ad.indexOf('{ id:"pay"'), ad.indexOf('{ id:"remind"'));
+      ok(!/START_NOW|start_now_too_early|3 εβδομάδες/.test(ad + rd('wedding-sync-worker.js')) && /id="cstart">/.test(ad), 'admin and server set no date limit on «Άμεση έναρξη», and its tick is never disabled');
+      ok(/Ζητώ να ανοίξει το σχέδιο αμέσως και γνωρίζω ότι, αν υπαναχωρήσω μέσα στις 14 μέρες/.test(reply), 'the payment reply gives the buyer the sentence that asks for an immediate start');
+      ok(/<b>Άμεση έναρξη:<\/b>[^<]*όσο κι αν απέχει η εκδήλωσή σας/.test(tm) && /<b>Immediate start:<\/b>[^<]*however far away your event is/.test(tm)
+        && /άρθρο 3ι παρ\. 3 ν\. 2251\/1994/.test(tm) && /Article 3i\(3\) of Greek Law 2251\/1994/.test(tm), 'terms §8: immediate start for any date, in both languages, with the days-of-access rule');
+      for (const f of ['terms.html', 'index.html', 'plano-trapezion-gamou.html', 'plano-trapezion-vaptisis.html', 'plano-trapezion-giortis.html'])
+        ok(!/λιγότερ[οε]ς? από 21 ημέρες|less than 21 days/.test(rd(f)), f + ': no 21-day limit on starting at once');
+    }
     const P = (await call('POST', '/admin/couples', { name: 'Phases', weddingDate: day(60), startNow: false }, OWN)).d.couple;
     ok(P.life.phase === 'waiting' && P.life.opensAt > Date.now() + 13 * 86400000 && P.startNow === false, 'the admin sees the planner opening 14 days after payment', P.life);
     const PC = (await call('POST', '/claim', { token: raw('couple:' + P.id).claimToken, nonce: 'n' })).d, HP = { 'X-Edit-Key': PC.editKey };
