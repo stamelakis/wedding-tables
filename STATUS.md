@@ -4,13 +4,9 @@ Updated: 2026-11-23
 
 **Status:** Live runs `9bc8a5d` (deployed 2026-11-09 as `deploy-2026-11-09-6`, pre-deploy backup
 `/opt/backups/takeaseat-20261109-210227.db.gz.age`), healthy. **New on live: «Είσοδος (αφίξεις)»** (door check-in for
-company events; details in History). **Also new today: «Πρόγραμμα»** (⋯ menu): the event's timeline (time,
-what, who, note) kept in the plan, editable by every writer, read-only for viewers, never copied to another event; shown
-and printed in the order of the night (00:00–05:59 after the evening). «who» suggests the vendors, and the printed sheet
-carries a vendor's phone when «who» names one. On a company plan «Πρόγραμμα της εκδήλωσης». privacy and dpa list it.
-Checked locally (add, reload, sort, print, read-only, company, 375px) and live in the lab (menu, add, reload, print
-option, company wording, no console errors). Not seen: on a real online plan, or on paper. Also new today: «Συνεργάτες»
-(the vendors list, `743fa73`) and place cards and table cards in «Εκτύπωση» (fold not yet seen on a real printer). Also live since 2026-11-09 and checked at 375px (details in History): the home hero for
+company events; details in History). Also live since 2026-11-09: «Πρόγραμμα» (the event's timeline, ⋯ menu; not
+yet seen on a real online plan or on paper), «Συνεργάτες» (`743fa73`) and place and table cards in «Εκτύπωση» (fold
+not yet seen on a real printer); details of each in History. Also live and checked at 375px: the home hero for
 every reader, «Ποιοι είμαστε», the free-plan page, the four-door home page. **Phase 3 of `COMPANIES-PLAN.md` is live:** a
 company's console, saved rooms, old designs, the 1–5 year choice. Phase 4 (γραφείο) and operations phases 1–6 are live.
 
@@ -114,6 +110,8 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 
 ## History
 
+- 2026-11-23: prep for the κτήμα's words: the Greek message to send, rules for using the words, and places A/B/C
+  (recommended A) in `docs/decisions/ktima-words.md`. No product code changed.
 - 2026-11-19: the lab's trimmed-tables note reads in the singular for one table: «…— ένα ακόμη δεν μπήκε (οι
   καλεσμένοι του είναι στη λίστα)», and the plural «3 ακόμη δεν μπήκαν» for more; the same for a file whose tables do
   not fit («Ένα τραπέζι του αρχείου δεν χωράει»), in el, en and de (`labCapCut1`, `labCapSkip1`, `labCutMsg`). Suite
