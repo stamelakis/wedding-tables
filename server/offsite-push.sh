@@ -4,7 +4,7 @@
 # after the 03:00-03:20 local backups). Credentials live in /root/.config/rclone/rclone.conf
 # (b2 remote; NOT in git).
 #
-# takeaseat and amelie snapshots are already age-encrypted; edu + elab backups hold personal
+# takeaseat, amelie, webstudio and cozybistro snapshots are already age-encrypted; edu + elab backups hold personal
 # data, so they are age-encrypted HERE before upload. Backblaze only ever stores
 # ciphertext, decryptable solely with the off-box age private key.
 # Idempotent: each dated file is encrypted+uploaded exactly once.
@@ -50,7 +50,7 @@ last() { tail -n 3 "$LOG" | tr '\n' ' ' | cut -c1-300; }
 EXISTING=$(rclone lsf "$REMOTE" 2>"$LOG") || { err "rclone lsf $REMOTE failed: $(last)"; finish; }
 have() { printf "%s\n" "$EXISTING" | grep -qxF "$1"; }
 
-for f in "$SRC"/takeaseat-*.db.gz.age "$SRC"/amelie-*.db.gz.age; do
+for f in "$SRC"/takeaseat-*.db.gz.age "$SRC"/amelie-*.db.gz.age "$SRC"/webstudio-*.age "$SRC"/cozybistro-*.age; do
   [ -e "$f" ] || continue; b=$(basename "$f"); have "$b" && continue
   cp "$f" "$STAGE/$b" || { err "copy of $b failed"; rm -f "$STAGE/$b"; }
 done
