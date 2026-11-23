@@ -1,6 +1,6 @@
 # TakeaSeat — STATUS
 
-Updated: 2026-11-19
+Updated: 2026-11-23
 
 **Status:** Live runs `9bc8a5d` (deployed 2026-11-09 as `deploy-2026-11-09-6`, pre-deploy backup
 `/opt/backups/takeaseat-20261109-210227.db.gz.age`), healthy. **New on live: «Είσοδος (αφίξεις)»** (door check-in for
@@ -32,7 +32,8 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 
 ## Next
 
-1. [you: get the κτήμα's OK and its words] **Ideas for presenting the site:** a few words from the real κτήμα. Done:
+1. [you: get the κτήμα's OK and its words] **Ideas for presenting the site:** a few words from the real κτήμα. The
+   message to send and three places for the words are ready in `docs/decisions/ktima-words.md` (2026-11-23). Done:
    the four-door hero (`2eeebf6`), the hero for every reader (`bc7574b`), the free-plan page (`9e5f069`), «Ποιοι
    είμαστε» (`d1e4823`).
 2. [you: company, accountant, lawyer] **Phase 7 (online payment).** The page's remaining English sections move to
@@ -42,6 +43,9 @@ card, no `books:` line, nothing names ΔΟΚΙΜΗ. Not seen live: the 9th table
 
 ## Waiting on Andreas
 
+- **The κτήμα's words: send the message, and place A, B or C?** The Greek message for the real κτήμα and the three
+  places are in `docs/decisions/ktima-words.md` (recommended: A, inside «Για κτήματα» just before the free-year
+  offer). Answer «στείλ' το ως έχει» or your changes, plus a letter; then send it yourself and paste their reply.
 - **Read the Greek of «Είσοδος (αφίξεις)»** on live: the door page (`eisodos.html`, opened from a
   company plan's ⋯ → «Είσοδος (αφίξεις)…» → the link), the panel's hints, and the new lines in privacy.html («Αφίξεις
   στην είσοδο») and dpa.html («Δεδομένα», and the retention list). Say what reads wrong.
