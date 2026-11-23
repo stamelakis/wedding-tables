@@ -2,8 +2,8 @@
 
 Updated: 2026-11-23
 
-**Status:** Live runs `9bc8a5d` (deployed 2026-11-09 as `deploy-2026-11-09-6`, pre-deploy backup
-`/opt/backups/takeaseat-20261109-210227.db.gz.age`), healthy. **New on live: «Είσοδος (αφίξεις)»** (door check-in for
+**Status:** Live runs `2a7ac97` (deployed 2026-11-23 as `deploy-2026-11-23-1`, pre-deploy backup
+`/opt/backups/takeaseat-20261123-172523.db.gz.age`), healthy. New: «Άμεση έναρξη» for any date (History). **New on live: «Είσοδος (αφίξεις)»** (door check-in for
 company events; details in History). Also live since 2026-11-09: «Πρόγραμμα» (the event's timeline, ⋯ menu; not
 yet seen on a real online plan or on paper), «Συνεργάτες» (`743fa73`) and place and table cards in «Εκτύπωση» (fold
 not yet seen on a real printer); details of each in History. Also live and checked at 375px: the home hero for
@@ -33,16 +33,14 @@ Andreas's own email (since forgotten; details in History). Not seen live: the 9t
    είμαστε» (`d1e4823`).
 2. [you: company, accountant, lawyer] **Phase 7 (online payment).** The page's remaining English sections move to
    Greek as each is touched.
-3. [you: read the Greek, then say «deploy»] **Deploy «Άμεση έναρξη» for any date** (built locally 2026-11-23, not
-   on live; see History) together with the singular trimmed-tables note (2026-11-19). Terms version 23 Νοεμβρίου 2026:
-   change the date in `terms.html` if the deploy happens on another day.
+3. [you: pick one] **More improvements, suggested 2026-11-23** (#1 of that list, start-now, is live): a «we draw your
+   room from a photo» service for κτήματα; a mail to the couple 10 and 3 days before when guests have no seat; an
+   English page for foreign couples and planners marrying in Greece; a two-question message the day after an event.
 
 ## Waiting on Andreas
 
-- **Read the Greek of «Άμεση έναρξη» for any date** (local, not live yet): terms.html §8 («Έναρξη», «Δικαίωμα
-  υπαναχώρησης», «Άμεση έναρξη»), the «Όλα με τη σειρά τους» line and the «Μόλις αγοράσετε» step on the wedding,
-  baptism and γιορτή pages, the home price box, and the «Στοιχεία πληρωμής» ready reply in admin.html (the sentence the
-  buyer copies). Say what reads wrong, then «deploy».
+- **The next direct buyer who asks to start at once:** tick «Άμεση έναρξη» only after their written request (the
+  sentence in the «Στοιχεία πληρωμής» reply) is in your mail, and keep that mail.
 - **Read the Greek of «Είσοδος (αφίξεις)»** on live: the door page (`eisodos.html`, opened from a
   company plan's ⋯ → «Είσοδος (αφίξεις)…» → the link), the panel's hints, and the new lines in privacy.html («Αφίξεις
   στην είσοδο») and dpa.html («Δεδομένα», and the retention list). Say what reads wrong.
@@ -115,7 +113,10 @@ Andreas's own email (since forgotten; details in History). Not seen live: the 9t
 - 2026-11-23: «Άμεση έναρξη» for any date (Andreas's choice; was: only an event under 21 days away). The server and
   admin.html set no date limit; far from the date the plan opens in the names phase. The payment reply gives the buyer
   the sentence that asks for it. terms §8 (EL/EN), the home price box and the wedding, baptism and γιορτή pages say
-  so; HANDOFF updated. 1985 checks pass. Not deployed.
+  so; HANDOFF updated. 1985 checks pass. Live as `deploy-2026-11-23-1` with the singular trimmed-tables note; live
+  smoke test passed (health, 7 pages without console errors, the new texts, the lab draws a room). Not seen live: the
+  singular note itself (needs trimming in the lab). The repo's `server/offsite-push.sh` now matches the host copy
+  (webstudio and cozybistro added there on 2026-11-22; installing the old repo copy would have dropped them).
 - 2026-11-23: prep for the κτήμα's words: the Greek message to send, rules for using the words, and places A/B/C
   (recommended A) in `docs/decisions/ktima-words.md`. No product code changed.
 - 2026-11-19: the lab's trimmed-tables note reads in the singular for one table: «…— ένα ακόμη δεν μπήκε (οι
