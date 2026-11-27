@@ -33,15 +33,14 @@ Andreas's own email (since forgotten; details in History). Not seen live: the 9t
    είμαστε» (`d1e4823`).
 2. [you: company, accountant, lawyer] **Phase 7 (online payment).** The page's remaining English sections move to
    Greek as each is touched.
-3. [auto] Prep for #4: the four improvements side by side in `docs/decisions/improvements-2026-11.md` (what each
-   does for customers, work, cost, risk, what it touches), with a recommendation. Done when: «Waiting on Andreas» asks
-   «Improvements: A, B, C or D?». Changes no product code.
-4. [you: pick one] **More improvements, suggested 2026-11-23** (#1 of that list, start-now, is live): a «we draw your
-   room from a photo» service for κτήματα; a mail to the couple 10 and 3 days before when guests have no seat; an
-   English page for foreign couples and planners marrying in Greece; a two-question message the day after an event.
+3. [you: pick one] **More improvements, suggested 2026-11-23:** four options, A–D, in
+   `docs/decisions/improvements-2026-11.md` (the question is under «Waiting on Andreas»).
 
 ## Waiting on Andreas
 
+- **Improvements: A, B, C or D?** A «we draw your room from a photo» for κτήματα (recommended: small, helps the
+  in-person meeting) · B mail 10/3 days before when guests have no seat · C English page for weddings in Greece ·
+  D two questions in the day-after keepsake mail. Details and costs: `docs/decisions/improvements-2026-11.md`.
 - **The next direct buyer who asks to start at once:** tick «Άμεση έναρξη» only after their written request (the
   sentence in the «Στοιχεία πληρωμής» reply) is in your mail, and keep that mail.
 - **Read the Greek of «Είσοδος (αφίξεις)»** on live: the door page (`eisodos.html`, opened from a
@@ -113,6 +112,8 @@ Andreas's own email (since forgotten; details in History). Not seen live: the 9t
 
 ## History
 
+- 2026-11-28: prep for the next improvement: the four options side by side in
+  `docs/decisions/improvements-2026-11.md`, recommending A (room from a photo). No product code changed.
 - 2026-11-23: «Άμεση έναρξη» for any date (Andreas's choice; was: only an event under 21 days away). The server and
   admin.html set no date limit; far from the date the plan opens in the names phase. The payment reply gives the buyer
   the sentence that asks for it. terms §8 (EL/EN), the home price box and the wedding, baptism and γιορτή pages say
