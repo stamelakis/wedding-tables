@@ -6,8 +6,7 @@ Updated: 2026-11-28
 `/opt/backups/takeaseat-20261123-172523.db.gz.age`), healthy. New: «Άμεση έναρξη» for any date (History). **New on live: «Είσοδος (αφίξεις)»** (door check-in for
 company events; details in History). Also live since 2026-11-09: «Πρόγραμμα» (the event's timeline, ⋯ menu; not
 yet seen on a real online plan or on paper), «Συνεργάτες» (`743fa73`) and place and table cards in «Εκτύπωση» (fold
-not yet seen on a real printer); details of each in History. Also live and checked at 375px: the home hero for
-every reader, «Ποιοι είμαστε», the free-plan page, the four-door home page. **Phase 3 of `COMPANIES-PLAN.md` is live:** a
+not yet seen on a real printer); details of each in History. **Phase 3 of `COMPANIES-PLAN.md` is live:** a
 company's console, saved rooms, old designs, the 1–5 year choice. Phase 4 (γραφείο) and operations phases 1–6 are live.
 
 **The free online plan is live** (2026-11-08; HANDOFF §1l). Anyone signs up alone at `epikoinonia.html?q=free` and
@@ -28,9 +27,8 @@ Andreas's own email (since forgotten; details in History). Not seen live: the 9t
 1. [you: only after an agreement with the κτήμα] **Ideas for presenting the site:** a few words from the κτήμα. ON
    HOLD (2026-11-23): the venue on live is where Andreas had his wedding, not a customer; he will present TakeaSeat
    to it in person to reach an agreement. Do not contact it. Place A is chosen; the message in
-   `docs/decisions/ktima-words.md` must be reworded then (it assumes they already use it). Done:
-   the four-door hero (`2eeebf6`), the hero for every reader (`bc7574b`), the free-plan page (`9e5f069`), «Ποιοι
-   είμαστε» (`d1e4823`).
+   `docs/decisions/ktima-words.md` must be reworded then (it assumes they already use it). (The hero and page work
+   for item 1 is done; see History.)
 2. [you: company, accountant, lawyer] **Phase 7 (online payment).** The page's remaining English sections move to
    Greek as each is touched.
 3. [auto] **English page for weddings in Greece** (Andreas chose C on 2026-11-28; `docs/decisions/improvements-2026-11.md`).
@@ -115,6 +113,8 @@ Andreas's own email (since forgotten; details in History). Not seen live: the 9t
 
 ## History
 
+- 2026-11-28: Andreas chose C, the English page for weddings in Greece (couples and planners on one page, English
+  demo, English ready replies); written into Next as [auto]. A, B, D stay for later.
 - 2026-11-28: prep for the next improvement: the four options side by side in
   `docs/decisions/improvements-2026-11.md`, recommending A (room from a photo). No product code changed.
 - 2026-11-23: «Άμεση έναρξη» for any date (Andreas's choice; was: only an event under 21 days away). The server and
