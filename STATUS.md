@@ -1,6 +1,6 @@
 # TakeaSeat — STATUS
 
-Updated: 2026-11-23
+Updated: 2026-11-28
 
 **Status:** Live runs `2a7ac97` (deployed 2026-11-23 as `deploy-2026-11-23-1`, pre-deploy backup
 `/opt/backups/takeaseat-20261123-172523.db.gz.age`), healthy. New: «Άμεση έναρξη» for any date (History). **New on live: «Είσοδος (αφίξεις)»** (door check-in for
