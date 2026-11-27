@@ -33,7 +33,10 @@ Andreas's own email (since forgotten; details in History). Not seen live: the 9t
    είμαστε» (`d1e4823`).
 2. [you: company, accountant, lawyer] **Phase 7 (online payment).** The page's remaining English sections move to
    Greek as each is touched.
-3. [you: pick one] **More improvements, suggested 2026-11-23** (#1 of that list, start-now, is live): a «we draw your
+3. [auto] Prep for #4: the four improvements side by side in `docs/decisions/improvements-2026-11.md` (what each
+   does for customers, work, cost, risk, what it touches), with a recommendation. Done when: «Waiting on Andreas» asks
+   «Improvements: A, B, C or D?». Changes no product code.
+4. [you: pick one] **More improvements, suggested 2026-11-23** (#1 of that list, start-now, is live): a «we draw your
    room from a photo» service for κτήματα; a mail to the couple 10 and 3 days before when guests have no seat; an
    English page for foreign couples and planners marrying in Greece; a two-question message the day after an event.
 
