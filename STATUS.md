@@ -3,7 +3,7 @@
 Updated: 2026-11-28
 
 **Status:** Live runs `2a7ac97` (deployed 2026-11-23 as `deploy-2026-11-23-1`, pre-deploy backup
-`/opt/backups/takeaseat-20261123-172523.db.gz.age`), healthy. New: «Άμεση έναρξη» for any date (History). **New on live: «Είσοδος (αφίξεις)»** (door check-in for
+`/opt/backups/takeaseat-20261123-172523.db.gz.age`), healthy. **Built, not deployed: the English page for weddings in Greece** (item 3, below). New: «Άμεση έναρξη» for any date (History). **New on live: «Είσοδος (αφίξεις)»** (door check-in for
 company events; details in History). Also live since 2026-11-09: «Πρόγραμμα» (the event's timeline, ⋯ menu; not
 yet seen on a real online plan or on paper), «Συνεργάτες» (`743fa73`) and place and table cards in «Εκτύπωση» (fold
 not yet seen on a real printer); details of each in History. **Phase 3 of `COMPANIES-PLAN.md` is live:** a
@@ -31,16 +31,22 @@ Andreas's own email (since forgotten; details in History). Not seen live: the 9t
    for item 1 is done; see History.)
 2. [you: company, accountant, lawyer] **Phase 7 (online payment).** The page's remaining English sections move to
    Greek as each is touched.
-3. [auto] **English page for weddings in Greece** (Andreas chose C on 2026-11-28; `docs/decisions/improvements-2026-11.md`).
-   One page for foreign couples (offered the free English plan; no card payment promised until phase 7) and for
-   planners based in Greece («talk to us», `kind=organiser&lang=en`); an English demo built from `planner.src.html`
-   beside `lab.html`; English twins of admin's ready replies. Sitemap, the Dockerfile page list, hreflang. Done when:
-   all three are built and tested, the suite passes, checked on screen at desktop and 375px. Not deployed: deploy
-   needs Andreas's OK. Then «Waiting on Andreas»: have the English read by a native speaker.
+3. [you: say «deploy»] **Deploy the English page for weddings in Greece.** Built, tested (2011 checks) and checked on
+   screen on the local copy at desktop and 375px (2026-11-28; History). Nothing of it is live yet.
 4. [you: pick one, later] **The other improvements:** A room from a photo, B unseated-guests reminder, D day-after
    questions (same doc).
 
 ## Waiting on Andreas
+
+- **The English page for weddings in Greece is ready to go live** (local copy only today). What changes for customers:
+  a new English page, `takeaseat.gr/seating-plan-wedding-greece.html`, for couples from abroad (it offers the free
+  online plan; the 25 € unlock is a bank transfer, no card is promised) and for wedding planners in Greece («Talk to
+  us»); an English demo, `takeaseat.gr/lab-en.html`; an «English: weddings in Greece» link in the footer of the home
+  page and the Greek wedding page. In «Πελάτες», an English contact's ready replies open in English (one button
+  switches). A normal deploy (backup, automatic rollback); undoing it is one more deploy. Reply «deploy».
+- **After it is live: have the English read by a native speaker.** The page, the English demo's words (it uses the
+  English app's words, already live), and the 7 English ready replies (in admin.html, «Έτοιμο μήνυμα» on a contact,
+  then «English»). Say what reads wrong.
 
 - **The next direct buyer who asks to start at once:** tick «Άμεση έναρξη» only after their written request (the
   sentence in the «Στοιχεία πληρωμής» reply) is in your mail, and keep that mail.
@@ -66,8 +72,9 @@ Andreas's own email (since forgotten; details in History). Not seen live: the 9t
 - **Send one real form from the live site** with your own email, choosing «Εταιρεία» so it covers the new type too
   (sending was only tested on the local copy): https://takeaseat.gr/epikoinonia.html. Check that you get the "we got it" mail, that the mail to info@ arrives and Reply answers your own address, and that the
   contact shows in «Πελάτες» as «Νέα επαφή». Then «Σβήσε την επαφή…» on its card. Tell the session if anything is off.
-- **Send the bank details for the payment text**: δικαιούχος, IBAN and IRIS number (put them in chat; they are not
-  secret, they go on every payment message). Until then the live payment reply shows «[ΣΥΜΠΛΗΡΩΣΕ…]» and warns on
+- **Send the bank details for the payment text**: δικαιούχος, IBAN, IRIS number, and the bank's BIC (the English
+  reply asks for it, because a bank abroad needs it; put them in chat; they are not secret, they go on every payment
+  message). Until then the live payment reply shows «[ΣΥΜΠΛΗΡΩΣΕ…]» and warns on
   copy. Then fill `REPLY_PAY` in admin.html and deploy.
 - **Nothing to do for phase 3.** Not checked after the deploy: the one real venue's console on the new sheet (that
   needs the venue's own key). The same code was checked on the local copy. The three new dates are recorded from
@@ -112,6 +119,18 @@ Andreas's own email (since forgotten; details in History). Not seen live: the 9t
 - The 🛟 on the «Υποστήριξη έως …» badge shows as an empty box on Windows 10 browsers (no such emoji there).
 
 ## History
+
+- 2026-11-28: the English page for weddings in Greece (item 3, [auto]), not deployed. `seating-plan-wedding-greece.html`
+  (couples: free plan, demo, unlock by bank transfer, timeline, FAQ with matching structured data; planners: what the
+  γραφείο console does, first year free then 349 € + VAT, «Talk to us» to `epikoinonia.html?kind=organiser&lang=en`,
+  says the console and dpa are Greek today). `lab-en.html` built from `planner.src.html` with its own storage, its
+  «more tables» note pointing to the English page, the help's legal links to `#en`. hreflang: the page ↔
+  `plano-trapezion-gamou.html`, `lab.html` ↔ `lab-en.html`. Sitemap and both Dockerfile lists (and the check stage)
+  carry both. The contact form in English sends «Home» and «Free demo» to the English pages. admin.html: all 7 ready
+  replies have English twins, opened in the contact's language (`lead.lang`, now on the card), one button switches;
+  the English payment reply adds BIC. 26 new checks (2011). Checked on screen on the local copy: the page at 1280 and
+  375 px (no sideways scroll), the demo at both sizes (English, christening, separate from the Greek demo), the form,
+  and the reply box with a made-up English contact (opens in English, switches both ways, all 7 × 4 texts render).
 
 - 2026-11-28: Andreas chose C, the English page for weddings in Greece (couples and planners on one page, English
   demo, English ready replies); written into Next as [auto]. A, B, D stay for later.

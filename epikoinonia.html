@@ -225,6 +225,7 @@ const T = {
 };
 const qs = new URLSearchParams(location.search);
 const lang = qs.get("lang") === "en" ? "en" : "el", t = k => T[lang][k];
+const HOME = lang === "en" ? "/seating-plan-wedding-greece.html" : "/";   // an English visitor goes back to the English page, not the Greek home
 const $ = id => document.getElementById(id);
 const KINDS = ["wedding", "baptism", "party", "company", "venue", "organiser"];
 const hasNoDate = () => kind === "venue" || kind === "organiser";   // they write about their business, not about one evening
@@ -238,6 +239,8 @@ if (lang === "en") {
   document.documentElement.lang = "en"; document.title = t("title");
   document.querySelectorAll("[data-t]").forEach(el => { const v = t(el.dataset.t); if (v != null) el[el.hasAttribute("data-html") ? "innerHTML" : "textContent"] = v; });
   const ll = $("langlink"); ll.textContent = "Ελληνικά"; ll.lang = "el"; ll.hreflang = "el";
+  document.querySelectorAll('a[data-t="home"]').forEach(a => { a.href = HOME; });
+  document.querySelectorAll('a[data-t="try"]').forEach(a => { a.href = "/lab-en.html"; });   // the English demo
 }
 // the switch keeps what the link said (kind, topic)
 { const q2 = new URLSearchParams(location.search); if (lang === "en") q2.delete("lang"); else q2.set("lang", "en"); $("langlink").href = "?" + q2.toString(); }
@@ -292,7 +295,7 @@ async function signupFree(v) {
   catch (x) { r = null; }
   btn.disabled = false; btn.textContent = t("sendFree");
   if (r && r.ok && d.ok) {
-    $("card").innerHTML = `<div class="done" role="status"><div class="big">✓</div><h2>${t("doneFreeH")}</h2><p>${t("doneFreeP").replace("{email}", "<b>" + esc(body.email) + "</b>")}</p><p>${t("doneFreeP2")}</p><p style="margin-top:16px"><a href="/">${t("back")}</a></p></div>`;
+    $("card").innerHTML = `<div class="done" role="status"><div class="big">✓</div><h2>${t("doneFreeH")}</h2><p>${t("doneFreeP").replace("{email}", "<b>" + esc(body.email) + "</b>")}</p><p>${t("doneFreeP2")}</p><p style="margin-top:16px"><a href="${HOME}">${t("back")}</a></p></div>`;
     $("card").scrollIntoView({ behavior: "smooth", block: "start" });
     return;
   }
@@ -328,7 +331,7 @@ $("form").addEventListener("submit", async e => {
   catch (x) { r = null; }
   btn.disabled = false; btn.textContent = t("send");
   if (r && r.ok && d.ok) {
-    $("card").innerHTML = `<div class="done" role="status"><div class="big">✓</div><h2>${t("doneH")}</h2><p>${t("doneP").replace("{email}", "<b>" + esc(body.email) + "</b>")}</p><p>${t("doneP2")}</p><p style="margin-top:16px"><a href="/">${t("back")}</a></p></div>`;
+    $("card").innerHTML = `<div class="done" role="status"><div class="big">✓</div><h2>${t("doneH")}</h2><p>${t("doneP").replace("{email}", "<b>" + esc(body.email) + "</b>")}</p><p>${t("doneP2")}</p><p style="margin-top:16px"><a href="${HOME}">${t("back")}</a></p></div>`;
     $("card").scrollIntoView({ behavior: "smooth", block: "start" });
     return;
   }

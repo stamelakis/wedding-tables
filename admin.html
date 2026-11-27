@@ -2192,10 +2192,10 @@ async function onCardClick(e, root, key, x){
   if(k==="panel_close"){ const p=b.closest(".cardpanel"); if(p) p.innerHTML=""; if(cardPanel && cardPanel.el===p) cardPanel=null; return; }
   if(k==="tpl_copy"){ const ta=q("#tp_text"); if(ta){ copy(ta.value); if(ta.value.includes("[ΣΥΜΠΛΗΡΩΣΕ")) setTimeout(()=>toast("Πρόσεξε: έχει ακόμη κενά «[ΣΥΜΠΛΗΡΩΣΕ…]»"), 1500); } return; }
   if(k==="tpl_mail"){   // his mail app, with the text in it; the timeline says it was written
-    const ta=q("#tp_text"), r=REPLIES.find(t=>t.id===b.dataset.tpl), to=x.customer.email; if(!ta || !r || !to) return;
+    const ta=q("#tp_text"), r0=REPLIES.find(t=>t.id===b.dataset.tpl), en=b.dataset.lang==="en", r=r0 && replyOf(r0, en ? "en" : "el"), to=x.customer.email; if(!ta || !r || !to) return;
     if(ta.value.includes("[ΣΥΜΠΛΗΡΩΣΕ") && !confirm("Το κείμενο έχει ακόμη κενά «[ΣΥΜΠΛΗΡΩΣΕ…]». Να ανοίξει έτσι το email;")) return;
     location.href=`mailto:${encodeURIComponent(to).replace(/%40/g,"@")}?subject=${encodeURIComponent(r.subject)}&body=${encodeURIComponent(ta.value)}`;
-    return send(path+"/timeline", { method:"POST", body:JSON.stringify({ kind:"email", text:"«"+r.title+"»" }) }, "Γράφτηκε στο ιστορικό: ✉ Email", "Δεν γράφτηκε στο ιστορικό");
+    return send(path+"/timeline", { method:"POST", body:JSON.stringify({ kind:"email", text:"«"+r.title+"»"+(en ? " (English)" : "") }) }, "Γράφτηκε στο ιστορικό: ✉ Email", "Δεν γράφτηκε στο ιστορικό");
   }
   if(k==="tl_all"){ const ul=q("#ct_list"); if(ul) ul.innerHTML=(x.timeline||[]).map(t=>cTlItem(t, key)).join(""); b.remove(); }
 }
@@ -2960,12 +2960,18 @@ async function leadAction(key, x, a, btn){
 }
 
 // ---- the ready replies (phase 4): Greek, for Andreas to read before the first one goes out ----
+// Each has an English twin (`en`, 2026-11-28, for the English page seating-plan-wedding-greece.html): the box opens in the
+// language the contact wrote in (lead.lang) and one button switches. Only the text the customer reads is English; the
+// buttons and hints stay Greek like the rest of the console. A native speaker has not read the English yet (STATUS).
 // A tap shows the text in a box on the card, to correct and copy (or open in his mail app, which writes «✉ Email» in the
 // history). Nothing is sent by the server. The payment details are left as gaps until he gives them once (REPLY_PAY).
-const REPLY_PAY={ holder:"[ΣΥΜΠΛΗΡΩΣΕ: δικαιούχος]", iban:"[ΣΥΜΠΛΗΡΩΣΕ: IBAN]", iris:"[ΣΥΜΠΛΗΡΩΣΕ: IRIS]" };
+const REPLY_PAY={ holder:"[ΣΥΜΠΛΗΡΩΣΕ: δικαιούχος]", iban:"[ΣΥΜΠΛΗΡΩΣΕ: IBAN]", iris:"[ΣΥΜΠΛΗΡΩΣΕ: IRIS]", bic:"[ΣΥΜΠΛΗΡΩΣΕ: BIC]" };   // BIC: the English text only, a bank abroad asks for it (IRIS works only between Greek banks)
 const REPLY_SIGN="Ανδρέας — TakeaSeat\n697 735 5378 · takeaseat.gr";
 const REPLY_FOR={ wedding:"τον γάμο σας", baptism:"τη βάπτιση", party:"τη γιορτή σας", company:"την εκδήλωσή σας" };
 const REPLY_LAB=k=>"https://takeaseat.gr/lab.html?ev="+k;
+const REPLY_EN={ sign:"Andreas — TakeaSeat\n+30 697 735 5378 · takeaseat.gr",
+  for:{ wedding:"your wedding", baptism:"the christening", party:"your celebration", company:"your event" },
+  lab:k=>"https://takeaseat.gr/lab-en.html?ev="+k, greek:"(the console is in Greek for now, and I am happy to go through it with you)" };
 const REPLIES=[
   { id:"price", venue:false, title:"Τιμή", subject:"TakeaSeat — το σχέδιο τραπεζιών", text:k=>`Καλησπέρα σας,
 
@@ -2980,7 +2986,21 @@ ${k==="company" ? "Αν ο χώρος της εκδήλωσης δουλεύει
 
 Για ό,τι χρειαστείτε, είμαι στη διάθεσή σας.
 
-${REPLY_SIGN}` },
+${REPLY_SIGN}`,
+    en:{ subject:"TakeaSeat — your seating plan", text:k=>`Hello,
+
+thank you for your interest in TakeaSeat.
+
+The seating plan for ${REPLY_EN.for[k]} costs 25 € (VAT included), once, for one event: you set up the tables and the room, put your guests in their seats and share it with whoever you like.${k==="company" ? " Your company gets its own console: you keep your rooms and start each next event, again for 25 €, from the previous one." : ""}
+
+You can try it first for free, up to 8 tables, with no account:
+${REPLY_EN.lab(k)}
+
+${k==="company" ? "If the venue of your event already works with TakeaSeat, you pay nothing: ask the venue for the link." : "If your venue already works with TakeaSeat, you pay nothing: ask the venue for the link."}
+
+If you need anything, I am happy to help.
+
+${REPLY_EN.sign}` } },
   { id:"pay", venue:false, title:"Στοιχεία πληρωμής", subject:"TakeaSeat — στοιχεία πληρωμής", text:k=>`Καλησπέρα σας,
 
 για το σχέδιο τραπεζιών (25 € με ΦΠΑ) τα στοιχεία πληρωμής είναι:
@@ -2994,7 +3014,21 @@ ${k==="company" ? "Μόλις δω την πληρωμή, σας στέλνω τ
 
 Αν θέλετε να ανοίξει αμέσως, γράψτε μου στην απάντησή σας: «Ζητώ να ανοίξει το σχέδιο αμέσως και γνωρίζω ότι, αν υπαναχωρήσω μέσα στις 14 μέρες, κρατάτε το ποσό που αναλογεί στις μέρες που είχα πρόσβαση.»`}
 
-${REPLY_SIGN}` },
+${REPLY_SIGN}`,
+    en:{ subject:"TakeaSeat — payment details", text:k=>`Hello,
+
+for the seating plan (25 €, VAT included) the payment details are:
+
+Account holder: ${REPLY_PAY.holder}
+IBAN: ${REPLY_PAY.iban}
+BIC: ${REPLY_PAY.bic}
+Reference: ${k==="company" ? "your company's name" : "your full name"}
+
+${k==="company" ? "As soon as I see the payment, I will send you the link and the code for your company's console. The plan opens at once and in full. For the receipt or invoice, please send me your company's name and tax number." : `As soon as I see the payment, I will send you the link to your plan. Normally the plan opens 14 days after the payment, while the right of withdrawal lasts.
+
+If you would like it to open at once, please write in your reply: "I ask for the plan to open at once, and I understand that if I withdraw within the 14 days, you keep the part of the price for the days I had access."`}
+
+${REPLY_EN.sign}` } },
   { id:"remind", venue:false, title:"Υπενθύμιση", subject:"TakeaSeat — το σχέδιο τραπεζιών", text:k=>`Καλησπέρα σας,
 
 σας είχα γράψει για το σχέδιο τραπεζιών για ${REPLY_FOR[k]} και ήθελα να δω αν μπορώ να σας βοηθήσω σε κάτι.
@@ -3004,7 +3038,17 @@ ${REPLY_LAB(k)}
 
 Κι αν τελικά δεν το χρειάζεστε, κανένα πρόβλημα. Καλή επιτυχία στην εκδήλωσή σας!
 
-${REPLY_SIGN}` },
+${REPLY_SIGN}`,
+    en:{ subject:"TakeaSeat — your seating plan", text:k=>`Hello,
+
+I wrote to you about the seating plan for ${REPLY_EN.for[k]} and wanted to see if I can help with anything.
+
+If you like, you can try it for free, up to 8 tables:
+${REPLY_EN.lab(k)}
+
+And if it turns out you do not need it, no problem at all. All the best for your event!
+
+${REPLY_EN.sign}` } },
   { id:"vprice", venue:true, title:"Τιμή κτήματος", subject:"TakeaSeat για το κτήμα σας", text:()=>`Καλησπέρα σας,
 
 ευχαριστώ για το ενδιαφέρον σας για το TakeaSeat.
@@ -3018,7 +3062,21 @@ https://takeaseat.gr/venue.html#signup
 
 Αν θέλετε, το βλέπουμε και μαζί, όποτε σας βολεύει.
 
-${REPLY_SIGN}` },
+${REPLY_SIGN}`,
+    en:{ subject:"TakeaSeat for your venue", text:()=>`Hello,
+
+thank you for your interest in TakeaSeat.
+
+With the venue subscription you set up your room once and create every event from there: weddings, christenings, parties and company events, with no limit. Each of your clients gets their own link and puts their guests in their seats, and you see their plan.
+
+The first year is free; after that 349 € + VAT per year, with an invoice. There is no automatic charge: you carry on only if you want to.
+
+You can sign up your venue here ${REPLY_EN.greek}:
+https://takeaseat.gr/venue.html#signup
+
+If you like, we can also look at it together, whenever suits you.
+
+${REPLY_EN.sign}` } },
   { id:"vremind", venue:true, title:"Υπενθύμιση κτήματος", subject:"TakeaSeat για το κτήμα σας", text:()=>`Καλησπέρα σας,
 
 σας είχα γράψει για το TakeaSeat και ήθελα να δω αν έχετε κάποια ερώτηση. Ο πρώτος χρόνος είναι δωρεάν, χωρίς δέσμευση, και η εγγραφή γίνεται εδώ:
@@ -3026,7 +3084,15 @@ https://takeaseat.gr/venue.html#signup
 
 Αν θέλετε να το δούμε μαζί, πείτε μου πότε σας βολεύει.
 
-${REPLY_SIGN}` },
+${REPLY_SIGN}`,
+    en:{ subject:"TakeaSeat for your venue", text:()=>`Hello,
+
+I wrote to you about TakeaSeat and wanted to see if you have any questions. The first year is free, with no commitment, and you can sign up here ${REPLY_EN.greek}:
+https://takeaseat.gr/venue.html#signup
+
+If you would like us to look at it together, just tell me when suits you.
+
+${REPLY_EN.sign}` } },
   { id:"oprice", office:true, title:"Τιμή γραφείου", subject:"TakeaSeat για το γραφείο σας", text:()=>`Καλησπέρα σας,
 
 ευχαριστώ για το ενδιαφέρον σας για το TakeaSeat.
@@ -3040,7 +3106,21 @@ https://takeaseat.gr/venue.html?of=1#signup
 
 Αν θέλετε, το βλέπουμε και μαζί, όποτε σας βολεύει.
 
-${REPLY_SIGN}` },
+${REPLY_SIGN}`,
+    en:{ subject:"TakeaSeat for your planning business", text:()=>`Hello,
+
+thank you for your interest in TakeaSeat.
+
+With the planner subscription you set up every room you work in once and create every event from there: weddings, christenings, parties and company events, with no limit. Each of your clients gets their own link, in English, Greek or German, and puts their guests in their seats, and you see their plan.
+
+The first year is free; after that 349 € + VAT per year, with an invoice. There is no automatic charge: you carry on only if you want to.
+
+You can sign up here ${REPLY_EN.greek}:
+https://takeaseat.gr/venue.html?of=1#signup
+
+If you like, we can also look at it together, whenever suits you.
+
+${REPLY_EN.sign}` } },
   { id:"oremind", office:true, title:"Υπενθύμιση γραφείου", subject:"TakeaSeat για το γραφείο σας", text:()=>`Καλησπέρα σας,
 
 σας είχα γράψει για το TakeaSeat και ήθελα να δω αν έχετε κάποια ερώτηση. Ο πρώτος χρόνος είναι δωρεάν, χωρίς δέσμευση, και η εγγραφή γίνεται εδώ:
@@ -3048,14 +3128,26 @@ https://takeaseat.gr/venue.html?of=1#signup
 
 Αν θέλετε να το δούμε μαζί, πείτε μου πότε σας βολεύει.
 
-${REPLY_SIGN}` },
+${REPLY_SIGN}`,
+    en:{ subject:"TakeaSeat for your planning business", text:()=>`Hello,
+
+I wrote to you about TakeaSeat and wanted to see if you have any questions. The first year is free, with no commitment, and you can sign up here ${REPLY_EN.greek}:
+https://takeaseat.gr/venue.html?of=1#signup
+
+If you would like us to look at it together, just tell me when suits you.
+
+${REPLY_EN.sign}` } },
 ];
+// The language of a reply: the one its button asks for (the switch in the box), else the one the contact wrote in.
+const replyLang=(btn, x)=>btn.dataset.lang==="en" || (!btn.dataset.lang && (x.lead||{}).lang==="en") ? "en" : "el";
+const replyOf=(r, lang)=>lang==="en" ? { ...r, ...r.en } : r;
 function showReply(btn, x){
-  const r=REPLIES.find(t=>t.id===btn.dataset.tpl), p=btn.closest(".dbody").querySelector(".cardpanel"); if(!r || !p) return;
+  const r0=REPLIES.find(t=>t.id===btn.dataset.tpl), p=btn.closest(".dbody").querySelector(".cardpanel"); if(!r0 || !p) return;
+  const lang=replyLang(btn, x), r=replyOf(r0, lang), other=lang==="en" ? "el" : "en";
   const l=x.lead||{}, kind=LEAD_KINDS[l.type]||"wedding", to=x.customer.email;
-  p.innerHTML=`<div class="cbox tplbox"><label for="tp_text"><span>${esc(r.title)} <span class="hint">— διόρθωσέ το αν θέλεις, και μετά αντέγραψέ το</span></span></label>
+  p.innerHTML=`<div class="cbox tplbox"><label for="tp_text"><span>${esc(r.title)}${lang==="en" ? " · English" : ""} <span class="hint">— διόρθωσέ το αν θέλεις, και μετά αντέγραψέ το</span></span></label>
     <textarea id="tp_text" rows="12">${esc(r.text(kind))}</textarea>
-    <div class="tlbtns"><button class="btn sm primary" data-k="tpl_copy">Αντιγραφή</button>${to ? `<button class="btn sm" data-k="tpl_mail" data-tpl="${r.id}" title="Ανοίγει το email σου με το κείμενο, προς ${esc(to)}">✉ Email</button>` : ""}<button class="btn sm ghost" data-k="panel_close">Κλείσιμο</button></div></div>`;
+    <div class="tlbtns"><button class="btn sm primary" data-k="tpl_copy">Αντιγραφή</button>${to ? `<button class="btn sm" data-k="tpl_mail" data-tpl="${r.id}" data-lang="${lang}" title="Ανοίγει το email σου με το κείμενο, προς ${esc(to)}">✉ Email</button>` : ""}<button class="btn sm" data-a="tpl" data-tpl="${r.id}" data-lang="${other}" title="Το ίδιο μήνυμα στην άλλη γλώσσα">${other==="en" ? "English" : "Ελληνικά"}</button><button class="btn sm ghost" data-k="panel_close">Κλείσιμο</button></div></div>`;
   p.scrollIntoView({ behavior:"smooth", block:"nearest" });
 }
 

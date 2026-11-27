@@ -3,6 +3,7 @@
 //   seating-planner-el.html / seating-planner.html (EN) / seating-planner-de.html   — the live app
 //   *.artifact.html twins  — claude.ai-artifact builds (the file minus its <head>/<body> wrapper)
 //   lab.html               — the sandbox (Greek, separate local storage, no access gate)
+//   lab-en.html            — the same sandbox in English, for seating-plan-wedding-greece.html (its own local storage)
 //
 //   node tools/build-planner.mjs          # write all outputs
 //   node tools/build-planner.mjs --check  # exit 1 if any output is stale (CI / pre-commit)
@@ -97,13 +98,20 @@ const TITLES = {
   en: 'Wedding Seating Planner — TakeaSeat',
   de: 'Hochzeits-Sitzplan — TakeaSeat',
 };
+// The two indexed labs name each other (hreflang), and Greek is the default: the Greek site is the main one.
+const LAB_ALTERNATES = [['el', 'https://takeaseat.gr/lab.html'], ['en', 'https://takeaseat.gr/lab-en.html'], ['x-default', 'https://takeaseat.gr/lab.html']];
 const OUTPUTS = [
   { file: 'seating-planner-el.html', lang: 'el', mode: 'app', twin: 'seating-planner-el.artifact.html' },
   { file: 'seating-planner.html',    lang: 'en', mode: 'app', twin: 'seating-planner.artifact.html' },
   { file: 'seating-planner-de.html', lang: 'de', mode: 'app', twin: 'seating-planner-de.artifact.html' },
   { file: 'lab.html',                lang: 'el', mode: 'lab', title: 'Δωρεάν πλάνο τραπεζιών — γάμος, βάπτιση, γιορτή, εταιρική εκδήλωση | TakeaSeat',
     canonical: 'https://takeaseat.gr/lab.html',
-    description: 'Στήστε δωρεάν ένα πλάνο τραπεζιών για γάμο, βάπτιση, γιορτή ή εταιρική εκδήλωση — έως 8 τραπέζια, χωρίς λογαριασμό και χωρίς email. Ό,τι φτιάχνετε μένει στη συσκευή σας.' },
+    description: 'Στήστε δωρεάν ένα πλάνο τραπεζιών για γάμο, βάπτιση, γιορτή ή εταιρική εκδήλωση — έως 8 τραπέζια, χωρίς λογαριασμό και χωρίς email. Ό,τι φτιάχνετε μένει στη συσκευή σας.',
+    alternates: LAB_ALTERNATES },
+  { file: 'lab-en.html',             lang: 'en', mode: 'lab', title: 'Free wedding seating plan demo — try it in your browser | TakeaSeat',
+    canonical: 'https://takeaseat.gr/lab-en.html',
+    description: 'Try a wedding seating plan for free: up to 8 tables, drag guests to their seats, no account and no email. Whatever you build stays on your device.',
+    alternates: LAB_ALTERNATES },
 ];
 
 function render(o) {
@@ -115,7 +123,8 @@ function render(o) {
   const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
   const robots = (o.canonical || o.description)
     ? [o.description ? `<meta name="description" content="${esc(o.description)}">` : '',
-       o.canonical ? `<link rel="canonical" href="${o.canonical}">` : ''].filter(Boolean).join(String.fromCharCode(10))
+       o.canonical ? `<link rel="canonical" href="${o.canonical}">` : '',
+       ...(o.alternates || []).map(([l, u]) => `<link rel="alternate" hreflang="${l}" href="${u}">`)].filter(Boolean).join(String.fromCharCode(10))
     : '<meta name="robots" content="noindex,nofollow">';
   return src.replaceAll('__LANG__', o.lang).replaceAll('__MODE__', o.mode).replaceAll('__TITLE__', o.title || TITLES[o.lang]).replace('__ROBOTS__\n', robots ? robots + '\n' : '');
 }

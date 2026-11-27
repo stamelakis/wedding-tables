@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="description" content="Στήστε δωρεάν ένα πλάνο τραπεζιών για γάμο, βάπτιση, γιορτή ή εταιρική εκδήλωση — έως 8 τραπέζια, χωρίς λογαριασμό και χωρίς email. Ό,τι φτιάχνετε μένει στη συσκευή σας.">
 <link rel="canonical" href="https://takeaseat.gr/lab.html">
+<link rel="alternate" hreflang="el" href="https://takeaseat.gr/lab.html">
+<link rel="alternate" hreflang="en" href="https://takeaseat.gr/lab-en.html">
+<link rel="alternate" hreflang="x-default" href="https://takeaseat.gr/lab.html">
 <script>
 // Access gate: on the live domain the planner isn't a free public tool. Allow only an
 // invite/plan link (?plan=), a signed-in venue, or a returning couple (a cloud-linked
@@ -2593,6 +2596,7 @@ function applyStaticI18n(){
   if(!IS_LAB) document.title=tr("title")+" — TakeaSeat";
 }
 applyStaticI18n();
+if(LANG==="en") document.querySelectorAll(".hl-legal a").forEach(a=>{ a.href=a.getAttribute("href")+"#en"; });   // privacy and terms carry their English half under #en (German has none yet)
 const ICON=n=>`<svg class="ic" aria-hidden="true"><use href="#i-${n}"/></svg>`;   // see the sprite at the top of <body>
 document.querySelectorAll("#langsel a").forEach(a=>a.classList.toggle("on", a.dataset.lang===LANG));
 // The active plan decides the word. Everything that re-reads the dictionary is redrawn; nothing else changes.
@@ -2610,7 +2614,7 @@ function setEventKind(k){
 const STORE_KEY = "weddingSeatingPlanner.v2";            // legacy single-plan save (pre-profiles)
 const LAYOUT_VERSION = 5;
 const FONT_FAMILY = '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif';
-const PBASE = IS_LAB ? "weddingSeatingPlanner.lab" : "weddingSeatingPlanner";   // the lab never touches real plans
+const PBASE = IS_LAB ? "weddingSeatingPlanner.lab"+(LANG==="el"?"":"."+LANG) : "weddingSeatingPlanner";   // the lab never touches real plans; the English lab (lab-en.html) keeps its own demo, so it never opens a Greek one
 const PROFILES_KEY = PBASE+".profiles";
 const $ = id => document.getElementById(id);
 
@@ -6021,7 +6025,7 @@ function labCapNote(extra){   // on the #tip card: it can carry a real link (a t
   const cur=currentProfile(), free=!IS_LAB && !!(cur&&cur.cloudId&&cur.free);   // a free online plan: the way past it is to unlock this one
   const own=!IS_LAB && !free && profiles.profiles.some(x=>x.cloudId&&!x.support&&!x.free);   // a couple with an online plan: its local copies are the limited ones
   const unlock=`/epikoinonia.html?kind=${encodeURIComponent((cur&&cur.kind)||"wedding")}&q=unlock${LANG==="el"?"":"&lang=en"}`;
-  el.innerHTML=`${ICON("bulb")}<span class="tt">${extra?escapeHtml(extra)+" ":""}${escapeHtml(tr(IS_LAB?"labCap":free?"capFree":own?"capLocalOwn":"capLocal",{n:LAB_MAX_TABLES}))}${own?"":free?` <a href="${unlock}" target="_blank" rel="noopener">${escapeHtml(tr("capFreeLink"))}</a>`:` <a href="/#pricing">takeaseat.gr</a>`}</span><button class="tx" title="${escapeHtml(tr("close"))}">✕</button>`;
+  el.innerHTML=`${ICON("bulb")}<span class="tt">${extra?escapeHtml(extra)+" ":""}${escapeHtml(tr(IS_LAB?"labCap":free?"capFree":own?"capLocalOwn":"capLocal",{n:LAB_MAX_TABLES}))}${own?"":free?` <a href="${unlock}" target="_blank" rel="noopener">${escapeHtml(tr("capFreeLink"))}</a>`:` <a href="${LANG==="en"?"/seating-plan-wedding-greece.html#plans":"/#pricing"}">takeaseat.gr</a>`}</span><button class="tx" title="${escapeHtml(tr("close"))}">✕</button>`;
   el.hidden=false; el.querySelector(".tx").onclick=hideTip; clearTimeout(tipTimer); tipTimer=setTimeout(hideTip, 12000);
 }
 function flushLabNote(){ if(!labCutPending) return; labCutPending=0; setTimeout(()=>labCapNote(),900); }

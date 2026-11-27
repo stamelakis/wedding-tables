@@ -3000,7 +3000,9 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     const fs = await import('node:fs'), read = f => fs.readFileSync(path.join(root, f), 'utf8');
     const lands = ['plano-trapezion-gamou.html', 'plano-trapezion-vaptisis.html', 'plano-trapezion-giortis.html', 'plano-trapezion-etairikis-ekdilosis.html', 'dorean-schedio-trapezion.html'];
     const pages = ['index.html', 'privacy.html', 'terms.html', 'dpa.html', ...lands];
-    ok(pages.every(f => !/σβήνουμε ποτέ|never delete/i.test(read(f))), 'retention: no page promises we never delete (GDPR storage limitation)');
+    ok([...pages, 'seating-plan-wedding-greece.html'].every(f => !/σβήνουμε ποτέ|never delete/i.test(read(f))), 'retention: no page promises we never delete (GDPR storage limitation)');
+    { const en = read('seating-plan-wedding-greece.html');
+      ok(/One year after the wedding it is deleted for good/.test(en) && /your guests' notes are erased/.test(en) && !/7 days after the/.test(en), 'retention: the English page says a year, and that guest notes go the day after'); }
     ok(lands.every(f => !/Επτά ημέρες μετά|7 ημέρες μετά/.test(read(f)) && /Έναν χρόνο μετά/.test(read(f)) && /σημειώσεις των καλεσμένων σας σβήνονται/.test(read(f))),
       'retention: the landing pages say a year, with no 7-day exception, and that guest notes go the day after');
     ok(['privacy.html', 'terms.html'].every(f => /έναν χρόνο μετά την εκδήλωση/.test(read(f)) && /one year after the event/.test(read(f))), 'retention: privacy and terms say a year, in Greek and English');
@@ -3973,6 +3975,7 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
     ok(LN.noMail === true && LN.lang === 'en' && LN.type === 'couple' && (await cardOf('l:' + LN.id)).d.noMail === true && (await cardOf('l:' + LN.id)).d.lead.noMail === true,
       'decision 6: the tick is kept on the contact and shown on its card');
     ok(/We received your message/.test(toThem('nikos-anna-f4b@example.gr')[0].subject), 'form: an English form gets the English «we got it»');
+    ok((await cardOf('l:' + LN.id)).d.lead.lang === 'en' && cd.lead.lang === 'el', 'form: the card says which language they wrote in, so the ready replies open in it');
     r = await call('POST', '/admin/couples', { name: 'Φ4Β Νίκος & Άννα', email: 'nikos-anna-f4b@example.gr', weddingDate: athensDay(120), fromLead: LN.id }, OWN);
     ok(r.status === 200 && raw('couple:' + r.d.couple.id).noMail === true && (await cardOf('c:' + r.d.couple.id)).d.noMail === true && (await cardOf('c:' + r.d.couple.id)).d.source === 'form',
       'decision 6: «Έγινε πελάτης» carries the «no» and «Φόρμα» to the customer', r.d);
@@ -4333,13 +4336,15 @@ ok(!m.has('plan:' + W.planId) && !m.has('plan:' + T.planId) && !m.has('venue:' +
       // what a new due says is what the pages say: every euro figure on a public page is one of the two prices
       const fs = await import('node:fs'), read = f => fs.readFileSync(path.join(root, f), 'utf8');
       const P = (await first(await couple({}))).amount / 100, S = (await first(await venue({}))).amount / 100;
-      for (const [f, both] of [['index.html', true], ['terms.html', true], ['plano-trapezion-gamou.html', false], ['plano-trapezion-vaptisis.html', false], ['plano-trapezion-giortis.html', false], ['plano-trapezion-etairikis-ekdilosis.html', false], ['dorean-schedio-trapezion.html', false], ['poioi-eimaste.html', false]]) {
+      for (const [f, both] of [['index.html', true], ['terms.html', true], ['plano-trapezion-gamou.html', false], ['plano-trapezion-vaptisis.html', false], ['plano-trapezion-giortis.html', false], ['plano-trapezion-etairikis-ekdilosis.html', false], ['dorean-schedio-trapezion.html', false], ['poioi-eimaste.html', false], ['seating-plan-wedding-greece.html', true]]) {
         const got = [...read(f).matchAll(/(\d[\d.,]*) ?(?:€|&euro;)|(?:€|&euro;) ?(\d[\d.,]*)/g)].map(e => e[1] || e[2]);
         ok(got.includes(String(P)) && (!both || got.includes(String(S))) && got.every(e => ['0', String(P), String(S)].includes(e)), 'price: ' + f + ' names only what a new due says', got);
       }
       for (const [f, says] of [['terms.html', S + ' € τον χρόνο, πλέον ΦΠΑ'], ['terms.html', S + ' € per year, plus VAT'], ['terms.html', P + ' € εφάπαξ, με ΦΠΑ'], ['terms.html', P + ' € one-off, VAT included'],
         ['index.html', S + ' € πλέον ΦΠΑ'], ['index.html', P + ' € εφάπαξ με ΦΠΑ'], ['index.html', '"price":"' + S + '","priceCurrency":"EUR","valueAddedTaxIncluded":false'], ['index.html', '"price":"' + P + '","priceCurrency":"EUR","valueAddedTaxIncluded":true'],
         ['plano-trapezion-gamou.html', P + ' € εφάπαξ με ΦΠΑ'], ['dorean-schedio-trapezion.html', P + ' € εφάπαξ με ΦΠΑ'], ['poioi-eimaste.html', P + ' € εφάπαξ με ΦΠΑ'], ['plano-trapezion-vaptisis.html', P + ' € εφάπαξ με ΦΠΑ'], ['plano-trapezion-giortis.html', P + ' € εφάπαξ με ΦΠΑ'], ['plano-trapezion-etairikis-ekdilosis.html', P + ' € εφάπαξ με ΦΠΑ'],
+        ['seating-plan-wedding-greece.html', P + ' € one-off, VAT included'], ['seating-plan-wedding-greece.html', S + ' € per year plus VAT'],
+        ['admin.html', 'costs ' + P + ' € (VAT included)'], ['admin.html', '(' + P + ' €, VAT included)'], ['admin.html', 'after that ' + S + ' € + VAT per year'],
         ['admin.html', 'κοστίζει ' + P + ' € (με ΦΠΑ)'], ['admin.html', '(' + P + ' € με ΦΠΑ)'], ['admin.html', 'μετά ' + S + ' € + ΦΠΑ τον χρόνο'], ['admin.html', 'placeholder="π.χ. ' + P + ',00"']])
         ok(read(f).includes(says), 'price: ' + f + ' says «' + says + '»');
     }
@@ -5319,7 +5324,7 @@ function leadStageOf(l) { return l.lost ? 8 : l.stage || 1; }
     ok(/custType/.test(vh) && /Είμαι γραφείο εκδηλώσεων/.test(vh) && /Γραφείο εκδηλώσεων/.test(vh), 'console: the sign-up asks, and a bare link can switch');
     const consolePathUses = wk.split('consolePath(v)').length - 1;
     ok(consolePathUses >= 3 && /trialEnds/.test(wk), 'mails: the yearly reminders link through the customer\'s own console path', consolePathUses);
-    ok(/id:"oprice", office:true/.test(ad) && /id:"oremind", office:true/.test(ad) && ad.split('venue.html?of=1#signup').length === 3, 'admin: a γραφείο contact has its own ready replies, linking its own sign-up');
+    ok(/id:"oprice", office:true/.test(ad) && /id:"oremind", office:true/.test(ad) && ad.split('venue.html?of=1#signup').length === 5, 'admin: a γραφείο contact has its own ready replies (and their English twins), linking its own sign-up');
 
     // -- the public pages --
     const gd = rd('grafeio-ekdiloseon.html'), ix = rd('index.html'), dock = rd('server/Dockerfile');
@@ -5539,6 +5544,40 @@ function leadStageOf(l) { return l.lost ? 8 : l.stage || 1; }
       && /σβήνονται την επόμενη μέρα της εκδήλωσης/.test(ab) && !/σβήνουμε ποτέ/i.test(ab), 'about page: data in Germany, a year, 1 to 5 years, notes the day after, as privacy and terms say');
     ok(['index.html', 'dorean-schedio-trapezion.html', 'grafeio-ekdiloseon.html', 'plano-trapezion-gamou.html', 'plano-trapezion-vaptisis.html', 'plano-trapezion-giortis.html', 'plano-trapezion-etairikis-ekdilosis.html'].every(f => rd(f).includes('href="/poioi-eimaste.html"')),
       'about page: the home page, the free page, the γραφείο page and the four event pages link it');
+
+    // -- the English page for weddings in Greece (2026-11-28), its English demo and the English ready replies --
+    const en = rd('seating-plan-wedding-greece.html'), sm = rd('sitemap.xml'), bp = rd('tools/build-planner.mjs'), gam = rd('plano-trapezion-gamou.html');
+    ok(dock.split('seating-plan-wedding-greece.html').length === 3 && sm.includes('https://takeaseat.gr/seating-plan-wedding-greece.html'), 'English page: in both Dockerfile lists and the sitemap');
+    ok(/COPY [^\n]* lab\.html lab-en\.html [^\n]*\/app\/public\//.test(dock) && /cp [^\n]*\/app\/public\/lab-en\.html \/chk\//.test(dock) && sm.includes('https://takeaseat.gr/lab-en.html'),
+      'English demo: shipped, checked against the source like lab.html, and in the sitemap');
+    ok(/\{ file: 'lab-en\.html', +lang: 'en', mode: 'lab'/.test(bp) && bp.includes("canonical: 'https://takeaseat.gr/lab-en.html'"), 'English demo: built from planner.src.html, in English, as a lab, with its own address');
+    ok(pl.includes('"weddingSeatingPlanner.lab"+(LANG==="el"?"":"."+LANG)'), 'English demo: keeps its own demo plan, so a Greek demo on the same device never opens in it');
+    ok(/LANG==="en"\?"\/seating-plan-wedding-greece\.html#plans":"\/#pricing"/.test(pl), 'English demo: its «more tables» note points to the English page, not the Greek prices');
+    ok(!/noindex/.test(en) && en.includes('<html lang="en">') && en.includes('<link rel="canonical" href="https://takeaseat.gr/seating-plan-wedding-greece.html">'), 'English page: indexable, in English, with its own address');
+    const hl = (h, l, u) => h.includes('<link rel="alternate" hreflang="' + l + '" href="https://takeaseat.gr/' + u + '">');
+    ok(hl(en, 'en', 'seating-plan-wedding-greece.html') && hl(en, 'el', 'plano-trapezion-gamou.html') && hl(gam, 'en', 'seating-plan-wedding-greece.html') && hl(gam, 'el', 'plano-trapezion-gamou.html')
+      && hl(en, 'x-default', 'plano-trapezion-gamou.html') && hl(gam, 'x-default', 'plano-trapezion-gamou.html'), 'hreflang: the English page and the Greek wedding page name each other, both ways');
+    ok(bp.includes("['el', 'https://takeaseat.gr/lab.html'], ['en', 'https://takeaseat.gr/lab-en.html']") && (bp.match(/alternates: LAB_ALTERNATES/g) || []).length === 2, 'hreflang: lab.html and lab-en.html name each other');
+    const eld = JSON.parse(en.match(/<script type="application\/ld\+json">\s*([\s\S]*?)<\/script>/)[1])['@graph'];
+    const eFaq = (eld.find(g => g['@type'] === 'FAQPage') || {}).mainEntity || [];
+    const eShown = [...en.matchAll(/<summary>([^<]*)<\/summary>\s*<p>([\s\S]*?)<\/p>/g)].map(e => [e[1], e[2].replace(/<[^>]+>/g, '')]);
+    ok(eFaq.length >= 8 && eFaq.length === eShown.length && eFaq.every((q, i) => q.name === eShown[i][0] && q.acceptedAnswer.text === eShown[i][1]),
+      'English page: the structured questions are word for word the ones on screen', { ld: eFaq.length, shown: eShown.length });
+    ok(en.includes('href="/epikoinonia.html?kind=wedding&amp;q=free&amp;lang=en"') && en.includes('href="/epikoinonia.html?kind=wedding&amp;q=unlock&amp;lang=en"')
+      && en.includes('href="/epikoinonia.html?kind=organiser&amp;lang=en"') && en.includes('href="/lab-en.html"') && [...en.matchAll(/href="\/epikoinonia\.html[^"]*"/g)].every(e => /lang=en/.test(e[0])),
+      'English page: couples start the free plan, planners talk to us, and every form link stays English');
+    ok(/Up to 8 guest tables/.test(en) && /does not count/.test(en) && /within 30 days/.test(en) && /for 6 months, we send you an email/.test(en) && /within 14 days of that, it is deleted/.test(en),
+      'English page: 8 guest tables, the main table not counted, 30 days, 6 months and 14 days, as the free page and the terms say');
+    ok(/no card payment at the moment/i.test(en) && /bank transfer/.test(en) && !/keepsake/i.test(en), 'English page: no card payment promised, the unlock is a bank transfer, and no keepsake mail');
+    ok(/console is in Greek today/.test(en) && /ΑΦΜ/.test(en) && /Up to 20 venues/.test(en) && num('MAX_ROOMS') === 20, 'English page: tells planners the console is Greek today, the free year per ΑΦΜ, and 20 venues as the server allows');
+    ok(rd('index.html').includes('href="/seating-plan-wedding-greece.html"') && gam.includes('href="/seating-plan-wedding-greece.html"'), 'English page: the home page and the Greek wedding page link it');
+    ok(ep.includes('const HOME = lang === "en" ? "/seating-plan-wedding-greece.html" : "/";') && ep.split('<a href="${HOME}">').length === 3, 'contact form: an English visitor is sent back to the English page');
+    ok(['price', 'pay', 'remind', 'vprice', 'vremind', 'oprice', 'oremind'].every(id => { const a = ad.indexOf('{ id:"' + id + '"'); return a > 0 && /^[^]*?\n    en:\{ subject:"[^"]+", text:/.test(ad.slice(a, a + 4000)); })
+      && (ad.match(/\n    en:\{ subject:/g) || []).length === 7, 'admin: every ready reply has an English twin');
+    ok(/REPLY_EN\.lab\(k\)/.test(ad) && ad.includes('"https://takeaseat.gr/lab-en.html?ev="+k') && ad.includes('BIC: ${REPLY_PAY.bic}') && /I ask for the plan to open at once/.test(ad),
+      'admin: the English replies link the English demo, ask a bank abroad for the BIC, and carry the written request to start at once');
+    ok(ad.includes('const replyLang=(btn, x)=>btn.dataset.lang==="en" || (!btn.dataset.lang && (x.lead||{}).lang==="en") ? "en" : "el";') && ad.includes('data-lang="${other}"'),
+      'admin: a reply opens in the language the contact wrote in, and one button switches');
   } finally {
     env.MAIL = mail0;
     m.clear(); for (const [k, v] of saved) m.set(k, v);

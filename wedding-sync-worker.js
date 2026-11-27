@@ -1908,7 +1908,7 @@ function leadFields(b, cur) {
 }
 const leadOut = l => ({ id: l.id, name: l.name || "", source: l.source || "other", type: l.type || "couple", date: l.date || null, place: l.place || "",
   email: l.email || "", phone: l.phone || "", afm: l.afm || "", stage: leadStage(l), lost: l.lost ? { reason: l.lost.reason, at: l.lost.at || null } : null,
-  noMail: !!l.noMail, createdAt: l.createdAt || null });
+  noMail: !!l.noMail, lang: l.lang === "en" ? "en" : "el", createdAt: l.createdAt || null });   // lang: the ready replies open in it (admin.html)
 // ---- the site's contact form (POST /contact) ----
 // A fixed list of fields, each with its own cap; anything else in the body is ignored. Typed by a stranger, so every
 // one-line field loses its control characters (a line break in a name would otherwise reach a mail subject).

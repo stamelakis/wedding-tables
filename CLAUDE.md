@@ -9,7 +9,7 @@ decisions a future session might undo by mistake. `STATUS.md` says where we are.
 ```bash
 node tools/build-planner.mjs            # regenerate the planner outputs
 node tools/build-planner.mjs --check    # must print "all planner outputs up to date"
-node tools/test-api.mjs                 # the whole suite (1985 checks today)
+node tools/test-api.mjs                 # the whole suite (2011 checks today)
 node tools/dev.mjs                      # local stack on :8080 — never `node server/server.mjs`
 node tools/dev-customers.mjs            # the same, seeded with one customer per «Θέλουν εμένα» flag and stage
 ```
@@ -25,7 +25,7 @@ build runs the full suite), restarts and health-checks; on failure it rolls back
 ## Gotchas
 
 - **`planner.src.html` is the only source.** `seating-planner-{el,en,de}.html`, the three
-  `.artifact.html` twins and `lab.html` are generated. Edit the source, rebuild, then `--check`.
+  `.artifact.html` twins, `lab.html` and `lab-en.html` are generated. Edit the source, rebuild, then `--check`.
 - **The suite never runs the planner's code** — it only reads the source as text, plus one check that the
   inline scripts parse. A planner change is not verified until it is opened in the preview. Tests may read
   `planner.src.html` but not the built pages: the Docker check stage does not carry them.
@@ -101,7 +101,8 @@ One line each, so a session sees the rule. Before changing one, read its full re
 - **«Είσοδος (αφίξεις)» is for company events only and has its own link** (`rec.door`, `eisodos.html#key`), never the edit link: the door sees name, table and arrived, and cannot add a name. Arrivals live in `arr:<planId>`, outside the plan, so a plan save never overwrites a tap. Link and arrivals go at 12:00 the day after (`doorEndsAt`); privacy and dpa say so.
 - **A free online plan holds 8 guest tables, and the server refuses the 9th** (`FREE_TABLES`, `freeCapped`): a `couple:` row with `free:true` from `POST /signup/free`, one per email. A save that adds no table always passes. Only «Ξεκλείδωμα (25 €)» in admin lifts it.
 - **A free plan never opened in 30 days goes; one unopened for 180 days is warned once, then erased 14 days later** (`freeSweep`). No mail could leave: no warning, so no erasure. Terms 8Β and privacy §7 say so; change them together.
-- **`lab.html` is the one indexed planner build;** the app builds carry `noindex` because their URLs carry `?plan=` tokens. If the lab goes noindex, remove it from `sitemap.xml` in the same commit.
+- **`lab.html` and its English twin `lab-en.html` are the only indexed planner builds;** the app builds carry `noindex` because their URLs carry `?plan=` tokens. If a lab goes noindex, remove it from `sitemap.xml` in the same commit. `lab-en.html` keeps its own storage (`PBASE`), so a Greek demo never opens in it.
+- **English has one page, `seating-plan-wedding-greece.html`, for couples marrying in Greece and planners based here** (Andreas chose C, 2026-11-28). It offers the free plan and never card payment until phase 7; planners get «talk to us», since their console and dpa are Greek. Its facts are the Greek free and γραφείο pages' facts: change them together. Ready replies have `en` twins, opened in `lead.lang`.
 - **`poioi-eimaste.html` names no person, only the company** (Andreas's choice), and «TakeaSeat» stands in for the legal name until the company is registered; a test refuses a `founder` or `legalName` in its JSON-LD. Add the legal name with the legal pages' `[ΕΠΩΝΥΜΙΑ]`, never a founder.
 - **The home hero speaks to every reader, not the κτήμα** (Andreas's own words, 2026-11-09): a κτήμα-first headline made couples leave in seconds. The four audience doors stay equal; none is the filled button.
 - **«Δεν σβήνουμε ποτέ» must never be written anywhere** (GDPR storage limitation; for a venue's events TakeaSeat is the processor).
