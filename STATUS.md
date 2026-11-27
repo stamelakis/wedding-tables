@@ -33,14 +33,17 @@ Andreas's own email (since forgotten; details in History). Not seen live: the 9t
    είμαστε» (`d1e4823`).
 2. [you: company, accountant, lawyer] **Phase 7 (online payment).** The page's remaining English sections move to
    Greek as each is touched.
-3. [you: pick one] **More improvements, suggested 2026-11-23:** four options, A–D, in
-   `docs/decisions/improvements-2026-11.md` (the question is under «Waiting on Andreas»).
+3. [auto] **English page for weddings in Greece** (Andreas chose C on 2026-11-28; `docs/decisions/improvements-2026-11.md`).
+   One page for foreign couples (offered the free English plan; no card payment promised until phase 7) and for
+   planners based in Greece («talk to us», `kind=organiser&lang=en`); an English demo built from `planner.src.html`
+   beside `lab.html`; English twins of admin's ready replies. Sitemap, the Dockerfile page list, hreflang. Done when:
+   all three are built and tested, the suite passes, checked on screen at desktop and 375px. Not deployed: deploy
+   needs Andreas's OK. Then «Waiting on Andreas»: have the English read by a native speaker.
+4. [you: pick one, later] **The other improvements:** A room from a photo, B unseated-guests reminder, D day-after
+   questions (same doc).
 
 ## Waiting on Andreas
 
-- **Improvements: A, B, C or D?** A «we draw your room from a photo» for κτήματα (recommended: small, helps the
-  in-person meeting) · B mail 10/3 days before when guests have no seat · C English page for weddings in Greece ·
-  D two questions in the day-after keepsake mail. Details and costs: `docs/decisions/improvements-2026-11.md`.
 - **The next direct buyer who asks to start at once:** tick «Άμεση έναρξη» only after their written request (the
   sentence in the «Στοιχεία πληρωμής» reply) is in your mail, and keep that mail.
 - **Read the Greek of «Είσοδος (αφίξεις)»** on live: the door page (`eisodos.html`, opened from a

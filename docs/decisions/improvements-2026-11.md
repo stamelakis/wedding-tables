@@ -1,5 +1,8 @@
 # Which improvement next? (prep, 2026-11-28)
 
+**Decided 2026-11-28: C**, for couples and planners on one page, with an English demo and English ready
+replies (Andreas: «Yes, as proposed»). A, B and D stay for later.
+
 STATUS «Next» lists four improvements suggested on 2026-11-23. This page puts them side by side so the
 answer is one letter. Nothing here is built; nothing was sent or spent.
 
