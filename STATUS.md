@@ -2,8 +2,8 @@
 
 Updated: 2026-11-28
 
-**Status:** Live runs `2a7ac97` (deployed 2026-11-23 as `deploy-2026-11-23-1`, pre-deploy backup
-`/opt/backups/takeaseat-20261123-172523.db.gz.age`), healthy. **Built, not deployed: the English page for weddings in Greece** (item 3, below). New: «Άμεση έναρξη» for any date (History). **New on live: «Είσοδος (αφίξεις)»** (door check-in for
+**Status:** Live runs `9c7adae` (deployed 2026-11-28, pre-deploy backup
+`/opt/backups/takeaseat-20261127-233458.db.gz.age`), healthy. **New on live: the English page for weddings in Greece** (History). New: «Άμεση έναρξη» for any date (History). **New on live: «Είσοδος (αφίξεις)»** (door check-in for
 company events; details in History). Also live since 2026-11-09: «Πρόγραμμα» (the event's timeline, ⋯ menu; not
 yet seen on a real online plan or on paper), «Συνεργάτες» (`743fa73`) and place and table cards in «Εκτύπωση» (fold
 not yet seen on a real printer); details of each in History. **Phase 3 of `COMPANIES-PLAN.md` is live:** a
@@ -31,20 +31,13 @@ Andreas's own email (since forgotten; details in History). Not seen live: the 9t
    for item 1 is done; see History.)
 2. [you: company, accountant, lawyer] **Phase 7 (online payment).** The page's remaining English sections move to
    Greek as each is touched.
-3. [you: say «deploy»] **Deploy the English page for weddings in Greece.** Built, tested (2011 checks) and checked on
-   screen on the local copy at desktop and 375px (2026-11-28; History). Nothing of it is live yet.
-4. [you: pick one, later] **The other improvements:** A room from a photo, B unseated-guests reminder, D day-after
+3. [you: pick one, later] **The other improvements:** A room from a photo, B unseated-guests reminder, D day-after
    questions (same doc).
 
 ## Waiting on Andreas
 
-- **The English page for weddings in Greece is ready to go live** (local copy only today). What changes for customers:
-  a new English page, `takeaseat.gr/seating-plan-wedding-greece.html`, for couples from abroad (it offers the free
-  online plan; the 25 € unlock is a bank transfer, no card is promised) and for wedding planners in Greece («Talk to
-  us»); an English demo, `takeaseat.gr/lab-en.html`; an «English: weddings in Greece» link in the footer of the home
-  page and the Greek wedding page. In «Πελάτες», an English contact's ready replies open in English (one button
-  switches). A normal deploy (backup, automatic rollback); undoing it is one more deploy. Reply «deploy».
-- **After it is live: have the English read by a native speaker.** The page, the English demo's words (it uses the
+- **Have the English read by a native speaker** (live since 2026-11-28). The page
+  (https://takeaseat.gr/seating-plan-wedding-greece.html), the English demo's words (https://takeaseat.gr/lab-en.html; it uses the
   English app's words, already live), and the 7 English ready replies (in admin.html, «Έτοιμο μήνυμα» on a contact,
   then «English»). Say what reads wrong.
 
@@ -120,7 +113,7 @@ Andreas's own email (since forgotten; details in History). Not seen live: the 9t
 
 ## History
 
-- 2026-11-28: the English page for weddings in Greece (item 3, [auto]), not deployed. `seating-plan-wedding-greece.html`
+- 2026-11-28: the English page for weddings in Greece (item 3, [auto]); deployed the same day on Andreas's «deploy» (health-checked: the new and changed pages answer 200, sitemap and hreflang live). `seating-plan-wedding-greece.html`
   (couples: free plan, demo, unlock by bank transfer, timeline, FAQ with matching structured data; planners: what the
   γραφείο console does, first year free then 349 € + VAT, «Talk to us» to `epikoinonia.html?kind=organiser&lang=en`,
   says the console and dpa are Greek today). `lab-en.html` built from `planner.src.html` with its own storage, its
